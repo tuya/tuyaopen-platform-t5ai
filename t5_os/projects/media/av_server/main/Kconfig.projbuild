@@ -1,0 +1,12 @@
+menu "INTEGRATION_DOORBELL"
+
+    config INTEGRATION_DOORBELL
+        bool "Doorbell integration"
+        default n
+    config INTEGRATION_DOORBELL_CS2
+        bool "Doorbell integration CS2"
+        default n
+    config AV_DEMO_MODE_TCP
+        bool "AV DEMO TCP MODE"
+        default n
+endmenu

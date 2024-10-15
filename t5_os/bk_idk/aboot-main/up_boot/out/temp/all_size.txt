@@ -1,0 +1,2 @@
+   text	   code	 rodata	   data	    bss	    dec	    hex	filename
+  31541	  24522	   7019	     28	 108048	 139617	  22161	./out/u_bootloader.elf

@@ -1,0 +1,266 @@
+// Copyright 2020-2021 Beken
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+#include <driver/gpio.h>
+#include <driver/media_types.h>
+#include <driver/lcd_types.h>
+#include <driver/lcd_spi.h>
+#include "lcd_panel_devices.h"
+#include "gpio_map.h"
+#include <driver/lcd.h>
+#include "gpio_driver.h"
+
+#if CONFIG_PWM
+#include <driver/pwm.h>
+#endif
+
+static const lcd_rgb_t lcd_rgb =
+{
+	.clk = LCD_60M,
+	.data_out_clk_edge = POSEDGE_OUTPUT,
+	.hsync_pulse_width = 2,
+	.vsync_pulse_width = 2,
+	.hsync_back_porch = 42,
+	.hsync_front_porch = 44,
+	.vsync_back_porch = 14,
+	.vsync_front_porch = 16,
+};
+
+
+//#define HDP 720
+//#define VDP 1280
+//#define HSPW 10
+//#define HBPD 60
+//#define HFPD 60
+//#define VSPW 2
+//#define VBPD 8
+//#define VFPD 16
+
+
+static void Wrt_Reg_3052(uint8_t cmd, uint8_t date)
+{
+	lcd_spi_write_cmd(cmd);
+	lcd_spi_write_data(date);
+}
+
+static void lcd_nv3052_config(void)
+{
+#define Delay_ms rtos_delay_milliseconds
+
+	bk_gpio_set_output_high(LCD_SPI_RST);
+	Delay_ms(10);
+	bk_gpio_set_output_low(LCD_SPI_RST);
+	Delay_ms(100);
+	bk_gpio_set_output_high(LCD_SPI_RST);
+	Delay_ms(60);
+
+	//---------------------NV3052CGRB +BOE5.0(N47) Initial------------------
+
+	Wrt_Reg_3052(0xFF, 0x30);
+	Wrt_Reg_3052(0xFF, 0x52);
+	Wrt_Reg_3052(0xFF, 0x01);
+	Wrt_Reg_3052(0xE3, 0x00);
+	////Wrt_Reg_3052(0xF6,0xC0);
+	////Wrt_Reg_3052(0xF0,0x00);
+	Wrt_Reg_3052(0x0A, 0x01);
+	Wrt_Reg_3052(0x23, 0xA2); //A0
+	Wrt_Reg_3052(0x24, 0x10);
+	Wrt_Reg_3052(0x25, 0x0A);
+	Wrt_Reg_3052(0x26, 0x3C);
+	Wrt_Reg_3052(0x27, 0x46);
+	Wrt_Reg_3052(0x38, 0x9C);
+	Wrt_Reg_3052(0x39, 0xA7);
+	Wrt_Reg_3052(0x3A, 0x47); //VCOM
+	Wrt_Reg_3052(0x91, 0x77);
+	Wrt_Reg_3052(0x92, 0x77);
+	Wrt_Reg_3052(0x99, 0x51);
+	Wrt_Reg_3052(0x9B, 0x59);
+	Wrt_Reg_3052(0xA0, 0x55);
+	Wrt_Reg_3052(0xA1, 0x50);
+	Wrt_Reg_3052(0xA4, 0x9C);
+	Wrt_Reg_3052(0xA7, 0x02);
+	Wrt_Reg_3052(0xA8, 0x01);
+	Wrt_Reg_3052(0xA9, 0x01);
+	Wrt_Reg_3052(0xAA, 0xFC);
+	Wrt_Reg_3052(0xAB, 0x28);
+	Wrt_Reg_3052(0xAC, 0x06);
+	Wrt_Reg_3052(0xAD, 0x06);
+	Wrt_Reg_3052(0xAE, 0x06);
+	Wrt_Reg_3052(0xAF, 0x03);
+	Wrt_Reg_3052(0xB0, 0x08);
+	Wrt_Reg_3052(0xB1, 0x26);
+	Wrt_Reg_3052(0xB2, 0x28);
+	Wrt_Reg_3052(0xB3, 0x28);
+	Wrt_Reg_3052(0xB4, 0x03);
+	Wrt_Reg_3052(0xB5, 0x08);
+	Wrt_Reg_3052(0xB6, 0x26);
+	Wrt_Reg_3052(0xB7, 0x08);
+	Wrt_Reg_3052(0xB8, 0x26);
+	Wrt_Reg_3052(0xFF, 0x30);
+	Wrt_Reg_3052(0xFF, 0x52);
+	Wrt_Reg_3052(0xFF, 0x02);
+	Wrt_Reg_3052(0xB0, 0x01);
+	Wrt_Reg_3052(0xB1, 0x12);
+	Wrt_Reg_3052(0xB2, 0x09);
+	Wrt_Reg_3052(0xB3, 0x2B);
+	Wrt_Reg_3052(0xB4, 0x2F);
+	Wrt_Reg_3052(0xB5, 0x30);
+	Wrt_Reg_3052(0xB6, 0x19);
+	Wrt_Reg_3052(0xB7, 0x35);
+	Wrt_Reg_3052(0xB8, 0x0D);
+	Wrt_Reg_3052(0xB9, 0x03);
+	Wrt_Reg_3052(0xBA, 0x12);
+	Wrt_Reg_3052(0xBB, 0x12);
+	Wrt_Reg_3052(0xBC, 0x14);
+	Wrt_Reg_3052(0xBD, 0x15);
+	Wrt_Reg_3052(0xBE, 0x18);
+	Wrt_Reg_3052(0xBF, 0x0F);
+	Wrt_Reg_3052(0xC0, 0x17);
+	Wrt_Reg_3052(0xC1, 0x08);
+	Wrt_Reg_3052(0xD0, 0x0F);
+	Wrt_Reg_3052(0xD1, 0x12);
+	Wrt_Reg_3052(0xD2, 0x1A);
+	Wrt_Reg_3052(0xD3, 0x38);
+	Wrt_Reg_3052(0xD4, 0x36);
+	Wrt_Reg_3052(0xD5, 0x3a);
+	Wrt_Reg_3052(0xD6, 0x22);
+	Wrt_Reg_3052(0xD7, 0x40);
+	Wrt_Reg_3052(0xD8, 0x0D);
+	Wrt_Reg_3052(0xD9, 0x03);
+	Wrt_Reg_3052(0xDA, 0x11);
+	Wrt_Reg_3052(0xDB, 0x10);
+	Wrt_Reg_3052(0xDC, 0x12);
+	Wrt_Reg_3052(0xDD, 0x13);
+	Wrt_Reg_3052(0xDE, 0x18);
+	Wrt_Reg_3052(0xDF, 0x10);
+	Wrt_Reg_3052(0xE0, 0x17);
+	Wrt_Reg_3052(0xE1, 0x08);
+	Wrt_Reg_3052(0xFF, 0x30);
+	Wrt_Reg_3052(0xFF, 0x52);
+	Wrt_Reg_3052(0xFF, 0x03);
+	Wrt_Reg_3052(0x00, 0x2A);
+	Wrt_Reg_3052(0x01, 0x2A);
+	Wrt_Reg_3052(0x02, 0x2A);
+	Wrt_Reg_3052(0x03, 0x2A);
+	Wrt_Reg_3052(0x08, 0x02);
+	Wrt_Reg_3052(0x09, 0x03);
+	Wrt_Reg_3052(0x0A, 0x04);
+	Wrt_Reg_3052(0x0B, 0x05);
+	Wrt_Reg_3052(0x30, 0x2A);
+	Wrt_Reg_3052(0x31, 0x2A);
+	Wrt_Reg_3052(0x32, 0x2A);
+	Wrt_Reg_3052(0x33, 0x2A);
+	Wrt_Reg_3052(0x34, 0x81);
+	Wrt_Reg_3052(0x35, 0x26);
+	Wrt_Reg_3052(0x37, 0x13);
+	Wrt_Reg_3052(0x40, 0x03);
+	Wrt_Reg_3052(0x41, 0x04);
+	Wrt_Reg_3052(0x42, 0x05);
+	Wrt_Reg_3052(0x43, 0x06);
+	Wrt_Reg_3052(0x45, 0x08);
+	Wrt_Reg_3052(0x46, 0x09);
+	Wrt_Reg_3052(0x48, 0x0a);
+	Wrt_Reg_3052(0x49, 0x0b);
+	Wrt_Reg_3052(0x50, 0x07);
+	Wrt_Reg_3052(0x51, 0x08);
+	Wrt_Reg_3052(0x52, 0x09);
+	Wrt_Reg_3052(0x53, 0x0a);
+	Wrt_Reg_3052(0x55, 0x0c);
+	Wrt_Reg_3052(0x56, 0x0d);
+	Wrt_Reg_3052(0x58, 0x0e);
+	Wrt_Reg_3052(0x59, 0x0f);
+	Wrt_Reg_3052(0x80, 0x00);
+	Wrt_Reg_3052(0x81, 0x00);
+	Wrt_Reg_3052(0x82, 0x04);
+	Wrt_Reg_3052(0x83, 0x02);
+	Wrt_Reg_3052(0x84, 0x0E);
+	Wrt_Reg_3052(0x85, 0x10);
+	Wrt_Reg_3052(0x86, 0x0A);
+	Wrt_Reg_3052(0x87, 0x0C);
+	Wrt_Reg_3052(0x91, 0x00);
+	Wrt_Reg_3052(0x92, 0x00);
+	Wrt_Reg_3052(0x93, 0x00);
+	Wrt_Reg_3052(0x94, 0x1f);
+	Wrt_Reg_3052(0x95, 0x1F);
+	Wrt_Reg_3052(0x96, 0x00);
+	Wrt_Reg_3052(0x97, 0x00);
+	Wrt_Reg_3052(0x98, 0x03);
+	Wrt_Reg_3052(0x99, 0x01);
+	Wrt_Reg_3052(0x9A, 0x0D);
+	Wrt_Reg_3052(0x9B, 0x0F);
+	Wrt_Reg_3052(0x9C, 0x09);
+	Wrt_Reg_3052(0x9D, 0x0B);
+	Wrt_Reg_3052(0xA7, 0x00);
+	Wrt_Reg_3052(0xA8, 0x00);
+	Wrt_Reg_3052(0xA9, 0x00);
+	Wrt_Reg_3052(0xAA, 0x1F);
+	Wrt_Reg_3052(0xAB, 0x1F);
+	Wrt_Reg_3052(0xB0, 0x00);
+	Wrt_Reg_3052(0xB1, 0x1F);
+	Wrt_Reg_3052(0xB2, 0x01);
+	Wrt_Reg_3052(0xB3, 0x03);
+	Wrt_Reg_3052(0xB4, 0x0B);
+	Wrt_Reg_3052(0xB5, 0x09);
+	Wrt_Reg_3052(0xB6, 0x0F);
+	Wrt_Reg_3052(0xB7, 0x0D);
+	Wrt_Reg_3052(0xC1, 0x00);
+	Wrt_Reg_3052(0xC2, 0x00);
+	Wrt_Reg_3052(0xC3, 0x00);
+	Wrt_Reg_3052(0xC4, 0x1F);
+	Wrt_Reg_3052(0xC5, 0x00);
+	Wrt_Reg_3052(0xC6, 0x00);
+	Wrt_Reg_3052(0xC7, 0x1F);
+	Wrt_Reg_3052(0xC8, 0x02);
+	Wrt_Reg_3052(0xC9, 0x04);
+	Wrt_Reg_3052(0xCA, 0x0C);
+	Wrt_Reg_3052(0xCB, 0x0A);
+	Wrt_Reg_3052(0xCC, 0x10);
+	Wrt_Reg_3052(0xCD, 0x0E);
+	Wrt_Reg_3052(0xD7, 0x00);
+	Wrt_Reg_3052(0xD8, 0x00);
+	Wrt_Reg_3052(0xD9, 0x00);
+	Wrt_Reg_3052(0xDA, 0x1F);
+	Wrt_Reg_3052(0xDB, 0x00);
+	Wrt_Reg_3052(0xFF, 0x30);
+	Wrt_Reg_3052(0xFF, 0x52);
+	Wrt_Reg_3052(0xFF, 0x00);
+	Wrt_Reg_3052(0x36, 0x0A); //反扫09
+	////Wrt_Reg_3052(0x3A,0x66);
+	Wrt_Reg_3052(0x11, 0x00);
+	Delay_ms(200);
+	Wrt_Reg_3052(0x29, 0x00);
+	Delay_ms(100);
+
+}
+
+static void lcd_nv3052cgrb_init(void)
+{
+	os_printf("lcd_nv3052cgrb: init.\r\n");
+	lcd_spi_init_gpio();
+	lcd_nv3052_config();
+}
+
+const lcd_device_t lcd_device_aml01 =
+{
+	.id = LCD_DEVICE_AML01,
+	.name = "aml01",
+	.type = LCD_TYPE_RGB,
+	.ppi = PPI_720X1280,
+	.rgb = &lcd_rgb,
+	.src_fmt = PIXEL_FMT_YUYV,
+	.out_fmt = PIXEL_FMT_RGB888,
+	.init = lcd_nv3052cgrb_init,
+	.lcd_off = NULL,
+};
+

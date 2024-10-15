@@ -1,0 +1,12 @@
+menu "Asdf::Audio_algorithm::Aec_algorithm"
+	config ASDF_AEC_ALGORITHM
+		depends on ASDF
+		bool "Enable Audio AEC algorithm"
+		default n
+
+	config ASDF_AEC_ALGORITHM_TEST
+		depends on ASDF_AEC_ALGORITHM
+		bool "Enable Audio AEC algorithm test"
+		default n
+
+endmenu

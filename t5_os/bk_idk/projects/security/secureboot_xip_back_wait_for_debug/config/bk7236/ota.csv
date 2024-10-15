@@ -1,0 +1,5 @@
+Field,Value
+strategy,XIP
+app_security_counter,5
+encrypt,TRUE
+app_version,0.0.5

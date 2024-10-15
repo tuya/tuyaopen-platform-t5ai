@@ -1,0 +1,29 @@
+menu "Media Utils"
+
+	config MEDIA_IPC
+		depends on MAILBOX
+		bool "Enable Media"
+		default y
+		help
+			Enable media ipc
+
+	config PSRAM_MEM_SLAB_USER_SIZE
+		depends on PSRAM
+		int "size of psram user need to use"
+		default 102400
+
+	config PSRAM_MEM_SLAB_AUDIO_SIZE
+		depends on PSRAM
+		int "size of psram audio need to use"
+		default 102400
+
+	config PSRAM_MEM_SLAB_ENCODE_SIZE
+		depends on PSRAM
+		int "size of psram encode function need to use"
+		default 1433600
+
+	config PSRAM_MEM_SLAB_DISPLAY_SIZE
+		depends on PSRAM
+		int "size of psram display need to use"
+		default 5701632
+endmenu

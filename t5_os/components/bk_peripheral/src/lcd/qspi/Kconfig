@@ -1,0 +1,33 @@
+menu "QSPI LCD"
+
+	config LCD_QSPI_SH8601A
+		depends on LCD_QSPI
+		bool "Enable LCD_QSPI_SH8601A API"
+		default n
+
+    config SH8601A_PARTIAL
+        depends on LCD_QSPI_SH8601A
+        bool "Enable Lcd Qspi SH8601A_PARTIAL Test"
+        default n
+
+	config LCD_QSPI_ST77903_WX20114
+		depends on LCD_QSPI
+		bool "Enable LCD_QSPI_ST77903_WX20114 API"
+		default n
+
+	config LCD_QSPI_ST77903_SAT61478M
+		depends on LCD_QSPI
+		bool "Enable LCD_QSPI_ST77903_SAT61478M API"
+		default n
+
+	config LCD_QSPI_ST77903_H0165Y008T
+		depends on LCD_QSPI
+		bool "Enable LCD_QSPI_ST77903_H0165Y008T API"
+		default n
+
+	config LCD_QSPI_SPD2010
+		depends on LCD_QSPI
+		bool "Enable LCD_QSPI_SPD2010 API"
+		default n
+
+endmenu

@@ -1,0 +1,6 @@
+menu "LVGL Keypad encoder Configuration"
+
+    config LV_USE_DEMO_KEYPAD_AND_ENCODER
+        bool "LVGL Keypad encoder"
+        default n
+endmenu

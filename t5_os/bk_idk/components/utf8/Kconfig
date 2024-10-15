@@ -1,0 +1,5 @@
+menu "utf8"
+	config USE_CONV_UTF8
+		bool "Enable UTF8"
+		default y
+endmenu

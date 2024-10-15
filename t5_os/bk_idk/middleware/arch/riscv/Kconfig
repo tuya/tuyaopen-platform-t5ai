@@ -1,0 +1,58 @@
+menu "Arch::Riscv"
+	config CPU_FREQ_HZ
+		int "Enable Cpu Freq Hz"
+		default 120000000
+		help
+			CPU frequency
+
+	config ARCH_RISCV
+		bool "Enable Arch RISCV"
+		default n
+
+	menu "Modify Arch Riscv Config"
+		depends on ARCH_RISCV
+
+		config NEST_INT_SUPPORT
+			bool "Enable Nest Int Support"
+			default n
+			help
+				Support nest interrupt
+
+		config DUMP_ENABLE
+			bool "Enable Dump Feature"
+			default n
+			help
+				Dump all memory when exception happen
+
+		config MEMDUMP_ALL
+			bool "Enable Memdump All"
+			default y
+			help
+				Dump all memory when exception happen
+
+		config SAVE_BOOT_TIME_POINT
+			bool "Enable Save Boot Time Point"
+			default n
+
+		config CACHE_ENABLE
+			bool "Enable Cache Enable"
+			default n
+			help
+				Enable Cache
+
+		config CACHE_CUSTOM_SRAM_MAPPING
+			depends on CACHE_ENABLE
+			bool "Enable Cache Custom Sram Mapping"
+			default n
+			help
+				Custom defined sram mapping
+
+	   config HEAP_IN_CACHE
+			   depends on CACHE_ENABLE
+			   bool "Enable Heap in Cache"
+			   default y
+			   help
+					   Custom enable heap in Cache
+
+	endmenu
+endmenu

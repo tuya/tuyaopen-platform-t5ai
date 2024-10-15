@@ -1,0 +1,6 @@
+menu "CKMN"
+	config CKMN
+	bool "Enable CKMN"
+	default n
+endmenu
+

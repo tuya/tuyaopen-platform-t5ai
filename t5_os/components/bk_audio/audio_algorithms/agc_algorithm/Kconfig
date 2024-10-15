@@ -1,0 +1,12 @@
+menu "Asdf::Audio_algorithm::Agc_algorithm"
+	config ASDF_AGC_ALGORITHM
+		depends on ASDF
+		bool "Enable Audio AGC algorithm"
+		default n
+
+	config ASDF_AGC_ALGORITHM_TEST
+		depends on ASDF_AGC_ALGORITHM
+		bool "Enable Audio AGC algorithm test"
+		default n
+
+endmenu

@@ -1,0 +1,42 @@
+menu "At_server"
+
+config AT
+	bool "Enable At"
+	default y
+		
+	config WIFI_AT_ENABLE
+		depends on AT 
+		bool "Enable WIFI AT CMDS"
+		default y
+
+	config MISC_AT_ENABLE
+		depends on AT 
+		bool "Enable SYSTEM AT CMDS"
+		default y
+
+	config BT_AT_ENABLE
+		depends on AT 
+		bool "Enable BLUETOOTH AT CMDS"
+		default y
+
+	config BLE_AT_ENABLE
+		depends on AT 
+		bool "Enable BLE AT CMDS"
+		default y
+	
+	config DEFAULT_AT_PORT
+		depends on AT 
+		int "defualt at_Port"
+		default 1
+		
+	config AT_MAX_PORT_CNT
+		depends on AT 
+		int "defualt AT_CLIENT nums"
+		default 1		
+		
+	config AT_DATA_MODE
+		depends on AT 
+		bool "enable AT Socket"
+		default n			
+endmenu
+ 

@@ -1,0 +1,35 @@
+menu "dual_device_voice_call"
+
+	choice DUAL_DEVOCE_VOICE_CALL_MODE
+		prompt "Select dual device voice call Mode"
+		default DUAL_DEVOCE_VOICE_CALL_MODE_UDP
+
+		config DUAL_DEVOCE_VOICE_CALL_MODE_UDP
+			bool "dual device voice call work in UDP"
+			help
+				dual device voice call work in UDP
+
+		config DUAL_DEVOCE_VOICE_CALL_MODE_TCP
+			bool "dual device voice call work in TCP"
+			help
+				dual device voice call work in TCP
+
+	endchoice
+
+	choice DUAL_DEVOCE_VOICE_CALL_ROLE
+		prompt "Select dual device voice call role"
+		default DUAL_DEVOCE_VOICE_CALL_ROLE_STA
+
+		config DUAL_DEVOCE_VOICE_CALL_ROLE_AP
+			bool "dual device voice call work role is AP"
+			help
+				dual device voice call work role is AP
+
+		config DUAL_DEVOCE_VOICE_CALL_ROLE_STA
+			bool "dual device voice call work role is station"
+			help
+				dual device voice call work role is station
+
+	endchoice
+
+endmenu

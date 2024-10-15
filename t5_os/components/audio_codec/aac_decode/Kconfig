@@ -1,0 +1,4 @@
+config AUDIO_AACDEC_TEST
+	#depends on FATFS
+	bool "Enable Audio AacDec Test"
+	default n

@@ -1,0 +1,12 @@
+menu "Asdf::Audio_streams::raw_stream"
+	config ASDF_RAW_STREAM
+		depends on ASDF
+		bool "Enable raw stream"
+		default n
+
+	config ASDF_RAW_STREAM_TEST
+		depends on ASDF_RAW_STREAM
+		bool "Enable raw stream test"
+		default n
+
+endmenu

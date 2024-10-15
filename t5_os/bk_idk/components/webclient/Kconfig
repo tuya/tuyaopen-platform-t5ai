@@ -1,0 +1,5 @@
+menu "Webclient"
+	config WEBCLIENT
+		bool "Enable Webclient"
+		default n
+endmenu

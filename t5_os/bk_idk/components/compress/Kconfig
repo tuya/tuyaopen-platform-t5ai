@@ -1,0 +1,9 @@
+menu "decompress"
+	config LZMA1900
+		bool "Enable LZMA1900"
+		default n
+
+	config LZMA2301
+		bool "Enable LZMA2301"
+		default n
+endmenu

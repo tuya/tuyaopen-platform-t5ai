@@ -1,0 +1,12 @@
+menu "Asdf::Audio_decoders::G711_decoder"
+	config ASDF_G711_DECODER
+		depends on ASDF
+		bool "Enable Audio G711 Decoder"
+		default n
+
+	config ASDF_G711_DECODER_TEST
+		depends on ASDF_G711_DECODER
+		bool "Enable Audio G711 Decoder test"
+		default n
+
+endmenu

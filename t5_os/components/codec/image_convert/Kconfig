@@ -1,0 +1,20 @@
+menu "CODEC"
+
+	config VIDEO_DTCM
+		bool "video data in dtcm"
+		default n
+		help
+			video data in dtcm
+
+	config VIDEO_ITCM
+		bool "video funcs in itcm"
+		default n
+		help
+			video funcs in itcm
+
+	config VIDEO_DTCM_ALL
+		bool "video data in dtcm"
+		default n
+		help
+			all video data in dtcm
+endmenu

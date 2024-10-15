@@ -1,0 +1,14 @@
+menu "Asdf::Audio_streams::Fatfs_stream"
+	config ASDF_FATFS_STREAM
+		depends on ASDF
+		bool "Enable Audio Fatfs stream"
+		default n
+		help
+			if ASDF run in cpu0, must enable FATFS manual
+
+	config ASDF_FATFS_STREAM_TEST
+		depends on ASDF_FATFS_STREAM
+		bool "Enable Audio Fatfs stream test"
+		default n
+
+endmenu

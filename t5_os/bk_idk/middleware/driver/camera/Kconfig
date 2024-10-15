@@ -1,0 +1,59 @@
+menu "CAMERA"
+	config DVP_CAMERA
+		bool "Enable Camera"
+		depends on JPEGENC_HW
+		depends on I2C
+		depends on GENERAL_DMA
+		default n
+		help
+			Enable camera interface
+
+	config DVP_CAMERA_I2C_ID
+		int "Set Camera I2c Id"
+		range 0 2
+		default 0
+		help
+			The value should be changed if need to change i2c id
+
+	config CAMERA_POWER_GPIO_CTRL
+		bool "Enable camera power gpio ctrl"
+		default n
+
+	config CAMERA_CTRL_POWER_GPIO_ID
+		int "the gpio id control camera power"
+		default 9
+
+	config ENCODE_BUF_DYNAMIC
+		bool "Enable encode buffer dynamic malloc"
+		default n
+
+	config ENCODE_BUF_NOT_FREE
+		bool "encode buffer when repeate malloc and free, cannot malloc success, so not free, until close all vidoe function"
+		default n
+
+	config DVP_PCLK_72M
+		bool "current ip support 72M pclk"
+		default y if SOC_BK7236XX
+		default n if !SOC_BK7236XX
+
+	config UVC_CHECK_BULK_JPEG_HEADER
+		depends on USB_UVC
+		bool "Check JPEG (ff d8) header in bulk payload"
+		default y
+
+	config UVC_MAX_PACKET_CNT
+		int "one packet include eight packet, use to save uvc raw data"
+		range 0 64
+		default 16
+
+	config JPEG_FRAME_SIZE
+		int "config a jpeg frame size unit(byte), range 0-200k, default 150k"
+		range 0 204800
+		default 153600
+
+	config H264_FRAME_SIZE
+		int "config a h264 NALU size unit(byte), range 0-200k, default 64k"
+		range 0 204800
+		default 65536
+
+endmenu

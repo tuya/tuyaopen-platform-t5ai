@@ -1,0 +1,6 @@
+menu "Demos::Media::Audio::Agc"
+	config AUDIO_AGC_TEST
+		depends on FATFS
+		bool "Enable Audio Agc test"
+		default n
+endmenu

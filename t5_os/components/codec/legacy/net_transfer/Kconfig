@@ -1,0 +1,40 @@
+menu "legacy_App"
+
+	config USE_APP_DEMO_VIDEO_TRANSSER
+		depends on WIFI_ENABLE
+		depends on DVP_CAMERA
+		bool "Enable Use App Demo Video Transser"
+		default n
+
+	config APP_DEMO_VIDEO_TRANSFER
+		depends on WIFI_ENABLE
+		bool "Enable App Demo Video Transser"
+		default n
+
+	config NET_WORK_VIDEO_TRANSFER
+		depends on WIFI_ENABLE
+		bool "Enable Net Work Video Transser"
+		default n
+	
+	config RTSP_SERVER
+		depends on WIFI_ENABLE
+		bool "Enable Rtsp Video Transser"
+		default n
+
+	config P2P
+		bool "Enable P2P"
+		default n
+
+	config NTP_SYNC_RTC
+		depends on AON_RTC
+		bool "Enable Ntp Sync Rtc"
+		default n
+		help
+			sync ano rtc using network time
+
+	config VIDEO_AVI
+		depends on NTP_SYNC_RTC
+		bool "Enable Video Avi"
+		default n
+
+endmenu

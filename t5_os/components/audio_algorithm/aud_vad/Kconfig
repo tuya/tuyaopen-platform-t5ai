@@ -1,0 +1,8 @@
+menu "Demos::Media::Audio::Aud_vad"
+	config AUDIO_VAD_TEST
+		depends on FATFS
+		bool "Enable Audio Vad Test"
+		default n
+		help
+			Enable AUDIO Voice Activity Detection Test
+endmenu

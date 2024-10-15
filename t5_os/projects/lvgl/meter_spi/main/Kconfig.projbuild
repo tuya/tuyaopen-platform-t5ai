@@ -1,0 +1,6 @@
+menu "LVGL Meter Configuration"
+
+    config LV_USE_DEMO_METER
+        bool "LVGL Meter"
+        default n
+endmenu

@@ -1,0 +1,41 @@
+#TODO remove all kconfigs which are defined in armino libs
+
+menu "cs2p2p"
+
+	config CS2_P2P_SERVER
+		bool "Enable CS2 P2P server"
+		default n
+		help
+			Enable CS2 P2P server lib
+
+	config CS2_P2P_CLIENT
+		bool "Enable CS2 P2P client"
+		default n
+		help
+			Enable CS2 P2P client lib
+
+	config CS2_P2P_TEST
+		bool "Enable CS2 P2P Test"
+		default n
+		help
+			Enable CS2 P2P lib test
+
+	config CS2_TX_BUFFER_THD
+		int "Default threshold of the CS2 TX buffer"
+		range 1 262144
+		default 5120
+		help
+			Set the threshold of the CS2 TX buffer. The recommended value is 5120 (1024*5).
+
+	config CS2_MALLOC_USE_PSRAM
+		bool "cs2_malloc() malloc memory from PSRAM"
+		default n
+		help
+			Enable this config to malloc memory by CS2 from PSRAM
+
+	config CS2_DEBUG_LIB
+		bool "Use CS2 debug lib"
+		default n
+		help
+			Use debug CS2 lib to analyze CS2 issues
+endmenu

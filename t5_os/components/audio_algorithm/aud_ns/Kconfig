@@ -1,0 +1,8 @@
+menu "Demos::Media::Audio::Aud_ns"
+	config AUDIO_NS_TEST
+		depends on FATFS
+		bool "Enable Audio Ns Test"
+		default n
+		help
+			Enable AUDIO Noise Suppression Test
+endmenu

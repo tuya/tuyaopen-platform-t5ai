@@ -1,0 +1,7 @@
+menu "SPI LCD"
+
+	config LCD_SPI_ST7796U
+		bool "Enable LCD_SPI_ST7796U"
+		default n
+
+endmenu

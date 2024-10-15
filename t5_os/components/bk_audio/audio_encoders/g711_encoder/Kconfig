@@ -1,0 +1,12 @@
+menu "Asdf::Audio_encoders::G711_encoder"
+	config ASDF_G711_ENCODER
+		depends on ASDF
+		bool "Enable Audio G711 encoder"
+		default n
+
+	config ASDF_G711_ENCODER_TEST
+		depends on ASDF_G711_ENCODER
+		bool "Enable Audio G711 encoder test"
+		default n
+
+endmenu

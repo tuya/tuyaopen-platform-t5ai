@@ -1,0 +1,30 @@
+{
+    "part_table": [
+        {	
+			"magic":"0x45503130",
+            "name": "download",
+            "flash_name": "beken_onchip",
+            "offset": "0x002B9000",
+            "len": "1148K"
+        },
+        {
+            "name": "app",
+            "flash_name": "beken_onchip_crc",
+            "offset": "0x00099000",
+            "len": "2176K"
+        },
+		{
+            "name": "app1",
+            "flash_name": "beken_onchip_crc",
+            "offset": "0x00011000",
+            "len": "544K"
+        },
+        {
+			"magic":"0x45503130",
+            "name": "bootloader",
+            "flash_name": "beken_onchip_crc",
+            "offset": "0x00000000",
+            "len": "68K"
+        }
+    ]
+}

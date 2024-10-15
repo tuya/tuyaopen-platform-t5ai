@@ -1,0 +1,5 @@
+menu "Demos::Media::Audio::Aec"
+	config AUDIO_AEC_TEST
+		bool "Enable Audio Aec Test"
+		default n
+endmenu

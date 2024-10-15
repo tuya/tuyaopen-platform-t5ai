@@ -1,0 +1,54 @@
+diff --git a/arm_bootloader/bootloader/applications/app_jump.c b/arm_bootloader/bootloader/applications/app_jump.c
+index 942804c..3516054 100755
+--- a/arm_bootloader/bootloader/applications/app_jump.c
++++ b/arm_bootloader/bootloader/applications/app_jump.c
+@@ -116,8 +116,8 @@ int jump_to_app(void)
+         fal_partition_t des_part = NULL;
+         
+         des_part = fal_partition_find(BK_APP_NAME);
+-        jump_to_next(CPU_OPREATE_FLASH_ADDRESS +((des_part->offset)*32/34));
+-        
++        //jump_to_next(CPU_OPREATE_FLASH_ADDRESS +((des_part->offset)*32/34));
++		jump_to_next(CPU_OPREATE_FLASH_ADDRESS +((0x20f000)*32/34));
+         return 0;
+ }
+ 
+diff --git a/arm_bootloader/bootloader/applications/ota.c b/arm_bootloader/bootloader/applications/ota.c
+index 405d957..17604a9 100755
+--- a/arm_bootloader/bootloader/applications/ota.c
++++ b/arm_bootloader/bootloader/applications/ota.c
+@@ -23,7 +23,7 @@ int ota_main(void)
+ 	int ret;
+ 
+ 	set_flash_protect(NONE);
+-	ret = data_move_handler();
++	ret = -2;//data_move_handler();
+ 	bk_printf("\r\n handler ret:");
+     bk_print_hex(ret);
+ 	set_flash_protect(ALL);
+diff --git a/arm_bootloader/bootloader/ld/bootloader.ld b/arm_bootloader/bootloader/ld/bootloader.ld
+index 9327372..5db0019 100755
+--- a/arm_bootloader/bootloader/ld/bootloader.ld
++++ b/arm_bootloader/bootloader/ld/bootloader.ld
+@@ -14,7 +14,7 @@ OUTPUT_FORMAT("elf32-littlearm", "elf32-bigarm", "elf32-littlearm")
+ MEMORY
+ {
+   FLASH (rx)            : ORIGIN = 0x02000000, LENGTH = 64*1024
+-  RAM (rwx)             : ORIGIN = 0x28000000, LENGTH = 192*1024
++  RAM (rwx)             : ORIGIN = 0x28000000, LENGTH = 64*1024
+   ITCM (rwx)            : ORIGIN = 0x00000004, LENGTH = 0x4000
+ }
+ 
+diff --git a/arm_bootloader/bootloader/platform/drivers/drv_uart.c b/arm_bootloader/bootloader/platform/drivers/drv_uart.c
+index 3b05852..8bd73c5 100755
+--- a/arm_bootloader/bootloader/platform/drivers/drv_uart.c
++++ b/arm_bootloader/bootloader/platform/drivers/drv_uart.c
+@@ -16,7 +16,7 @@
+ int uart_init(void)
+ {
+ 	uart0_init(115200);
+-	if(get_efuse_control_print_flag())
++	//if(get_efuse_control_print_flag())
+ 	{
+ 		uart1_init(115200); 	//default only using uart1,so init uart1,
+ #if INIT_UART2_PORT_FOR_PRINT

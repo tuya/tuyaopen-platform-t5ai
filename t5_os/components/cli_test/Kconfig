@@ -1,0 +1,5 @@
+menu "CLI TEST"
+    config IDF_TEST
+        bool "Enable IDF_TEST"
+        default n
+endmenu

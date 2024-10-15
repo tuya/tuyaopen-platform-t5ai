@@ -1,0 +1,21 @@
+#
+# Compile/Build
+#
+#CONFIG_TOOLCHAIN_PATH="/opt/risc-v/nds32le-elf-mculib-v5/bin"
+
+#
+# LwIP
+#
+# Enable LWIP mem/memp malloc from HEAP
+CONFIG_LWIP_MEM_LIBC_MALLOC=y
+CONFIG_LWIP_MEMP_MEM_MALLOC=y
+# end of LwIP
+
+#
+# CUSTOMIZE HEAP
+#
+CONFIG_CUSTOMIZE_HEAP_SIZE=336286
+#
+#end of CUSTOMIZE HEAP
+
+CONFIG_OVERRIDE_FLASH_PARTITION=y

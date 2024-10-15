@@ -1,0 +1,42 @@
+menu "Asdf"
+	config ASDF
+		depends on FREERTOS_USE_QUEUE_SETS
+		bool "Enable Audio Software Development Framework"
+		default n
+
+	choice ASDF_WORK_CPU
+		depends on ASDF
+		prompt "Select ASDF work cpu"
+		default ASDF_WORK_CPU1
+
+		config ASDF_WORK_CPU1
+			bool "ASDF work in cpu1"
+			help
+				ASDF work in CPU1, need audio coprocess in cpu0
+
+		config ASDF_WORK_CPU0
+			bool "ASDF work in cpu0"
+			help
+				ASDF work in CPU0
+	endchoice
+
+	config ASDF_AUTO_TEST
+		bool "Enable ASDF auto test"
+		default n
+
+	config ASDF_AUTO_TEST_PIPELINE
+		depends on ASDF_AUTO_TEST
+		bool "Enable ASDF pipeline auto test "
+		default n
+
+	config ASDF_AUTO_TEST_ELEMENT
+		depends on ASDF_AUTO_TEST
+		bool "Enable ASDF element auto test "
+		default n
+
+	config ASDF_AUTO_TEST_EVENT
+		depends on ASDF_AUTO_TEST
+		bool "Enable ASDF event listener auto test "
+		default n
+
+endmenu

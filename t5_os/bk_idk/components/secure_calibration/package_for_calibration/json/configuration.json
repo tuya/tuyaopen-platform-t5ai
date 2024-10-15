@@ -1,0 +1,42 @@
+{
+    "magic": "FreeRTOS",
+    "version": "0.1",
+    "count": 5,
+    "section": [
+        {
+            "firmware": "non_sec_bootloader.bin",
+            "version": "2M.1220",
+            "partition": "non_sec_bootloader",
+            "start_addr": "0x00000000",
+            "size": "68k"
+        },
+        {
+            "firmware": "rsa_privkey_gen.bin",
+            "version": "2M.1220",
+            "partition": "rsa_privkey_gen",
+            "start_addr": "0x00011000",
+            "size": "68K"
+        },
+        {
+            "firmware": "aes_encrypt_key_content_gen.bin",
+            "version": "2M.1220",
+            "partition": "aes_encrypt_key_content_gen",
+            "start_addr": "0x00022000",
+            "size": "68K"
+        },
+        {
+            "firmware": "calibration_crc.bin",
+            "version": "2M.1220",
+            "partition": "calibration",
+            "start_addr": "0x00020F000",
+            "size": "136K"
+        },
+        {
+            "firmware": "bootloader.bin",
+            "version": "2M.1220",
+            "partition": "aes_bootloader",
+            "start_addr": "0x000231000",
+            "size": "136K"
+        }
+    ]
+}

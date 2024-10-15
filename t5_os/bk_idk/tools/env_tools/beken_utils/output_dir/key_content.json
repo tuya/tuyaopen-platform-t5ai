@@ -1,0 +1,46 @@
+{
+    "key_content": {
+        "Flash Aes key": {
+            "content": "09da18bc4197dfadfe7fef9f729d8c89b6d64f407ac62bc4a85f96447e83a977",
+            "byte_lenth": 32
+        },
+        "Bl1 boot Public key hash": {
+            "content": "65b7ebd6877afce2a93b63a6d0cfd06dab7b018dab9f4db9739e49123d9e4c7c",
+            "byte_lenth": 32
+        },
+        "Bl2 boot Public key hash": {
+            "content": "a57201fa6db77126d2b1fdc08444e21827cced37dc81f542a0e7580bf1e0876c",
+            "byte_lenth": 32
+        },
+        "Ek1": {
+            "content": "b329c2309778ceb23b3fb17da89b1d71ce08327991fb49d3ef1aefe431e9a76d",
+            "byte_lenth": 32
+        },
+        "EK2": {
+            "content": "d9bd1b6de9bcea5750e2b93f47bcf76c",
+            "byte_lenth": 16
+        },
+        "Ek3": {
+            "content": "ea210ce6ff9ee4de8c36d8569dd19a1b",
+            "byte_lenth": 16
+        },
+        "Model key": {
+            "content": "968c0b099a444a35738079a218c71408",
+            "byte_lenth": 16
+        }
+    },
+    "boot_key": {
+        "content": "beadae5cfd5b31dcb34621371771b3cf05d4997e30c7cea1075056c0960b32f2",
+        "byte_lenth": 32
+    },
+    "aes_cfg": {
+        "Aes cbc iv": {
+            "content": "c2d31b5e1f01984c85815ead576a8b40",
+            "byte_lenth": 16
+        },
+        "Aes cbc key": {
+            "content": "c371c7b15bb87cbc6d5812ba4c73a15012ae88c8f2ca7c75222cd2a6ced91686",
+            "byte_lenth": 32
+        }
+    }
+}

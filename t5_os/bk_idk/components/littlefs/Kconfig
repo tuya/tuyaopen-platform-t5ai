@@ -1,0 +1,5 @@
+menu "Littlefs"
+	config LITTLEFS
+		bool "Enable Littlefs"
+		default n
+endmenu

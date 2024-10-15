@@ -1,0 +1,6 @@
+menu "LVGL Stress Configuration"
+
+    config LV_USE_DEMO_STRESS
+        bool "LVGL Stress"
+        default n
+endmenu

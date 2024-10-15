@@ -1,0 +1,22 @@
+menu "LVGL 86box Smart Panel Configuration"
+    config LV_USE_DEMO_86BOX
+        bool "LVGL 86Box"
+        default n
+
+	choice 86BOX_SMART_PANEL_VERSION
+		prompt "Select 86box Smart Panel Language Version"
+		default 86BOX_SMART_PANEL_VERSION_CN
+
+		config 86BOX_SMART_PANEL_VERSION_CN
+			bool "Select Chinese Version"
+			help
+				Select Chinese Version
+
+		config 86BOX_SMART_PANEL_VERSION_EN
+			bool "Select English Version"
+			help
+				Select English Version
+	endchoice
+
+endmenu
+

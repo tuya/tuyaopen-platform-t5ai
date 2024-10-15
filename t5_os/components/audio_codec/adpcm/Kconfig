@@ -1,0 +1,5 @@
+menu "Demos::Media::Audio::Adpcm"
+	config AUDIO_ADPCM_TEST
+		bool "Enable Audio Adpcm Test"
+		default n
+endmenu

@@ -1,0 +1,9 @@
+menu "TRNG"
+	config TRNG_SUPPORT
+		bool "Support hardware TRNG"
+		default y
+        config TRNG_PM_CB_SUPPORT
+                bool "trng pm support"
+                default n
+endmenu
+

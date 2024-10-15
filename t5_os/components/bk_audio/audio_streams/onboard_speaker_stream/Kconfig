@@ -1,0 +1,13 @@
+menu "Asdf::Audio_streams::Onboard_speaker_stream"
+	config ASDF_ONBOARD_SPEAKER_STREAM
+		depends on ASDF
+		depends on AUDIO_DAC
+		bool "Enable onboard speaker stream"
+		default n
+
+	config ASDF_ONBOARD_SPEAKER_STREAM_TEST
+		depends on ASDF_ONBOARD_SPEAKER_STREAM
+		bool "Enable onboard speaker stream test"
+		default n
+
+endmenu

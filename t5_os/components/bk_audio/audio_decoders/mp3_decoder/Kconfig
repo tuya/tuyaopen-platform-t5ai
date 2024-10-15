@@ -1,0 +1,12 @@
+menu "Asdf::Audio_decoders::MP3_decoder"
+	config ASDF_MP3_DECODER
+		depends on ASDF
+		bool "Enable Audio MP3 Decoder"
+		default n
+
+	config ASDF_MP3_DECODER_TEST
+		depends on ASDF_MP3_DECODER
+		bool "Enable Audio MP3 Decoder test"
+		default n
+
+endmenu

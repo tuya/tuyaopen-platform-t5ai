@@ -1,0 +1,8 @@
+#TODO optimize it
+menu "Bk_Phy"
+
+	config PHY_LOG_ENABLE
+		bool "Enable voltage detect"
+		default n
+
+endmenu

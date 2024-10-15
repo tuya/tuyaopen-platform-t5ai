@@ -1,0 +1,7 @@
+menu "Saradc_intf"
+	config SARADC_CALI
+		bool "Enable Saradc Cali"
+		default n
+		help
+			Enable SAR ADC Calibration
+endmenu

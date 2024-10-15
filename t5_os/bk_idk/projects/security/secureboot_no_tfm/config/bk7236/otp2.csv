@@ -1,0 +1,2 @@
+id,     name,                           size,       offset,        end,           privilege,             security
+0,      OTP_RFCALI,                     1024,        0x0,          0x400,       OTP_READ_WRITE,           FALSE,

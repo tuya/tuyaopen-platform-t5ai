@@ -1,0 +1,42 @@
+menu "Ota"
+	config HTTP_AB_PARTITION
+		bool "Enable Http AB Partition"
+		default n
+		help
+			enable http update ab partition
+	config OTA_UPDATE_DEFAULT_PARTITION
+		bool "Enable Ota Update Default Partition"
+		default n
+		help
+			enable ota update default partition
+	config OTA_UPDATE_B_PARTITION
+		bool "Enable Ota Update B Partition"
+		default n
+		help
+			enable ota update b partition
+	config OTA_EVADE_METHOD
+		bool "Enable Ota evade method"
+		default n
+		help
+			enable ota evade method
+	config OTA_HTTPS
+		bool "Enable Https ota"
+		default n
+		help
+			enable https ota
+	config OTA_HASH_FUNCTION
+		bool "Enable ota hash function"
+		default n
+		help
+			enable ota hash function
+	config OTA_DEBUG_LOG_OPEN
+		bool "Enable ota debug log open"
+		default n
+		help
+			enable ota debug log open
+	config OTA_POSITION_INDEPENDENT_AB
+		bool "Enable ota position independent update"
+		default n
+		help
+			enable ota position independent update
+endmenu

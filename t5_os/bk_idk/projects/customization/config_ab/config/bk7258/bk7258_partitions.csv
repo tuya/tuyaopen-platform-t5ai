@@ -1,0 +1,14 @@
+# The bin size whose type is code occupies more space in flash,,,,,
+# The occupied space is: bin size*34/32(and 68K aligned),,,,,
+# s_app represents B partition,,,,,
+#Name,Offset,Size,Type,Read,Write
+bootloader,,68k,code,TRUE,FALSE
+app,,1564k,code,TRUE,FALSE
+app1,,204k,code,TRUE,FALSE
+app2,,204k,code,TRUE,FALSE
+s_app,,1972k,data,TRUE,
+usr_config,,64K,data,TRUE,
+easyflash,,8K,data,TRUE,
+ota_fina_executive,0x3FD000,4K,data,TRUE,
+rf_firmware,0x3fe000,4k,data,TRUE,
+net_param,0x3ff000,4k,data,TRUE,

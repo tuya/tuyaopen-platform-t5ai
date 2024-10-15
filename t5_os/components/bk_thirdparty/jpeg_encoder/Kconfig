@@ -1,0 +1,20 @@
+menu "Bk_thirdparty::JPEG software encoder"
+
+	config JPEG_SW_ENCODER
+		bool "Enable JPEG software encoder"
+		default n
+		help
+			Enable JPEG software encoder
+	config JPEG_SW_ENCODER_TEST
+		bool "Enable JPEG software encoder cli test"
+		depends on JPEG_SW_ENCODER
+		default n
+	config JPEG_SW_ENCODER_FILE_IO_WITH_SDCARD
+		bool "Enable JPEG software encoder file IO"
+		depends on JPEG_SW_ENCODER
+		default n
+	config JPEG_SW_ENCODER_TIME_CONSUMPTION_MEAS
+		bool "Enable time consumption measurement"
+		depends on JPEG_SW_ENCODER
+		default n
+endmenu

@@ -1,0 +1,26 @@
+menu "FLASH"
+	config FLASH
+		bool "Enable flash"
+		default y
+
+	config FLASH_QUAD_ENABLE
+		bool "Enable flash quad enable"
+		default n
+		
+	config FLASH_SRC_CLK_60M
+		bool "Enable flash source clock 60M"
+		default n
+		
+	config FLASH_ORIGIN_API
+		bool "Enable flash old api"
+		default n
+
+	config FLASH_MB
+		bool "Enable flash mailbox channel"
+		default n
+
+	config FLASH_BYPASS_OTP_OPERATION
+		bool "Bypass flash to operate otp in flash"
+		default n
+endmenu
+

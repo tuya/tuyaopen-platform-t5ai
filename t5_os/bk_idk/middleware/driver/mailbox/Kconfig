@@ -1,0 +1,9 @@
+menu "MAILBOX"
+	config MAILBOX
+		bool "Enable mail_box"
+		default n
+
+	config MAILBOX_V2_0
+		bool "Use mailbox v2.0 driver"
+		default n
+endmenu

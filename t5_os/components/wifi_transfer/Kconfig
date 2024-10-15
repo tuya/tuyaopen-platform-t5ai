@@ -1,0 +1,8 @@
+menu "Wifi Transfer"
+
+	config MEDIA_DROP_STRATEGY_ENABLE
+		bool "Enable Media Drop Strategy"
+		default n
+		help
+			Enable media drop strategy
+endmenu

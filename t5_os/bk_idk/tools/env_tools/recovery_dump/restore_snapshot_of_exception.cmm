@@ -1,0 +1,295 @@
+;// Copyright 2020-2029 Beken
+;//
+;// Licensed under the Apache License, Version 2.0 (the "License");
+;// you may not use this file except in compliance with the License.
+;// You may obtain a copy of the License at
+;//
+;//     http://www.apache.org/licenses/LICENSE-2.0
+;//
+;// Unless required by applicable law or agreed to in writing, software
+;// distributed under the License is distributed on an "AS IS" BASIS,
+;// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+;// See the License for the specific language governing permissions and
+;// limitations under the License.
+
+B::
+
+SYStem.RESet
+SYStem.CPU STARF
+SYStem.CONFIG CoreNumber 1.
+SYStem.CONFIG CORE 1. 1.
+CORE.ASSIGN 1.
+SYStem.MemAccess DAP
+SYStem.CpuBreak Enable
+SYStem.CpuSpot Enable
+SYStem.JtagClock CTCK 1.MHz
+SYStem.Option.DUALPORT  ON
+SYStem.Option.IMASKASM  ON
+SYStem.Option.IMASKHLL  ON
+SYStem.Option.ZONESPACES  ON
+SYStem.CONFIG SLAVE OFF
+SYStem.CONFIG TAPState SELectDRscan
+//SYStem.CONFIG DEBUGPORTTYPE SWD
+SYStem.CONFIG.CTI1.Base E:0xE0042000
+SYStem.CONFIG.ETM.Base E:0xE0041000
+SYStem.CONFIG.ITM1.Base E:0xE0000000
+SYStem.CONFIG.TPIU1.Base E:0xE0040000
+SYStem.CONFIG.TPIU1.Type CoreSight
+SYStem.CONFIG.CTI1.Config NONE
+SYStem.CONFIG.TPIU1.ATBSource
+//SYStem.CONFIG SWDP  ON
+SYStem.Mode Up
+
+Data.LOAD.ELF "../build/app/bk7236/app.elf" z:
+
+GOSUB memoryHandler
+GOSUB cpuContextHandler
+
+NAME.RESet
+
+
+SYnch.RESet
+SYnch.MasterGo    OFF
+SYnch.MasterBreak OFF
+SYnch.MasterStep  OFF
+SYnch.SlaveGo     OFF
+SYnch.SlaveBreak  OFF
+SYnch.SlaveStep   OFF
+
+// Trigger Onchip settings
+TrOnchip.RESet
+
+PERF.RESet
+PERF.METHOD Snoop
+PERF.Mode PC
+PERF.Sort Ratio
+
+SNOOPer.RESet
+SNOOPer.AutoArm  ON
+SNOOPer.AutoInit OFF
+SNOOPer.SelfArm  OFF
+SNOOPer.SIZE 51150.
+SNOOPer.Rate 1000000.
+SNOOPer.Mode Fifo
+SNOOPer.Mode AddressTrace OFF
+SNOOPer.Mode Changes OFF
+SNOOPer.Mode SLAVE ON
+SNOOPer.Mode StopAndGo OFF
+SNOOPer.Mode JITTER OFF
+SNOOPer.Mode FAST OFF
+SNOOPer.Mode ContextID OFF
+SNOOPer.TOut Trace
+
+LOGGER.RESet
+LOGGER.AutoArm  ON
+LOGGER.AutoInit OFF
+LOGGER.SelfArm  OFF
+LOGGER.Mode Fifo
+LOGGER.Mode Create OFF
+LOGGER.Mode E OFF
+
+FDX.RESet
+FDX.AutoArm  ON
+FDX.AutoInit OFF
+FDX.SelfArm  OFF
+FDX.Mode Fifo
+FDX.SIZE 0.
+
+ART.RESet
+ART.AutoArm ON
+ART.Mode Fifo
+ART.SIZE 256.
+
+BSDL.UNLOAD ALL
+BSDL.TwoStepDR OFF
+BSDL.SetAndRun OFF
+
+SETUP.EDITOR.TYPE PowerView
+SETUP.EDITOR.SaveChangesPrompt OnEditClose
+SETUP.EDITOR.BAKfile ON
+SETUP.EDITOR.HighLight.Block ON
+SETUP.EDITOR.HighLight.BraceMatching ON
+SETUP.EDITOR.HighLight.CursorLine ON
+SETUP.EDITOR.HighLight.Keywords ON
+SETUP.EDITOR.HighLight.Selection ON
+SETUP.EDITOR.SmartCursor OFF
+SETUP.EDITOR.SmartBackspace OFF
+SETUP.EDITOR.SmartFormat ON
+SETUP.EDITOR.AutoSuggest ON
+SETUP.EDITOR.TrailingWhitespace StripChangedLine
+SETUP.EDITOR.Mode Normal
+SETUP.EDITOR.Indentation    PRACTICE Auto
+SETUP.EDITOR.IndentWithTabs PRACTICE OFF
+SETUP.EDITOR.IndentSize     PRACTICE 2.
+SETUP.EDITOR.TabSize        PRACTICE DEFault
+SETUP.EDITOR.Indentation    C Auto
+SETUP.EDITOR.IndentWithTabs C ON
+SETUP.EDITOR.IndentSize     C DEFault
+SETUP.EDITOR.TabSize        C DEFault
+SETUP.EDITOR.Indentation    PYTHON Auto
+SETUP.EDITOR.IndentWithTabs PYTHON OFF
+SETUP.EDITOR.IndentSize     PYTHON 4.
+SETUP.EDITOR.TabSize        PYTHON DEFault
+SETUP.EDITOR.Indentation    ASM Auto
+SETUP.EDITOR.IndentWithTabs ASM ON
+SETUP.EDITOR.IndentSize     ASM DEFault
+SETUP.EDITOR.TabSize        ASM DEFault
+SETUP.EDITOR.Indentation    TRIG Auto
+SETUP.EDITOR.IndentWithTabs TRIG ON
+SETUP.EDITOR.IndentSize     TRIG DEFault
+SETUP.EDITOR.TabSize        TRIG DEFault
+SETUP.EDITOR.Indentation    TEXT Keep
+SETUP.EDITOR.IndentWithTabs TEXT ON
+SETUP.EDITOR.IndentSize     TEXT DEFault
+SETUP.EDITOR.TabSize        TEXT DEFault
+
+// PRACTICE Breakpoints
+PBREAK.RESet
+
+ENDDO
+
+;/*
+; * parse/restore cpu context
+; */
+cpuContextHandler:
+(
+  LOCAL &cpuContextFileName
+
+  &cpuContextFileName="cpu_context.txt"
+
+  OPEN #1 "&cpuContextFileName" /Read
+  READ #1 %LINE &line
+  print &line
+  Register.Set R0 &line
+
+  READ #1 %LINE &line
+  print &line
+  Register.Set R1 &line
+
+  READ #1 %LINE &line
+  print &line
+  Register.Set R2 &line
+
+  READ #1 %LINE &line
+  print &line
+  Register.Set R3 &line
+
+  READ #1 %LINE &line
+  print &line
+  Register.Set R4 &line
+
+  READ #1 %LINE &line
+  print &line
+  Register.Set R5 &line
+
+  READ #1 %LINE &line
+  print &line
+  Register.Set R6 &line
+
+  READ #1 %LINE &line
+  print &line
+  Register.Set R7 &line
+
+  READ #1 %LINE &line
+  print &line
+  Register.Set R8 &line
+
+  READ #1 %LINE &line
+  print &line
+  Register.Set R9 &line
+
+  READ #1 %LINE &line
+  print &line
+  Register.Set R10 &line
+
+  READ #1 %LINE &line
+  print &line
+  Register.Set R11 &line
+
+  READ #1 %LINE &line
+  print &line
+  Register.Set R12 &line
+
+  READ #1 %LINE &line
+  print &line
+  Register.Set R13 &line
+
+  READ #1 %LINE &line
+  print &line
+  Register.Set R14 &line
+
+  READ #1 %LINE &line
+  print &line
+  Register.Set PC &line
+
+  READ #1 %LINE &line
+  print &line
+  Register.Set XPSR &line
+
+  READ #1 %LINE &line
+  print &line
+  Register.Set MSP &line
+
+  READ #1 %LINE &line
+  print &line
+  Register.Set PSP &line
+
+  READ #1 %LINE &line
+  print &line
+  Register.Set PRIMASK &line
+
+  READ #1 %LINE &line
+  print &line
+  Register.Set BASEPRI &line
+
+  READ #1 %LINE &line
+  print &line
+  Register.Set FAULTMASK &line
+
+  READ #1 %LINE &line
+  print &line
+  Register.Set CONTROL &line
+
+  READ #1 %LINE &line
+  print &line
+  ;Register.Set fpscr &line
+
+  CLOSE #1
+
+  RETURN
+)
+
+
+;/*
+; * parse/restore device memory or normal memory
+; */
+memoryHandler:
+(
+  &memoryInfoFile=OS.FIRSTFILE("0x*.bin")
+  WHILE ""!="&memoryInfoFile"
+  (
+    print "&memoryInfoFile"
+
+    ;//abstract file and load.binary
+    ;//-4==STRing.LENgth(".bin")
+    &memoryInfoFilePrefix=STRing.CUT("&memoryInfoFile",-4)
+
+    &startAddr=STRing.SPLIT("&memoryInfoFilePrefix","_",0,QUOTEDSTRINGS=ON)
+    &endAddr=STRing.SPLIT("&memoryInfoFilePrefix","_",1,QUOTEDSTRINGS=ON)
+    &memoryLen=STRing.SPLIT("&memoryInfoFilePrefix","_",2,QUOTEDSTRINGS=ON)
+    PRINT "startAddr:&startAddr"
+    PRINT "endAddr:&endAddr"
+    PRINT "memoryLen:&memoryLen"
+
+    if &memoryLen>0
+      PRINT "data.load.Binary &memoryInfoFile &startAddr"
+      data.load.Binary &memoryInfoFile &startAddr /NOCLEAR
+
+    ;//iterate over all files matching a specfic pattern
+    &memoryInfoFile=OS.NEXTFILE()
+  )
+
+  RETURN
+)
+
+ENDDO

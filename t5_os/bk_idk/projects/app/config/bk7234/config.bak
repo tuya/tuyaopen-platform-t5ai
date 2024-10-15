@@ -1,0 +1,2 @@
+# Overwrite ARMINO Configuration here
+CONFIG_OVERRIDE_FLASH_PARTITION=y

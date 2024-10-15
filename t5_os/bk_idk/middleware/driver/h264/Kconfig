@@ -1,0 +1,24 @@
+menu "H264_CONFIG"
+	config H264
+		bool "Enable h264"
+		default n
+
+	config H264_QUALITY_LEVEL
+		int "set h264 compress quality level"
+		range 0 3
+		default 2
+
+	config H264_GOP_START_IDR_FRAME
+		bool "Enable add pps and sps before i frame"
+		default y
+
+	config H264_ADD_SELF_DEFINE_SEI
+		depends on H264
+		bool "Enable function add sei nalu for self define, contain frame information"
+		default y
+
+	config H264_P_FRAME_CNT
+		int "config h264 encode one I frame then output H264_P_FRAME_CNT p frame"
+		range 0 30
+		default 5
+endmenu

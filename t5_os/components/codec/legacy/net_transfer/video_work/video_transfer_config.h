@@ -1,0 +1,80 @@
+#ifndef __VIDEO_TRANSFER_CONFIG_H__
+#define __VIDEO_TRANSFER_CONFIG_H__
+
+#include <common/bk_include.h>
+
+#define HB_REVERSE(x) ( (((x) & 0xffUL) <<  8) | \
+						(((x) & 0xff00UL) >>  8) \
+						)
+
+#define WORD_REVERSE(x) ((((x) & 0x000000ffUL) << 24) | \
+						(((x) & 0x0000ff00UL) <<  8) | \
+						(((x) & 0x00ff0000UL) >>  8) | \
+						(((x) & 0xff000000UL) >> 24))
+
+#if CONFIG_APP_DEMO_VIDEO_TRANSFER
+
+#define APP_DEMO_CFG_USE_TCP              1
+#define APP_DEMO_CFG_USE_UDP              1
+#define APP_DEMO_CFG_USE_UDP_SDP          1
+
+#define SUPPORT_TIANZHIHENG_DRONE         0
+
+// UDP_SDP_CONFIG
+#define UDP_SDP_LOCAL_PORT               (10000)
+#define UDP_SDP_REMOTE_PORT              (52110)
+
+#if SUPPORT_TIANZHIHENG_DRONE
+#define APP_DEMO_UDP_CMD_PORT             8090
+#define APP_DEMO_UDP_IMG_PORT             8080
+#define CMD_IMG_HEADER                    0x42
+#define CMD_START_IMG                     0x76
+#define CMD_STOP_IMG                      0x77
+#define CMD_START_OTA                     0x38
+
+#define APP_DEMO_TCP_SERVER_PORT          8050
+#define APP_DEMO_TCP_SERVER_PORT_VICOE    8040
+
+#define APP_DEMO_UDP_VOICE_PORT           8070
+#define CMD_VOICE_HEADER                  0x30
+#define CMD_VOICE_START                   0x66
+#define CMD_VOICE_STOP                    0x67
+
+#define CMD_HEADER_CODE                   0x66
+#define CMD_TAIL_CODE                     0x99
+#define CMD_LEN                           8
+#define APP_DEMO_TCP_LISTEN_MAX           1
+
+#define APP_DEMO_EN_VOICE_TRANSFER        0
+#else  // SUPPORT_TIANZHIHENG_DRONE
+#define APP_DEMO_UDP_CMD_PORT             7090
+#define APP_DEMO_UDP_IMG_PORT             7080
+#define CMD_IMG_HEADER                    0x20
+#define CMD_START_IMG                     0x36
+#define CMD_STOP_IMG                      0x37
+#define CMD_START_OTA                     0x38
+
+#define APP_DEMO_TCP_SERVER_PORT          7050
+#define APP_DEMO_TCP_SERVER_PORT_VICOE    7040
+
+#define APP_DEMO_UDP_VOICE_PORT           7070
+#define CMD_VOICE_HEADER                  0x30
+#define CMD_VOICE_START                   0x66
+#define CMD_VOICE_STOP                    0x67
+
+#define CMD_HEADER_CODE                   0x66
+#define CMD_TAIL_CODE                     0x99
+#define CMD_LEN                           8
+#define APP_DEMO_TCP_LISTEN_MAX           1
+
+#if (CONFIG_SOC_BK7237 || CONFIG_SOC_BK7256)
+#define APP_DEMO_EN_VOICE_TRANSFER        1
+#else
+#define APP_DEMO_EN_VOICE_TRANSFER        0
+#endif
+
+#endif  // SUPPORT_TIANZHIHENG_DRONE
+
+#endif  // CONFIG_APP_DEMO_VIDEO_TRANSFER
+
+#endif // __VIDEO_TRANSFER_NET_CONFIG_H__

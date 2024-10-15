@@ -1,0 +1,25 @@
+{
+    "part_table": [
+        {
+			"magic":"0x45503130",
+            "name": "app",
+            "flash_name": "beken_onchip_crc",
+            "offset": "0x00020F000",
+            "len": "136K"
+        },
+		{
+			"magic":"0x45503130",
+            "name": "aes_bootloader",
+            "flash_name": "beken_onchip_crc",
+            "offset": "0x000231000",
+            "len": "204K"
+        },
+        {
+			"magic":"0x45503130",
+            "name": "bootloader",
+            "flash_name": "beken_onchip_crc",
+            "offset": "0x00000000",
+            "len": "68K"
+        }
+    ]
+}

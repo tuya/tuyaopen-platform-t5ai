@@ -1,0 +1,10 @@
+menu "TUYA_APP"
+
+    config TUYA_APP_PARAM1
+        bool "TUYA_APP_PARAM1"
+        default n
+    config TUYA_APP_PARAM2
+        bool "TUYA_APP_PARAM2"
+        default n
+
+endmenu

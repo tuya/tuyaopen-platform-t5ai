@@ -1,0 +1,12 @@
+menu "Display Service"
+
+	config MEDIA_DISPLAY_SERVICE
+		depends on SYS_CPU1
+		bool "Enable Display Service"
+		default y
+
+	config LCD_SPI_DISPLAY
+		depends on SPI
+		bool "Enable LCD SPI Display"
+		default n
+endmenu

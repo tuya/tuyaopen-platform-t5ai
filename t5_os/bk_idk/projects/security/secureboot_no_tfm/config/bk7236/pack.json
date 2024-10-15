@@ -1,0 +1,4 @@
+{
+    "all-app.bin":["bl2","partition", "primary_all"],
+    "ota.bin":["primary_all"]
+}

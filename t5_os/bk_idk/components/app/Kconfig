@@ -1,0 +1,32 @@
+menu "App"
+
+	config DEMO_TEST
+		bool "Enable Demo Test"
+		default n
+
+	#TODO does UPGRADE here means OTA?
+	config FTPD_UPGRADE
+		bool "Enable Ftpd Upgrade"
+		default n
+
+	config OTA_HTTP
+		depends on WIFI_ENABLE
+		bool "Enable Ota Http"
+		default y if NO_HOSTED
+		default n if !NO_HOSTED
+
+	#TODO what's the relationship between HTTP and TFTP OTA, exculsive?
+	config OTA_TFTP
+		bool "Enable Ota Tftp"
+		default n
+
+	config NTP_SYNC_RTC
+		depends on AON_RTC
+		bool "Enable Ntp Sync Rtc"
+		default n
+
+	config SECURITY_OTA
+		bool "Enable Seucirty Ota API"
+		default n
+
+endmenu

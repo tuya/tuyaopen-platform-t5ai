@@ -1,0 +1,31 @@
+USER_SECTIONS	.nds_vector
+USER_SECTIONS	.itcm_write_flash
+bootloader 0x00001F00
+{
+	FLASH 0x00001F00
+	{	
+		;* EXCLUDE_FILE(*driver_flash.o *interrupt.o) (+RO)
+		* (.nds_vector)
+		* EXCLUDE_FILE(*driver_flash.o *drv_uart.o *driver_uart2.o *fal_flash.o *fal_partition.o *data_move.o *inflate.o) (+RO)	
+		* (+RO)
+	}
+	ITCM 0x10000000 0x8000
+	{
+		LOADADDR NEXT _itcm_lma_start
+		ADDR NEXT _itcm_ema_start
+		;*main.o KEEP(+RO)
+		;* (+RO)
+		;*driver_flash.o *interrupt.o KEEP(+RO)
+		*driver_flash.o *drv_uart.o *driver_uart2.o *fal_flash.o *fal_partition.o *data_move.o *inflate.o KEEP(+RO)	
+		* KEEP(.itcm_write_flash)
+		LOADADDR _itcm_lma_end
+		ADDR _itcm_ema_end
+	}
+	SRAM2 0x30000000 0x50000
+	{
+		LOADADDR _data_lmastart
+		ADDR _data_start
+		*(+RW,+ZI)
+        STACK = 0x30060000
+	}
+}

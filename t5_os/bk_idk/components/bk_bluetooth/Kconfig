@@ -1,0 +1,39 @@
+menu "Bk_ble"
+	depends on BLUETOOTH
+
+	config BT
+		bool "Enable Bt"
+		default n
+
+	config BLE
+		bool "Enable Ble"
+		default y
+
+	choice BLE_STACK
+		prompt "Select Ble Version"
+		depends on (BLE || BT)
+		default BLE_5_X
+
+		config BLE_5_X
+			bool "BLE 5.X"
+		config BLE_4_2
+			bool "BLE 4.2"
+		config BTDM_5_2
+			bool "BTDM 5.2"
+		config BTDM_5_2_MINDTREE
+			bool "BTDM 5.2 Mindtree Host"
+	endchoice
+
+	config BTDM_CONTROLLER_ONLY
+		bool "BTDM controller only"
+		default n
+
+    config BLUETOOTH_LINK_MAX_COUNT
+        int "bt/ble/dual link max count, when dual means bt link max count and ble max count. When set 9999, means set as big as possible."
+        default 9999
+        range 1 9999
+
+    config BLUETOOTH_BLE_DISCOVER_AUTO
+        bool "auto ble discover. Only used when single ble host"
+        default y
+endmenu

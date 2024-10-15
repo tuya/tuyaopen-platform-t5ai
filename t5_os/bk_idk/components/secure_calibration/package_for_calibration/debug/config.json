@@ -1,0 +1,14 @@
+{
+    "magic": "FreeRTOS",
+    "version": "0.1",
+    "count": 1,
+    "section": [
+        {
+            "firmware": "bootloader.bin",
+            "version": "2M.1220",
+            "partition": "app",
+            "start_addr": "0x000000000",
+            "size": "68K"
+        }
+    ]
+}

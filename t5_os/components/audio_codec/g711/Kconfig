@@ -1,0 +1,5 @@
+menu "Demos::Media::Audio::G711"
+	config AUDIO_G711_TEST
+		bool "Enable Audio G711 Test"
+		default n
+endmenu

@@ -1,0 +1,7 @@
+menu "Demos::Media::Audio::Wanson_asr"
+	config WANSON_ASR_TEST
+		depends on WANSON_ASR
+		depends on FATFS
+		bool "Enable Wanson Asr Test"
+		default n
+endmenu

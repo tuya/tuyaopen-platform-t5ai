@@ -1,0 +1,4 @@
+Field,Value
+strategy,OVERWRITE
+encrypt,FALSE
+app_security_counter,5

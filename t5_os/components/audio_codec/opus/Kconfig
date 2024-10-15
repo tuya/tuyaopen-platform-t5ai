@@ -1,0 +1,6 @@
+menu "Demos::Media::Audio::Opus"
+	config AUDIO_OPUS_TEST
+		depends on FATFS
+		bool "Enable Audio Opus Test"
+		default n
+endmenu

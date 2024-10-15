@@ -1,0 +1,25 @@
+#
+# Automatically generated file. DO NOT EDIT.
+# Beken IoT Development Framework (BEKEN-ARMINO) Project Configuration
+#
+
+#
+# Ota
+#
+CONFIG_OTA_HTTP=y
+CONFIG_OTA=y
+CONFIG_HTTP_AB_PARTITION=y
+CONFIG_OTA_UPDATE_DEFAULT_PARTITION=y
+CONFIG_OTA_EVADE_METHOD=y
+CONFIG_OTA_POSITION_INDEPENDENT_AB=y
+# end of Ota
+
+#
+# Boards::Bk7256::Vnd_flash
+#
+
+CONFIG_OVERRIDE_FLASH_PARTITION=y
+
+# end of Boards::Bk7256::Vnd_flash
+# end of Middleware Configuration
+

@@ -1,0 +1,10 @@
+menu "PM"
+	config PM_ENABLE
+		bool "pm enable"
+		default n
+
+	config PM_SUPER_DEEP_SLEEP
+		bool "Enable super deep sleep"
+		default n
+endmenu
+

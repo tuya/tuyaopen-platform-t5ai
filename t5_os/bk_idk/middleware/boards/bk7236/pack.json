@@ -1,0 +1,5 @@
+{
+    "bootloader.bin":["bl1_control", "primary_manifest", "bl2"],
+    "all-app.bin":["partition", "primary_all"],
+    "ota.bin":["primary_all"]
+}

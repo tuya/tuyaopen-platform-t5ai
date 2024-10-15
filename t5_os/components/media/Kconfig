@@ -1,0 +1,92 @@
+menu "Media"
+
+	config MEDIA
+		depends on DVP_CAMERA || USB_UVC || LCD
+		bool "Enable Media"
+		default n
+		help
+			Enable media service
+	config WIFI_TRANSFER
+		depends on MEDIA && WIFI_ENABLE
+		bool "Enable Wifi Transfer"
+		default n
+	config LCD_FLASH_JPEG_DISPLAY
+		depends on LCD
+		bool "Enable Lcd Flash Jpeg Display"
+		default n
+		help
+			enable lcd display flash img
+	config LCD_DMA2D_BLEND
+		depends on DMA2D
+		bool "Enable Lcd Dma2d Blend Flash Img"
+		default n
+		help
+			enable lcd dma2d blend flash logo
+	config BLEND_USE_GUI
+		depends on LCD
+		bool "Enable Blend Use Gui"
+		default n
+		help
+			enable lcd dma2d blend from gui
+	config BLEND_GUI_OUTPUT_888
+		depends on LCD
+		bool "Enable Blend Gui Output 888"
+		default n
+		help
+			enable lcd dma2d blend from gui, gui data is rgb888
+	config LCD_FONT_BLEND
+		depends on LCD
+		bool "Enable Lcd Font Blend"
+		default n
+		help
+			enable lcd blend by font logo
+	config FACE_DETECTION
+		bool "Enable Face Detection"
+		default n
+
+	config IMAGE_STORAGE
+		depends on MEDIA
+		bool "enable image storage function"
+		default n
+		help
+			enable image save and read image
+
+	config EXTENTED_PSRAM_LAYOUT
+		bool "Externally controlling the PSRAM range of the framebuffer"
+		default n
+		help
+			extern external fb_layout variable
+
+    config TRANSFER_TASK_STACK_SIZE
+        int "transfer_task stack size"
+        default 1536
+
+    config MEDIA_MAJOR_THREAD_STACK_SIZE
+        int "media_major_thread stack size"
+        default 3584
+
+		config LCD_MEDIA
+		depends on LCD
+		bool "Enable Lcd rotate function"
+		default n
+		
+		config LCD_ROTATE
+		depends on LCD_MEDIA
+		bool "Enable Lcd rotate function"
+		default n
+
+	config LCD_HW_PFC
+		depends on LCD_MEDIA
+		bool "Enable Lcd hw pixel convert"
+		default n
+
+	config LCD_HW_DECODE
+		depends on LCD_MEDIA
+		bool "Enable Lcd hw decode"
+		default n
+
+	config LCD_SW_DECODE
+		depends on LCD_MEDIA
+		bool "Enable Lcd sw decode"
+		default n
+endmenu

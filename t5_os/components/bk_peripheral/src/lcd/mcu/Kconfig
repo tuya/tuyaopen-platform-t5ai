@@ -1,0 +1,16 @@
+menu "MCU LCD"
+	config LCD_NT35510_MCU
+		depends on LCD
+		bool "Enable LCD_NT35510_MCU API"
+		default n
+
+	config LCD_ST7796S
+		depends on LCD
+		bool "Enable LCD_ST7796S API"
+		default n
+
+	config LCD_ST7789V
+		depends on LCD
+		bool "Enable LCD_ST7789V API"
+		default n
+endmenu

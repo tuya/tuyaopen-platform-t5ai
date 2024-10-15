@@ -1,0 +1,176 @@
+menu "Media"
+
+	config MEDIA
+		bool "Enable Media"
+		default n
+		help
+			Enable media service
+
+	config MEDIA_MAJOR
+		bool "Enable Media"
+		default n
+
+	config MEDIA_APP
+		bool "Enable Media"
+		default n
+
+	config MEDIA_MINOR
+		bool "Enable Media"
+		default n
+
+	config MEDIA_UI_TASK_STACK_SIZE
+		int "Set media ui task stack size"
+		default 2048
+
+	config WIFI_TRANSFER
+		depends on MEDIA
+		bool "Enable Wifi Transfer"
+		default n
+
+	config USB_TRANSFER
+		depends on MEDIA
+		bool "Enable usb Transfer"
+		default n
+
+	config LCD_FLASH_JPEG_DISPLAY
+		depends on LCD
+		bool "Enable Lcd Flash Jpeg Display"
+		default n
+		help
+			enable lcd display flash img
+
+	config LCD_DMA2D_BLEND
+		depends on DMA2D
+		bool "Enable Lcd Dma2d Blend Flash Img"
+		default n
+		help
+			enable lcd dma2d blend flash logo
+
+	config BLEND_USE_GUI
+		depends on LCD
+		bool "Enable Blend Use Gui"
+		default n
+		help
+			enable lcd dma2d blend from gui
+
+	config BLEND_GUI_OUTPUT_888
+		depends on LCD
+		bool "Enable Blend Gui Output 888"
+		default n
+		help
+			enable lcd dma2d blend from gui, gui data is rgb888
+
+	config LCD_FONT_BLEND
+		depends on LCD
+		bool "Enable Lcd Font Blend"
+		default n
+		help
+			enable lcd blend by font logo
+
+	config IMAGE_STORAGE
+		depends on MEDIA
+		bool "enable image storage function"
+		default n
+		help
+			enable image save and read image
+
+	config JPEG_YUV_MIX
+		depends on DVP_CAMERA
+		bool "enable jpeg module for jpeg and yuv mix mode"
+		default n
+		help
+			enable jpeg work method: encode and yuv by turns
+
+	config EXTENTED_PSRAM_LAYOUT
+		bool "Externally controlling the PSRAM range of the framebuffer"
+		default n
+		help
+			extern external fb_layout variable
+
+	config TRANS_APP_TASK_SIZE
+		int "Set transfer app task size"
+		default 1024
+
+	config LCD_ROTATE
+		depends on LCD
+		bool "Enable Lcd rotate function"
+		default n
+
+	config LCD_HW_PFC
+		depends on LCD
+		bool "Enable Lcd hw pixel convert"
+		default n
+
+	config LCD_HW_DECODE
+		depends on LCD
+		bool "Enable Lcd hw decode"
+		default n
+
+	config SW_ROTATE_TO_YUYV_AND_DMA2D_TO_YUYV_NOT_RGB888
+		depends on LCD
+		bool "Enable Lcd hw decode"
+		default n
+
+	config LCD_SW_DECODE
+		depends on LCD
+		bool "Enable Lcd sw decode"
+		default n
+
+	config LCD_AUTO_FILL_FULL
+		depends on LCD
+		bool "Enable Lcd sw decode"
+		default n
+
+	config MEDIA_SCALE
+		depends on LCD
+		bool "Enable Lcd scale"
+		default n
+
+	config MEDIA_PIPELINE
+		depends on LCD
+		bool "Enable Lcd scale"
+		default n
+
+	config AUD_INTF_TEST
+		bool "Enable Aud intf test"
+		default n
+
+	choice AUD_TRAS_USE_MEMORY
+		prompt "Select AUD TRAS use memory"
+		default AUD_TRAS_USE_PSRAM
+
+		config AUD_TRAS_USE_SRAM
+		bool "Enable AUD TRAS use sram"
+		help
+			AUD TRAS use sram memory
+
+		config AUD_TRAS_USE_PSRAM
+		bool "Enable AUD TRAS use psram"
+		help
+			AUD TRAS use psram memory
+	endchoice
+
+	config AUD_TRAS_DAC_PA_CTRL
+		depends on AUDIO_DAC
+		bool "Enable Aud Tras Dac Pa Ctrl"
+		default n
+		help
+			Audio Transfer DAC PA Control Enable
+
+	config AUD_RING_BUFF_SAFE_INTERVAL
+		int "Set Aud Ring Buff Safe Interval"
+		range 0 320
+		default 0
+		help
+			Audio ring buff safe interval
+
+    config MEDIA_BT_AUDIO
+		bool "BT USE AUDIO Module"
+		default n
+		help
+			BT Module Will Use AUDIO Module
+
+    config SOFTWARE_DECODE_SRAM_MAPPING
+        bool "Enable Software Decode Sram Mapping"
+		default n
+endmenu

@@ -1,0 +1,245 @@
+#TODO add depens for CONFIG_HOST (bk7231u)
+menu "Lwip_intf_v2_1"
+
+	config IPV6
+		bool "Enable IPV6"
+		default n
+
+	config WIFI_FAST_DHCP
+		bool "Enable Wifi Fast Dhcp"
+		default n
+		help
+			Enable Fast DHCP(use previous IP)
+
+	config STA_USE_STATIC_IP
+		bool "Enable sta use static ip"
+		default n
+
+	config MQTT_ACK_NOW
+		bool "Enable Mqtt Ack Now"
+		default y
+		help
+			Enable ACK_NOW if MQTT is open
+
+	config LWIP_TCP_SACK_OUT
+		bool "Enable TCP SACK"
+		default n
+
+	config LWIP
+		depends on WIFI_ENABLE || ETH
+		bool "Enable LWIP"
+		default y
+
+	config IP_FORWARD
+		bool "Enable IP FORWARD"
+		default n
+
+	config IP_NAPT
+		bool "Enable IP NAPT"
+		default n
+
+	config WIFI_REAPETER
+		bool "Enable WIFI_REAPETER"
+		default n
+
+	config BRIDGE
+                bool "Enable LWIP BRIDGE"
+                default n
+
+	menu "Modify Lwip Config"
+		depends on LWIP
+
+		config DHCP
+			depends on WIFI_ENABLE
+			bool "Enable DHCP"
+			default y
+
+		config DHCP_ONGOING_OPTIM
+			bool "Enable DHCP_ONGOING_OPTIM"
+			default n
+
+		config AUTOIP
+			bool "Enable AUTOIP"
+			default n
+
+		config MDNS
+			bool "Enable MDNS"
+			default n
+
+		config TASK_LWIP_PRIO
+			depends on WIFI_ENABLE
+			int "Set Task Lwip Prio"
+			range 1 10
+			default 4
+			help
+				Priority of LwIP task
+
+		config MIDEA
+			bool "Enable MIDEA"
+			default n
+
+		config LWIP_MEM_TRX_DYNAMIC_EN
+			bool "enable lwip mem trx dynamic"
+			default y
+
+		config LWIP_MEM_LIBC_MALLOC
+			bool "use system libc malloc"
+			default n
+
+		config LWIP_MEMP_MEM_MALLOC
+			bool "memp_alloc() use mem_malloc/mem_free instead of the lwip pool allocator"
+			default n
+
+		config LWIP_MEMP_STATS
+			bool "memp statistics"
+			default y
+
+		config LWIP_MEM_STATS
+			bool "mem statistics"
+			default y
+
+		config LWIP_DEBUG_LOG
+			bool "Enable LWIP Debug Log"
+			default n
+			help
+				open lwip debug log
+
+		#TODO optimize it
+		choice LWIP_MEM
+			prompt "Select Lwip Mem Policy"
+			default LWIP_MEM_DEFAULT
+
+			config LWIP_MEM_DEFAULT
+				bool "LWIP_MEM_DEFAULT"
+				help
+					Default Memory Policy
+			config LWIP_MEM_REDUCE
+				depends on WIFI_ENABLE
+				bool "LWIP_MEM_REDUCE"
+				help
+					Reduced Memory Policy
+		endchoice
+	endmenu
+
+	menu "Memory Config"
+	config LWIP_UDP_RECVMBOX_SIZE
+		int "Default UDP receive mail box size"
+		range 8 1024
+		default 24
+		help
+		Set UDP receive mail box size. The recommended value is 24.
+
+		UDP receive mail box is a per socket mail box, when the application receives packets
+		from UDP socket, LWIP core firstly posts the packets to UDP receive mail box and the
+		application then fetches the packets from mail box. It means LWIP can caches maximum
+		UDP_RECCVMBOX_SIZE packets for each UDP socket, so the maximum possible cached UDP 
+		packets for all UDP sockets is UDP_RECCVMBOX_SIZE multiples the maximum UDP socket 
+		number. In other words, the bigger UDP_RECVMBOX_SIZE means more memory.On the other 
+		hand, if the receiv mail box is too small, the mail box may be full. If the mail box
+		is full, the LWIP drops the packets.So generally we need to make sure the UDP 
+		receive mail box is big enough to avoid packet drop between LWIP core and application.
+
+	config LWIP_MEM_SIZE
+		int "Default size of the LWIP heap memory"
+		range 1 102400
+		default 51200
+		help
+			Set the size of the heap memory. The recommended value is 51200 .
+
+	config LWIP_MEM_MAX_RX_SIZE
+		int "Default size of the max memory rx used"
+		range 1 102400
+		default 38400
+		help
+			Set the size of the max memory rx used. The recommended value is 
+			38400 ((LWIP_MEM_SIZE*3)/4).
+
+	config LWIP_MEM_MAX_TX_SIZE
+		int "Default the size of the max memory tx used"
+		range 1 102400
+		default 42666
+		help
+			Set the size of the max memory tx used. The recommended value is 
+			42666 ((LWIP_MEM_SIZE*5)/6).
+			If the application will send a lot of data 
+			that needs to be copied, this should be set high.
+
+	config LWIP_TCP_MSS
+		int "Maximum Segment Size (MSS)"
+		default 1460
+		range 536 1460
+		help
+			Set maximum segment size for TCP transmission.
+
+			Can be set lower to save RAM, the default value 1460(ipv4)/1440(ipv6) will
+			give best throughput.
+			IPv4 TCP_MSS Range: 576 <= TCP_MSS <= 1460
+			IPv6 TCP_MSS Range: 1220<= TCP_mSS <= 1440
+
+	config LWIP_TCP_SND_BUF
+		int "Default send buffer size"
+		default 29200 # 20 * default MSS
+		range 2440 65535
+		help
+			Set default send buffer size for new TCP sockets.
+
+			Per-socket send buffer size can be changed at runtime
+			with lwip_setsockopt(s, TCP_SNDBUF, ...).
+
+			This value must be at least 2x the MSS size, and the default
+			is 4x the default MSS size.
+
+			Setting a smaller default SNDBUF size can save some RAM, but
+			will decrease performance.
+
+	config LWIP_TCP_WND
+		int "Default receive window size"
+		default 29200 # 20 * default MSS
+		range 2440 65535
+		help
+			Set default TCP receive window size for new TCP sockets.
+
+			Per-socket receive window size can be changed at runtime
+			with lwip_setsockopt(s, TCP_WINDOW, ...).
+
+			Setting a smaller default receive window size can save some RAM,
+			but will significantly decrease performance.
+
+	config LWIP_MEMP_NUM_NETBUF
+		int "Default number of struct netbufs"
+		default 32
+		range 1 1024
+		help
+			Set the number of struct netbufs.
+			(only needed if you use the sequential API, like api_lib.c)
+			This number corresponds to the maximum number of active sockets at any
+			given point in time. This number must be sum of max.
+
+	config LWIP_PBUF_POOL_SIZE
+		int "Default number of buffers in the pbuf pool"
+		default 10
+		range 1 400
+		help
+			Set the size of each pbuf in the pbuf pool. The default is
+			designed to accomodate single full size TCP frame in one pbuf, 
+			including TCP_MSS, IP header, and link header.
+
+	config LWIP_TCP_SND_QUEUELEN
+		int "Default TCP sender buffer space (pbufs)"
+		default 40
+		range 1 200
+		help
+			Set TCP sender buffer space (pbufs).
+			This must be at least as much as (2 * TCP_SND_BUF/TCP_MSS) for 
+			things to work.
+
+	config LWIP_MEMP_NUM_TCP_SEG
+		int "Default simultaneously queued TCP segments"
+		default 80
+		range 1 500
+		help
+			Set the number of simultaneously queued TCP segments. 
+			(requires the LWIP_TCP option)
+			as much as (2 * LWIP_TCP_SND_QUEUELEN) for things to work.
+	endmenu #Memory Config
+endmenu

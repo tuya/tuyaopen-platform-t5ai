@@ -1,0 +1,8 @@
+menu "Demos::Media::Audio::Flac"
+	config AUDIO_FLAC_TEST
+		depends on FATFS
+		bool "Enable Audio Flac Test"
+		default n
+		help
+			Enable Audio FLAC Encoder and Decoder Test
+endmenu

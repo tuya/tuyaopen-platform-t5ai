@@ -1,0 +1,7 @@
+menu "modules::wolfssl"
+
+	config WOLFSSL_BEKEN
+		bool "Enable WOLFSSL BEKEN"
+		default n if !WPA3
+		default y if WPA3
+endmenu

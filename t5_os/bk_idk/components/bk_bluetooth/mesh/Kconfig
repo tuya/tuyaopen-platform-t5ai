@@ -1,0 +1,131 @@
+menu "BK_MESH"
+	depends on BLUETOOTH
+
+	config BLE_MESH_ZEPHYR
+        bool "Enable mesh"
+		default n
+        select BTDM_CONTROLLER_ONLY
+
+    config BT_MESH_ADV_LEGACY
+        depends on BLE_MESH_ZEPHYR
+        bool "enable BT_MESH_ADV_LEGACY"
+        default n
+
+    config BT_MESH_ADV_EXT
+        depends on BLE_MESH_ZEPHYR
+        bool "enable BT_MESH_ADV_EXT"
+        default y
+
+    config BT_MESH_SETTINGS
+        depends on BLE_MESH_ZEPHYR
+        bool "enable BT_SETTINGS"
+        default n
+
+    config BT_MESH_LOW_POWER
+        depends on BLE_MESH_ZEPHYR
+        bool "enable BT_MESH_LOW_POWER"
+        default y
+
+    config BT_MESH_FRIEND
+        depends on BLE_MESH_ZEPHYR
+        bool "enable BT_MESH_FRIEND"
+        default y
+
+    config BT_MESH_PROV
+        depends on BLE_MESH_ZEPHYR
+        bool "enable BT_MESH_PROV"
+        default y
+
+    config BT_MESH_GATT_PROXY
+        depends on BLE_MESH_ZEPHYR
+        bool "enable BT_MESH_GATT_PROXY"
+        default y
+
+    config BT_MESH_PROV_DEVICE
+        depends on BLE_MESH_ZEPHYR
+        bool "enable BT_MESH_PROV_DEVICE"
+        default y
+
+    config BT_MESH_PROVISIONER
+        depends on BLE_MESH_ZEPHYR
+        bool "enable BT_MESH_PROVISIONER"
+        default y
+
+    config BT_MESH_PB_ADV
+        depends on BLE_MESH_ZEPHYR
+        bool "enable BT_MESH_PB_ADV"
+        default y
+
+    config BT_MESH_PB_GATT
+        depends on BLE_MESH_ZEPHYR
+        bool "enable BT_MESH_PB_GATT"
+        default y
+
+    config BT_MESH_GATT_SERVER
+        depends on BLE_MESH_ZEPHYR
+        bool "enable BT_MESH_GATT_SERVER"
+        default y
+
+    config BT_MESH_GATT
+        depends on BLE_MESH_ZEPHYR
+        bool "enable BT_MESH_GATT"
+        default y
+
+    config BT_MESH_CFG_CLI
+        depends on BLE_MESH_ZEPHYR
+        bool "enable BT_MESH_CFG_CLI"
+        default y
+
+    config BT_MESH_HEALTH_CLI
+        depends on BLE_MESH_ZEPHYR
+        bool "enable BT_MESH_HEALTH_CLI"
+        default y
+
+    config BT_MESH_SELF_TEST
+        depends on BLE_MESH_ZEPHYR
+        bool "enable BT_MESH_SELF_TEST"
+        default y
+
+    config BT_MESH_SHELL
+        depends on BLE_MESH_ZEPHYR
+        bool "enable BT_MESH_SHELL"
+        default y
+
+    config BT_MESH_CDB
+        depends on BLE_MESH_ZEPHYR
+        bool "enable BT_MESH_CDB"
+        default y
+
+    config BT_MESH_DEBUG
+        depends on BLE_MESH_ZEPHYR
+        bool "enable BT_MESH_DEBUG"
+        default y
+
+    config BT_MESH_CONN
+        depends on BLE_MESH_ZEPHYR
+        bool "enable BT_MESH_CONN"
+        default y
+
+    config BT_MESH_SMP
+        depends on BLE_MESH_ZEPHYR
+        bool "enable BT_MESH_SMP"
+        default y
+    
+    config BT_MESH_ISO
+        depends on BLE_MESH_ZEPHYR
+        bool "enable BT_MESH_ISO"
+        default n
+    
+    config BT_MESH_HOST_CCM
+        depends on BLE_MESH_ZEPHYR
+        bool "enable BT_MESH_HOST_CCM"
+        default y
+  
+    config ACLSEMI_BT_MESH_DEBUG_LEVEL
+        int "set ACLSEMI_BT_MESH_DEBUG_LEVEL"
+        default 2
+        range 0 5
+        help
+            Mesh debugging level.
+
+endmenu

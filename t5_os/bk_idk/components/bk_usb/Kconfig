@@ -1,0 +1,200 @@
+menu "Bk_usb"
+
+	config USB
+		bool "Enable Usb"
+		default n
+
+	config USB_VBAT_CONTROL_GPIO_ID
+		depends on USB
+		hex "Vbat control gpio id"
+		default 0xFF
+		help
+			USB VBAT CONTROL GPIO ID
+
+	menu "Modify USB Mailbox"
+		depends on MAILBOX
+			config USB_MAILBOX
+				bool "Enable Multi-core operation USB"
+				default n
+				help
+					Enable Multi-core operation USB
+					
+		config USB_MAILBOX_MASTER
+			bool "Enable USB mailbox master"
+			default n
+
+		config USB_MAILBOX_SLAVE
+			bool "Enable USB mailbox slave"
+			default n
+
+		config USB_MAILBOX_MASTER_CPU1_TO_CPU2
+			bool "Enable USB mailbox master cpu1 to cpu2"
+			default n
+
+		config USB_MAILBOX_SLAVE_CPU2_TO_CPU1
+			bool "Enable USB mailbox slave cpu2 to cpu1"
+			default n
+
+		config USB_MAILBOX_MASTER_CPU1_TO_CPU0
+			bool "Enable USB mailbox master cpu1 to cpu2"
+			default n
+
+		config USB_MAILBOX_SLAVE_CPU0_TO_CPU1
+			bool "Enable USB mailbox slave cpu1 to cpu2"
+			default n
+	endmenu
+
+	menu "Modify Usb Config"
+		depends on USB
+
+		choice USB_IP_VERSION
+			prompt "Select USB IP"
+			default MUSB_MHDRC
+
+			config MUSB_FDRC
+				bool "MUSBFDRC"
+			config MUSB_MHDRC
+				bool "MUSBMHDRC"
+			config SYNOPSYS_DWC2_USB_IP
+				bool "SYNOPSYS_DWC2_USB_IP"
+		endchoice
+
+		choice USB_PROTOCOL_STACK
+			prompt "Select Usb Protocol Stack"
+			default MENTOR_USB
+
+			config MENTOR_USB
+				depends on !USB_MAILBOX_MASTER
+				bool "MENTOR_USB"
+			config CHERRY_USB
+				depends on !USB_MAILBOX_MASTER
+				bool "CHERRY_USB"
+		endchoice
+
+		config USB_HOST
+			bool "Enable USB Host Mode"
+			default y
+	
+		config USB_DEVICE
+			bool "Enable USB Device Mode"
+			default n
+
+		choice USB_PORT
+			prompt "Select Usb Port"
+			default USB2_PORT
+
+			config USB1_PORT
+				bool "USB1_PORT"
+			config USB2_PORT
+				bool "USB2_PORT"
+		endchoice
+
+		config TASK_USB_PRIO
+			int "Set Task Usb Prio"
+			range 1 10
+			default 7
+			help
+				Priority of USB task
+
+		config USB_DMA_ENABLE
+			bool "Enable usb ip DMA"
+			default n
+
+		config USB_HUB
+			bool "Enable USB hub"
+			default y
+
+		config USB_MSD
+			bool "Enable Usb Msd"
+			default n
+
+        config USB_UPC
+            bool "Enable Usb Upc"
+            default n
+
+		config USB_HID
+			bool "Enable Usb Hid"
+			default n
+
+		config USB_CCD
+			bool "Enable Usb Ccd"
+			default n
+
+		config USB_UVC
+			bool "Enable Usb Uvc"
+			default n
+
+		config USB_UAC
+			depends on USB_UVC
+			bool "Enable Usb Uac"
+			default n
+
+		menu "Modify Usb Uac Config"
+			depends on USB_UAC
+			config USB_UAC_MIC
+				bool "Enable Usb Uac Mic"
+				default n
+
+			config USB_UAC_SPEAKER
+				bool "Enable Usb Uac Speaker"
+				default n
+
+		endmenu
+
+		config USB_CHARGE
+			bool "Enable Usb Charge"
+			default n
+
+	endmenu
+
+	menu "Modify USB Demo Config"
+		depends on USB && HTTP
+			config UVC_OTA_DEMO
+				bool "Enable Uvc ota demo"
+				default n
+				help
+					Enable uvc ota interface And Requires an HTTP module
+	endmenu
+
+	menu "Modify USB Demo Config"
+		depends on USB
+			config UVC_UAC_DEMO
+				bool "Enable Fusion device uvc_uac"
+				default n
+				help
+					Enable fusion device video and audio
+
+		config UVC_UAC_DEMO_DEBUG
+			bool "Enable Usb Uvc_Uac Debug"
+			default n
+	endmenu
+
+	menu "Modify Dsp Config"
+
+		config DSP
+			bool "Enable Dsp"
+			default n
+
+		#TODO delete it
+		config DSP_SRC_ADD
+			hex "Set Dsp Src Add"
+			default 0x130000
+			help
+				set dsp source address
+
+	endmenu
+
+    
+    config STANDARD_DUALSTREAM
+        depends on USB
+        bool "Standard dual stream"
+        default n
+    
+    config UVC_DUAL_DEVICE
+        #depends on STANDARD_DUALSTREAM
+        int "the num for uvc_device"
+        range 1 2
+        default 1 if !STANDARD_DUALSTREAM
+        default 2 if STANDARD_DUALSTREAM
+
+endmenu

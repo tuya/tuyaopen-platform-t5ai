@@ -1,0 +1,6 @@
+menu "LVGL Music Configuration"
+
+    config LV_USE_DEMO_MUSIC
+        bool "LVGL Music"
+        default n
+endmenu

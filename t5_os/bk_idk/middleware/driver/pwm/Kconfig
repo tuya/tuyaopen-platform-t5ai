@@ -1,0 +1,34 @@
+menu "PWM"
+	config PWM
+		bool "Enable pwm"
+		default y
+
+	choice PWM_VERSION
+		prompt "ASIC PWM IP Version"
+		default PWM_V0P0
+
+		config PWM_V0P0
+			bool "PWM_V0P0"
+			help
+			    ASIC PWM IP Version V0P0:BK7256XX,BK7251XX,the chips MP before 2023-04
+
+		config PWM_V1PX
+			bool "PWM_V1PX"
+			help
+			    "ASIC PWM IP Version V1P1:BK7236XX...,the chips MP after 2023-04"
+	endchoice
+
+	config PWM_HAS_TWO_INT
+		bool "Enable pwm has two int"
+		default n
+
+	config PWM_PM_CB_SUPPORT
+		bool "PWM PM Support"
+		default n
+
+	config PWM_PHASE_SHIFT
+		bool "PWM phase shift Support"
+		default n
+
+endmenu
+

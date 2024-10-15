@@ -1,0 +1,7 @@
+menu "Demos::Media::Audio::Mp3"
+	config AUDIO_MP3_TEST
+		depends on AUDIO_DAC
+		depends on FATFS
+		bool "Enable Audio MP3 Test"
+		default n
+endmenu

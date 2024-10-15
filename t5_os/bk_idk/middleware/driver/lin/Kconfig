@@ -1,0 +1,14 @@
+menu "LIN"
+	config LIN
+		bool "Enable LIN"
+		default n
+	config LIN_DEVICE_MASTER
+		bool "This device is the master"
+		default n
+		depends on LIN
+	config LIN_PM_CB_SUPPORT
+		bool "This device is the master"
+		default n
+		depends on LIN
+endmenu
+

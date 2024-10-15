@@ -1,0 +1,2 @@
+libPPCS_API_4.5.3_BK7258-Listen-armino-Dev2.0.1-LNS-IoTWIFI-cs2pMallocThread_3ch-20240111.a
+  - fix psram malloc with fixed length of 1000 bytes via cs2_psram_malloc() interface

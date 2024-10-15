@@ -1,0 +1,273 @@
+#!/usr/bin/env python3
+
+import os
+import subprocess
+import sys
+import logging
+import getpass
+import time
+import shutil
+import csv
+
+from argparse import _MutuallyExclusiveGroup
+from genericpath import exists
+import click
+from click_option_group import optgroup,RequiredMutuallyExclusiveOptionGroup
+
+armino_path = os.getenv("ARMINO_PATH")
+project_dir = os.getenv("PROJECT_DIR")
+project_name = os.getenv("PROJECT")
+armino_soc = os.getenv("ARMINO_SOC")
+build_path=os.path.realpath('.')
+
+
+header_path = "{}/tools/env_tools/rtt_ota/ota-rbl/".format(armino_path)
+
+cpu1_bin  = f'{build_path}/../{armino_soc}_cp1/app.bin'
+cpu2_bin  = f'{build_path}/../{armino_soc}_cp2/app.bin'
+bootloader_bin = f'{armino_path}/properties/modules/bootloader/aboot/arm_bootloader/output/bootloader.bin'
+
+nosecurity_pack = "%s/middleware/boards/%s/%s_nosecurity.wrapper"%(armino_path, armino_soc, armino_soc)
+pack_boot_tools = '%s/tools/env_tools/beken_packager'%(armino_path)
+
+def run_cmd(cmd):
+	p = subprocess.Popen(cmd, shell=True)
+	ret = p.wait()
+	if (ret):
+		logging.error(f'failed to run "{cmd}"')
+		exit(1)
+
+def run_cmd_with_ret(cmd):
+	p = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, encoding='utf-8')
+	out, err = p.communicate()
+	print(out)
+	if (p.returncode):
+		print(err)
+		exit(1)
+
+def move_file(bin_name, src_dir, dst_dir):
+	logging.debug(f'move {bin_name} from {src_dir}')
+	logging.debug(f'to {dst_dir}')
+	if os.path.exists(f'{src_dir}/{bin_name}') == True:
+		shutil.move(f'{src_dir}/{bin_name}', f'{dst_dir}')
+
+def copy_file(src, dst):
+	logging.debug(f'copy {src} to {dst}')
+	logging.debug(f'to {dst}')
+	if os.path.exists(f'{src}') == True:
+		shutil.copy(f'{src}', f'{dst}')
+
+def copy_files(postfix, src_dir, dst_dir):
+	logging.debug(f'copy *{postfix} from {src_dir}')
+	logging.debug(f'to {dst_dir}')
+	for f in os.listdir(src_dir):
+		if f.endswith(postfix):
+			if os.path.isfile(f'{src_dir}/{f}'):
+				shutil.copy(f'{src_dir}/{f}', f'{dst_dir}/{f}')
+
+def partition_csv_is_valid(partition_csv):
+	try:
+		with open(partition_csv, 'r') as f:
+			rows = csv.reader(f)
+			cnt = 0
+			for row in rows:
+				logging.debug(f'{row}')
+				cnt = cnt + 1
+			logging.debug(f'cnt={cnt}')
+			if cnt < 2:
+				return False
+			else:
+				return True
+	except FileNotFoundError:
+		logging.error(f'failed to open {partition_csv}')
+		return False
+	
+def install_configs(cfg_dir, install_dir, is_wait_partitions=False):
+	logging.debug(f'install configs from: {cfg_dir}')
+	logging.debug(f'to: {install_dir}')
+	if os.path.exists(f'{cfg_dir}') == False:
+		return
+
+	if os.path.exists(f'{cfg_dir}/partitions.csv') and os.path.exists(f'{install_dir}/partitions.csv'):
+		logging.debug(f'exists {cfg_dir}/partitions.csv')
+		logging.debug(f'remove {install_dir}/partitions.csv')
+		os.remove(f'{install_dir}/partitions.csv')
+
+	if os.path.exists(f'{cfg_dir}/csv/partitions.csv') and os.path.exists(f'{install_dir}/csv/partitions.csv'):
+		logging.debug(f'exists {cfg_dir}/csv/partitions.csv')
+		logging.debug(f'remove {install_dir}/partitions.csv')
+		os.remove(f'{install_dir}/csv/partitions.csv')
+
+	for f in os.listdir(f'{cfg_dir}'):
+		if f.endswith('.csv') or f.endswith('.bin') or f.endswith('.json') or f.endswith('.pem'):
+			if f == 'partitions.csv':
+				continue;
+
+			if os.path.isfile(f'{cfg_dir}/{f}'):
+				shutil.copy(f'{cfg_dir}/{f}', f'{install_dir}/{f}')
+
+	if os.path.exists(f'{cfg_dir}/key') == True:
+		copy_files('.pem', f'{cfg_dir}/key', install_dir)
+	if os.path.exists(f'{cfg_dir}/csv') == True:
+		copy_files('.csv', f'{cfg_dir}/csv', install_dir)
+	if os.path.exists(f'{cfg_dir}/regs') == True:
+		copy_files('.csv', f'{cfg_dir}/regs', install_dir)
+
+	if is_wait_partitions:
+		# try 5 sec wait partitions.csv
+		for tmp_cnt in range(5):
+			if os.path.isfile(f'{cfg_dir}/partitions.csv'):
+				try:
+					shutil.copy(f'{cfg_dir}/partitions.csv', f'{install_dir}/partitions.csv')
+
+					is_valid = False
+					for validate_cnt in range(3):
+						if partition_csv_is_valid(f'{install_dir}/partitions.csv'):
+							logging.debug(f'partition is valid')
+							is_valid = True
+							break;
+						else:
+							logging.error(f'partition is invalid, delay 1s')
+							time.sleep(1)
+							continue
+					if is_valid:
+						break
+					else:
+						continue
+				except FileNotFoundError:
+					time.sleep(1)
+					logging.error(f'waiting partitions.csv {tmp_cnt} sec')
+					continue
+			else:
+				time.sleep(1)
+				logging.debug(f'waiting partitions.csv {tmp_cnt} sec')
+
+
+def copy_binary(bin_name, src_dir, dst_dir):
+	logging.debug(f'copy {bin_name} from {src_dir}')
+	logging.debug(f'to {dst_dir}')
+	if os.path.exists(f'{src_dir}/{bin_name}') == True:
+		copy_file(f'{src_dir}/{bin_name}', dst_dir)
+
+def pack(prebuild):
+
+	soc = armino_soc
+	tools_dir = f'{armino_path}/tools/env_tools'
+	bin_dir = build_path
+	cpu0_armino_soc = armino_soc.replace('_cp2', '').replace('_cp1', '')
+	base_cfg_dir = f'{armino_path}/middleware/boards/{cpu0_armino_soc}' #CPU1/CPU2 share the same config with CPU0
+	prefered_cfg_dir = f'{armino_path}/{project_dir}/config'
+	gen_dir = f'{build_path}/generated'
+	debug = True
+
+	if (debug):
+		logging.basicConfig()
+		logging.getLogger().setLevel(logging.DEBUG)
+
+	logging.debug(f'tools_dir={tools_dir}')
+	logging.debug(f'base_cfg_dir={base_cfg_dir}')
+	logging.debug(f'prefered_cfg_dir={prefered_cfg_dir}')
+	logging.debug(f'soc={soc}')
+	logging.debug(f'pack={pack}')
+
+	SH_SEC_TOOL = f'{tools_dir}/sh_sec_tools/secure_boot_tool'
+	BK_UTILS_TOOL = f'{tools_dir}/beken_utils/main.py'
+	MCUBOOT_IMG_TOOL = f'{tools_dir}/mcuboot_tools'
+
+	CMAKE_BIN_DIR = bin_dir
+	BASE_CFG_DIR = base_cfg_dir
+	_BUILD_DIR = f'{bin_dir}/_build'
+
+	logging.debug(f'Create temporary _build')
+	os.makedirs(_BUILD_DIR, exist_ok=True)
+
+	saved_cur_dir = os.getcwd()
+	os.chdir(_BUILD_DIR)
+	logging.debug(f'cd {_BUILD_DIR}')
+
+	copy_file(f'{base_cfg_dir}/partitions/bl1_control.json', f'{_BUILD_DIR}/bl1_control.json')
+	install_configs(BASE_CFG_DIR, _BUILD_DIR)
+	install_configs(prefered_cfg_dir, _BUILD_DIR)
+	install_configs(f'{prefered_cfg_dir}/common', _BUILD_DIR)
+	install_configs(f'{prefered_cfg_dir}/{cpu0_armino_soc}', _BUILD_DIR, True)
+
+	#delay 100ms
+	time.sleep(0.1)
+
+	debug_option = ''
+	if (debug):
+		debug_option = f'--debug'
+	logging.debug(f'partition pre-processing')
+
+	if prebuild:
+		if (gen_dir == None):
+			logging.error(f'Generated dir should NOT be empty')
+			exit(1)
+		run_cmd(f'{BK_UTILS_TOOL} gen all --debug')
+		cwd = os.getcwd()
+		copy_file(f'{cwd}/partitions_partition.h', f'{cwd}/partitions_gen.h')
+		return
+
+	logging.debug(f'Copy Armino bin to {_BUILD_DIR}')
+
+	if (os.path.exists(f'{CMAKE_BIN_DIR}/app.bin') == True):
+		copy_file(f'{CMAKE_BIN_DIR}/app.bin', f'{_BUILD_DIR}/cpu0_app.bin')
+
+	TFM_BIN_DIR = f'{CMAKE_BIN_DIR}/tfm_install/outputs'
+	if (os.path.exists(TFM_BIN_DIR) == True):
+		logging.debug(f'Copy TFM bin to {_BUILD_DIR}')
+		copy_files('*.bin', TFM_BIN_DIR, _BUILD_DIR)
+
+	if (os.path.exists(cpu1_bin) == True):
+		copy_file(cpu1_bin, f'{_BUILD_DIR}/cpu1_app.bin')
+	else:
+		logging.info(f'{cpu1_bin} not exist, could compile: make {soc}_cp1')
+	if (os.path.exists(cpu2_bin) == True):
+		copy_file(cpu2_bin, f'{_BUILD_DIR}/cpu2_app.bin')
+	else:
+		logging.info(f'{cpu2_bin} not exist, could compile: make {soc}_cp2')
+
+	dest_boot_dir = f'{armino_path}/components/bk_libs/{armino_soc}/bootloader/normal_bootloader'
+
+	os.makedirs(dest_boot_dir, exist_ok=True)
+	if (os.path.exists(bootloader_bin) == True):
+		copy_file(bootloader_bin, f'{dest_boot_dir}/bootloader.bin')
+		run_cmd('%s/cmake_Gen_image genfile -injsonfile %s/config.json -infile %s/bootloader.bin -outfile %s/bootloader.bin -genjson %s/partition_bootloader.json'%(pack_boot_tools, pack_boot_tools, dest_boot_dir,_BUILD_DIR, pack_boot_tools))
+	elif (os.path.exists(f'{dest_boot_dir}/bootloader.bin') == True):
+		logging.info(f'{bootloader_bin} not exist, could compile:')
+		run_cmd('%s/cmake_Gen_image genfile -injsonfile %s/config.json -infile %s/bootloader.bin -outfile %s/bootloader.bin -genjson %s/partition_bootloader.json'%(pack_boot_tools, pack_boot_tools, dest_boot_dir,_BUILD_DIR, pack_boot_tools))
+	else:
+		pass
+
+	run_cmd(f'{BK_UTILS_TOOL} pack all --debug')
+
+	logging.debug(f'copy binaries')
+	copy_binary('ota.bin', _BUILD_DIR, CMAKE_BIN_DIR)
+	copy_binary('apps.bin', _BUILD_DIR, CMAKE_BIN_DIR)
+	copy_binary('all-app.bin', _BUILD_DIR, CMAKE_BIN_DIR)
+
+	os.chdir(saved_cur_dir)
+	logging.debug(f'cd {saved_cur_dir}')
+
+	run_cmd_with_ret("python3 {}/tools/env_tools/rtt_ota/ota-rbl/ota_packager_python.py -i {} -o {} -g {} -ap {} -pjd {} packager".format(armino_path, f'{_BUILD_DIR}/app_pack.bin', f'{bin_dir}/app_pack.rbl', header_path, armino_path, os.getenv("PROJECT_DIR")))
+
+@click.group()
+@click.version_option(version='1.0.0.0')
+def wrapper():
+	"""Post-build scripts to pack the binaries."""
+
+
+
+@wrapper.command("pack")
+@click.option("--prebuild/--no-prebuild", default=False, help="Whether it's post-build or pre-build")
+def pack_bin(prebuild):
+	"""Pack armino binaries."""
+	if project_name.startswith('security/') == True or prebuild == True:
+		pack(prebuild)
+	else:
+		run_cmd("python3 %s -n all-app.bin -f app.bin -c %s"%(nosecurity_pack, armino_soc))
+
+if __name__ == '__main__':
+	logging.basicConfig()
+	logging.getLogger().setLevel(logging.INFO)
+	wrapper()

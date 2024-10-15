@@ -1,0 +1,14 @@
+set(MCU_LCD_DEVICE_FILES "")
+set(MCU_LCD_PATH src/lcd/mcu)
+
+if (CONFIG_LCD_NT35510_MCU)
+	list(APPEND MCU_LCD_DEVICE_FILES ${MCU_LCD_PATH}/lcd_nt35510_mcu.c)
+endif()
+
+if (CONFIG_LCD_ST7796S)
+	list(APPEND MCU_LCD_DEVICE_FILES ${MCU_LCD_PATH}/lcd_st7796s.c)
+endif()
+
+if (CONFIG_LCD_ST7789V)
+	list(APPEND MCU_LCD_DEVICE_FILES ${MCU_LCD_PATH}/lcd_st7789v.c)
+endif()

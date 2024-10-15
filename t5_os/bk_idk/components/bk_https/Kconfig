@@ -1,0 +1,5 @@
+menu "Https"
+	config HTTPS
+		bool "Enable HTTPS"
+		default n
+endmenu

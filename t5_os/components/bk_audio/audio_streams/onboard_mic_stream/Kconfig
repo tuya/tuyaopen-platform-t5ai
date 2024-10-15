@@ -1,0 +1,13 @@
+menu "Asdf::Audio_streams::Onboard_mic_stream"
+	config ASDF_ONBOARD_MIC_STREAM
+		depends on ASDF
+		depends on AUDIO_ADC
+		bool "Enable onboard mic stream"
+		default n
+
+	config ASDF_ONBOARD_MIC_STREAM_TEST
+		depends on ASDF_ONBOARD_MIC_STREAM
+		bool "Enable onboard mic stream test"
+		default n
+
+endmenu

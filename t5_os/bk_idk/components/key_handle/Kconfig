@@ -1,0 +1,5 @@
+menu "Key_Handle"
+	config COMPONENTS_TX_BUFING
+		bool "Enable Components Tx Bufing"
+		default n
+endmenu

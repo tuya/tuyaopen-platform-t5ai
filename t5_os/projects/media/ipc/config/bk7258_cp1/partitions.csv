@@ -1,0 +1,6 @@
+Name,Offset,Size,Execute,Read,Write
+primary_bootloader,,68k,TRUE,,
+primary_cpu0_app,0x11000,1836k,TRUE,,
+primary_cpu1_app,0x1DC000,768k,TRUE,,
+sys_rf,0x3fe000,4k,,,
+sys_net,0x3ff000,4k,,,

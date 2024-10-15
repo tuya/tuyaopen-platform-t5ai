@@ -1,0 +1,9 @@
+Name,               Type, SubType, Offset, Size, Flags
+bl2,                app,  ,        ,       96k,
+partition,          data, ,        ,       4k,
+primary_cpu0_app,   app,  ,        ,       1672k,
+secondary_cpu0_app, app,  ,        ,       1672k,
+user_config,        data, ,        ,       136k,
+easyflash,          data, ,        ,       8k,
+sys_rf,             data, ,        ,       4k,
+sys_net,            data, ,        ,       4k,
