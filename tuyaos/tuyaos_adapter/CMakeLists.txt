@@ -83,7 +83,6 @@ list(APPEND srcs
 	"src/driver/tkl_wakeup.c"
 )
 
-
 file(GLOB_RECURSE utilities_srcs "$ENV{ARMINO_PATH}/../../tuyaos/tuyaos_adapter/include/utilities/src/*.c")
 list(APPEND srcs ${utilities_srcs})
 
@@ -96,7 +95,6 @@ list(APPEND srcs ${utilities_srcs})
 #     src/test/test_pwm.c
 #     src/test/test_wifi.c
 #     )
-# endif()
 endif()
 
 armino_component_register(SRCS "${srcs}" INCLUDE_DIRS "${incs}" REQUIRES bk_common bk_log multimedia bk_usb lwip_intf_v2_1)
