@@ -4,7 +4,8 @@
 
 #include <lwip/inet.h>
 #include "netif/etharp.h"
-#include "lwip/netif.h"
+#include <lwip/netif.h>
+#include <lwip/sockets.h>
 #include <lwip/netifapi.h>
 #include <lwip/tcpip.h>
 #include <lwip/dns.h>
@@ -82,7 +83,7 @@ struct ipv4_config br_ip_settings = {
 };
 #endif
 
-static char up_iface;
+// static char up_iface;
 static bool sta_ip_start_flag = false;
 bool uap_ip_start_flag = false;
 #ifdef CONFIG_ETH
@@ -173,7 +174,9 @@ char *ipv6_addr_type_to_desc(struct ipv6_config *ipv6_conf)
 
 int net_dhcp_hostname_set(char *hostname)
 {
+#if LWIP_NETIF_HOSTNAME
 	netif_set_hostname(&g_mlan.netif, hostname);
+#endif
 	return 0;
 }
 
@@ -415,7 +418,7 @@ void *net_sock_to_interface(int sock)
 	unsigned long peerlen = sizeof(struct sockaddr_in);
 	void *req_iface = NULL;
 
-	getpeername(sock, (struct sockaddr *)&peer, &peerlen);
+	getpeername(sock, (struct sockaddr *)&peer, (socklen_t *)&peerlen);
 	req_iface = net_ip_to_interface(peer.sin_addr.s_addr);
 	return req_iface;
 }
@@ -855,7 +858,7 @@ struct ipv4_config* bk_wifi_get_sta_settings(void)
 
 int net_get_if_addr(struct wlan_ip_config *addr, void *intrfc_handle)
 {
-	const ip_addr_t *tmp;
+	// const ip_addr_t *tmp;
 	struct iface *if_handle = (struct iface *)intrfc_handle;
 
 	if (netif_is_up(&if_handle->netif)) {
@@ -998,10 +1001,10 @@ int net_wlan_add_netif(uint8_t *mac)
 	struct iface *wlan_if = NULL;
 	netif_if_t netif_if;
 	void *vif = NULL;
-	int vifid = 0;
+	// int vifid = 0;
 	err_t err = 0;
 
-	vifid = wifi_netif_mac_to_vifid(mac);
+	// vifid = wifi_netif_mac_to_vifid(mac);
 	vif = wifi_netif_mac_to_vif(mac);
 	netif_if = wifi_netif_vif_to_netif_type(vif);
 	if (netif_if == NETIF_IF_AP) {

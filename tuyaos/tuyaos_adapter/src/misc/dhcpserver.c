@@ -17,7 +17,7 @@
 #include "lwip/mem.h"
 #include "lwip/ip_addr.h"
 #include "ethernetif.h" //add by tuya
-
+#include <assert.h>
 #include "dhcpserver.h"
 #include "dhcpserver_options.h"
 

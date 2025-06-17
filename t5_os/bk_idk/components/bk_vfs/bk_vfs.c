@@ -41,7 +41,7 @@ static void put_file(struct bk_file *file) {
 
 
 int bk_vfs_open(const char *path, int oflag) {
-	struct bk_file *file;
+	struct bk_file *file = NULL;
 	char *full_path = NULL;
 	struct bk_filesystem *fs;
 	int ret = -1;

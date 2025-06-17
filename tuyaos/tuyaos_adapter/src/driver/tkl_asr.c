@@ -11,6 +11,8 @@
 #include "fst_02.h"
 #include "fst_types.h"
 
+#include <driver/uart.h>
+
 /***********************************************************
 ************************macro define************************
 ***********************************************************/
@@ -113,8 +115,6 @@ OPERATE_RET tkl_asr_init(void)
 
 OPERATE_RET tkl_asr_wakeup_word_config(TKL_ASR_WAKEUP_WORD_E *wakeup_word_arr, uint8_t arr_cnt)
 {
-    TKL_ASR_WAKEUP_WORD_E *tmp_list = NULL;
-
     if(NULL == wakeup_word_arr || 0 == arr_cnt || arr_cnt > TKL_ASR_WAKEUP_WORD_MAX) {
         return OPRT_INVALID_PARM;
     }

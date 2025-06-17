@@ -17,7 +17,7 @@ extern void *tkl_system_calloc(size_t nitems, size_t size);
 extern void *tkl_system_realloc(VOID_T* ptr, size_t size);
 extern void *tkl_system_psram_malloc(CONST SIZE_T size);
 extern void tkl_system_psram_free(VOID_T* ptr);
-
+extern size_t xPortGetPsramFreeHeapSize( void );
 extern void bk_printf(const char *fmt, ...);
 
 #ifdef CONFIG_SYS_CPU0
