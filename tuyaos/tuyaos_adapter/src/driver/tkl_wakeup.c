@@ -218,7 +218,7 @@ OPERATE_RET tkl_wakeup_source_clear(const TUYA_WAKEUP_SOURCE_BASE_CFG_T *param)
 {
     if (wakeup_source == NULL) {
         bk_printf("wakeup source not init, %d\r\n", __LINE__);
-        return OPRT_COM_ERROR;
+        return OPRT_INVALID_PARM;
     }
 
     static char clear_flag = 0;

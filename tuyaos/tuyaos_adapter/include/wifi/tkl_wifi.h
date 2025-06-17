@@ -237,7 +237,7 @@ OPERATE_RET tkl_wifi_init(WIFI_EVENT_CB cb);
  *
  * @note if ssid == NULL means scan all ap, otherwise means scan the specific ssid
  */
-OPERATE_RET tkl_wifi_scan_ap(const signed char *ssid, AP_IF_S **ap_ary, uint32_t *num);
+OPERATE_RET tkl_wifi_scan_ap(const char *ssid, AP_IF_S **ap_ary, uint32_t *num);
 
 /**
  * @brief release the memory malloced in <tkl_wifi_ap_scan>
@@ -413,7 +413,7 @@ OPERATE_RET tkl_wifi_station_fast_connect(const FAST_WF_CONNECTED_AP_INFO_T *fas
  * @param[in]       passwd
  * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
  */
-OPERATE_RET tkl_wifi_station_connect(const signed char *ssid, const signed char *passwd);
+OPERATE_RET tkl_wifi_station_connect(const char *ssid, const char *passwd);
 
 /**
  * @brief disconnect wifi from connect ap

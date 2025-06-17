@@ -109,9 +109,9 @@ static void low_level_init(struct netif *netif)
 {
     void *vif = netif->state;
     u8 *macptr = wifi_netif_vif_to_mac(vif);
+#if LWIP_NETIF_HOSTNAME
     int vif_index = wifi_netif_vif_to_vifid(vif);
 
-#if LWIP_NETIF_HOSTNAME
     /* Initialize interface hostname */
     netif->hostname = (char*)&wlan_name[vif_index];
 #endif /* LWIP_NETIF_HOSTNAME */

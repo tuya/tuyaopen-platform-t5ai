@@ -153,7 +153,7 @@ void tuya_multimedia_power_on(void)
 #if CONFIG_TUYA_LOGIC_MODIFY
 //    if (!is_init) {
         __mutil_power_init();
-        is_init = 1;
+        // is_init = 1;
 //    }
     uint8_t usb_ldo, lcd_ldo, lcd_bl, active_level;
     // 3.3V / USB Enable
@@ -172,7 +172,7 @@ void tuya_multimedia_power_off(void)
 #if CONFIG_TUYA_LOGIC_MODIFY
 //    if (!is_init) {
         __mutil_power_init();
-        is_init = 1;
+        // is_init = 1;
 //    }
 
     uint8_t usb_ldo, lcd_ldo, lcd_bl, active_level;

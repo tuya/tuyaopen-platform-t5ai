@@ -31,9 +31,13 @@ struct ipc_msg_s *ipc_req_msg = NULL;
 extern void tkl_wifi_ipc_func(struct ipc_msg_s *msg);
 extern void tkl_hci_ipc_func(struct ipc_msg_s *msg);
 extern void tkl_lwip_ipc_func(struct ipc_msg_s *msg);
+extern void tkl_sys_ipc_func(struct ipc_msg_s *msg);
+extern OPERATE_RET tkl_ipc_send_no_sync(const uint8_t *buf, uint32_t buf_len);
 
-static OPERATE_RET __tuya_ipc_cb(struct ipc_msg_s *msg )
+static OPERATE_RET __tuya_ipc_cb(uint8_t *buf, uint32_t buf_len)
 {
+    struct ipc_msg_s *msg = (struct ipc_msg_s *)buf;
+
 #if TKL_IPC_DEBUG
     tkl_ipc_debug(IPC_RECV, msg->type, msg->subtype);
 #endif

@@ -72,6 +72,8 @@ static int __tkl_audio_spk_trans_callback(unsigned int size)
     if (user_spk_cb) {
         user_spk_cb((void *)size);
     }
+
+    return 0;
 }
 
 static void __audio_connect_state_cb_handle(uint8_t state)

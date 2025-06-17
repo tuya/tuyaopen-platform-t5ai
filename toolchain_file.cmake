@@ -22,5 +22,5 @@ SET (CMAKE_CXX_COMPILER_WORKS 1)
 
 set(CMAKE_FIND_ROOT_PATH ${TOOLCHAIN_DIR}/bin)
 
-set(CMAKE_C_FLAGS "-g -Os -std=c99 -nostdlib -mthumb -Wall -Wno-format -Wno-unknown-pragmas -Wno-address-of-packed-member -ffunction-sections -fsigned-char -fdata-sections -fno-strict-aliasing -ggdb -std=gnu99 -Wno-old-style-declaration -mcpu=cortex-m33+nodsp -mfpu=fpv5-sp-d16 -mfloat-abi=hard -mcmse -end-group")
-set(CMAKE_CXX_FLAGS "-g -Os -std=gnu++17 -nostdlib -mthumb -Wno-format -Wno-unknown-pragmas -Wno-address-of-packed-member -Wno-deprecated-declarations -mno-unaligned-access -fno-threadsafe-statics -Wno-unused-function -ffunction-sections -fdata-sections -fno-strict-aliasing  -mcpu=cortex-m33+nodsp -mfpu=fpv5-sp-d16 -mfloat-abi=hard -mcmse -mthumb -fno-exceptions")
+set(CMAKE_C_FLAGS "-g -Os -std=c99 -nostdlib -mthumb -Wall -Werror -Wno-format -Wno-unknown-pragmas -Wno-address-of-packed-member -ffunction-sections -fsigned-char -fdata-sections -fno-strict-aliasing -ggdb -std=gnu99 -Wno-old-style-declaration -mcpu=cortex-m33+nodsp -mfpu=fpv5-sp-d16 -mfloat-abi=hard -mcmse -end-group")
+set(CMAKE_CXX_FLAGS "-g -Os -std=gnu++17 -nostdlib -mthumb -Werror -Wno-format -Wno-unknown-pragmas -Wno-address-of-packed-member -Wno-deprecated-declarations -mno-unaligned-access -fno-threadsafe-statics -Wno-unused-function -ffunction-sections -fdata-sections -fno-strict-aliasing  -mcpu=cortex-m33+nodsp -mfpu=fpv5-sp-d16 -mfloat-abi=hard -mcmse -mthumb -fno-exceptions")
