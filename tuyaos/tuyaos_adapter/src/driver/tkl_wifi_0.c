@@ -121,7 +121,7 @@ void tkl_wifi_ipc_func(struct ipc_msg_s *msg)
         {
             AP_IF_S *ap_ary = NULL;
             uint32_t num = 0;
-            CHAR_T *ssid = (CHAR_T *)msg->req_param;
+            char *ssid = (char *)msg->req_param;
             ret = tkl_wifi_scan_ap(ssid, &ap_ary, &num);//异步？。。。待确认
         }
             break;
@@ -498,7 +498,7 @@ static OPERATE_RET tkl_wifi_all_ap_scan(AP_IF_S **ap_ary, unsigned int *num)
     return  OPRT_OK;
 }
 
-static OPERATE_RET tkl_wifi_single_ap_scan(const CHAR_T *ssid, AP_IF_S **ap_ary, uint32_t *num)
+static OPERATE_RET tkl_wifi_single_ap_scan(const int8_t *ssid, AP_IF_S **ap_ary, uint32_t *num)
 {
     if((NULL == ssid) || (NULL == ap_ary)) {
         return OPRT_OS_ADAPTER_INVALID_PARM;
@@ -528,7 +528,7 @@ static OPERATE_RET tkl_wifi_single_ap_scan(const CHAR_T *ssid, AP_IF_S **ap_ary,
  *
  * @note if ssid == NULL means scan all ap, otherwise means scan the specific ssid
  */
-OPERATE_RET tkl_wifi_scan_ap(const CHAR_T *ssid, AP_IF_S **ap_ary, uint32_t *num)
+OPERATE_RET tkl_wifi_scan_ap(const int8_t *ssid, AP_IF_S **ap_ary, uint32_t *num)
 {
     if(first_set_flag) {
         // extern void extended_app_waiting_for_launch(void);
@@ -1330,7 +1330,7 @@ OPERATE_RET tkl_wifi_station_fast_connect(const FAST_WF_CONNECTED_AP_INFO_T *fas
  * @param[in]       passwd
  * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
  */
-OPERATE_RET tkl_wifi_station_connect(const CHAR_T *ssid, const CHAR_T *passwd)
+OPERATE_RET tkl_wifi_station_connect(const int8_t *ssid, const int8_t *passwd)
 {
     bk_printf("%s %d\r\n", __func__, __LINE__);
     int ret = OPRT_COM_ERROR;

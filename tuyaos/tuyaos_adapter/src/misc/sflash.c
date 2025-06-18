@@ -1,4 +1,6 @@
 #include "sflash.h"
+#include <os/os.h>
+#include <os/str.h>
 #include <os/mem.h>
 
 #if CONFIG_SPI_MST_FLASH
@@ -83,16 +85,16 @@ void sflash_printf_buff(const uint8_t *buff, uint32_t len, uint32_t num_per_line
     {
         if((i+1)%16 == 0)
         {
-            os_snprintf(buffer+os_strlen(buffer), sizeof(buffer), "%02x\r\n", buff[i]);
+            os_snprintf((char *)(buffer+os_strlen((const char *)buffer)), sizeof(buffer), "%02x\r\n", buff[i]);
             bk_printf("%s", buffer);
             os_memset(buffer, 0, sizeof(buffer));
         }
         else
         {
-            os_snprintf(buffer+os_strlen(buffer), sizeof(buffer), "%02x ", buff[i]);
+            os_snprintf((char *)(buffer+os_strlen((const char *)buffer)), sizeof(buffer), "%02x ", buff[i]);
         }
     }
-    if(os_strlen(buffer))
+    if(os_strlen((const char *)buffer))
         bk_printf("%s\r\n", buffer);
 #endif
 

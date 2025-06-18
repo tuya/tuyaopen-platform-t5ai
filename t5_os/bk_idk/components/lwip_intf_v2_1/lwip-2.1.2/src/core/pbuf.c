@@ -901,6 +901,7 @@ pbuf_length_get(void *p,u32_t *size)
   }
   else if (alloc_src == PBUF_TYPE_ALLOC_SRC_MASK_STD_MEMP_PBUF)
   {
+    extern u32_t get_mem_size(void *rmem);
     len = get_mem_size(p);
     if(len > SIZEOF_STRUCT_PBUF)
       *size = len - SIZEOF_STRUCT_PBUF;

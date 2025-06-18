@@ -173,7 +173,7 @@ OPERATE_RET tkl_wifi_init(WIFI_EVENT_CB cb)
  *
  * @note if ssid == NULL means scan all ap, otherwise means scan the specific ssid
  */
-OPERATE_RET tkl_wifi_scan_ap(const CHAR_T *ssid, AP_IF_S **ap_ary, uint32_t *num)
+OPERATE_RET tkl_wifi_scan_ap(const char *ssid, AP_IF_S **ap_ary, uint32_t *num)
 {
     struct ipc_msg_s wf_ipc_msg = {0};
     memset(&wf_ipc_msg, 0, sizeof(struct ipc_msg_s));
@@ -743,7 +743,7 @@ OPERATE_RET tkl_wifi_station_fast_connect(const FAST_WF_CONNECTED_AP_INFO_T *fas
  * @param[in]       passwd
  * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
  */
-OPERATE_RET tkl_wifi_station_connect(const CHAR_T *ssid, const CHAR_T *passwd)
+OPERATE_RET tkl_wifi_station_connect(const int8_t *ssid, const int8_t *passwd)
 {
     memset(&fast_dhcp_s, 0, sizeof(FAST_DHCP_INFO_T));
 

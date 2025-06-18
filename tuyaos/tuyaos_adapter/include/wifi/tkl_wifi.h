@@ -413,7 +413,7 @@ OPERATE_RET tkl_wifi_station_fast_connect(const FAST_WF_CONNECTED_AP_INFO_T *fas
  * @param[in]       passwd
  * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
  */
-OPERATE_RET tkl_wifi_station_connect(const char *ssid, const char *passwd);
+OPERATE_RET tkl_wifi_station_connect(const int8_t *ssid, const int8_t *passwd);
 
 /**
  * @brief disconnect wifi from connect ap

@@ -16,6 +16,7 @@
 
 #include <os/os.h>
 #include <components/log.h>
+#include <components/usb.h>
 
 #include "media_core.h"
 #include "media_evt.h"
