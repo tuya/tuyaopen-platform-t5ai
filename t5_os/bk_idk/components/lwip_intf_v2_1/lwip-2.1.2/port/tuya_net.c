@@ -415,7 +415,7 @@ void *net_ip_to_interface(uint32_t ipaddr)
 void *net_sock_to_interface(int sock)
 {
 	struct sockaddr_in peer;
-	unsigned long peerlen = sizeof(struct sockaddr_in);
+	socklen_t peerlen = sizeof(struct sockaddr_in);
 	void *req_iface = NULL;
 
 	getpeername(sock, (struct sockaddr *)&peer, (socklen_t *)&peerlen);
