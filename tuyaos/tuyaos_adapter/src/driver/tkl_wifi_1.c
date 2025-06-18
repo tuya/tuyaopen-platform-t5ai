@@ -173,7 +173,7 @@ OPERATE_RET tkl_wifi_init(WIFI_EVENT_CB cb)
  *
  * @note if ssid == NULL means scan all ap, otherwise means scan the specific ssid
  */
-OPERATE_RET tkl_wifi_scan_ap(const char *ssid, AP_IF_S **ap_ary, uint32_t *num)
+OPERATE_RET tkl_wifi_scan_ap(const int8_t *ssid, AP_IF_S **ap_ary, uint32_t *num)
 {
     struct ipc_msg_s wf_ipc_msg = {0};
     memset(&wf_ipc_msg, 0, sizeof(struct ipc_msg_s));

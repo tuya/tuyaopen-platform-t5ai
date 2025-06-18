@@ -418,7 +418,7 @@ void *net_sock_to_interface(int sock)
 	socklen_t peerlen = sizeof(struct sockaddr_in);
 	void *req_iface = NULL;
 
-	getpeername(sock, (struct sockaddr *)&peer, (socklen_t *)&peerlen);
+	getpeername(sock, (struct sockaddr *)&peer, &peerlen);
 	req_iface = net_ip_to_interface(peer.sin_addr.s_addr);
 	return req_iface;
 }

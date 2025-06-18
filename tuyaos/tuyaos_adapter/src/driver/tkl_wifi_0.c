@@ -122,7 +122,7 @@ void tkl_wifi_ipc_func(struct ipc_msg_s *msg)
             AP_IF_S *ap_ary = NULL;
             uint32_t num = 0;
             char *ssid = (char *)msg->req_param;
-            ret = tkl_wifi_scan_ap(ssid, &ap_ary, &num);//异步？。。。待确认
+            ret = tkl_wifi_scan_ap((int8_t *)ssid, &ap_ary, &num);//异步？。。。待确认
         }
             break;
 
@@ -245,7 +245,7 @@ void tkl_wifi_ipc_func(struct ipc_msg_s *msg)
             struct ipc_msg_param_s *param = (struct ipc_msg_param_s *)msg->req_param;
             char *ssid = (char *)param->p1;
             char *passwd = (char *)param->p2;
-            ret = tkl_wifi_station_connect(ssid, passwd);//异步？。。。 待确认
+            ret = tkl_wifi_station_connect((int8_t *)ssid, (int8_t *)passwd);//异步？。。。 待确认
         }
             break;
 
