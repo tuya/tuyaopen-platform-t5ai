@@ -3,7 +3,8 @@
 
 import os
 import platform
-import urllib
+import urllib.request
+import ssl
 
 from tools.util import (
     get_country_code, rm_rf, calc_sha256,
@@ -88,11 +89,50 @@ efab46f5250505c29cb81f548222d794",
 
     return package_info
 
+
+LAST_PROGRESS = 0
+
+
 def _show_progress(block_num, block_size, total_size):
+    global LAST_PROGRESS
     downloaded = block_num * block_size
-    progress = min(100, (downloaded / total_size) * 100) if total_size > 0 else 0
-    print(f"\rprogress: {progress:.1f}%", end="")
+    progress = 0
+    if total_size > 0:
+        progress = min(100, (downloaded / total_size) * 100)
+
+    progress = int(progress)
+    if LAST_PROGRESS != progress:
+        print(f"\rprogress: {progress}%", end="")
+        LAST_PROGRESS = progress if progress < 100 else 0
     pass
+
+
+def _download_from_url(url, download_file):
+    try:
+        context = ssl._create_unverified_context()
+        with urllib.request.urlopen(url, context=context) as response:
+            total_size = int(response.headers.get('Content-Length', 0))
+            block_size = 8192  # 8KB
+            bytes_downloaded = 0
+
+            with open(download_file, 'wb') as f:
+                while True:
+                    buffer = response.read(block_size)
+                    if not buffer:
+                        break
+
+                    f.write(buffer)
+                    bytes_downloaded += len(buffer)
+                    block_num = bytes_downloaded // block_size
+
+                    _show_progress(block_num, block_size, total_size)
+
+    except Exception as e:
+        print(f"Error: download failed: {str(e)}")
+        rm_rf(download_file)
+        return False
+
+    return True
 
 
 def wget_toolchain_package(toolchain_root,
@@ -106,11 +146,7 @@ def wget_toolchain_package(toolchain_root,
         return True
 
     print(f"[Downloading package]: {url}")
-    try:
-        urllib.request.urlretrieve(url, download_file, _show_progress)
-    except Exception as e:
-        print(f"Error: download failed: {str(e)}")
-        rm_rf(download_file)
+    if not _download_from_url(url, download_file):
         return False
 
     return True
