@@ -51,7 +51,7 @@ def set_environment(root, build_param_path, param_data):
     os.environ["TUYA_LIBS"] = param_data["PLATFORM_NEED_LIBS"]
     os.environ["TUYA_APP_NAME"] = param_data["CONFIG_PROJECT_NAME"]
     open_root = param_data["OPEN_ROOT"]
-    board_path = os.path.join(open_root, "boards", "ESP32")
+    board_path = os.path.join(open_root, "boards", "T5AI")
     os.environ["TUYAOS_BOARD_PATH"] = board_path
     pass
 
