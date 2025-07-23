@@ -2,7 +2,7 @@
 #include <driver/pwm.h>
 #include <driver/pwm_types.h>
 
-#define TUYA_PWM_ID_MAX 5
+#define TUYA_PWM_ID_MAX 6
 #define __PWM_FREQ2PERIOD(x) ((unsigned int)((26000000.0/x)))
 
 static pwm_group_t pwm_group = PWM_GROUP_ID_INVALID;
@@ -27,6 +27,9 @@ pwm_chan_t ty_to_bk_pwm(TUYA_PWM_NUM_E ch_id)
         break;
         case TUYA_PWM_NUM_4:
             pwm = PWM_ID_10;
+        break;
+        case TUYA_PWM_NUM_5:
+            pwm = PWM_ID_3;
         break;
         default:
         break;
