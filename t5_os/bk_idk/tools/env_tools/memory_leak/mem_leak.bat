@@ -1,1 +1,0 @@
-mem_leak.exe mem_log.txt

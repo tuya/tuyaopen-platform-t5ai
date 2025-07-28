@@ -1,0 +1,53 @@
+menu "FLASH"
+	config FLASH
+		bool "Enable flash"
+		default y
+
+	config FLASH_QUAD_ENABLE
+		bool "Enable flash quad enable"
+		default n
+
+	config FLASH_SRC_CLK_60M
+		bool "Enable flash source clock 60M"
+		default n
+
+	config FLASH_MB
+		bool "Enable flash mailbox channel"
+		depends on MAILBOX
+		depends on !SOC_SMP
+		default n
+
+	config FLASH_TEST
+		depends on FLASH
+		bool "Enable flash test"
+		default y
+
+	config PARTITION_TEST
+		depends on FLASH
+		bool "Enable pattition test"
+		default y
+
+	config FLASH_API_TEST
+		depends on FLASH
+		bool "Enable flash_api test"
+		default n
+
+	config FLASH_WRITE_STATUS_VOLATILE
+		bool "Enable write volatile status register"
+		default n
+
+	config FLASH_PARTITION_CHECK_VALID
+		depends on FLASH
+		bool "Enable flash driver check write permission and address range"
+		default y
+
+	config FLASH_CLK_120M
+		depends on FLASH
+		bool "Enable flash clk using 120M"
+		default n
+
+	config FLASH_BYPASS_OTP_OPERATION
+		bool "Bypass flash to operate otp in flash"
+		default n
+endmenu
+

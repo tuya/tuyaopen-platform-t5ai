@@ -1,0 +1,14 @@
+menu "Adk::Audio_streams::Uac_mic_stream"
+	config ADK_UAC_MIC_STREAM
+		depends on ADK
+		depends on USBH_UAC
+		bool "Enable uac mic stream"
+		default n
+
+	config ADK_UAC_MIC_STREAM_TEST
+		depends on ADK_UAC_MIC_STREAM
+		depends on ADK_UART_STREAM
+		bool "Enable uac mic stream test"
+		default n
+
+endmenu

@@ -165,7 +165,7 @@ OPERATE_RET tkl_wired_get_mac(NW_MAC_S *mac)
  *
  * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
  */
-OPERATE_RET tkl_wired_set_mac(const NW_MAC_S *mac)
+OPERATE_RET tkl_wired_set_mac(CONST NW_MAC_S *mac)
 {
     return OPRT_NOT_SUPPORTED;
 }

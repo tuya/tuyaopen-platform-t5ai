@@ -1,0 +1,6 @@
+id,     name,                           size,       offset,        end,           privilege,             security
+0,      OTP_PHY_PWR,                    64,         0x0,           0x40,        OTP_READ_WRITE,           FALSE,
+1,      OTP_RFCALI1,                    256,        0x40,          0x140,       OTP_READ_WRITE,           FALSE,
+2,      OTP_RFCALI2,                    256,        0x140,         0x240,       OTP_READ_WRITE,           FALSE,
+3,      OTP_RFCALI3,                    256,        0x240,         0x340,       OTP_READ_WRITE,           FALSE,
+4,      OTP_RFCALI4,                    256,        0x340,         0x440,       OTP_READ_WRITE,           FALSE,

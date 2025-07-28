@@ -74,38 +74,20 @@ def parse_file(file):
             # 更新结束地址
             last_end_address += length_bytes
 
-        print(Part_Item)
+def create_padded_file(bin0_path, bin1_path, output_path, total_length=4 * 1024 * 1024):
 
-def create_padded_file(bin0_path, bin1_path, bin2_path, output_path, total_length=4 * 1024 * 1024):
-
-    app0 = Part_Item.find_partition('app')
-    app1 = Part_Item.find_partition('app1')
-    if bin2_path is not None:
-        app2 = Part_Item.find_partition('app2')
-
-    print(app0)
-    print(app1)
-    if bin2_path is not None:
-        print(app2)
+    cp = Part_Item.find_partition('primary_cp_app')
+    ap = Part_Item.find_partition('primary_ap_app')
 
     # 获取每个文件的大小
     length_0 = os.path.getsize(bin0_path)
     length_1 = os.path.getsize(bin1_path)
-    if bin2_path is not None:
-        length_2 = os.path.getsize(bin2_path)
-
 
     # 计算填充的大小
-    padding_0_length = app0.length - length_0
-    if bin2_path is not None:
-        padding_1_length = app1.length - length_1
-    else:
-        padding_1_length = 0
+    padding_0_length = cp.length - length_0
 
-    print("cpu0 size {}, partition size {}, padding {}".format(length_0, app0.length, padding_0_length))
-    print("cpu1 size {}, partition size {}, padding {}".format(length_1, app1.length, padding_1_length))
-    if bin2_path is not None:
-        print("cpu2 size {}, partition size {}".format(length_2, app2.length))
+    print("cp size {}, real size {}, partition size {}, padding {}".format(length_0, cp.length, int((cp.length / 32) * 34), padding_0_length))
+    print("ap size {}, real size {}, partition size {}".format(length_1, ap.length, int((ap.length / 32) * 34)))
 
     with open(output_path, 'wb') as output_file:
         # 读取第一个二进制文件并写入输出文件
@@ -119,33 +101,19 @@ def create_padded_file(bin0_path, bin1_path, bin2_path, output_path, total_lengt
         with open(bin1_path, 'rb') as bin2_file:
             output_file.write(bin2_file.read(length_1))
 
-        if bin2_path is not None:
-            # 写入填充
-            output_file.write(bytes([0xFF] * padding_1_length))
-
-            # 读取第三个二进制文件并写入输出文件
-            with open(bin2_path, 'rb') as bin3_file:
-                output_file.write(bin3_file.read(length_2))
-
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description='handle arguments')
     parser.add_argument('partition_file', type=str, help='partition file')
-    parser.add_argument('cpu0_bin', type=str, help='cpu0 bin file')
-    parser.add_argument('cpu1_bin', type=str, help='cpu1 bin file')
-    parser.add_argument('--cpu2_bin', type=str, help='cpu2 bin file')
+    parser.add_argument('cp_bin', type=str, help='cp bin file')
+    parser.add_argument('ap_bin', type=str, help='ap bin file')
     parser.add_argument('--ua_file', type=str, default='ua.bin', help='ua path')
 
     args = parser.parse_args()
-    print(f"partition_file: {args.partition_file}")
 
     parse_file(args.partition_file)
 
-    print(Part_Item)
-
-    print(args.ua_file)
-
-    create_padded_file(args.cpu0_bin, args.cpu1_bin, args.cpu2_bin, args.ua_file)
+    create_padded_file(args.cp_bin, args.ap_bin, args.ua_file)
 
 
 

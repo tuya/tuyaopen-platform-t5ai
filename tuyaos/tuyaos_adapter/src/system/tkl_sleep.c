@@ -15,7 +15,8 @@
 #include "uart_statis.h"
 #include "bk_uart.h"
 #include "tuya_gpio_map.h"
-#include "bk_pm_internal_api.h"
+
+static uint32_t is_prepare_deepsleep = 0;
 
 extern void tkl_set_ll_wakeup_source(void);
 extern void bk_printf(const char *fmt, ...);
@@ -33,7 +34,10 @@ extern void bk_printf(const char *fmt, ...);
 alarm_info_t low_valtage_alarm;
 void _bk_rtc_wakeup_register(unsigned int rtc_time)
 {
-    bk_printf("%s\r\n", __func__);
+    if (is_prepare_deepsleep)
+        return;
+
+    bk_printf("TODO %s\r\n", __func__);
     memcpy(low_valtage_alarm.name, "rtc_wakeup", sizeof("rtc_wakeup"));
     low_valtage_alarm.period_tick = rtc_time*AON_RTC_MS_TICK_CNT;
     low_valtage_alarm.period_cnt = 0xFFFFFFFF;
@@ -41,15 +45,15 @@ void _bk_rtc_wakeup_register(unsigned int rtc_time)
     low_valtage_alarm.param_p = NULL;
 
     //force unregister previous if doesn't finish.
-    bk_alarm_unregister(AON_RTC_ID_1, low_valtage_alarm.name);
-    bk_alarm_register(AON_RTC_ID_1, &low_valtage_alarm);
-    bk_pm_wakeup_source_set(PM_WAKEUP_SOURCE_INT_RTC, NULL);
+    // bk_alarm_unregister(AON_RTC_ID_1, low_valtage_alarm.name);
+    // bk_alarm_register(AON_RTC_ID_1, &low_valtage_alarm);
+    // bk_pm_wakeup_source_set(PM_WAKEUP_SOURCE_INT_RTC, NULL);
 }
 
 void _bk_rtc_wakeup_unregister(void)
 {
-    bk_printf("%s\r\n", __func__);
-    bk_alarm_unregister(AON_RTC_ID_1, low_valtage_alarm.name);
+    bk_printf("TODO %s\r\n", __func__);
+    // bk_alarm_unregister(AON_RTC_ID_1, low_valtage_alarm.name);
 }
 #endif // CONFIG_AON_RTC
 
@@ -100,6 +104,7 @@ OPERATE_RET tkl_cpu_sleep_mode_set(BOOL_T enable, TUYA_CPU_SLEEP_MODE_E mode)
         if(enable) {
             // PM_MODE_DEEP_SLEEP
             bk_printf("prepare to deepsleep\r\n");
+            is_prepare_deepsleep = 1;
 
             __pm_debug_8();
 

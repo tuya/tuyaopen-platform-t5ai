@@ -1,0 +1,13 @@
+menu "Adk::Audio_streams::Fatfs_stream"
+	config ADK_FATFS_STREAM
+		depends on ADK
+		depends on FATFS
+		bool "Enable Audio Fatfs stream"
+		default n
+
+	config ADK_FATFS_STREAM_TEST
+		depends on ADK_FATFS_STREAM
+		bool "Enable Audio Fatfs stream test"
+		default n
+
+endmenu

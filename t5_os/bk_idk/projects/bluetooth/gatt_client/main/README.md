@@ -1,1 +1,0 @@
-# ble gatt client demo.

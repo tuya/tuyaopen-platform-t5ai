@@ -1,0 +1,39 @@
+menu "CAMERA"
+	config DVP_CAMERA
+		bool "Enable Camera"
+		depends on YUV_BUF
+		depends on GENERAL_DMA
+		default n
+		help
+			Enable camera interface
+
+	config DVP_CAMERA_I2C_ID
+		int "Set Camera I2c Id"
+		range 0 2
+		default 0
+		help
+			The value should be changed if need to change i2c id
+
+	config DVP_POWER_GPIO_CTRL
+		bool "Enable dvp camera power gpio ctrl"
+		default n
+
+	config DVP_CTRL_POWER_GPIO_ID
+		int "the gpio id control dvp camera power"
+		default 9
+
+	config ENCODE_BUF_NOT_FREE
+		bool "encode buffer when repeate malloc and free, cannot malloc success, so not free, until close all vidoe function"
+		default n
+
+	config JPEG_FRAME_SIZE
+		int "config a jpeg frame size unit(byte), range 0-200k, default 100k"
+		range 0 204800
+		default 102400
+
+	config H264_FRAME_SIZE
+		int "config a h264 NALU size unit(byte), range 0-200k, default 100k"
+		range 0 204800
+		default 102400
+
+endmenu

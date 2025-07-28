@@ -16,8 +16,8 @@
 extern "C" {
 #endif
 
-typedef void* TKL_THREAD_HANDLE;
-typedef void (*THREAD_FUNC_T)(void*);
+typedef VOID_T* TKL_THREAD_HANDLE;
+typedef VOID_T (*THREAD_FUNC_T)(VOID_T*);
 
 /**
 * @brief Create thread
@@ -34,12 +34,36 @@ typedef void (*THREAD_FUNC_T)(void*);
 * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
 */
 OPERATE_RET tkl_thread_create(TKL_THREAD_HANDLE* thread,
-                              const char* name,
-                              uint32_t stack_size,
-                              uint32_t priority,
-                              const THREAD_FUNC_T func,
-                              void* const arg);
+                              CONST CHAR_T* name,
+                              UINT_T stack_size,
+                              UINT_T priority,
+                              CONST THREAD_FUNC_T func,
+                              VOID_T* CONST arg);
 
+#if (CONFIG_FREERTOS_SMP)
+/**
+* @brief Create thread with affinity
+*
+* @param[out] thread: thread handle
+* @param[in] affinity: thread bind cpu mask
+* @param[in] name: thread name
+* @param[in] stack_size: stack size of thread
+* @param[in] priority: priority of thread
+* @param[in] func: the main thread process function
+* @param[in] arg: the args of the func, can be null
+*
+* @note This API is used for creating thread.
+*
+* @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
+*/
+OPERATE_RET tkl_thread_smp_create(TKL_THREAD_HANDLE* thread,
+                           UINT_T affinity,
+                           CONST CHAR_T* name,
+                           UINT_T stack_size,
+                           UINT_T priority,
+                           THREAD_FUNC_T func,
+                           VOID_T* CONST arg);
+#endif
 /**
 * @brief Terminal thread and release thread resources
 *
@@ -49,7 +73,7 @@ OPERATE_RET tkl_thread_create(TKL_THREAD_HANDLE* thread,
 *
 * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
 */
-OPERATE_RET tkl_thread_release(const TKL_THREAD_HANDLE thread);
+OPERATE_RET tkl_thread_release(CONST TKL_THREAD_HANDLE thread);
 
 /**
 * @brief Get the thread stack's watermark
@@ -61,7 +85,7 @@ OPERATE_RET tkl_thread_release(const TKL_THREAD_HANDLE thread);
 *
 * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
 */
-OPERATE_RET tkl_thread_get_watermark(const TKL_THREAD_HANDLE thread, uint32_t* watermark);
+OPERATE_RET tkl_thread_get_watermark(CONST TKL_THREAD_HANDLE thread, UINT_T* watermark);
 
 /**
 * @brief Get the thread thread handle
@@ -83,7 +107,7 @@ OPERATE_RET tkl_thread_get_id(TKL_THREAD_HANDLE *thread);
 *
 * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
 */
-OPERATE_RET tkl_thread_set_self_name(const char* name);
+OPERATE_RET tkl_thread_set_self_name(CONST CHAR_T* name);
 
 
 /**
@@ -108,7 +132,7 @@ OPERATE_RET tkl_thread_is_self(TKL_THREAD_HANDLE thread, BOOL_T* is_self);
 *
 * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
 */
-OPERATE_RET tkl_thread_get_priority(TKL_THREAD_HANDLE thread, int *priority);
+OPERATE_RET tkl_thread_get_priority(TKL_THREAD_HANDLE thread, INT_T *priority);
 
 /**
 * @brief Set thread priority
@@ -120,7 +144,7 @@ OPERATE_RET tkl_thread_get_priority(TKL_THREAD_HANDLE thread, int *priority);
 *
 * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
 */
-OPERATE_RET tkl_thread_set_priority(TKL_THREAD_HANDLE thread, int priority);
+OPERATE_RET tkl_thread_set_priority(TKL_THREAD_HANDLE thread, INT_T priority);
 
 /**
 * @brief Diagnose the thread(dump task stack, etc.)
@@ -150,11 +174,11 @@ OPERATE_RET tkl_thread_diagnose(TKL_THREAD_HANDLE thread);
 * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
 */
 OPERATE_RET tkl_thread_create_in_psram(TKL_THREAD_HANDLE* thread,
-                              const char* name,
-                              uint32_t stack_size,
-                              uint32_t priority,
-                              const THREAD_FUNC_T func,
-                              void* const arg);
+                              CONST CHAR_T* name,
+                              UINT_T stack_size,
+                              UINT_T priority,
+                              CONST THREAD_FUNC_T func,
+                              VOID_T* CONST arg);
 
 
 #endif

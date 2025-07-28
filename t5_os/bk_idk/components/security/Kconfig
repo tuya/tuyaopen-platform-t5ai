@@ -1,5 +1,0 @@
-menu "Security"
-	config SECURITY
-		bool "Enable Security"
-		default n
-endmenu

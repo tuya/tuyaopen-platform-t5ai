@@ -14,7 +14,6 @@
 #include <stdint.h>
 #include "sdkconfig.h"
 #include "gpio_map.h"
-#include "driver/media_types.h"
 #include "tkl_gpio.h"
 
 /****************************************************************************
@@ -46,9 +45,7 @@ uint32_t mem_sanity_check(void *mem)
     return 1;
 }
 #endif
-
-extern bk_err_t media_app_get_usb_connect_status(void);
-#include "tkl_system.h"
+#if 0
 void tuya_get_usb_dev(uint32_t *vid, uint32_t *pid)
 {
     int cnt = 10, status = 0;
@@ -56,9 +53,9 @@ void tuya_get_usb_dev(uint32_t *vid, uint32_t *pid)
         return;
 
     TUYA_GPIO_BASE_CFG_T cfg;
-    cfg.mode   = TUYA_GPIO_PULLUP;
+    cfg.mode = TUYA_GPIO_PULLUP;
     cfg.direct = TUYA_GPIO_OUTPUT;
-    cfg.level  = TUYA_GPIO_LEVEL_HIGH;
+    cfg.level = TUYA_GPIO_LEVEL_HIGH;
     tkl_gpio_init(TUYA_GPIO_NUM_28, &cfg);
 
     tkl_gpio_write(TUYA_GPIO_NUM_28, TUYA_GPIO_LEVEL_HIGH);
@@ -81,6 +78,8 @@ void tuya_get_usb_dev(uint32_t *vid, uint32_t *pid)
 #if CONFIG_SYS_CPU0 && CONFIG_SOC_BK7258
 #include "tuya_cloud_types.h"
 #include "tkl_gpio.h"
+#include "tkl_display.h"
+
 enum {
     MUTIL_INIT = 0,
     MUTIL_ON,
@@ -120,6 +119,7 @@ static inline int __attribute__((always_inline)) gpio_level_check_and_set(uint32
     return expect;
 }
 
+static uint32_t is_init = 0;
 static void __mutil_power_init(void)
 {
 #if CONFIG_TUYA_LOGIC_MODIFY
@@ -153,7 +153,7 @@ void tuya_multimedia_power_on(void)
 #if CONFIG_TUYA_LOGIC_MODIFY
 //    if (!is_init) {
         __mutil_power_init();
-        // is_init = 1;
+        is_init = 1;
 //    }
     uint8_t usb_ldo, lcd_ldo, lcd_bl, active_level;
     // 3.3V / USB Enable
@@ -172,7 +172,7 @@ void tuya_multimedia_power_off(void)
 #if CONFIG_TUYA_LOGIC_MODIFY
 //    if (!is_init) {
         __mutil_power_init();
-        // is_init = 1;
+        is_init = 1;
 //    }
 
     uint8_t usb_ldo, lcd_ldo, lcd_bl, active_level;
@@ -195,10 +195,31 @@ void tuya_multimedia_power_off(void)
 
 #endif // CONFIG_SYS_CPU0 && CONFIG_SOC_BK7258
 
-#if CONFIG_SYS_CPU0
 uint8_t* dhcp_lookup_mac(uint8_t *chaddr)
 {
     return NULL;
 }
-#endif
+#endif // CONFIG_SYS_CPU0 && CONFIG_SOC_BK7258
+
+VOID tkl_data_dump(CONST int     level,
+        CONST CHAR_T              *file,
+        CONST INT_T               line,
+        CONST CHAR_T              *title,
+        UINT8_T                   width,
+        UINT8_T                   *buf,
+        UINT16_T                  size)
+{
+    int i = 0;
+
+    if (width < 64) {
+        width = 64;
+    }
+    bk_printf("cpu 0: %s %d <%p>", title, size, buf);
+    shell_log_raw_data(buf, size);
+    bk_printf("\r\n\r\n");
+}
+
+void _fini(void) {
+    // 空实现
+}
 

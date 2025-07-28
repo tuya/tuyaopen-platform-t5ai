@@ -1,0 +1,7 @@
+menu "Draw Blend"
+
+	config BLEND
+        depends on MEDIA
+		bool "Enable Draw Blend"
+		default y
+endmenu

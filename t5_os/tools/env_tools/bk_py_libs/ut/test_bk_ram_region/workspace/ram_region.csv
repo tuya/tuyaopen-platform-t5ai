@@ -1,0 +1,13 @@
+PSRAM_CAPCAITY_SIZE=8M
+#Name,                   Type,     Offset,     Size
+AP_SPINLOCK,             SRAM, 0x28000000, 0x010000
+AP_RAM,                  SRAM,           , 0x054000
+CP_RAM,                  SRAM,           , 0x03b800
+SWAP,                    SRAM,           , 0x000800
+PSRAM_MEM_SLAB_USER,    PSRAM, 0x60000000, 0x019000
+PSRAM_MEM_SLAB_AUDIO,   PSRAM,           , 0x019000
+PSRAM_MEM_SLAB_ENCODE,  PSRAM,           , 0x15E000
+PSRAM_MEM_SLAB_DISPLAY, PSRAM,           , 0x570000
+CP_PSRAM_HEAP,          PSRAM,           , 0x020000
+AP_PSRAM_HEAP,          PSRAM,           , 0x0a0000
+AP_PSRAM_SECTION,       PSRAM,           , 0x040000

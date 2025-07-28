@@ -1,6 +1,0 @@
-menu "Modules::Bk_airkiss"
-	config BK_AIRKISS
-		depends on WIFI_ENABLE
-		bool "Enable Bk Airkiss" 
-		default n
-endmenu

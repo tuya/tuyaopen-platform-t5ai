@@ -1,3 +1,0 @@
-# aboot
-
-Armino Bootloader

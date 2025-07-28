@@ -1,0 +1,24 @@
+menu "MAILBOX"
+	config MAILBOX
+		bool "Enable mail_box"
+		default n
+
+	config MAILBOX_V2_0
+		bool "Use mailbox v2.0 driver"
+		default n
+
+	config MAILBOX_IPC
+		bool "Enable mailbox socket ipc driver"
+		default y
+
+	config MAILBOX_IPC_API_TASK_STACK_SIZE
+		int "Set MAILBOX IPC API Task Stack Size"
+		default 2048
+		help
+			Stack size of MAILBOX IPC API Task
+
+    config SLAVE_HEART_BEAT
+		depends on MAILBOX
+		bool "Enable heartbeat mechanism when dual core communication"
+		default n
+endmenu

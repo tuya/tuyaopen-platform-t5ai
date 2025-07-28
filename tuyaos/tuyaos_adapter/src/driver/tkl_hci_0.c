@@ -8,36 +8,15 @@
 #include <components/bluetooth/bk_ble.h>
 #include "tkl_ipc.h"
 
-#define TKL_DEBUG 1
+#define TKL_DEBUG 0
 
 #if !CFG_USE_BK_HOST
 extern void ble_entry(void);
 extern void bk_printf(const char *fmt, ...);
-extern OPERATE_RET tuya_ipc_send_sync(struct ipc_msg_s *msg);
-extern OPERATE_RET tuya_ipc_send_no_sync(struct ipc_msg_s *msg);
 
-VOID tal_log_hex_dump(const int     level,
-                      const char              *file,
-                      const int               line,
-                      const char                    *title,
-                      uint8_t                   width,
-                      uint8_t                   *buf,
-                      uint16_t                  size)
-{
-    int i = 0;
-
-    if (width < 64) {
-        width = 64;
-    }
-    bk_printf("cpu 0: %s %d <%p>", title, size, buf);
-    for (i = 0; i < size; i++) {
-        bk_printf("%02x ", buf[i]&0xFF);
-        if ((i+1)%width == 0) {
-            bk_printf("\r\n");
-        }
-    }
-    bk_printf("\r\n\r\n");
-}
+extern VOID tkl_data_dump(CONST int level,
+        CONST CHAR_T *file, CONST INT_T line, CONST CHAR_T *title,
+        UINT8_T width, UINT8_T *buf, UINT16_T size);
 
 
 // static TKL_HCI_FUNC_CB s_evt_cb = NULL;
@@ -92,6 +71,10 @@ void tkl_hci_ipc_func(struct ipc_msg_s *msg)
 
 OPERATE_RET tkl_hci_init(VOID)
 {
+#if TKL_DEBUG == 1
+    bk_printf("trace cpu%d %s %d\n", CONFIG_CPU_INDEX, __func__, __LINE__);
+#endif
+
 //    bk_printf("%s\n", __func__);
     //bk_bluetooth_init();
     ble_init_flag = TRUE;
@@ -100,8 +83,8 @@ OPERATE_RET tkl_hci_init(VOID)
 
 OPERATE_RET tkl_hci_deinit(VOID)
 {
-#if TKL_DEBUG
-    bk_printf("%s\n", __func__);
+#if TKL_DEBUG == 1
+    bk_printf("trace cpu%d %s %d\n", CONFIG_CPU_INDEX, __func__, __LINE__);
 #endif
 
     bk_bluetooth_deinit();
@@ -111,23 +94,26 @@ OPERATE_RET tkl_hci_deinit(VOID)
 
 OPERATE_RET tkl_hci_reset(VOID)
 {
-#if TKL_DEBUG
-    bk_printf("%s\n", __func__);
+#if TKL_DEBUG == 1
+    bk_printf("trace cpu%d %s %d\n", CONFIG_CPU_INDEX, __func__, __LINE__);
 #endif
 
     bk_bluetooth_deinit();
+    tkl_system_sleep(100);
     bk_bluetooth_init();
 
     return OPRT_OK;
 }
 
-OPERATE_RET tkl_hci_cmd_packet_send(const uint8_t *p_buf, uint16_t buf_len)
+OPERATE_RET tkl_hci_cmd_packet_send(CONST UCHAR_T *p_buf, USHORT_T buf_len)
 {
 #if TKL_DEBUG >= 5
     bk_printf("%s op 0x%04X\n", __func__, (uint16_t)((((uint16_t)p_buf[1]) << 8) | p_buf[0]));
     bk_printf("====================>\n");
-    tal_log_hex_dump(0, __FILE__,  __LINE__, "data", 64, p_buf, buf_len);
+    tkl_data_dump(0, __FILE__,  __LINE__, "hci data", 64, p_buf, buf_len);
     bk_printf("<====================\n");
+#elif TKL_DEBUG == 1
+    bk_printf("trace cpu%d %s %d\n", CONFIG_CPU_INDEX, __func__, __LINE__);
 #endif
     if (!bk_bluetooth_get_status()) {
         return OPRT_COM_ERROR;
@@ -144,7 +130,7 @@ OPERATE_RET tkl_hci_cmd_packet_send(const uint8_t *p_buf, uint16_t buf_len)
 }
 
 
-OPERATE_RET tkl_hci_acl_packet_send(const uint8_t *p_buf, uint16_t buf_len)
+OPERATE_RET tkl_hci_acl_packet_send(CONST UCHAR_T *p_buf, USHORT_T buf_len)
 {
     if (!bk_bluetooth_get_status()) {
         return OPRT_COM_ERROR;
@@ -153,8 +139,10 @@ OPERATE_RET tkl_hci_acl_packet_send(const uint8_t *p_buf, uint16_t buf_len)
 #if TKL_DEBUG  >= 5
     bk_printf("%s handle 0x%04X\n", __func__, (uint16_t)((((uint16_t)p_buf[1]) << 8) | p_buf[0]));
     bk_printf("====================>\n");
-    tal_log_hex_dump(0, __FILE__,  __LINE__, "data", 64, p_buf, buf_len);
+    tkl_data_dump(0, __FILE__,  __LINE__, "hci data", 64, p_buf, buf_len);
     bk_printf("<====================\n");
+#elif TKL_DEBUG == 1
+    bk_printf("trace cpu%d %s %d\n", CONFIG_CPU_INDEX, __func__, __LINE__);
 #endif
 
     ble_err_t ret = 0;
@@ -178,8 +166,10 @@ static ble_err_t _ble_hci_evt_to_host_cb(uint8_t *buf, uint16_t len)
 #if TKL_DEBUG  >= 5
     bk_printf("cpu 0: %s\n", __func__);
     bk_printf("cpu 0: ====================>\n");
-    tal_log_hex_dump(0, __FILE__,  __LINE__, "data", 64, buf, len);
+    tkl_data_dump(0, __FILE__,  __LINE__, "hci data", 64, buf, len);
     bk_printf("cpu 0: <====================\n");
+#elif TKL_DEBUG == 1
+    bk_printf("trace cpu%d %s %d\n", CONFIG_CPU_INDEX, __func__, __LINE__);
 #endif
 
     OPERATE_RET ret = tuya_ipc_send_sync(&hci_msg);
@@ -201,8 +191,10 @@ static ble_err_t _ble_hci_acl_to_host_cb(uint8_t *buf, uint16_t len)
 #if TKL_DEBUG  >= 5
     bk_printf("cpu 0: %s\n", __func__);
     bk_printf("cpu 0: ====================>\n");
-    tal_log_hex_dump(0, __FILE__,  __LINE__, "data", 64, buf, len);
+    tkl_data_dump(0, __FILE__,  __LINE__, "hci data", 64, buf, len);
     bk_printf("cpu 0: <====================\n");
+#elif TKL_DEBUG == 1
+    bk_printf("trace cpu%d %s %d\n", CONFIG_CPU_INDEX, __func__, __LINE__);
 #endif
 
     OPERATE_RET ret = tuya_ipc_send_sync(&hci_msg);
@@ -213,10 +205,10 @@ static ble_err_t _ble_hci_acl_to_host_cb(uint8_t *buf, uint16_t len)
 }
 
 
-OPERATE_RET tkl_hci_callback_register(const TKL_HCI_FUNC_CB hci_evt_cb, const TKL_HCI_FUNC_CB acl_pkt_cb)
+OPERATE_RET tkl_hci_callback_register(CONST TKL_HCI_FUNC_CB hci_evt_cb, CONST TKL_HCI_FUNC_CB acl_pkt_cb)
 {
-#if TKL_DEBUG
-    bk_printf("%s %p %p\n", __func__, hci_evt_cb, acl_pkt_cb);
+#if TKL_DEBUG == 1
+    bk_printf("trace cpu%d %s %d\n", CONFIG_CPU_INDEX, __func__, __LINE__);
 #endif
 
     ble_err_t ret = 0;

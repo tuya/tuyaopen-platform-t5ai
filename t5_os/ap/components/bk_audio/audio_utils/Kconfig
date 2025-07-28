@@ -1,0 +1,22 @@
+menu "Adk::Audio_utils"
+
+	config ADK_UTILS
+		bool "Enable ADK Debug Utils"
+		default y
+
+	config ADK_UART_UTIL
+		depends on ADK_UTILS
+		bool "Enable ADK Uart Debug Util"
+		default y
+
+	config ADK_COUNT_UTIL
+		depends on ADK_UTILS
+		bool "Enable ADK Count Debug Util"
+		default y
+
+	config ADK_TFCARD_UTIL
+		depends on ADK_UTILS && FATFS
+		bool "Enable ADK Tfcard Debug Util"
+		default y
+
+endmenu

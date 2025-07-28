@@ -1,3 +1,0 @@
-config C1
-	bool "Enable component c1"
-	default y

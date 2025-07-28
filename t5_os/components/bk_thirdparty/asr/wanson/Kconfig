@@ -1,9 +1,0 @@
-menu "Bk_thirdparty::Wanson"
-
-	config WANSON_ASR
-		bool "Enable Wanson ASR"
-		default n
-		help
-			Enable Wanson Automatic Speech Recognition
-
-endmenu

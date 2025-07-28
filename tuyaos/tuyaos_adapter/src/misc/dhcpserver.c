@@ -4,7 +4,7 @@
  *
  */
 #ifndef ENABLE_TUYA_DHCPS
-#define ENABLE_TUYA_DHCPS 1
+#define ENABLE_TUYA_DHCPS 0     // TODO
 #endif
 
 #if ENABLE_TUYA_DHCPS
@@ -17,7 +17,7 @@
 #include "lwip/mem.h"
 #include "lwip/ip_addr.h"
 #include "ethernetif.h" //add by tuya
-#include <assert.h>
+
 #include "dhcpserver.h"
 #include "dhcpserver_options.h"
 

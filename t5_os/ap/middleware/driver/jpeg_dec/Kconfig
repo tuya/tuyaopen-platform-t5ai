@@ -1,0 +1,16 @@
+menu "JPEG_DEC"
+	config JPEGDEC_HW
+		bool "Enable JPEGDEC Display"
+		default n
+
+	config JPEGDEC_HW_SUPPORT_DRI
+		depends on JPEGDEC_HW
+		bool "Enable JPEGDEC support dri"
+		default y
+
+	config JPEGDEC_HW_SUPPORT_FFD9_CHECK
+		depends on JPEGDEC_HW
+		bool "Enable JPEGDEC ff d9 check"
+		default n
+
+endmenu

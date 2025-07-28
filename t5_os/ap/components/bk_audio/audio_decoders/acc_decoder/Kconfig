@@ -1,0 +1,12 @@
+menu "Adk::Audio_decoders::AAC_decoder"
+	config ADK_AAC_DECODER
+		depends on ADK
+		bool "Enable Audio AAC Decoder"
+		default n
+
+	config ADK_AAC_DECODER_TEST
+		depends on ADK_AAC_DECODER && ADK_FATFS_STREAM
+		bool "Enable Audio AAC Decoder test"
+		default n
+
+endmenu

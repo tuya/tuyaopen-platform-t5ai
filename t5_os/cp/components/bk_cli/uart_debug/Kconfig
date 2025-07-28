@@ -1,0 +1,15 @@
+menu "modules::uart_debug"
+	config UART_DEBUG
+		depends on UART_ATE_PORT
+		bool "Enable Uart Debug"
+		default n
+
+	config ATE
+		bool "Enable ATE"
+		default y
+
+	config ATE_TEST
+		depends on ATE
+		bool "Enable ATE Test"
+		default n
+endmenu

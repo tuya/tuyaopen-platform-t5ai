@@ -1,0 +1,17 @@
+# please read doc: https://docs.bekencorp.com/arminodoc/bk_avdk_smp/smp_doc/bk7258/zh_CN/v3.0.1/developer-guide/config_tools/bk_config_ram_regions.html
+# SRAM base addr is 0x28000000, capacity is 640K
+# PSRAM base addr is 0x60000000
+PSRAM_CAPCAITY_SIZE=8M
+#Name,                   Type,     Offset,     Size
+AP_SPINLOCK,             SRAM, 0x28000000, 0x010000
+AP_RAM,                  SRAM,           , 0x054000
+CP_RAM,                  SRAM,           , 0x03b700
+PWR_MNG,                 SRAM,           , 0x000100
+SWAP,                    SRAM,           , 0x000800
+PSRAM_MEM_SLAB_USER,    PSRAM, 0x60000000, 0x019000
+PSRAM_MEM_SLAB_AUDIO,   PSRAM,           , 0x019000
+PSRAM_MEM_SLAB_ENCODE,  PSRAM,           , 0x15E000
+PSRAM_MEM_SLAB_DISPLAY, PSRAM,           , 0x570000
+CP_PSRAM_HEAP,          PSRAM,           , 0x020000
+AP_PSRAM_HEAP,          PSRAM,           , 0x0a0000
+AP_PSRAM_SECTION,       PSRAM,           , 0x040000

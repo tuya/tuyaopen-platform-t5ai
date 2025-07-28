@@ -77,48 +77,48 @@ typedef enum
 
 typedef struct
 {
-    uint8_t platform_dai_type;                           // 0--IIS类型的AUDIO 1--DAC类型的AUDIO
-    uint8_t platform_dai_port;                           // 选择哪个DAC ADC 或者 IIS
-    uint8_t platform_dai_left_subport;                   // platform_dai_type == 1时，选择哪个DAC,ADC Chanel 作为左声道 0xff无效
-    uint8_t platform_dai_right_subport;                  // platform_dai_type == 1时   选择哪个DAC,ADC Chanel 作为右声道          0xff无效
-    uint8_t codec_i2c;                                   // platform_dai_type == 0时 codec使用哪个I2C 0xff无效
-    uint8_t codec_i2c_addr;                              // platform_dai_type == 0时 codec的I2C地址       0xff无效
+    BYTE_T platform_dai_type;                           // 0--IIS类型的AUDIO 1--DAC类型的AUDIO
+    BYTE_T platform_dai_port;                           // 选择哪个DAC ADC 或者 IIS
+    BYTE_T platform_dai_left_subport;                   // platform_dai_type == 1时，选择哪个DAC,ADC Chanel 作为左声道 0xff无效
+    BYTE_T platform_dai_right_subport;                  // platform_dai_type == 1时   选择哪个DAC,ADC Chanel 作为右声道          0xff无效
+    BYTE_T codec_i2c;                                   // platform_dai_type == 0时 codec使用哪个I2C 0xff无效
+    BYTE_T codec_i2c_addr;                              // platform_dai_type == 0时 codec的I2C地址       0xff无效
 }TKL_AUDIO_HARDWARE_SOURCE;
 
 typedef struct
 {
     TKL_MEDIA_FRAME_TYPE_E   type;                       // frame type
-    char                  *pbuf;                       // buffer
-    uint32_t                   buf_size;                   // buffer size
-    uint32_t                   used_size;                  // used buffer
-    uint64_t                 pts;                        // sdk pts
-    uint64_t                 timestamp;                  // system utc time，unit: ms
+    CHAR_T                  *pbuf;                       // buffer
+    UINT_T                   buf_size;                   // buffer size
+    UINT_T                   used_size;                  // used buffer
+    UINT64_T                 pts;                        // sdk pts
+    UINT64_T                 timestamp;                  // system utc time，unit: ms
     TKL_MEDIA_CODEC_TYPE_E   codectype;                  // codec type
     TKL_AUDIO_SAMPLE_E       sample;                     // sample
     TKL_AUDIO_DATABITS_E     datebits;                   // date bit
     TKL_AUDIO_CHANNEL_E      channel;                    // channel num
-    uint32_t                   seq;                        // frame sequence number
+    UINT_T                   seq;                        // frame sequence number
 }TKL_AUDIO_FRAME_INFO_T;                                 // audio frame
 
-typedef int (*TKL_FRAME_PUT_CB)(TKL_AUDIO_FRAME_INFO_T *pframe);
-typedef int (*TKL_FRAME_SPK_CB)(void *arg);
+typedef INT_T (*TKL_FRAME_PUT_CB)(TKL_AUDIO_FRAME_INFO_T *pframe);
+typedef INT_T (*TKL_FRAME_SPK_CB)(VOID *arg);
 
 typedef struct
 {
-    uint32_t                  enable;                      // 1,enable,0,disable
-    uint32_t                  card;                        // audio card num
+    UINT_T                  enable;                      // 1,enable,0,disable
+    UINT_T                  card;                        // audio card num
     TKL_AI_CHN_E            ai_chn;                      // audio input channel
     TKL_AUDIO_SAMPLE_E      sample;                      // sample
     TKL_AUDIO_DATABITS_E    datebits;                    // datebit
     TKL_AUDIO_CHANNEL_E     channel;                     // channel num
     TKL_MEDIA_CODEC_TYPE_E  codectype;                   // codec type
-    int                 is_softcodec;                // 1, soft encode，0, hardware encode
-    uint32_t                  fps;                         // frame per second，suggest 25
-    int                 mic_volume;                  // mic volume,[0,100]
-    int                 spk_volume;                  // spk volume,[0,100]
-    int                 spk_volume_offset;           // spk volume offset, for adapting different speakers,The default value is 0,[0,100]
-    int                 spk_gpio;                    // spk amplifier pin number, <0, no amplifier
-    int                 spk_gpio_polarity;           // pin polarity, 0 high enable, 1 low enable
+    INT32_T                 is_softcodec;                // 1, soft encode，0, hardware encode
+    UINT_T                  fps;                         // frame per second，suggest 25
+    INT32_T                 mic_volume;                  // mic volume,[0,100]
+    INT32_T                 spk_volume;                  // spk volume,[0,100]
+    INT32_T                 spk_volume_offset;           // spk volume offset, for adapting different speakers,The default value is 0,[0,100]
+    INT32_T                 spk_gpio;                    // spk amplifier pin number, <0, no amplifier
+    INT32_T                 spk_gpio_polarity;           // pin polarity, 0 high enable, 1 low enable
     void * padta;
     TKL_FRAME_PUT_CB        put_cb;
     TKL_FRAME_SPK_CB        spk_cb;
@@ -127,13 +127,13 @@ typedef struct
 
 typedef struct
 {
-    int    pcm_db;                                   // DB value
+    INT32_T    pcm_db;                                   // DB value
 } TKL_AUDIO_DETECT_DB_RESULT_T;                          // DB result
 
 typedef struct
 {
-    int    val;
-    char     res[8];
+    INT32_T    val;
+    CHAR_T     res[8];
 } TKL_AUDIO_DETECT_RESULT_T;                             // DETECT result
 
 typedef enum
@@ -149,7 +149,7 @@ typedef enum
 
 typedef struct
 {
-    uint32_t enable;                                       // 1,enable.0,disable
+    UINT_T enable;                                       // 1,enable.0,disable
 }TKL_AUDIO_VQE_PARAM_T;
 
 /**
@@ -160,7 +160,7 @@ typedef struct
 *
 * @return OPRT_OK on success. Others on error, please refer to tkl_error_code.h
 */
-OPERATE_RET tkl_ai_init(TKL_AUDIO_CONFIG_T *pconfig, int count);
+OPERATE_RET tkl_ai_init(TKL_AUDIO_CONFIG_T *pconfig, INT32_T count);
 
 /**
 * @brief ai start
@@ -170,7 +170,7 @@ OPERATE_RET tkl_ai_init(TKL_AUDIO_CONFIG_T *pconfig, int count);
 *
 * @return OPRT_OK on success. Others on error, please refer to tkl_error_code.h
 */
-OPERATE_RET tkl_ai_start(int card, TKL_AI_CHN_E chn);
+OPERATE_RET tkl_ai_start(INT32_T card, TKL_AI_CHN_E chn);
 
 /**
 * @brief ai set mic volume
@@ -181,7 +181,7 @@ OPERATE_RET tkl_ai_start(int card, TKL_AI_CHN_E chn);
 *
 * @return OPRT_OK on success. Others on error, please refer to tkl_error_code.h
 */
-OPERATE_RET tkl_ai_set_vol(int card, TKL_AI_CHN_E chn, int vol);
+OPERATE_RET tkl_ai_set_vol(INT32_T card, TKL_AI_CHN_E chn, INT32_T vol);
 
 /**
 * @brief ai get frame
@@ -192,7 +192,7 @@ OPERATE_RET tkl_ai_set_vol(int card, TKL_AI_CHN_E chn, int vol);
 *
 * @return OPRT_OK on success. Others on error, please refer to tkl_error_code.h
 */
-OPERATE_RET tkl_ai_get_frame(int card, TKL_AI_CHN_E chn, TKL_AUDIO_FRAME_INFO_T *pframe);
+OPERATE_RET tkl_ai_get_frame(INT32_T card, TKL_AI_CHN_E chn, TKL_AUDIO_FRAME_INFO_T *pframe);
 
 /**
 * @brief ai set vqe param
@@ -204,7 +204,7 @@ OPERATE_RET tkl_ai_get_frame(int card, TKL_AI_CHN_E chn, TKL_AUDIO_FRAME_INFO_T 
 *
 * @return OPRT_OK on success. Others on error, please refer to tkl_error_code.h
 */
-OPERATE_RET tkl_ai_set_vqe(int card, TKL_AI_CHN_E chn, TKL_AUDIO_VQE_TYPE_E type, TKL_AUDIO_VQE_PARAM_T *pparam);
+OPERATE_RET tkl_ai_set_vqe(INT32_T card, TKL_AI_CHN_E chn, TKL_AUDIO_VQE_TYPE_E type, TKL_AUDIO_VQE_PARAM_T *pparam);
 
 /**
 * @brief ai get vqe param
@@ -216,7 +216,7 @@ OPERATE_RET tkl_ai_set_vqe(int card, TKL_AI_CHN_E chn, TKL_AUDIO_VQE_TYPE_E type
 *
 * @return OPRT_OK on success. Others on error, please refer to tkl_error_code.h
 */
-OPERATE_RET tkl_ai_get_vqe(int card, TKL_AI_CHN_E chn, TKL_AUDIO_VQE_TYPE_E type, TKL_AUDIO_VQE_PARAM_T *pparam);
+OPERATE_RET tkl_ai_get_vqe(INT32_T card, TKL_AI_CHN_E chn, TKL_AUDIO_VQE_TYPE_E type, TKL_AUDIO_VQE_PARAM_T *pparam);
 
 /**
 * @brief ai stop
@@ -226,14 +226,14 @@ OPERATE_RET tkl_ai_get_vqe(int card, TKL_AI_CHN_E chn, TKL_AUDIO_VQE_TYPE_E type
 *
 * @return OPRT_OK on success. Others on error, please refer to tkl_error_code.h
 */
-OPERATE_RET tkl_ai_stop(int card, TKL_AI_CHN_E chn);
+OPERATE_RET tkl_ai_stop(INT32_T card, TKL_AI_CHN_E chn);
 
 /**
 * @brief ai uninit
 *
 * @return OPRT_OK on success. Others on error, please refer to tkl_error_code.h
 */
-OPERATE_RET tkl_ai_uninit(void);
+OPERATE_RET tkl_ai_uninit(VOID);
 
 /**
 * @brief ao init
@@ -243,7 +243,7 @@ OPERATE_RET tkl_ai_uninit(void);
 *
 * @return OPRT_OK on success. Others on error, please refer to tkl_error_code.h
 */
-OPERATE_RET tkl_ao_init(TKL_AUDIO_CONFIG_T *pconfig, int count, void **handle);
+OPERATE_RET tkl_ao_init(TKL_AUDIO_CONFIG_T *pconfig, INT32_T count, VOID **handle);
 
 /**
 * @brief ao start
@@ -254,7 +254,7 @@ OPERATE_RET tkl_ao_init(TKL_AUDIO_CONFIG_T *pconfig, int count, void **handle);
 *
 * @return OPRT_OK on success. Others on error, please refer to tkl_error_code.h
 */
-OPERATE_RET tkl_ao_start(int card, TKL_AO_CHN_E chn, void *handle);
+OPERATE_RET tkl_ao_start(INT32_T card, TKL_AO_CHN_E chn, VOID *handle);
 
 /**
 * @brief ao set volume
@@ -265,7 +265,7 @@ OPERATE_RET tkl_ao_start(int card, TKL_AO_CHN_E chn, void *handle);
 *
 * @return OPRT_OK on success. Others on error, please refer to tkl_error_code.h
 */
-OPERATE_RET tkl_ao_set_vol(int card, TKL_AO_CHN_E chn, void *handle, int vol);
+OPERATE_RET tkl_ao_set_vol(INT32_T card, TKL_AO_CHN_E chn, VOID *handle, INT32_T vol);
 
 /**
 * @brief ao get volume
@@ -276,7 +276,7 @@ OPERATE_RET tkl_ao_set_vol(int card, TKL_AO_CHN_E chn, void *handle, int vol);
 *
 * @return OPRT_OK on success. Others on error, please refer to tkl_error_code.h
 */
-OPERATE_RET tkl_ao_get_vol(int card, TKL_AO_CHN_E chn, void *handle, int *vol);
+OPERATE_RET tkl_ao_get_vol(INT32_T card, TKL_AO_CHN_E chn, VOID *handle, INT32_T *vol);
 
 /**
 * @brief ao output frame
@@ -288,7 +288,7 @@ OPERATE_RET tkl_ao_get_vol(int card, TKL_AO_CHN_E chn, void *handle, int *vol);
 *
 * @return OPRT_OK on success. Others on error, please refer to tkl_error_code.h
 */
-OPERATE_RET tkl_ao_put_frame(int card, TKL_AO_CHN_E chn, void *handle, TKL_AUDIO_FRAME_INFO_T *pframe);
+OPERATE_RET tkl_ao_put_frame(INT32_T card, TKL_AO_CHN_E chn, VOID *handle, TKL_AUDIO_FRAME_INFO_T *pframe);
 
 /**
 * @brief ao stop
@@ -299,14 +299,14 @@ OPERATE_RET tkl_ao_put_frame(int card, TKL_AO_CHN_E chn, void *handle, TKL_AUDIO
 *
 * @return OPRT_OK on success. Others on error, please refer to tkl_error_code.h
 */
-OPERATE_RET tkl_ao_stop(int card, TKL_AO_CHN_E chn, void *handle);
+OPERATE_RET tkl_ao_stop(INT32_T card, TKL_AO_CHN_E chn, VOID *handle);
 
 /**
 * @brief ao uninit
 *
 * @return OPRT_OK on success. Others on error, please refer to tkl_error_code.h
 */
-OPERATE_RET tkl_ao_uninit(void *handle);
+OPERATE_RET tkl_ao_uninit(VOID *handle);
 
 /**
 * @brief audio input detect start
@@ -316,7 +316,7 @@ OPERATE_RET tkl_ao_uninit(void *handle);
 *
 * @return OPRT_OK on success. Others on error, please refer to tkl_error_code.h
 */
-OPERATE_RET tkl_ai_detect_start(int card, TKL_MEDIA_DETECT_TYPE_E type);
+OPERATE_RET tkl_ai_detect_start(INT32_T card, TKL_MEDIA_DETECT_TYPE_E type);
 
 /**
 * @brief audio input detect stop
@@ -326,7 +326,7 @@ OPERATE_RET tkl_ai_detect_start(int card, TKL_MEDIA_DETECT_TYPE_E type);
 *
 * @return OPRT_OK on success. Others on error, please refer to tkl_error_code.h
 */
-OPERATE_RET tkl_ai_detect_stop(int card, TKL_MEDIA_DETECT_TYPE_E type);
+OPERATE_RET tkl_ai_detect_stop(INT32_T card, TKL_MEDIA_DETECT_TYPE_E type);
 
 /**
 * @brief audio detect get result
@@ -337,9 +337,9 @@ OPERATE_RET tkl_ai_detect_stop(int card, TKL_MEDIA_DETECT_TYPE_E type);
 *
 * @return OPRT_OK on success. Others on error, please refer to tkl_error_code.h
 */
-OPERATE_RET tkl_ai_detect_get_result(int card, TKL_MEDIA_DETECT_TYPE_E type, TKL_AUDIO_DETECT_RESULT_T *presult);
+OPERATE_RET tkl_ai_detect_get_result(INT32_T card, TKL_MEDIA_DETECT_TYPE_E type, TKL_AUDIO_DETECT_RESULT_T *presult);
 
-OPERATE_RET tkl_ao_clear_buffer(int card, TKL_AO_CHN_E chn);
+OPERATE_RET tkl_ao_clear_buffer(INT32_T card, TKL_AO_CHN_E chn);
 
 #ifdef __cplusplus
 }

@@ -1,0 +1,9 @@
+menu "Bk_ble"
+	config BLUETOOTH_AP
+		bool "bluetooth ap"
+		default y
+
+	config BLUETOOTH_SUPPORT_IPC
+        bool "bt support ipc"
+        default y
+endmenu

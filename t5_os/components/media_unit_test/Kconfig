@@ -1,8 +1,0 @@
-menu "Media Unit Test"
-
-	config MEDIA_UNIT_TEST
-		bool "Enable Media Unit Test"
-		default y
-		help
-			Enable Media Unit Test
-endmenu

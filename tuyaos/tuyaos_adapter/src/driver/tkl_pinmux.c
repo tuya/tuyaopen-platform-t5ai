@@ -33,8 +33,8 @@
 /****************************************************************************
  * Public Function Prototypes
  ****************************************************************************/
-extern void __tkl_i2c_set_scl_pin(TUYA_I2C_NUM_E port, const TUYA_PIN_NAME_E scl_pin);
-extern void __tkl_i2c_set_sda_pin(TUYA_I2C_NUM_E port, const TUYA_PIN_NAME_E sda_pin);
+extern VOID_T __tkl_i2c_set_scl_pin(TUYA_I2C_NUM_E port, const TUYA_PIN_NAME_E scl_pin);
+extern VOID_T __tkl_i2c_set_sda_pin(TUYA_I2C_NUM_E port, const TUYA_PIN_NAME_E sda_pin);
 
 /**
  * @brief tuya io pinmux func
@@ -87,14 +87,14 @@ OPERATE_RET tkl_io_pinmux_config(TUYA_PIN_NAME_E pin, TUYA_PIN_FUNC_E pin_func)
 #endif
         default:
             break;
-    
+
     }
     return OPRT_OK;
 }
-int tkl_io_pin_to_func(uint32_t pin, TUYA_PIN_TYPE_E pin_type)
+INT32_T tkl_io_pin_to_func(UINT32_T pin, TUYA_PIN_TYPE_E pin_type)
 {
-	int port_channel = OPRT_NOT_SUPPORTED;
-    
+	INT32_T port_channel = OPRT_NOT_SUPPORTED;
+
     switch (pin_type) {
         case TUYA_IO_TYPE_PWM:                  // all pwm channels belong to one port
             if (TUYA_IO_PIN_18 == pin) {
@@ -116,14 +116,14 @@ int tkl_io_pin_to_func(uint32_t pin, TUYA_PIN_TYPE_E pin_type)
                 port_channel = ADC_2;
             } else if (TUYA_IO_PIN_28 == pin) {
                 port_channel = ADC_4;
-            } else if (TUYA_IO_PIN_13 == pin) {
-                port_channel = ADC_15;
-            } else if (TUYA_IO_PIN_12 == pin) {
-                port_channel = ADC_14;
-            } else if (TUYA_IO_PIN_1 == pin) {
-                port_channel = ADC_13;
             } else if (TUYA_IO_PIN_0 == pin) {
                 port_channel = ADC_12;
+            } else if (TUYA_IO_PIN_1 == pin) {
+                port_channel = ADC_13;
+            } else if (TUYA_IO_PIN_12 == pin) {
+                port_channel = ADC_14;
+            } else if (TUYA_IO_PIN_13 == pin) {
+                port_channel = ADC_15;
             }
             break;
         case TUYA_IO_TYPE_DAC:

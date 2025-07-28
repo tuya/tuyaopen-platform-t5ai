@@ -17,11 +17,13 @@ extern bk_err_t bk_spi_dma_write_bytes_async(spi_id_t id, const void *data, uint
 
 bk_err_t tuya_bk_spi_dma_read_bytes_async(spi_id_t id, void *data, uint32_t size)
 {
-    return bk_spi_dma_read_bytes_async((spi_id_t)id, data, size);
+    return bk_spi_dma_read_bytes((spi_id_t)id, data, size);
+    // return bk_spi_dma_read_bytes_async((spi_id_t)id, data, size);
 }
 bk_err_t tuya_bk_spi_dma_write_bytes_async(spi_id_t id, const void *data, uint32_t size)
 {
-    return bk_spi_dma_write_bytes_async((spi_id_t)id, data, size);
+    return bk_spi_dma_write_bytes((spi_id_t)id, data, size);
+    // return bk_spi_dma_write_bytes_async((spi_id_t)id, data, size);
 }
 
 // rx isr callback
@@ -124,11 +126,25 @@ OPERATE_RET tkl_spi_init(TUYA_SPI_NUM_E port, const TUYA_SPI_BASE_CFG_T *cfg)
 OPERATE_RET tkl_spi_deinit(TUYA_SPI_NUM_E port)
 {
     BK_RETURN_ON_ERR(bk_spi_deinit((spi_id_t)port));
+#if (CONFIG_SPI_DMA)
+    if (spi_config.dma_mode) {
+        if (port == TUYA_SPI_NUM_0) {
+            bk_dma_free(DMA_DEV_GSPI0, spi_config.spi_tx_dma_chan);
+            bk_dma_free(DMA_DEV_GSPI0_RX, spi_config.spi_rx_dma_chan);
+        }
+
+        if (port == TUYA_SPI_NUM_1) {
+            bk_dma_free(DMA_DEV_GSPI1, spi_config.spi_tx_dma_chan);
+            bk_dma_free(DMA_DEV_GSPI1_RX, spi_config.spi_rx_dma_chan);
+        }
+    }
+#endif
+    bk_spi_driver_deinit();
     memset(&spi_config, 0, sizeof(spi_config));
     return OPRT_OK;
 }
 
-OPERATE_RET tkl_spi_send(TUYA_SPI_NUM_E port, void *data, uint32_t size)
+OPERATE_RET tkl_spi_send(TUYA_SPI_NUM_E port, VOID_T *data, UINT32_T size)
 {
     bk_err_t ret = BK_OK;
 
@@ -138,6 +154,10 @@ OPERATE_RET tkl_spi_send(TUYA_SPI_NUM_E port, void *data, uint32_t size)
 
 #if (CONFIG_SPI_DMA)
     if (SPI_DMA_MODE_ENABLE == spi_config.dma_mode) {
+        if (size >= SPI_DMA_MAX_LEN) {
+            return OPRT_INVALID_PARM;
+        }
+
         if (spi_irq[port].irq_enable) {
             ret = tuya_bk_spi_dma_write_bytes_async((spi_id_t)port, data, size);
         } else {
@@ -162,7 +182,7 @@ OPERATE_RET tkl_spi_send(TUYA_SPI_NUM_E port, void *data, uint32_t size)
     return OPRT_OK;
 }
 
-OPERATE_RET tkl_spi_recv(TUYA_SPI_NUM_E port, VOID *data, uint32_t size)
+OPERATE_RET tkl_spi_recv(TUYA_SPI_NUM_E port, VOID *data, UINT32_T size)
 {
     bk_err_t ret = BK_OK;
 
@@ -172,6 +192,10 @@ OPERATE_RET tkl_spi_recv(TUYA_SPI_NUM_E port, VOID *data, uint32_t size)
 
 #if (CONFIG_SPI_DMA)
     if (SPI_DMA_MODE_ENABLE == spi_config.dma_mode) {
+        if (size >= SPI_DMA_MAX_LEN) {
+            return OPRT_INVALID_PARM;
+        }
+
         if (spi_irq[port].irq_enable) {
             ret = tuya_bk_spi_dma_read_bytes_async((spi_id_t)port, data, size);
         } else {
@@ -196,7 +220,7 @@ OPERATE_RET tkl_spi_recv(TUYA_SPI_NUM_E port, VOID *data, uint32_t size)
     return OPRT_OK;
 }
 
-OPERATE_RET tkl_spi_transfer(TUYA_SPI_NUM_E port, void* send_buf, void* receive_buf, uint32_t length)
+OPERATE_RET tkl_spi_transfer(TUYA_SPI_NUM_E port, VOID_T* send_buf, VOID_T* receive_buf, UINT32_T length)
 {
     if (port > TUYA_SPI_NUM_1) {
         return OPRT_INVALID_PARM;
@@ -204,9 +228,9 @@ OPERATE_RET tkl_spi_transfer(TUYA_SPI_NUM_E port, void* send_buf, void* receive_
 
 #if (CONFIG_SPI_DMA)
     if (SPI_DMA_MODE_ENABLE == spi_config.dma_mode) {
-        // if (length >= SPI_DMA_MAX_LEN) {
-        //     return OPRT_INVALID_PARM;
-        // }
+        if (length >= SPI_DMA_MAX_LEN) {
+            return OPRT_INVALID_PARM;
+        }
 
         bk_spi_dma_duplex_init(port);
         bk_err_t ret = bk_spi_dma_duplex_xfer(port, send_buf, length, receive_buf, length);
@@ -216,12 +240,35 @@ OPERATE_RET tkl_spi_transfer(TUYA_SPI_NUM_E port, void* send_buf, void* receive_
         }
     } else {
 #endif
-        if (length >= 4096) {
+
+        return OPRT_NOT_SUPPORTED;
+#if (CONFIG_SPI_DMA)
+    }
+#endif
+    return OPRT_OK;
+}
+
+OPERATE_RET tkl_spi_transfer_with_length(TUYA_SPI_NUM_E port, void* send_buf, uint32_t send_len, void* receive_buf, uint32_t receive_len)
+{
+    if (port > TUYA_SPI_NUM_1) {
+        return OPRT_INVALID_PARM;
+    }
+
+#if (CONFIG_SPI_DMA)
+    if (SPI_DMA_MODE_ENABLE == spi_config.dma_mode) {
+        if (send_len >= SPI_DMA_MAX_LEN || receive_len >= SPI_DMA_MAX_LEN) {
             return OPRT_INVALID_PARM;
         }
 
-        if (bk_spi_transmit((spi_id_t)port, send_buf, length, receive_buf, length) != BK_OK)
+        bk_spi_dma_duplex_init(port);
+        bk_err_t ret = bk_spi_dma_duplex_xfer(port, send_buf, send_len, receive_buf, receive_len);
+        bk_spi_dma_duplex_deinit(port);
+        if (ret != BK_OK) {
             return OPRT_COM_ERROR;
+        }
+    } else {
+#endif
+        return OPRT_NOT_SUPPORTED;
 #if (CONFIG_SPI_DMA)
     }
 #endif
@@ -303,7 +350,7 @@ OPERATE_RET tkl_spi_irq_disable(TUYA_SPI_NUM_E port)
  * @return >=0,number of supported dma data length. <0,err. 
  * during  tkl_spi_send, tkl_spi_recv and tkl_spi_transfer operation.
  */
-uint32_t  tkl_spi_get_max_dma_data_length(void)
+UINT32_T  tkl_spi_get_max_dma_data_length(VOID_T)
 {
-    return SPI_DMA_MAX_LEN;
+    return SPI_DMA_MAX_LEN - 1;
 }

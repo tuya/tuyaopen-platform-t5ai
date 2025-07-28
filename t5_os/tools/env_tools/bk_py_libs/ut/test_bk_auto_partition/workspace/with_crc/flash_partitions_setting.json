@@ -1,0 +1,26 @@
+[
+    {
+        "name": "primary_bootloader",
+        "index": 0
+    },
+    {
+        "name": "primary_cpu0_app",
+        "index": 1
+    },
+    {
+        "name": "primary_cpu1_app",
+        "index": 2
+    },
+    {
+        "name": "ota",
+        "index": 3
+    },
+    {
+        "name": "sys_rf",
+        "index": -2
+    },
+    {
+        "name": "sys_net",
+        "index": -1
+    }
+]

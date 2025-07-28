@@ -18,15 +18,15 @@
 #include "tuya_cloud_types.h"
 
 
-typedef void* TUYA_RINGBUFF_T;
+typedef VOID_T* TUYA_RINGBUFF_T;
 
 typedef enum {
     OVERFLOW_STOP_TYPE = 0, ///< unread buff area will not be overwritten when writing overflow
     OVERFLOW_COVERAGE_TYPE, ///< unread buff area will be overwritten when writing overflow
 }RINGBUFF_TYPE_E;
 
-#define TUYA_PSARM_SUPPORT  1
-#if defined(TUYA_PSARM_SUPPORT) && (TUYA_PSARM_SUPPORT)
+#define TUYA_PSARM_SUPPORT
+#if defined(TUYA_PSARM_SUPPORT) && defined(TUYA_PSARM_SUPPORT)
 #define TY_RINGBUF_PSRAM_FLAG 0x80
 #define OVERFLOW_PSRAM_STOP_TYPE (OVERFLOW_STOP_TYPE | TY_RINGBUF_PSRAM_FLAG)
 #define OVERFLOW_PSRAM_COVERAGE_TYPE (OVERFLOW_COVERAGE_TYPE | TY_RINGBUF_PSRAM_FLAG)
@@ -40,7 +40,7 @@ typedef enum {
  * @param[in]   ringbuff: ringbuff handle
  * @return  TRUE/ FALSE
  */
-OPERATE_RET tuya_ring_buff_create(uint32_t len, RINGBUFF_TYPE_E type, TUYA_RINGBUFF_T *ringbuff);
+OPERATE_RET tuya_ring_buff_create(UINT32_T len, RINGBUFF_TYPE_E type, TUYA_RINGBUFF_T *ringbuff);
 
 /**
  * @brief ringbuff free
@@ -65,7 +65,7 @@ OPERATE_RET tuya_ring_buff_reset(TUYA_RINGBUFF_T ringbuff);
  * @param[in]   ringbuff: ringbuff handle
  * @return  size of ringbuff not used
  */
-uint32_t tuya_ring_buff_free_size_get(TUYA_RINGBUFF_T ringbuff);
+UINT32_T tuya_ring_buff_free_size_get(TUYA_RINGBUFF_T ringbuff);
 
 /**
  * @brief ringbuff used size get
@@ -73,7 +73,7 @@ uint32_t tuya_ring_buff_free_size_get(TUYA_RINGBUFF_T ringbuff);
  * @param[in]   ringbuff: ringbuff handle
  * @return  size of ringbuff used
  */
-uint32_t tuya_ring_buff_used_size_get(TUYA_RINGBUFF_T ringbuff);
+UINT32_T tuya_ring_buff_used_size_get(TUYA_RINGBUFF_T ringbuff);
 
 /**
  * @brief ringbuff data read 
@@ -83,23 +83,7 @@ uint32_t tuya_ring_buff_used_size_get(TUYA_RINGBUFF_T ringbuff);
  * @param[in]   len:      read len
  * @return  length of the data read
  */
-uint32_t tuya_ring_buff_read(TUYA_RINGBUFF_T ringbuff, void *data, uint32_t len);
-
-
-/**
- * @brief Discards a specified number of bytes from the ring buffer.
- *
- * This function removes a specified length of data from the ring buffer,
- * effectively advancing the read pointer by the given length. The discarded
- * data is no longer accessible after this operation.
- *
- * @param[in] ringbuff The ring buffer instance to operate on.
- * @param[in] len      The number of bytes to discard from the ring buffer.
- *
- * @return The actual number of bytes discarded. This may be less than the
- *         requested length if the ring buffer contains fewer bytes than `len`.
- */
-uint32_t tuya_ring_buff_discard(TUYA_RINGBUFF_T ringbuff, uint32_t len);
+UINT32_T tuya_ring_buff_read(TUYA_RINGBUFF_T ringbuff, VOID_T *data, UINT32_T len);
 
 /**
  * @brief ringbuff data peek 
@@ -110,7 +94,7 @@ uint32_t tuya_ring_buff_discard(TUYA_RINGBUFF_T ringbuff, uint32_t len);
  * @param[in]   len:      read len
  * @return  length of the data read
  */
-uint32_t tuya_ring_buff_peek(TUYA_RINGBUFF_T ringbuff, void *data, uint32_t len);
+UINT32_T tuya_ring_buff_peek(TUYA_RINGBUFF_T ringbuff, VOID_T *data, UINT32_T len);
 
 /**
  * @brief ringbuff data write 
@@ -120,7 +104,7 @@ uint32_t tuya_ring_buff_peek(TUYA_RINGBUFF_T ringbuff, void *data, uint32_t len)
  * @param[in]   len:      write len
  * @return  length of the data write
  */
-uint32_t tuya_ring_buff_write(TUYA_RINGBUFF_T ringbuff, const void *data, uint32_t len);
+UINT32_T tuya_ring_buff_write(TUYA_RINGBUFF_T ringbuff, CONST VOID_T *data, UINT32_T len);
 
 
 #ifdef __cplusplus

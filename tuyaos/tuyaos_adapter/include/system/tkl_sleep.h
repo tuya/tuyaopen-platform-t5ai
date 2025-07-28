@@ -34,7 +34,7 @@ OPERATE_RET tkl_cpu_sleep_callback_register(TUYA_SLEEP_CB_T *sleep_cb);
  *
  * @return none
  */
-void tkl_cpu_allow_sleep(void);
+VOID_T tkl_cpu_allow_sleep(VOID_T);
 
 /**
  * @brief force wakeup
@@ -43,7 +43,7 @@ void tkl_cpu_allow_sleep(void);
  *
  * @return none
  */
-void tkl_cpu_force_wakeup(void);
+VOID_T tkl_cpu_force_wakeup(VOID_T);
 
 /**
 * @brief Set the low power mode of CPU

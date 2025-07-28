@@ -10,7 +10,7 @@
 
 #include "tkl_init_wifi.h"
 
-const TKL_WIFI_DESC_T TKL_WIFI = {
+CONST TKL_WIFI_DESC_T TKL_WIFI = {
     .init                           = tkl_wifi_init,
     .set_cur_channel                = tkl_wifi_set_cur_channel,
     .get_cur_channel                = tkl_wifi_get_cur_channel,
@@ -55,7 +55,7 @@ TUYA_WEAK_ATTRIBUTE TKL_WIFI_DESC_T* tkl_wifi_desc_get()
 }
 
 #ifdef TUYA_HOSTAPD_SUPPORT
-const TKL_WIFI_HOSTAP_DESC_T c_wifi_hostap_desc = {
+CONST TKL_WIFI_HOSTAP_DESC_T c_wifi_hostap_desc = {
     .ioctl      = tkl_hostap_ioctl_inet,
 };
 

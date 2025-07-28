@@ -1,0 +1,26 @@
+menu "TP"
+	config TP_GT911
+		depends on TP
+		bool "Enable TP_GT911 API"
+		default n
+
+	config TP_GT1151
+		depends on TP
+		bool "Enable TP_GT1151 API"
+		default n
+
+	config TP_FT6336
+		depends on TP
+		bool "Enable TP_FT6336 API"
+		default n
+
+	config TP_HY4633
+		depends on TP
+		bool "Enable TP_HY4633 API"
+		default n
+
+	config TP_CST816D
+		depends on TP
+		bool "Enable TP_CST816D API"
+		default n
+endmenu

@@ -1,0 +1,11 @@
+Name                              Offset            Size    
+------------------------------------------------------------
+primary_bootloader              0x00000000          68K     
+primary_cpu0_app                0x00011000         1768K    
+primary_cpu1_app                0x001cb000          816K    
+ota                             0x00297000         1428K    
+usr_config                      0x003fc000          64K     
+easyflash                       0x0040c000           8K     
+(unused)                        0x0040e000         4032K    
+sys_rf                          0x007fe000           4K     
+sys_net                         0x007ff000           4K     

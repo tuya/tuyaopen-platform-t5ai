@@ -1,0 +1,151 @@
+menu "Bk_usb"
+
+	config USB
+		bool "Enable Usb"
+		default n
+
+	config USB_VBAT_CONTROL_GPIO_ID
+		depends on USB
+		hex "Vbat control gpio id"
+		default 0xFF
+		help
+			USB VBAT CONTROL GPIO ID
+
+	menu "Modify Usb Config"
+		depends on USB
+
+		config USB_HOST
+			bool "Enable USB Host Mode"
+			default y
+	
+		config USB_DEVICE
+			bool "Enable USB Device Mode"
+			default n
+
+		config TASK_USB_PRIO
+			int "Set Task Usb Prio"
+			range 1 10
+			default 7
+			help
+				Priority of USB task
+
+		config USB_DMA_ENABLE
+			bool "Enable usb ip DMA"
+			default n
+
+		config USB_HUB
+			depends on USB_HOST
+			bool "Enable USB hub"
+			default y
+
+		menu "USB_HUB_MULTIPLE_DEVICES_IDENTIFICATION"
+			depends on USB_HUB
+				config USB_HUB_MULTIPLE_DEVICES
+					bool "Enable MULTIPLE DEVICE IDENTIFICATION by hub"
+					default n
+					help
+						Enable MULTIPLE DEVICE IDENTIFICATION by hub
+						
+				config USB_HUB_MULTIPLE_DEVICES_DEBUG
+					bool "Enable MULTIPLE DEVICE IDENTIFICATION by hub"
+					default n
+					help
+						Enable MULTIPLE DEVICE IDENTIFICATION debug
+						
+				config USBHOST_HUB_MAX_EHPORTS
+					int "Set hub port number"
+					range 1 10
+					default 4
+					help
+						HUB MAX EHPORTS
+
+				config USBHOST_HUB_PORT_SUPPORT_MAX_DEVICE
+					int "SUPPORT_MAX_DEVICE"
+					range 1 10
+					default 3
+					help
+						SUPPORT_MAX_DEVICE
+
+				config USBHOST_HUB_PORT_1_VBAT_CONTROL_GPIO_ID
+					hex "Vbat control gpio id"
+					default 0xFF
+					help
+					USB usb hub port index Vbus control gpio_id
+		endmenu
+
+		config USBH_MSC
+			bool "Enable Usb Host MSC"
+			depends on FATFS
+			default n
+
+		config USBD_MSC
+			bool "Enable Usb Device MSC"
+			default n
+
+		config USBH_UVC
+			bool "Enable Usb Host Uvc"
+			default n
+		
+		config USBD_UVC
+			bool "Enable Usb Device Uvc"
+			default n
+
+		config USBH_UAC
+			bool "Enable Usb Host Uac"
+			default n
+
+		config USBD_UAC
+			bool "Enable Usb Device Uac"
+			default n
+
+		config USBH_HID
+			bool "Enable Usb Hid"
+			default n
+
+		config USBD_HID
+			bool "Enable Usb Hid"
+			default n
+
+        config USB_UPC
+            bool "Enable Usb Upc"
+            default n
+
+		config USB_CDC
+			bool "Enable Usb Cdc"
+			default n
+
+		config USB_CHARGE
+			bool "Enable Usb Charge"
+			default n
+
+		config USBH_SERIAL_CH340
+			bool "Enable Usbh simulate serial ch340"
+			default n
+		config USBH_SERIAL_CH340_TEST
+			bool "Enable Usbh simulate serial ch340"
+			default n
+	endmenu
+
+    config STANDARD_DUALSTREAM
+        bool "Standard dual stream"
+        default n
+    
+    config UVC_DUAL_DEVICE
+        #depends on STANDARD_DUALSTREAM
+        int "the num for uvc_device"
+        range 1 2
+        default 1 if !STANDARD_DUALSTREAM
+        default 2 if STANDARD_DUALSTREAM
+
+    config USB_CDC_ACM_DEMO
+        bool "Enable device usb cdc demo"
+        help
+            This macro needs to be opened on cp0 and cp1 when USB in cp1.
+        default n
+
+    config USBHOST_MAX_CDC_ACM_CLASS
+    	depends on USB_CDC
+        int "the num for CDC"
+        default 1
+
+endmenu

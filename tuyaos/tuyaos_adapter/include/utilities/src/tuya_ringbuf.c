@@ -19,16 +19,16 @@
 */
 typedef struct {
     RINGBUFF_TYPE_E type;   ///< ringbuff type
-    uint32_t in;            ///< position of input
-    uint32_t out;           ///< position of output
-    uint32_t len;           ///< length of buff data
-    uint8_t buff[];         ///< ring buff
+    UINT32_T in;            ///< position of input
+    UINT32_T out;           ///< position of output
+    UINT32_T len;           ///< length of buff data
+    UINT8_T buff[];         ///< ring buff
 } __RINGBUFF_T;
 
 #define RINGBUFF_SIZE   sizeof(__RINGBUFF_T)
 
 
-static void __ringbuff_init(__RINGBUFF_T *ringbuff, uint32_t len)
+STATIC VOID_T __ringbuff_init(__RINGBUFF_T *ringbuff, UINT32_T len)
 {
     ringbuff->in = 0;
     ringbuff->out = 0;
@@ -36,7 +36,7 @@ static void __ringbuff_init(__RINGBUFF_T *ringbuff, uint32_t len)
 }
 
 
-OPERATE_RET tuya_ring_buff_create(uint32_t len, RINGBUFF_TYPE_E type, TUYA_RINGBUFF_T *ringbuff)
+OPERATE_RET tuya_ring_buff_create(UINT32_T len, RINGBUFF_TYPE_E type, TUYA_RINGBUFF_T *ringbuff)
 {
     __RINGBUFF_T *rbuff = NULL;
     __RINGBUFF_T **out_ring_buff = (__RINGBUFF_T **)ringbuff;
@@ -102,9 +102,9 @@ OPERATE_RET tuya_ring_buff_reset(TUYA_RINGBUFF_T ringbuff)
     return OPRT_OK;
 }
 
-uint32_t tuya_ring_buff_free_size_get(TUYA_RINGBUFF_T ringbuff)
+UINT32_T tuya_ring_buff_free_size_get(TUYA_RINGBUFF_T ringbuff)
 {
-    uint32_t size, in, out;
+    UINT32_T size, in, out;
     __RINGBUFF_T *rbuff = (__RINGBUFF_T *)ringbuff;
 
     if(rbuff == NULL) {
@@ -126,9 +126,9 @@ uint32_t tuya_ring_buff_free_size_get(TUYA_RINGBUFF_T ringbuff)
     return size - 1;
 }
 
-uint32_t tuya_ring_buff_used_size_get(TUYA_RINGBUFF_T ringbuff)
+UINT32_T tuya_ring_buff_used_size_get(TUYA_RINGBUFF_T ringbuff)
 {
-    uint32_t size, in, out;
+    UINT32_T size, in, out;
     __RINGBUFF_T *rbuff = (__RINGBUFF_T *)ringbuff;
 
     if(rbuff == NULL) {
@@ -148,11 +148,11 @@ uint32_t tuya_ring_buff_used_size_get(TUYA_RINGBUFF_T ringbuff)
     return size;
 }
 
-uint32_t tuya_ring_buff_write(TUYA_RINGBUFF_T ringbuff, const void *data, uint32_t len)
+UINT32_T tuya_ring_buff_write(TUYA_RINGBUFF_T ringbuff, const VOID_T *data, UINT32_T len)
 {
-    uint32_t tmp_len;
-    uint32_t free_len;
-    const uint8_t* pdata = data;
+    UINT32_T tmp_len;
+    UINT32_T free_len;
+    CONST UINT8_T* pdata = data;
     __RINGBUFF_T *rbuff = (__RINGBUFF_T *)ringbuff;
 
     if(rbuff == NULL || data == NULL || len == 0) {
@@ -185,11 +185,11 @@ uint32_t tuya_ring_buff_write(TUYA_RINGBUFF_T ringbuff, const void *data, uint32
     return tmp_len + len;
 }
 
-uint32_t tuya_ring_buff_read(TUYA_RINGBUFF_T ringbuff, void *data, uint32_t len)
+UINT32_T tuya_ring_buff_read(TUYA_RINGBUFF_T ringbuff, VOID_T *data, UINT32_T len)
 {
-    uint32_t tmp_len;
-    uint32_t used_len;
-    uint8_t *pdata = data;
+    UINT32_T tmp_len;
+    UINT32_T used_len;
+    UINT8_T *pdata = data;
     __RINGBUFF_T *rbuff = (__RINGBUFF_T *)ringbuff;
 
     if(rbuff == NULL || data == NULL || len == 0) {
@@ -222,46 +222,12 @@ uint32_t tuya_ring_buff_read(TUYA_RINGBUFF_T ringbuff, void *data, uint32_t len)
     return tmp_len + len;
 }
 
-uint32_t tuya_ring_buff_discard(TUYA_RINGBUFF_T ringbuff, uint32_t len)
+UINT32_T tuya_ring_buff_peek(TUYA_RINGBUFF_T ringbuff, VOID_T *data, UINT32_T len)
 {
-    uint32_t tmp_len;
-    uint32_t used_len;
-    __RINGBUFF_T *rbuff = (__RINGBUFF_T *)ringbuff;
-
-    if(rbuff == NULL || len == 0) {
-        return 0;
-    }
-
-    used_len = tuya_ring_buff_used_size_get(rbuff);
-    len = GET_MIN(used_len, len);
-    if (len == 0) {
-        return 0;
-    }
-
-    // discard data from linear part of buffer
-    tmp_len = GET_MIN(rbuff->len - rbuff->out, len);
-    rbuff->out += tmp_len;
-    len -= tmp_len;
-
-    // discard data from beginning of buffer (overflow part)
-    if (len > 0) {
-        rbuff->out = len;
-    }
-
-    // check end of buffer
-    if (rbuff->out >= rbuff->len) {
-        rbuff->out = 0;
-    }
-
-    return tmp_len + len;
-}
-
-uint32_t tuya_ring_buff_peek(TUYA_RINGBUFF_T ringbuff, void *data, uint32_t len)
-{
-    uint32_t out;
-    uint32_t tmp_len;
-    uint32_t used_len;
-    uint8_t *pdata = data;
+    UINT32_T out;
+    UINT32_T tmp_len;
+    UINT32_T used_len;
+    UINT8_T *pdata = data;
     __RINGBUFF_T *rbuff = (__RINGBUFF_T *)ringbuff;
 
     if(rbuff == NULL || data == NULL || len == 0) {

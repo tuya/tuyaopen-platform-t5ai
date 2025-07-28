@@ -162,71 +162,71 @@ typedef enum {
  ********************* struct ******************************************
  **********************************************************************/
 typedef struct {
-    uint8_t                             type;           /**< Mac Address Type, Refer to @ TKL_BLE_GAP_ADDR_TYPE_PUBLIC or TKL_BLE_GAP_ADDR_TYPE_RANDOM*/
-    uint8_t                             addr[6];        /**< Mac Address, Address size, 6 bytes */
+    UCHAR_T                             type;           /**< Mac Address Type, Refer to @ TKL_BLE_GAP_ADDR_TYPE_PUBLIC or TKL_BLE_GAP_ADDR_TYPE_RANDOM*/
+    UCHAR_T                             addr[6];        /**< Mac Address, Address size, 6 bytes */
 } TUYA_BT_GAP_ADDR_T;
 
 typedef struct {
     TUYA_BT_PAIR_MODE_E                 mode;           /**< Bond Manager Pairing Modes */
 	TUYA_BT_PAIR_IO_CAP_E               io_cap;         /**< Bond Manager I/O Capabilities Refer to @TUYA_BT_PAIR_IO_CAP_E */
 
-	uint8_t                             oob_data;
-	uint8_t                             mitm;           /**< Man In The Middle mode enalbe/disable */
+	UCHAR_T                             oob_data;
+	UCHAR_T                             mitm;           /**< Man In The Middle mode enalbe/disable */
     BOOL_T                              ble_secure_conn;/**< BLE Secure Simple Pairing, also called Secure Connection mode. Enable or not */
-    uint32_t                              passkey;        /**< Init passkey. */
+    UINT_T                              passkey;        /**< Init passkey. */
 } TUYA_BT_PAIR_INIT_PARAM_T;
 
 typedef struct {
 	TUYA_BT_GAP_ADDR_T                  addr;           /**< Address of the remote device. */
-    uint8_t                             link_key[16];   /**< security keys. */
+    UCHAR_T                             link_key[16];   /**< security keys. */
 
-    void                                *user_data;
+    VOID                                *user_data;
 } TUYA_BT_PAIR_BOND_INFO_T;
 
 typedef struct {
 	TUYA_BT_GAP_ADDR_T                  addr;           /**< Address of the remote device. */
-    uint32_t                              passkey;        /**< respond passkey. */
+    UINT_T                              passkey;        /**< respond passkey. */
 
-    void                                *user_data;
+    VOID                                *user_data;
 } TUYA_BT_PAIR_DEVICE_T;
 
 typedef struct {
     TUYA_BT_GAP_ADDR_T                  addr;           /**< Disconnection handle on which the event occured.*/
-    uint32_t                              reason;         /**< Disconnection Reason */
-    void                                *user_data;
+    UINT_T                              reason;         /**< Disconnection Reason */
+    VOID                                *user_data;
 } TUYA_BT_DISCONNECT_EVT_T;
 
 typedef struct {
     TUYA_BT_PAIR_REQUEST_T              req;            /**< pair request */
-    uint32_t                              passkey;        /**< Init passkey. */
-    void                                *user_data;
+    UINT_T                              passkey;        /**< Init passkey. */
+    VOID                                *user_data;
 } TUYA_BT_PAIR_BOND_EVT_T;
 
 typedef struct {
     TUYA_BT_GAP_ADDR_T                  addr;           /**< Address of the remote device. */
-    uint8_t                             *name;          /**< BT name of the remote device. */
-    uint8_t                             name_len;
-    void                                *user_data;
+    UCHAR_T                             *name;          /**< BT name of the remote device. */
+    UCHAR_T                             name_len;
+    VOID                                *user_data;
 } TUYA_BT_PAIR_INQUIRY_EVT_T;
 
 
 typedef struct {
     TUYA_BT_BREDR_STEAM_STATUS_E        status;         /**< Stream Status */
 
-    void                              *p_endpoint;    /**< [Reserved] Stream Endpoint Pointer */
-    void                              *p_connection;  /**< [Reserved] Stream Connection Pointer */
-	void                              *user_data;     /**< Stream User Data */
+    VOID_T                              *p_endpoint;    /**< [Reserved] Stream Endpoint Pointer */
+    VOID_T                              *p_connection;  /**< [Reserved] Stream Connection Pointer */
+	VOID_T                              *user_data;     /**< Stream User Data */
 } TUYA_BT_BREDR_STEAM_T;
 
 typedef struct {
     TUYA_BT_BREDR_PHONE_STATUS_E        status;         /**< Phone Status */
-    uint8_t                             user_data_len;  /**< User Data Length */
-	void                              *user_data;     /**< Stream User Data */
+    UINT8_T                             user_data_len;  /**< User Data Length */
+	VOID_T                              *user_data;     /**< Stream User Data */
 } TUYA_BT_BREDR_PHONE_T;
 
 typedef struct {
     TUYA_BT_BREDR_EVENT_TYPE_E          type;           /**< Tuya BR-EDR Event */
-    int                               result;         /**< Indiacte event result for bluetooth callback */
+    INT_T                               result;         /**< Indiacte event result for bluetooth callback */
 
     union {
         TUYA_BT_PAIR_BOND_EVT_T         pair;           /**< Pairing Event callback */
@@ -244,7 +244,7 @@ typedef struct {
  ********************* variable ****************************************
  **********************************************************************/
 /**< Tuya Bluetooth BR-EDR Callback Register function definition */
-typedef void(*TUYA_BT_BREDR_EVT_FUNC_CB)(TUYA_BT_BREDR_EVENT_T *p_event);
+typedef VOID(*TUYA_BT_BREDR_EVT_FUNC_CB)(TUYA_BT_BREDR_EVENT_T *p_event);
 
 /***********************************************************************
  ********************* function ****************************************
@@ -261,7 +261,7 @@ typedef void(*TUYA_BT_BREDR_EVT_FUNC_CB)(TUYA_BT_BREDR_EVENT_T *p_event);
  * @return  SUCCESS
  *          ERROR
  * */
-OPERATE_RET tkl_bt_bredr_init(TUYA_BT_BREDR_ROLE_E role, TUYA_BT_BREDR_EVT_FUNC_CB p_event, void *user_data);
+OPERATE_RET tkl_bt_bredr_init(TUYA_BT_BREDR_ROLE_E role, TUYA_BT_BREDR_EVT_FUNC_CB p_event, VOID_T *user_data);
 
 /**
  * @brief   De-Init the Bluetooth BR-EDR Interface.
@@ -328,7 +328,7 @@ OPERATE_RET tkl_bt_bredr_inquiry_enable(BOOL_T enable);
  * @return  SUCCESS
  *          ERROR
  * */
-OPERATE_RET tkl_bt_gap_address_set(TUYA_BT_GAP_ADDR_T const *p_peer_addr);
+OPERATE_RET tkl_bt_gap_address_set(TUYA_BT_GAP_ADDR_T CONST *p_peer_addr);
 
 /**
  * @brief   Get the BT Address
@@ -374,7 +374,7 @@ OPERATE_RET tkl_bt_gap_paring_request(TUYA_BT_PAIR_DEVICE_T *p_device);
  * @return  SUCCESS
  *          ERROR
  * */
-OPERATE_RET tkl_bt_gap_paring_passkey_send(uint32_t passkey);
+OPERATE_RET tkl_bt_gap_paring_passkey_send(UINT_T passkey);
 
 /**
  * @brief   Enable or Disable pair when pairing request
@@ -401,7 +401,7 @@ OPERATE_RET tkl_bt_gap_paring_delete(TUYA_BT_PAIR_BOND_INFO_T *bond_info);
  * @return  TRUE
  *          FALSE
  * */
-BOOL_T tkl_bt_pairing_status_get(void);
+BOOL_T tkl_bt_pairing_status_get(VOID_T);
 
 /**
  * @brief   disconnect the link.
@@ -421,7 +421,7 @@ OPERATE_RET tkl_bt_gap_disconnect(TUYA_BT_PAIR_BOND_INFO_T *bond_info);
  * @return  SUCCESS
  *          ERROR
  * */
-OPERATE_RET tkl_bt_bredr_control(TUYA_BT_BREDR_CONTROL_E crtl_event, uint8_t *user_data, USHORT_T data_len);
+OPERATE_RET tkl_bt_bredr_control(TUYA_BT_BREDR_CONTROL_E crtl_event, UCHAR_T *user_data, USHORT_T data_len);
 
 /**
  * @brief   Control the bredr eq
@@ -432,7 +432,7 @@ OPERATE_RET tkl_bt_bredr_control(TUYA_BT_BREDR_CONTROL_E crtl_event, uint8_t *us
  * @return  SUCCESS
  *          ERROR
  * */
-OPERATE_RET tkl_bt_bredr_equalizer_set(uint8_t eq_mode, uint8_t *eq_data, USHORT_T eq_data_len);
+OPERATE_RET tkl_bt_bredr_equalizer_set(UCHAR_T eq_mode, UCHAR_T *eq_data, USHORT_T eq_data_len);
 
 /**
  * @brief   Swicth the bredr eq mode
@@ -442,7 +442,7 @@ OPERATE_RET tkl_bt_bredr_equalizer_set(uint8_t eq_mode, uint8_t *eq_data, USHORT
  * @return  SUCCESS
  *          ERROR
  * */
-OPERATE_RET tkl_bt_bredr_equalizer_switch(uint8_t eq_mode, BOOL_T enable);
+OPERATE_RET tkl_bt_bredr_equalizer_switch(UCHAR_T eq_mode, BOOL_T enable);
 
 /**
  * @brief   Control the bredr noise
@@ -452,7 +452,7 @@ OPERATE_RET tkl_bt_bredr_equalizer_switch(uint8_t eq_mode, BOOL_T enable);
  * @return  SUCCESS
  *          ERROR
  * */
-OPERATE_RET tkl_bt_bredr_noise_set(uint8_t noise_mode, USHORT_T noise_data);
+OPERATE_RET tkl_bt_bredr_noise_set(UCHAR_T noise_mode, USHORT_T noise_data);
 
 /**
  * @brief   Swicth the bredr noise mode
@@ -462,7 +462,7 @@ OPERATE_RET tkl_bt_bredr_noise_set(uint8_t noise_mode, USHORT_T noise_data);
  * @return  SUCCESS
  *          ERROR
  * */
-OPERATE_RET tkl_bt_bredr_noise_switch(uint8_t noise_mode, BOOL_T enable);
+OPERATE_RET tkl_bt_bredr_noise_switch(UCHAR_T noise_mode, BOOL_T enable);
 
 
 #ifdef __cplusplus

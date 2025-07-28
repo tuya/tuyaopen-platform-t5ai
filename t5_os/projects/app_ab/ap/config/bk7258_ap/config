@@ -1,0 +1,21 @@
+# Overwrite ARMINO Configuration here
+
+
+#@ Enable Ota Http
+CONFIG_OTA_HTTP=y
+CONFIG_OTA=y
+#@ enable http update ab partition
+CONFIG_HTTP_AB_PARTITION=y
+#@ enable ota update default partition
+CONFIG_OTA_UPDATE_DEFAULT_PARTITION=y
+#@ enable ota evade method
+CONFIG_OTA_EVADE_METHOD=y
+#@ enable ota position independent update
+CONFIG_OTA_POSITION_INDEPENDENT_AB=y
+#@ Enable Iperf Test
+CONFIG_IPERF_TEST=n
+#@ enable ota hash function
+CONFIG_OTA_HASH_FUNCTION=y
+
+CONFIG_GPIO_DEFAULT_SET_SUPPORT=y
+CONFIG_USR_GPIO_CFG_EN=y

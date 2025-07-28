@@ -1,0 +1,5 @@
+menu "Coredump"
+	config CM_BACKTRACE
+		bool "Enable Cm Backtrace"
+		default n
+endmenu

@@ -447,5 +447,6 @@ OPERATE_RET tkl_pwm_info_get(TUYA_PWM_NUM_E ch_id, TUYA_PWM_BASE_CFG_T *info)
     info->duty = pwm_cfg[ch_id].duty;
     info->frequency = pwm_cfg[ch_id].frequency;
     info->polarity = pwm_cfg[ch_id].polarity;
-    return OPRT_NOT_SUPPORTED;
+	
+    return OPRT_OK;
 }

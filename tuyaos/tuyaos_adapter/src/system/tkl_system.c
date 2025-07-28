@@ -18,9 +18,24 @@
 #include "tkl_memory.h"
 #include <driver/otp.h>
 #include "tkl_ipc.h"
+#include "atomic.h"
+#include "tkl_semaphore.h"
 #include "sdkconfig.h"
 
 extern void bk_printf(const char *fmt, ...);
+static TKL_SEM_HANDLE get_cpu_info_sem = NULL;
+
+static TaskHandle_t __gi_thread_handle = NULL;
+static void __get_info_func(void *arg)
+{
+    struct ipc_msg_s *msg = (struct ipc_msg_s *)arg;
+    struct ipc_msg_param_s *p = (struct ipc_msg_param_s *)msg->req_param;
+    if (p != NULL)
+        tkl_system_get_cpu_info((TUYA_CPU_INFO_T **)p->p1, (INT_T *)p->p2);
+
+    __gi_thread_handle = NULL;
+    vTaskDelete(__gi_thread_handle);
+}
 
 void tkl_sys_ipc_func(struct ipc_msg_s *msg)
 {
@@ -31,46 +46,45 @@ void tkl_sys_ipc_func(struct ipc_msg_s *msg)
         }
             break;
 
+#if CONFIG_CPU_INDEX == 0
+        case TKL_IPC_TYPE_SYS_CPU_INFO:
+        {
+            bk_printf("recv cpu info req\r\n");
+            xTaskCreate(__get_info_func, "get_info", 1024, msg, 2, (TaskHandle_t * const )&__gi_thread_handle);
+            msg->ret_value = 0;
+            tuya_ipc_send_no_sync(msg);
+        }
+            break;
+#endif
+
+        case TKL_IPC_TYPE_SYS_CPU_INFO_RSP:
+        {
+            bk_printf("recv cpu info rsp, post sem\r\n");
+            if(get_cpu_info_sem)
+                tkl_semaphore_post(get_cpu_info_sem);
+
+            msg->ret_value = 0;
+            tuya_ipc_send_no_sync(msg);
+        }
+            break;
+
         default:
             break;
     }
-
 
     return;
 }
 
 /**
- * @brief system enter critical
- *
- * @param[in]   none
- * @return  irq mask
- */
-uint32_t tkl_system_enter_critical(void)
-{
-    return rtos_disable_int();
-}
-
-/**
- * @brief system exit critical
- *
- * @param[in]   irq_mask: irq mask 
- * @return  none
- */
-void tkl_system_exit_critical(uint32_t irq_mask)
-{
-    rtos_enable_int(irq_mask);
-}
-
-/**
 * @brief Get system ticket count
 *
-* @param void
+* @param VOID
 *
 * @note This API is used to get system ticket count.
 *
 * @return system ticket count
 */
-SYS_TICK_T tkl_system_get_tick_count(void)
+SYS_TICK_T tkl_system_get_tick_count(VOID_T)
 {
     return (SYS_TICK_T)xTaskGetTickCount();
 }
@@ -82,7 +96,7 @@ SYS_TICK_T tkl_system_get_tick_count(void)
 *
 * @return system millisecond
 */
-SYS_TIME_T tkl_system_get_millisecond(void)
+SYS_TIME_T tkl_system_get_millisecond(VOID_T)
 {
     return (SYS_TIME_T)(tkl_system_get_tick_count() * portTICK_RATE_MS);
 }
@@ -94,11 +108,11 @@ SYS_TIME_T tkl_system_get_millisecond(void)
 *
 * @note This API is used for system sleep.
 *
-* @return void
+* @return VOID
 */
-void tkl_system_sleep(const uint32_t num_ms)
+VOID_T tkl_system_sleep(CONST UINT_T num_ms)
 {
-    uint32_t ticks = num_ms / portTICK_RATE_MS;
+    UINT_T ticks = num_ms / portTICK_RATE_MS;
 
     if (ticks == 0) {
         ticks = 1;
@@ -107,28 +121,32 @@ void tkl_system_sleep(const uint32_t num_ms)
     vTaskDelay(ticks);
 }
 
-extern OPERATE_RET tkl_ipc_send_no_sync(const uint8_t *buf, uint32_t buf_len);
+
+VOID_T tkl_system_sleep_us(UINT_T num_us)
+{
+    // TODO
+    // delay_us(num_us);
+}
 
 /**
 * @brief System reset
 *
-* @param void
+* @param VOID
 *
 * @note This API is used for system reset.
 *
-* @return void
+* @return VOID
 */
-void tkl_system_reset(void)
+VOID_T tkl_system_reset(VOID_T)
 {
-#if CONFIG_SYS_CPU0
+#if CONFIG_CPU_INDEX == 0
     bk_reboot();
 #else
     struct ipc_msg_s msg = {0};
     msg.type = TKL_IPC_TYPE_SYS;
     msg.subtype = TKL_IPC_TYPE_SYS_REBOOT;
 
-    tkl_ipc_send_no_sync((const uint8_t *)&msg, sizeof(struct ipc_msg_s));
-    // TODO ret
+    tuya_ipc_send_no_sync(&msg);
     while(1) {
         tkl_system_sleep(100);
     }
@@ -139,27 +157,27 @@ void tkl_system_reset(void)
 /**
 * @brief Get free heap size
 *
-* @param void
+* @param VOID
 *
 * @note This API is used for getting free heap size.
 *
 * @return size of free heap
 */
-int tkl_system_get_free_heap_size(void)
+INT_T tkl_system_get_free_heap_size(VOID_T)
 {
-    return (int)xPortGetFreeHeapSize();
+    return (INT_T)xPortGetFreeHeapSize();
 }
 
 /**
 * @brief Get system reset reason
 *
-* @param void
+* @param VOID
 *
 * @note This API is used for getting system reset reason.
 *
 * @return reset reason of system
 */
-TUYA_RESET_REASON_E tkl_system_get_reset_reason(char** describe)
+TUYA_RESET_REASON_E tkl_system_get_reset_reason(CHAR_T** describe)
 {
     unsigned char value = bk_misc_get_reset_reason() & 0xFF;
     TUYA_RESET_REASON_E ty_value;
@@ -226,7 +244,7 @@ TUYA_RESET_REASON_E tkl_system_get_reset_reason(char** describe)
 *
 * @return a random number in the specified range
 */
-int tkl_system_get_random(const uint32_t range)
+INT_T tkl_system_get_random(CONST UINT_T range)
 {
     unsigned int trange = range;
 
@@ -244,24 +262,111 @@ int tkl_system_get_random(const uint32_t range)
 }
 
 #define EFUSE_DEVICE_ID_BYTE_NUM 5
-#define OTP_DEVICE_ID 30
+#define OTP_DEVICE_ID 29
 
-OPERATE_RET tkl_system_get_cpu_info(TUYA_CPU_INFO_T **cpu_ary, int *cpu_cnt)
+OPERATE_RET tkl_system_get_cpu_info(TUYA_CPU_INFO_T **cpu_ary, INT_T *cpu_cnt)
 {
     // TODO
-#if 0
-    TUYA_CPU_INFO_T *cpu = tkl_system_malloc(sizeof(TUYA_CPU_INFO_T));
-    if (NULL == cpu) {
-        return OPRT_MALLOC_FAILED;
-    }
-    memset(cpu, 0, sizeof(TUYA_CPU_INFO_T));
+    struct ipc_msg_s msg = {0};
+
+    memset(&msg, 0, sizeof(struct ipc_msg_s));
+
+    msg.type = TKL_IPC_TYPE_SYS;
+
+#if CONFIG_CPU_INDEX == 0
+    TUYA_CPU_INFO_T *cpu = *cpu_ary;
+
     bk_otp_apb_read(OTP_DEVICE_ID, cpu->chipid, EFUSE_DEVICE_ID_BYTE_NUM);
     cpu->chipidlen = EFUSE_DEVICE_ID_BYTE_NUM;
     if (cpu_cnt) {
         *cpu_cnt = 1;
     }
 
+    bk_printf("send cpu info rsp, %p, 0x%02x%02x%02x%02x%02x\r\n",
+            *cpu, cpu->chipid[0], cpu->chipid[1],
+            cpu->chipid[2], cpu->chipid[3], cpu->chipid[4]);
+
+    msg.subtype = TKL_IPC_TYPE_SYS_CPU_INFO_RSP;
+    tuya_ipc_send_sync(&msg);
+#else
+
+    struct ipc_msg_param_s param = {0};
+    msg.subtype = TKL_IPC_TYPE_SYS_CPU_INFO;
+
+    TUYA_CPU_INFO_T *cpu = tkl_system_malloc(sizeof(TUYA_CPU_INFO_T));
+    if (NULL == cpu) {
+        return OPRT_MALLOC_FAILED;
+    }
+    memset(cpu, 0, sizeof(TUYA_CPU_INFO_T));
     *cpu_ary = cpu;
+
+    param.p1 = (void *)((uint32_t)cpu_ary);
+    param.p2 = (void *)((uint32_t)cpu_cnt);
+
+    msg.req_param = &param;
+    msg.req_len = sizeof(param);
+
+    bk_printf("send cpu info req\r\n");
+    tuya_ipc_send_sync(&msg);
+
+    // wait cp response
+    OPERATE_RET ret = tkl_semaphore_create_init(&get_cpu_info_sem, 0, 1);
+    if (ret !=  OPRT_OK) {
+        return ret;
+    }
+    bk_printf("wait cpu info\r\n");
+    ret = tkl_semaphore_wait(get_cpu_info_sem, 5000);
+    tkl_semaphore_release(get_cpu_info_sem);
+    get_cpu_info_sem = NULL;
+    if (ret !=  OPRT_OK) {
+        bk_printf("wait cpu timeout\r\n");
+        return ret;
+    }
+
+    bk_printf("recv cpu info\r\n");
+
 #endif
-    return OPRT_NOT_SUPPORTED;
+
+    return OPRT_OK;
 }
+
+/**
+ * @brief system enter critical
+ *
+ * @return  irq status
+ */
+UINT_T tkl_system_enter_critical(VOID_T)
+{
+#if (CONFIG_FREERTOS_SMP)
+    return rtos_enter_critical();
+#else
+    return rtos_disable_int();
+#endif
+}
+
+/**
+ * @brief system exit critical
+ *
+ * @param[in]   irq_mask: irq mask
+ * @return  none
+ */
+VOID_T tkl_system_exit_critical(UINT_T irq_mask)
+{
+#if (CONFIG_FREERTOS_SMP)
+    rtos_exit_critical(irq_mask);
+#else
+    rtos_enable_int(irq_mask);
+#endif
+}
+
+#if (CONFIG_FREERTOS_SMP)
+/**
+ * @brief system exit critical
+ *
+ * @return  core ID
+ */
+UINT_T tkl_system_get_coreid(VOID_T)
+{
+    return rtos_get_core_id();
+}
+#endif

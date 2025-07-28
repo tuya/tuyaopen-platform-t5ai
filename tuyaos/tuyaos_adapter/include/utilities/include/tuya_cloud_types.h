@@ -1,3 +1,8 @@
+/*
+tuya_cloud_types.h
+Copyright(C),2018-2020, 涂鸦科技 www.tuya.comm
+*/
+
 #ifndef TUYA_CLOUD_TYPES_H
 #define TUYA_CLOUD_TYPES_H
 
@@ -14,21 +19,60 @@
 #include <string.h>
 #include "tuya_error_code.h"
 
+extern void bk_printf(const char *fmt, ...);
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 typedef int OPERATE_RET;
+typedef long long DLONG_T;
+typedef DLONG_T *PDLONG_T;
+typedef float FLOAT_T;
+typedef FLOAT_T *PFLOAT_T;
+typedef signed int INT_T;
+typedef int *PINT_T;
+typedef void *PVOID_T;
+typedef char CHAR_T;
+typedef char *PCHAR_T;
+typedef signed char SCHAR_T;
+typedef unsigned char UCHAR_T;
+typedef short SHORT_T;
+typedef unsigned short USHORT_T;
+typedef short *PSHORT_T;
+typedef long LONG_T;
+typedef unsigned long ULONG_T;
+typedef long *PLONG_T;
+typedef unsigned char BYTE_T;
+typedef BYTE_T *PBYTE_T;
+typedef uint32_t UINT_T;
+typedef uint32_t *PUINT_T;
 typedef int BOOL_T;
 typedef BOOL_T *PBOOL_T;
-typedef unsigned long TIME_MS;
-typedef unsigned long TIME_S;
+typedef int64_t INT64_T;
+typedef INT64_T *PINT64_T;
+typedef uint64_t UINT64_T;
+typedef UINT64_T *PUINT64_T;
+typedef uint32_t UINT32_T;
+typedef unsigned int *PUINT32_T;
+typedef int32_t INT32_T;
+typedef int *PINT32_T;
+typedef short INT16_T;
+typedef INT16_T *PINT16_T;
+typedef unsigned short UINT16_T;
+typedef UINT16_T *PUINT16_T;
+typedef signed char INT8_T;
+typedef INT8_T *PINT8_T;
+typedef unsigned char UINT8_T;
+typedef UINT8_T *PUINT8_T;
+typedef ULONG_T TIME_MS;
+typedef ULONG_T TIME_S;
 typedef unsigned int TIME_T;
-
-#ifndef SIZEOF
-#define SIZEOF sizeof
-#endif
+typedef double DOUBLE_T;
+typedef unsigned short WORD_T;
+typedef WORD_T *PWORD_T;
+typedef unsigned int DWORD_T;
+typedef DWORD_T *PDWORD_T;
 
 #ifndef FALSE
 #define FALSE 0
@@ -36,6 +80,43 @@ typedef unsigned int TIME_T;
 
 #ifndef TRUE
 #define TRUE 1
+#endif
+
+#ifndef IN
+#define IN
+#endif
+
+#ifndef OUT
+#define OUT
+#endif
+
+#ifndef INOUT
+#define INOUT
+#endif
+
+#ifndef VOID
+#define VOID void
+#endif
+
+#ifndef VOID_T
+#define VOID_T void
+#endif
+
+
+#ifndef CONST
+#define CONST const
+#endif
+
+#ifndef STATIC
+#define STATIC static
+#endif
+
+#ifndef SIZEOF
+#define SIZEOF sizeof
+#endif
+
+#ifndef INLINE
+#define INLINE inline
 #endif
 
 #ifndef NULL
@@ -58,7 +139,7 @@ typedef int bool_t;
 #define false 0
 #endif
 
-// typedef size_t size_t;
+typedef size_t SIZE_T;
 
 #ifndef MAX
 #define MAX(a,b) (((a) > (b)) ? (a) : (b))
@@ -484,12 +565,6 @@ typedef uint16_t TUYA_PIN_FUNC_E;
 #define  TUYA_IIC1_SDA       0x3
 #define  TUYA_IIC2_SCL       0x4
 #define  TUYA_IIC2_SDA       0x5
-#define  TUYA_IIC3_SCL       0x6
-#define  TUYA_IIC3_SDA       0x7
-#define  TUYA_IIC4_SCL       0x8
-#define  TUYA_IIC4_SDA       0x9
-#define  TUYA_IIC5_SCL       0xA
-#define  TUYA_IIC5_SDA       0xB
 
 #define  TUYA_UART0_TX       0x100
 #define  TUYA_UART0_RX       0x101
@@ -1395,6 +1470,13 @@ typedef struct {
     uint8_t                  data_bits;// 8,9,16,18,24
 } TUYA_8080_BASE_CFG_T;
 
+typedef enum {
+    TUYA_MCU8080_OUTPUT_FINISH = 0,
+} TUYA_MCU8080_EVENT_E;
+
+
+typedef void (*TUYA_MCU8080_ISR_CB)(TUYA_MCU8080_EVENT_E event);
+
 /**
  * @brief timer num
  * 
@@ -1464,6 +1546,8 @@ typedef enum {
     TUYA_RTC_MODE_PERIOD
 } TUYA_RTC_MODE_E;
 
+
+typedef void (*TUYA_RTC_ISR_CB)(TUYA_RTC_NUM_E port, void *args);
 /**
  * @brief tuya wake source rtc
  */
@@ -1471,6 +1555,8 @@ typedef struct {
     TUYA_RTC_NUM_E RTC_num;
     TUYA_RTC_MODE_E mode;
     uint32_t ms;
+    TUYA_RTC_ISR_CB cb;
+    void    *args;
 } TUYA_WAKEUP_SOURCE_RTC_T;
 
 /**
@@ -1536,6 +1622,18 @@ typedef enum {
 /* tuyaos definition of IP addr */
 typedef uint32_t TUYA_IP_ADDR_T;
 
+/* MTD 接口类型枚举 */
+typedef enum {
+    MTD_IF_SPI,        // 标准SPI接口
+    MTD_IF_QSPI,       // Quad-SPI接口
+} MTD_INTERFACE_E;
+
+typedef enum {
+    TYPE_SRAM = 0,
+    TYPE_PSRAM,
+} RAM_TYPE_E;
+
+
 /* tuyaos errorno */
 typedef int TUYA_ERRNO;
 #define UNW_SUCCESS       0
@@ -1584,11 +1682,6 @@ typedef int TUYA_ERRNO;
 #define TKL_THREAD_PRI_LOW          1
 #define TKL_THREAD_PRI_LOWEST       0
 
-/* MTD 接口类型枚举 */
-typedef enum {
-    MTD_IF_SPI,        // 标准SPI接口
-    MTD_IF_QSPI,       // Quad-SPI接口
-} MTD_INTERFACE_E;
 #ifdef __cplusplus
 }
 #endif

@@ -1,3 +1,0 @@
-#firmware,key_pair
-bootloader,ecdsa384.der
-app,ecdsa384.der

@@ -25,7 +25,7 @@ extern void bk_printf(const char *fmt, ...);
 
 alarm_info_t rtc_alarm;
 
-static int __save_wakeup_node(const TUYA_WAKEUP_SOURCE_BASE_CFG_T  *param)
+static int __save_wakeup_node(CONST TUYA_WAKEUP_SOURCE_BASE_CFG_T  *param)
 {
     int i = 0;
 
@@ -66,6 +66,9 @@ static int __save_wakeup_node(const TUYA_WAKEUP_SOURCE_BASE_CFG_T  *param)
 #if CONFIG_GPIO_WAKEUP_SUPPORT
 static void __gpio_wakeup_source_set(gpio_id_t id, TUYA_GPIO_WAKE_TYPE_E level)
 {
+    bk_printf("TODO ... %s %d\r\n", __func__, __LINE__);
+    return 0;
+#if 0
     gpio_int_type_t int_type = GPIO_INT_TYPE_FALLING_EDGE;
 
     // TODO irq type
@@ -89,12 +92,16 @@ static void __gpio_wakeup_source_set(gpio_id_t id, TUYA_GPIO_WAKE_TYPE_E level)
 
     bk_gpio_register_wakeup_source(id, int_type);
     bk_pm_wakeup_source_set(PM_WAKEUP_SOURCE_INT_GPIO, NULL);
+#endif
 }
 #endif //CONFIG_GPIO_WAKEUP_SUPPORT
 
 #if CONFIG_AON_RTC
 static void __rtc_wakeup_source_set(uint32_t ms)
 {
+    bk_printf("TODO ... %s %d\r\n", __func__, __LINE__);
+    return;
+#if 0
     uint32_t rtc_ms_tick = bk_rtc_get_clock_freq()/1000;
     aon_pmu_drv_lpo_src_set(PM_LPO_SRC_ROSC);
 
@@ -113,6 +120,7 @@ static void __rtc_wakeup_source_set(uint32_t ms)
     bk_alarm_register(AON_RTC_ID_1, &rtc_alarm);
     bk_printf("rtc wakeup: %d, %d\r\n", rtc_ms_tick, ms);
     bk_pm_wakeup_source_set(PM_WAKEUP_SOURCE_INT_RTC, NULL);
+#endif
 }
 #endif // CONFIG_AON_RTC
 
@@ -151,7 +159,7 @@ static void tkl_set_ll_wakeup_source(void)
  *
  * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
  */
-OPERATE_RET tkl_wakeup_source_set(const TUYA_WAKEUP_SOURCE_BASE_CFG_T  *param)
+OPERATE_RET tkl_wakeup_source_set(CONST TUYA_WAKEUP_SOURCE_BASE_CFG_T  *param)
 {
     if (param == NULL)
         return OPRT_INVALID_PARM;
@@ -214,13 +222,16 @@ OPERATE_RET tkl_wakeup_source_get(TUYA_WAKEUP_SOURCE_BASE_CFG_T *param, uint32_t
  *
  * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
  */
-OPERATE_RET tkl_wakeup_source_clear(const TUYA_WAKEUP_SOURCE_BASE_CFG_T *param)
+OPERATE_RET tkl_wakeup_source_clear(CONST TUYA_WAKEUP_SOURCE_BASE_CFG_T *param)
 {
     if (wakeup_source == NULL) {
         bk_printf("wakeup source not init, %d\r\n", __LINE__);
-        return OPRT_INVALID_PARM;
+        return OPRT_COM_ERROR;
     }
 
+    bk_printf("TODO ... %s %d\r\n", __func__, __LINE__);
+    return -1;
+#if 0
     static char clear_flag = 0;
 
     for (int i = 0; i < WAKEUP_SOURCE_CNT; i++) {
@@ -246,6 +257,7 @@ OPERATE_RET tkl_wakeup_source_clear(const TUYA_WAKEUP_SOURCE_BASE_CFG_T *param)
     }
 
     return OPRT_OK;
+#endif
 }
 
 

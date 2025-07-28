@@ -44,7 +44,7 @@ static void __tkl_hw_timer_cb(void *args)
  */
 OPERATE_RET tkl_timer_init(TUYA_TIMER_NUM_E timer_id, TUYA_TIMER_BASE_CFG_T *cfg)
 {
-    if (timer_id >= TIMER_DEV_NUM) {
+    if (timer_id >= TIMER_DEV_NUM || timer_id < TUYA_TIMER_NUM_3) {
         return OPRT_NOT_SUPPORTED;
     }
 
@@ -63,14 +63,16 @@ OPERATE_RET tkl_timer_init(TUYA_TIMER_NUM_E timer_id, TUYA_TIMER_BASE_CFG_T *cfg
  *
  * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
  */
-OPERATE_RET tkl_timer_start(TUYA_TIMER_NUM_E timer_id, uint32_t us)
+OPERATE_RET tkl_timer_start(TUYA_TIMER_NUM_E timer_id, UINT_T us)
 {
-    if (timer_id >= TIMER_DEV_NUM || us == 0) {
+    //ap not support timer0~2
+    if (timer_id >= TIMER_DEV_NUM || timer_id < TUYA_TIMER_NUM_3 || us == 0) {
         return OPRT_NOT_SUPPORTED;
     }
 
+    bk_timer_set_period_us(timer_id, 0);
     if(!(us % 1000)) {
-        bk_timer_start(timer_id, (uint32_t)(us / 1000), (timer_isr_t)__tkl_hw_timer_cb);
+        bk_timer_start(timer_id, (UINT_T)(us / 1000), (timer_isr_t)__tkl_hw_timer_cb);
     } else {
         bk_timer_start_us(timer_id, us, (timer_isr_t)__tkl_hw_timer_cb);
     }
@@ -87,11 +89,12 @@ OPERATE_RET tkl_timer_start(TUYA_TIMER_NUM_E timer_id, uint32_t us)
  */
 OPERATE_RET tkl_timer_stop(TUYA_TIMER_NUM_E timer_id)
 {
-    if (timer_id >= TIMER_DEV_NUM) {
+    if (timer_id >= TIMER_DEV_NUM || timer_id < TUYA_TIMER_NUM_3) {
         return OPRT_NOT_SUPPORTED;
     }
 
     bk_timer_stop(timer_id);
+    bk_timer_set_period_us(timer_id, 0);
 
     return OPRT_OK;
 }
@@ -105,7 +108,7 @@ OPERATE_RET tkl_timer_stop(TUYA_TIMER_NUM_E timer_id)
  */
 OPERATE_RET tkl_timer_deinit(TUYA_TIMER_NUM_E timer_id)
 {
-    if (timer_id >= TIMER_DEV_NUM) {
+    if (timer_id >= TIMER_DEV_NUM || timer_id < TUYA_TIMER_NUM_3) {
         return OPRT_NOT_SUPPORTED;
     }
 
@@ -121,17 +124,19 @@ OPERATE_RET tkl_timer_deinit(TUYA_TIMER_NUM_E timer_id)
  *
  * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
  */
-OPERATE_RET tkl_timer_get(TUYA_TIMER_NUM_E timer_id, uint32_t *us)
+OPERATE_RET tkl_timer_get(TUYA_TIMER_NUM_E timer_id, UINT_T *us)
 {
     uint32_t count;
-
+    if (timer_id >= TIMER_DEV_NUM || timer_id < TUYA_TIMER_NUM_3) {
+        return OPRT_NOT_SUPPORTED;
+    }
     count = bk_timer_get_cnt(timer_id);
     if (us != NULL) {
         *us = count / 26;
     } else {
         return OPRT_INVALID_PARM;
     }
- 
+
     return OPRT_OK;
 }
 
@@ -143,8 +148,12 @@ OPERATE_RET tkl_timer_get(TUYA_TIMER_NUM_E timer_id, uint32_t *us)
  *
  * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
  */
-OPERATE_RET tkl_timer_get_current_value(TUYA_TIMER_NUM_E timer_id, uint32_t *us)
+OPERATE_RET tkl_timer_get_current_value(TUYA_TIMER_NUM_E timer_id, UINT_T *us)
 {
+    if (timer_id >= TIMER_DEV_NUM || timer_id < TUYA_TIMER_NUM_3) {
+        return OPRT_NOT_SUPPORTED;
+    }
     return tkl_timer_get(timer_id, us);
 }
+
 

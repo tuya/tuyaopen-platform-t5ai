@@ -1,1 +1,0 @@
-// int bk_h264_parse_head(uint8_t *h264_data, uint8_t *send_head, uint32_t *data_len);

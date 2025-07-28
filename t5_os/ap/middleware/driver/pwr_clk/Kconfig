@@ -1,0 +1,86 @@
+menu "PWR_CLK"
+	config EXTERN_32K
+		bool "Use an external 32k crystal"
+		default n
+	config MEM_AUTO_POWER_DISABLE
+		bool "mem auto power disable"
+		default n
+	config CP1_AUTO_POWER_DISABLE
+		bool "cp1 auto power disable"
+		default n
+	config CPU_DEFAULT_FREQ_60M
+		bool "set cpu default frequency 60M"
+		default n
+	config RESERVE_1K_SRAM_UNINITIAL
+		bool "reserve 1k sram uninitialized"
+		default n
+	config LPO_SRC_26M32K
+		bool "32k use the 26m divide"
+		default n
+	config BUCK_ENABLE
+		bool "buck enable"
+		default n
+	config BUCK_ANALOG_DISABLE
+		depends on BUCK_ENABLE
+		bool "buck disable analog"
+		default n
+	config BAKP_POWER_DOMAIN_DISABLE
+		 bool "bakp power domain disable"
+		default n
+	config BAKP_POWER_DOMAIN_PM_CONTROL
+		 bool "used for PM control of bakp domain power on and off"
+		default n
+	config AHBP_POWER_DOMAIN_LV_DISABLE
+		 bool "ahbp power domain disable"
+		default n
+	config PSRAM_POWER_DOMAIN_LV_DISABLE
+		 bool "psram power domain disable"
+		default n
+	config DCO_CLK_ENABLE
+		bool "Enable dco clk"
+		default n
+	config EXTERN_32K_PIN_MULT
+		 bool "extern32k pin multiplexing"
+		default n
+	config CLI_CODE_SIZE_OPTIMIZE_ENABLE
+		 bool "cli command code size optimize"
+		default n
+	config VBSPBUFLP1V_ENABLE
+		 bool "enable vbspbuflp1v"
+		default n
+	config LPO_MP_A_FORCE_USE_EXT32K
+		 bool "MP_A force use the external 32k"
+		default n
+	config ROSC_CALIB_SW
+		 bool "enable calibrate rc32k by software"
+		default n
+	config ROSC_COMPENSATION
+		 bool "enable rosc compensation for rtc tick"
+		default n
+	config LP_VOL
+		hex "Set Low power voltage value"
+		default 0x6
+		help
+			Set Low power voltage default value 0.6v(0.45+0.025*6)
+	config DIGLDO_LOW_VOLTAGE_ENABLE
+		 bool "enable dig ldo low voltage "
+		default y
+	config CLK_FORCE_MAX_CPU_FREQ_320M
+		 bool "force max cpu frequency 320M"
+		default n
+	config PM_26M_STABILITY_DELAY_TIME_HARDWARE
+		 int "26M CRYSTAL HARDWARE STABILITY DELAY TIME"
+		default 1300
+		help
+			config the 26M crystal hardware stability time
+	config PM_DEMO_ENABLE
+		bool "enable PM demo, Applications can develop their own low-power solutions based on this demo"
+		default n
+	config PM_CLI_ENABLE
+		bool "enable PM demo, Applications can develop their own low-power solutions based on this demo"
+		default n
+	config PM_LV_SUBCORES_ON
+		bool "CPU0 and CPU1,CPU2 ON when enter low voltage"
+		default n
+endmenu
+
