@@ -1229,16 +1229,12 @@ static bk_err_t i2s_dma_config(dma_id_t dma_id, uint32_t *ring_buff_addr, uint32
 	dma_config.chan_prio = 1;
 	dma_config.src.width = DMA_DATA_WIDTH_32BITS;
 	dma_config.dst.width = DMA_DATA_WIDTH_32BITS;
-// Modified by TUYA Start
-	dma_config.src.addr_inc_en = DMA_ADDR_INC_DISABLE;
-// Modified by TUYA End
+	dma_config.src.addr_inc_en = DMA_ADDR_INC_ENABLE;
 	dma_config.src.addr_loop_en = DMA_ADDR_LOOP_ENABLE;
 	dma_config.dst.addr_inc_en = DMA_ADDR_INC_ENABLE;
 	dma_config.dst.addr_loop_en = DMA_ADDR_LOOP_ENABLE;
 	/* get i2s address */
-// Modified by TUYA Start
-	bk_i2s_get_data_addr(I2S_CHANNEL_1, &i2s_data_addr);
-// Modified by TUYA End
+	bk_i2s_get_data_addr(chl_id, &i2s_data_addr);
 
 	if (type == I2S_TXRX_TYPE_RX) {
 		switch (chl_id) {

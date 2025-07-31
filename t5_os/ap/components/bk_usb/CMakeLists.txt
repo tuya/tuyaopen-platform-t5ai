@@ -53,6 +53,9 @@ if (CONFIG_USB)
 	endif() # CONFIG_USB_DEVICE
 
 	if (CONFIG_USB_HOST)
+		list(APPEND incs
+			CherryUSB/demo/beken/usb_host
+		)
 		list(APPEND srcs
 			CherryUSB/core/usbh_core.c
 			CherryUSB/port/beken_musb/usb_hc_beken_musb.c

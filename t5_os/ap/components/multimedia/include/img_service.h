@@ -72,9 +72,11 @@ typedef struct
     void *args;
 } img_msg_t;
 
+typedef void (*img_display_cb)(frame_buffer_t *frame);
 
 bk_err_t bk_img_msg_send(img_msg_t *msg);
 bk_err_t img_service_open(void);
+void img_register_display_cb(img_display_cb *disp_cb);
 //void img_event_handle(media_mailbox_msg_t *msg);
 
 frame_buffer_t *rotate_frame_handler(frame_buffer_t *frame, media_rotate_t rotate);

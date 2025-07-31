@@ -118,6 +118,7 @@ static beken_thread_t jpeg_decoder_task = NULL;
 frame_list_node_t *jpeg_frame_node;
 // Modified by TUYA Start
 static void *g_lcd_handle = NULL;
+static img_display_cb g_img_display_cb = NULL;
 
 // static  ty_frame_buffer_t g_ty_frame[2] = {0};
 static unsigned int g_cnt = 0;
@@ -166,38 +167,11 @@ static void img_service_task_entry(beken_thread_arg_t data)
                     if (frame->fmt == PIXEL_FMT_YUYV || frame->fmt == PIXEL_FMT_RGB565 || frame->fmt == PIXEL_FMT_RGB565_LE)
                     {
                         frame = rotate_frame_handler(frame, img_info.rotate);
-                        if (frame != NULL)
-                        {
-                            #if CONFIG_LVGL
-                            if (lvgl_disp_enable) {
-                                img_info.fb_free(frame);
+                        if (frame != NULL) {
+                            if(g_img_display_cb) {
+                                g_img_display_cb(frame);
                             }
-                            else
-                            #endif
-                            {
-                                // Modified by TUYA Start
-                                // g_cnt = g_cnt % 2;
-                                // ty_frame_buffer_t *ty_frame = &g_ty_frame[g_cnt];
-                                // g_cnt++;
-                                // if (ty_frame) {
-                                //     __builtin_memcpy(ty_frame->frame, frame->frame, frame->length);
-                                //     ty_frame->type = 1;
-                                //     ty_frame->len = frame->length;
-                                //     ty_frame->fmt = 0;
-                                //     ty_frame->width = frame->width;
-                                //     ty_frame->height = frame->height;
-                                //     ty_frame->free_cb = NULL;
-                                //     ty_frame->pdata = frame;
-                                //     img_info.fb_free(frame);
-                                //     // 刷新显示（使用原始buffer的子区域）
-                                //     tal_display_flush(g_lcd_handle, ty_frame);
-                                //     // Modified by TUYA End
-                                // }
-                                if (ret != BK_OK)
-                                {
-                                    img_info.fb_free(frame);
-                                }
-                            }
+                            img_info.fb_free(frame);
                         }
                     }
                     else
@@ -903,4 +877,10 @@ void im_lcd_handle(void *handle)
 {
     g_lcd_handle = handle;  
 }
+
+void img_register_display_cb(img_display_cb *disp_cb)
+{
+    g_img_display_cb = disp_cb;
+}
+
 // Modified by TUYA End

@@ -47,6 +47,9 @@ typedef struct {
 
 bk_err_t timer_hal_init(timer_hal_t *hal);
 bk_err_t timer_hal_init_timer(timer_hal_t *hal, timer_id_t chan, uint64_t time, timer_value_unit_t unit_type);
+// Modified by TUYA Start
+bk_err_t timer_hal_set_period_us(timer_hal_t *hal, timer_id_t chan, uint32_t time_ms);
+// Modified by TUYA End
 bk_err_t timer_hal_set_period(timer_hal_t *hal, timer_id_t chan, uint32_t time_ms);
 bk_err_t timer_hal_start_common(timer_hal_t *hal, timer_id_t chan);
 bk_err_t timer_hal_stop_common(timer_hal_t *hal, timer_id_t chan);

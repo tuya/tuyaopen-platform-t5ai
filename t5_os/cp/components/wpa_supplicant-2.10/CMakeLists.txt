@@ -1,4 +1,4 @@
-set(incs)
+set(incs include/bk_private)
 set(srcs "")
 
 if (CONFIG_WPA_SUPPLICANT)

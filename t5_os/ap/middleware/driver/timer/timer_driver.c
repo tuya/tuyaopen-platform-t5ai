@@ -638,3 +638,58 @@ __IRAM_SEC void bk_timer_delay_us(uint32_t us)
 	timer_hal_delay_us(us);
 }
 #endif
+
+// Modified by TUYA Start
+bk_err_t bk_timer_set_period_us(timer_id_t timer_id, uint64_t time_us)
+{
+    TIMER_RETURN_ON_NOT_INIT();
+    TIMER_RETURN_ON_INVALID_ID(timer_id);
+    TIMER_PM_CHECK_RESTORE(timer_id);
+#if CONFIG_TIMER_SUPPORT_ID_BITS
+    TIMER_RETURN_TIMER_ID_IS_ERR(timer_id);
+#endif
+    timer_hal_set_period_us(&s_timer.hal, timer_id, time_us);
+
+    return BK_OK;
+}
+
+bk_err_t bk_timer_start_us(timer_id_t timer_id, uint64_t time_us, timer_isr_t callback)
+{
+    TIMER_RETURN_ON_NOT_INIT();
+    TIMER_RETURN_ON_INVALID_ID(timer_id);
+    TIMER_PM_CHECK_RESTORE(timer_id);
+#if CONFIG_TIMER_SUPPORT_ID_BITS
+    TIMER_RETURN_TIMER_ID_IS_ERR(timer_id);
+#endif
+
+    uint32_t en_status = 0;
+
+// #if CONFIG_TIMER_US
+//     if (timer_id == TIMER_ID0) {
+//         TIMER_LOGE("timer0 is reserved for us timer!\r\n");
+//     }
+// #endif
+
+    timer_chan_init_common(timer_id);
+#if !CONFIG_RTC_TIMER_PRECISION_TEST
+    timer_chan_enable_interrupt_common(timer_id);
+#endif
+
+    en_status = timer_hal_get_enable_status(&s_timer.hal);
+    if (en_status & BIT(timer_id)) {
+        TIMER_LOGD("timer(%d) is running, stop it\r\n", timer_id);
+        timer_hal_disable(&s_timer.hal, timer_id);
+        delay(4);
+    }
+
+    timer_hal_init_timer(&s_timer.hal, timer_id, time_us, TIMER_UNIT_US);
+    uint32_t int_level = rtos_enter_critical();
+    timer_hal_start_common(&s_timer.hal, timer_id);
+    if (timer_id < SOC_TIMER_CHAN_NUM_PER_UNIT){
+        s_timer_isr[timer_id] = callback;
+    }
+    rtos_exit_critical(int_level);
+
+    return BK_OK;
+}
+// Modified by TUYA End

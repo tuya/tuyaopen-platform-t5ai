@@ -76,6 +76,17 @@ OPERATE_RET tkl_qspi_recv(TUYA_QSPI_NUM_E port, VOID_T *data, UINT16_T size);
 OPERATE_RET tkl_qspi_comand(TUYA_QSPI_NUM_E port, TUYA_QSPI_CMD_T *command);
 
 /**
+ * @brief qspi bus mode set
+ * NOTE: only write lines & non mapping set
+ *
+ * @param[in] port: qspi port, id index starts at 0
+ * @param[in] mode:  1¡¢2¡¢4 line 
+ *
+ * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
+ */
+OPERATE_RET tkl_qspi_set_busmode(TUYA_QSPI_NUM_E port, TUYA_QSPI_WIRE_MODE_E mode);
+
+/**
  * @brief adort qspi transfer,or qspi send, or qspi recv
  * 
  * @param[in] port: qspi port

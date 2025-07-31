@@ -26,12 +26,15 @@ extern "C" {
 
 #define SPI_LL_REG_BASE(_spi_unit_id)    (SOC_SPI_REG_BASE + (0x1010000 * _spi_unit_id))
 
-#define SPI0_LL_CSN_PIN     GPIO_15
-#define SPI0_LL_SCK_PIN     GPIO_14
-#define SPI0_LL_MOSI_PIN    GPIO_16
-#define SPI0_LL_MISO_PIN    GPIO_17
+#if 1
+extern gpio_id_t ty_get_dev_io(gpio_dev_t dev);
 
-#if 0
+#define SPI0_LL_CSN_PIN     ty_get_dev_io(GPIO_DEV_SPI0_CSN)
+#define SPI0_LL_SCK_PIN     ty_get_dev_io(GPIO_DEV_SPI0_SCK)
+#define SPI0_LL_MOSI_PIN    ty_get_dev_io(GPIO_DEV_SPI0_MOSI)
+#define SPI0_LL_MISO_PIN    ty_get_dev_io(GPIO_DEV_SPI0_MISO)
+
+#else
 #define SPI0_LL_CSN_PIN     GPIO_45
 #define SPI0_LL_SCK_PIN     GPIO_44
 #define SPI0_LL_MOSI_PIN    GPIO_46

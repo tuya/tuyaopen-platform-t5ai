@@ -56,6 +56,7 @@
 #include "miiphy.h"
 #include "os/mem.h"
 #include "sys_driver.h"
+#include "wifi_api.h"
 
 #define ETH_MULTI_PHY_SUPPORT  1
 
@@ -311,6 +312,21 @@ int eqos_mdio_reset(struct mii_dev *bus)
 /*******************************************************************************
                        LL Driver Interface ( LwIP stack --> ETH)
 *******************************************************************************/
+int wifi_get_mac(const int8_t wf, uint8_t *mac)
+{
+    memset(mac, 0, 6);
+
+    if(0 == wf) {
+        bk_wifi_sta_get_mac(mac);
+    }else{
+        bk_wifi_ap_get_mac(mac);
+    }
+
+    bk_printf("get mac: %02x:%02x:%02x:%02x:%02x:%02x\r\n",
+            mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+    return 0;
+}
+
 /**
  * @brief In this function, the hardware should be initialized.
  * Called from ethernetif_init().
@@ -335,7 +351,9 @@ static bk_err_t low_level_init(struct netif *netif)
 
   /* Start ETH HAL Init */
   heth.Instance = ETH;
-  bk_get_mac(priv->mac, MAC_TYPE_ETH);
+  // bk_get_mac(priv->mac, MAC_TYPE_ETH);
+  wifi_get_mac(0, priv->mac);
+  priv->mac[5] += 3;
   heth.Init.MACAddr = priv->mac;
   heth.Init.MediaInterface = HAL_ETH_RMII_MODE;
   heth.Init.TxDesc = DMATxDscrTab;
@@ -1079,24 +1097,24 @@ void HAL_ETH_MspInit(ETH_HandleTypeDef* ethHandle)
   gpio_dev_map(GPIO_39, GPIO_DEV_ENET_REF_CLK);
 #elif defined(CONFIG_ETH_PIN_GROUP1)
   gpio_dev_unmap(GPIO_46);  // PHY INT
-  gpio_dev_unmap(GPIO_47);  // MDC
+  gpio_dev_unmap(GPIO_29);  // MDC
   gpio_dev_unmap(GPIO_48);  // MDIO
-  gpio_dev_unmap(GPIO_49);  // RXD[0]
+  gpio_dev_unmap(GPIO_33);  // RXD[0]
   gpio_dev_unmap(GPIO_50);  // RXD[1]
-  gpio_dev_unmap(GPIO_51);  // RXDV
+  gpio_dev_unmap(GPIO_35);  // RXDV
   gpio_dev_unmap(GPIO_52);  // TXD[0]
-  gpio_dev_unmap(GPIO_53);  // TXD[1]
+  gpio_dev_unmap(GPIO_37);  // TXD[1]
   gpio_dev_unmap(GPIO_54);  // TXEN
   gpio_dev_unmap(GPIO_55);  // REF_CLK
 
   gpio_dev_map(GPIO_46, GPIO_DEV_ENET_PHY_INT);
-  gpio_dev_map(GPIO_47, GPIO_DEV_ENET_MDC);
+  gpio_dev_map(GPIO_29, GPIO_DEV_ENET_MDC);
   gpio_dev_map(GPIO_48, GPIO_DEV_ENET_MDIO);
-  gpio_dev_map(GPIO_49, GPIO_DEV_ENET_RXD0);
+  gpio_dev_map(GPIO_33, GPIO_DEV_ENET_RXD0);
   gpio_dev_map(GPIO_50, GPIO_DEV_ENET_RXD1);
-  gpio_dev_map(GPIO_51, GPIO_DEV_ENET_RXDV);
+  gpio_dev_map(GPIO_35, GPIO_DEV_ENET_RXDV);
   gpio_dev_map(GPIO_52, GPIO_DEV_ENET_TXD0);
-  gpio_dev_map(GPIO_53, GPIO_DEV_ENET_TXD1);
+  gpio_dev_map(GPIO_37, GPIO_DEV_ENET_TXD1);
   gpio_dev_map(GPIO_54, GPIO_DEV_ENET_TXEN);
   gpio_dev_map(GPIO_55, GPIO_DEV_ENET_REF_CLK);
 #endif

@@ -720,7 +720,7 @@ OPERATE_RET  tkl_i2c_reset(TUYA_I2C_NUM_E port)
  * tkl_i2c_slave_send:number of data bytes transmitted
  * tkl_i2c_slave_receive:number of data bytes received and acknowledged
  */
-INT_T tkl_i2c_get_data_count(TUYA_I2C_NUM_E port)
+INT32_T tkl_i2c_get_data_count(TUYA_I2C_NUM_E port)
 {
     return OPRT_NOT_SUPPORTED;
 }

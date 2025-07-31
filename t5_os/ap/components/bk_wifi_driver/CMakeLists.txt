@@ -4,7 +4,7 @@ set(srcs)
 #set(prev_req )
 
 if(CONFIG_WIFI_VNET_CONTROLLER)
-	list(APPEND incs .)
+	list(APPEND incs . include)
 
 	list(APPEND srcs
 			wdrv_ipc.c

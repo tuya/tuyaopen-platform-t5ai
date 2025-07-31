@@ -4,7 +4,7 @@ set(srcs)
 set(prev_req bk_common bk_wifi lwip_intf_v2_1 bk_pm app demos)
 
 #if(CONFIG_WIFI_VNET_CONTROLLER)
-	list(APPEND incs .)
+	list(APPEND incs . include)
 
 	list(APPEND srcs
 		cif_cntrl.c

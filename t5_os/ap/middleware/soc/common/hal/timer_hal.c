@@ -87,6 +87,15 @@ bk_err_t timer_hal_init_timer(timer_hal_t *hal, timer_id_t chan, uint64_t time, 
     return BK_OK;
 }
 
+// Modified by TUYA Start
+bk_err_t timer_hal_set_period_us(timer_hal_t *hal, timer_id_t chan, uint32_t time_ms)
+{
+    uint32_t end_count = timer_hal_cal_end_count(chan, time_ms, 1, TIMER_UNIT_US);
+    timer_ll_set_end_count(hal->hw, chan, end_count);
+    return BK_OK;
+}
+// Modified by TUYA End
+
 bk_err_t timer_hal_set_period(timer_hal_t *hal, timer_id_t chan, uint32_t time_ms)
 {
     uint32_t end_count = timer_hal_cal_end_count(chan, time_ms, 1, TIMER_UNIT_MS);

@@ -1,5 +1,5 @@
 armino_build_get_property(target ARMINO_SOC)
-set(incs .)
+set(incs include)
 
 set(srcs
 	pm.c

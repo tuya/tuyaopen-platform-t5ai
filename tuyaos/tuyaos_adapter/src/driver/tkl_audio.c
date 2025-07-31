@@ -38,6 +38,9 @@ typedef struct
 static TKL_AUDIO_GAIN_T g_audio_gain = {0};
 static TKL_FRAME_PUT_CB user_mic_cb = NULL;
 static TKL_FRAME_SPK_CB user_spk_cb = NULL;
+static INT32_T board_spk_gpio;
+static INT32_T board_spk_gpio_polarity;
+
 
 extern void *tkl_system_psram_malloc(size_t size);
 extern void tkl_system_psram_free(void *ptr);
@@ -123,7 +126,10 @@ OPERATE_RET tkl_ai_init(TKL_AUDIO_CONFIG_T *pconfig, INT32_T count)
         bk_printf("audio trace: %s %d\r\n", __func__, __LINE__);
     } else {
         voice_cfg.mic_type = MIC_TYPE_ONBOARD;
-        onboard_mic_cfg.adc_cfg.dig_gain = pconfig->mic_volume;
+        if (pconfig->mic_volume)
+        {
+            onboard_mic_cfg.adc_cfg.dig_gain = (uint32_t)(pconfig->mic_volume * 0x3F / 100);
+        }
         onboard_mic_cfg.adc_cfg.bits = pconfig->datebits;
         onboard_mic_cfg.adc_cfg.sample_rate = sample_rate;
         /* one farme size, 20ms */
@@ -220,7 +226,19 @@ OPERATE_RET tkl_ai_init(TKL_AUDIO_CONFIG_T *pconfig, INT32_T count)
     if (voice_cfg.spk_type == SPK_TYPE_ONBOARD) {
         onboard_speaker_stream_cfg_t onboard_spk_cfg =
             ONBOARD_SPEAKER_STREAM_CFG_DEFAULT();
-        onboard_spk_cfg.dig_gain = pconfig->spk_volume;
+        if (pconfig->spk_volume)
+        {
+            uint32_t new_vol;
+            if (pconfig->spk_volume <= 30) {
+                // 0-30% 映射到 0-50%
+                pconfig->spk_volume = pconfig->spk_volume * 50 / 30;
+            } else {
+                // 30-100% 映射到 50-70%
+                pconfig->spk_volume = 50 + (pconfig->spk_volume - 30) * 20 / 70;
+            }
+            pconfig->spk_volume = (uint32_t)(pconfig->spk_volume * 0x3F / 100) ;
+            onboard_spk_cfg.dig_gain = (uint32_t)pconfig->spk_volume;
+        }
         onboard_spk_cfg.bits = pconfig->datebits;
         onboard_spk_cfg.sample_rate = sample_rate;
         /* one farme size, 20ms */
@@ -236,7 +254,11 @@ OPERATE_RET tkl_ai_init(TKL_AUDIO_CONFIG_T *pconfig, INT32_T count)
         voice_cfg.spk_cfg.onboard_spk_cfg = onboard_spk_cfg;
     } else {
         uac_speaker_stream_cfg_t uac_spk_cfg = UAC_SPEAKER_STREAM_CFG_DEFAULT();
-        uac_spk_cfg.volume = pconfig->spk_volume;
+        if (pconfig->spk_volume)
+        {
+            uac_spk_cfg.volume = pconfig->spk_volume;
+        }
+
         uac_spk_cfg.bits = pconfig->datebits;
         uac_spk_cfg.samp_rate = sample_rate;
         /* one farme size, 20ms */
@@ -268,7 +290,8 @@ OPERATE_RET tkl_ai_init(TKL_AUDIO_CONFIG_T *pconfig, INT32_T count)
             cfg.mode = TUYA_GPIO_PULLDOWN;
             cfg.level = TUYA_GPIO_LEVEL_LOW;
         }
-
+        board_spk_gpio = pconfig->spk_gpio;
+        board_spk_gpio_polarity = pconfig->spk_gpio_polarity;
         tkl_gpio_init(pconfig->spk_gpio, &cfg);
 
     }
@@ -382,8 +405,10 @@ OPERATE_RET tkl_ai_set_vol(INT32_T card, TKL_AI_CHN_E chn, INT32_T vol)
     }
 
     g_audio_gain.mic_gain = vol;
+    uint32_t volume = 0;
+    volume =(uint32_t)(vol * 0x3F / 100);
 
-    return bk_aud_adc_set_gain((uint32_t)(vol * 0.6));
+    return bk_aud_adc_set_gain(volume);
 }
 
 /**
@@ -556,7 +581,32 @@ OPERATE_RET tkl_ao_set_vol(INT32_T card, TKL_AO_CHN_E chn, VOID *handle,
         return OPRT_RESOURCE_NOT_READY;
     }
     g_audio_gain.spk_gain = vol;
-    return bk_aud_dac_set_gain((uint32_t)(vol * 0.6));
+    uint32_t volume = 0;
+    if (card == TKL_AUDIO_TYPE_BOARD) {
+        // 重新映射音量范围
+        uint32_t new_vol;
+        if (vol <= 30) {
+            // 0-30% 映射到 0-50%
+            vol = vol * 50 / 30;
+        } else {
+            // 30-100% 映射到 50-70%
+            vol = 50 + (vol - 30) * 20 / 70;
+        }
+        volume =(uint32_t)(vol * 0x3F / 100) ;
+        if (volume == 0)
+        {
+            bk_aud_dac_mute();
+        }
+        else
+        {
+            bk_aud_dac_unmute();
+        }
+    }
+    else {
+        volume = (vol);
+    }
+
+    return bk_aud_dac_set_gain(volume);
 }
 
 /**

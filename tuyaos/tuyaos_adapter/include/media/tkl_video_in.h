@@ -115,6 +115,16 @@ typedef struct
     };
 }TKL_VI_EXT_CONFIG_T;
 
+typedef struct {
+    uint32_t                   width;
+    uint32_t                   height;
+    TUYA_DISPLAY_PIXEL_FMT_E   fmt;
+    uint32_t                   frame_len;
+    uint8_t                    *pbuf;                                  // video frame buffer
+}TKL_VI_DISP_FRAME_T;
+
+typedef void (*TKL_VI_DISP_CB)(TKL_VI_DISP_FRAME_T *p_frame);
+
 typedef struct
 {
     INT32_T              enable;                                  // 1,enable,0,disable
@@ -122,7 +132,8 @@ typedef struct
     INT32_T              mirror;                                  // mirror defaults
     INT32_T              filp;                                    // filp defaults
     TKL_VI_ISP_CONFIG_T  isp;                                     // isp config
-    VOID * pdata;                                                 // reserver data
+    VOID               * pdata;                                   // reserver data
+    TKL_VI_DISP_CB       disp_cb;
 }TKL_VI_CONFIG_T;
 
 typedef struct

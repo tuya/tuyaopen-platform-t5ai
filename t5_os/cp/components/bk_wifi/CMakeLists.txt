@@ -45,6 +45,7 @@ list(APPEND incs
 	${components}/at_server
 	${components}/at_server/_at_server
 	${components}/at_server/_at_server_port
+	${components}/bk_net/include
 	${components}/bk_event
 	${IDK_INC}/modules
 	)

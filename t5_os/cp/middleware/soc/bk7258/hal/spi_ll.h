@@ -26,12 +26,13 @@ extern "C" {
 
 #define SPI_LL_REG_BASE(_spi_unit_id)    (SOC_SPI_REG_BASE + (0x1010000 * _spi_unit_id))
 
+#if 1
 #define SPI0_LL_CSN_PIN     GPIO_15
 #define SPI0_LL_SCK_PIN     GPIO_14
 #define SPI0_LL_MOSI_PIN    GPIO_16
 #define SPI0_LL_MISO_PIN    GPIO_17
 
-#if 0
+#else
 #define SPI0_LL_CSN_PIN     GPIO_45
 #define SPI0_LL_SCK_PIN     GPIO_44
 #define SPI0_LL_MOSI_PIN    GPIO_46

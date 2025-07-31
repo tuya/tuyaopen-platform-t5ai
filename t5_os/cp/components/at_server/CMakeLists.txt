@@ -7,6 +7,7 @@ if (CONFIG_AT)
 		_at_server
 		_at_server_port
 		at_server_func
+		atsvr_cmd
 		)
 set(bk_inc ../../include)
 list(APPEND incs

@@ -277,6 +277,11 @@ if (CONFIG_OTP_V1)
 endif()
 
 if (NOT CONFIG_FULLY_HOSTED)
+
+	list(APPEND incs
+		"jpeg_enc"
+		)
+
 	list(APPEND srcs
 		"dsp/dsp.c"
 		)
