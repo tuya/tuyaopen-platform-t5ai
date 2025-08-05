@@ -197,6 +197,7 @@ OPERATE_RET tkl_vi_init(TKL_VI_CONFIG_T *pconfig, INT32_T count)
         vi_dvp_status = 1;
         img_service_open();
         sg_vi_disp_cb = pconfig->disp_cb;
+        img_register_display_cb(tkl_vi_dvp_display_frame_cb);
     }
 
     vi_handle = video_handle;

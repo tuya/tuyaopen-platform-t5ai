@@ -22,7 +22,7 @@
 #define DRIVER_SPEAK_FIFO_FRAME_NUM 4
 #define MAX_SEM_AUDIO            (8)
 #define CHANNEL_NUM              (2)
-#define TIME_SAMPLE_MS           (20)
+#define TIME_SAMPLE_MS           (10)
 #define MS_PER_SEC               (1000)
 
 extern void tuya_multimedia_power_on(void);

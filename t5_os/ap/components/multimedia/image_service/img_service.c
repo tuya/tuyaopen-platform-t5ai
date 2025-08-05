@@ -118,6 +118,8 @@ frame_list_node_t *jpeg_frame_node;
 bool img_service_task_running = false;// img_service_task_running = false;
 static beken_thread_t img_service_task = NULL;
 
+static img_display_cb g_img_display_cb = NULL;
+
 img_info_t img_info = {0};
 
 bk_err_t bk_img_msg_send(img_msg_t *msg)
@@ -236,12 +238,17 @@ static void img_service_task_entry(beken_thread_arg_t data)
                     else
                     #endif
                     {
-                        ret = lcd_display_frame_request(processed_frame);  //may be not rotate
-                        if (ret != BK_OK)
-                        {
-                            LOGE("%s lcd_display_frame_request push failed\n", __func__);
-                            img_info.fb_free(processed_frame);
-                        }
+                        // ret = lcd_display_frame_request(processed_frame);  //may be not rotate
+                        // if (ret != BK_OK)
+                        // {
+                        //     LOGE("%s lcd_display_frame_request push failed\n", __func__);
+                        //     img_info.fb_free(processed_frame);
+                        // }
+
+                            if(g_img_display_cb) {
+                                g_img_display_cb(processed_frame);
+                            }
+                            img_info.fb_free(processed_frame); 
                     }
                 }
                 break;
@@ -956,4 +963,9 @@ bk_err_t img_service_close(void)
     LOGD("%s complete\n", __func__);
 out:
     return ret;
+}
+
+void img_register_display_cb(img_display_cb *disp_cb)
+{
+    g_img_display_cb = disp_cb;
 }
