@@ -23,6 +23,7 @@ extern "C" {
 uint8_t phy_open_cca(void);
 uint8_t phy_close_cca(void);
 uint8_t phy_show_cca(void);
+uint8_t phy_cca_busy_test(UINT8 flag);
 
 void cmd_rfcali_cfg_mode(char *pcWriteBuffer, int xWriteBufferLen, int argc, char **argv);
 void cmd_rfcali_get_cfg_mode(char *pcWriteBuffer, int xWriteBufferLen, int argc, char **argv);

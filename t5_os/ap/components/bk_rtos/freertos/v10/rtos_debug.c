@@ -221,11 +221,35 @@ void rtos_dump_backtrace(void)
 	rtos_enable_int(int_level);
 }
 
+#if ( ( configGENERATE_RUN_TIME_STATS == 1 ) && ( configUSE_STATS_FORMATTING_FUNCTIONS > 0 ) )
+#ifdef CONFIG_FREERTOS_SMP
+	static inline void rtos_dump_task_percentage(char *buf, int buf_len)
+	{
+		int info_len = 0;
+        BK_DUMP_OUT(">>>>dump cpu task\r\n");
+        vTaskGetRunTimeStatsByCoreID(buf);
+        buf[buf_len - 1] = '\0';
+        info_len = strlen(buf);
+        BK_DUMP_RAW_OUT(buf, info_len);
+
+	}
+#else
+	static inline void rtos_dump_task_percentage(char *buf, int buf_len)
+	{
+		int info_len = 0;
+		vTaskGetRunTimeStats(buf);
+		buf[buf_len - 1] = '\0';
+		info_len = strlen(buf);
+		BK_DUMP_RAW_OUT(buf, info_len);
+	}
+#endif
+#endif
+
 void rtos_dump_task_runtime_stats(void)
 {
 #if ( ( configGENERATE_RUN_TIME_STATS == 1 ) && ( configUSE_STATS_FORMATTING_FUNCTIONS > 0 ) )
 	int num_of_tasks = 0;
-	int buf_len = 0, info_len = 0;
+	int buf_len = 0;
 	char *buf = NULL;
 	uint32_t int_level = rtos_disable_int();
 
@@ -240,11 +264,60 @@ void rtos_dump_task_runtime_stats(void)
 		return;
 	}
 
-	vTaskGetRunTimeStats(buf);
+    rtos_dump_task_percentage(buf, buf_len);
+	os_free(buf);
 
-	buf[buf_len - 1] = '\0';
-	info_len = strlen(buf);
-	BK_DUMP_RAW_OUT(buf, info_len);
+	BK_DUMP_OUT("<<<<dump task runtime end.\r\n");
+	BK_DUMP_OUT("\r\n");
+	rtos_enable_int(int_level);
+#else
+	BK_DUMP_OUT("dump runtime stats not supported!\r\n");
+#endif
+}
+
+#if ( ( configGENERATE_RUN_TIME_STATS == 1 ) && ( configUSE_STATS_FORMATTING_FUNCTIONS > 0 ) )
+#ifdef CONFIG_FREERTOS_SMP
+	static inline void rtos_dump_task_history_percentage(char *buf, int buf_len, BK_CpuLoadTime eTime)
+	{
+		int info_len = 0;
+        BK_DUMP_OUT(">>>>dump cpu task\r\n");
+        vTaskGetHistoryRunTimeStatsByCoreID(buf, eTime);
+        buf[buf_len - 1] = '\0';
+        info_len = strlen(buf);
+        BK_DUMP_RAW_OUT(buf, info_len);
+	}
+#else
+	static inline void rtos_dump_task_history_percentage(char *buf, int buf_len, BK_CpuLoadTime eTime)
+	{
+		int info_len = 0;
+		vTaskGetHistoryRunTimeStats(buf, eTime);
+		buf[buf_len - 1] = '\0';
+		info_len = strlen(buf);
+		BK_DUMP_RAW_OUT(buf, info_len);
+	}
+#endif
+#endif
+
+void rtos_dump_task_history_runtime_stats(BK_CpuLoadTime eTime)
+{
+#if ( ( configGENERATE_RUN_TIME_STATS == 1 ) && ( configUSE_STATS_FORMATTING_FUNCTIONS > 0 ) )
+	int num_of_tasks = 0;
+	int buf_len = 0;
+	char *buf = NULL;
+	uint32_t int_level = rtos_disable_int();
+
+	BK_DUMP_OUT(">>>>dump task runtime begin.\r\n");
+	//TODO optimize it
+	//malloc a big enough memory
+	num_of_tasks = uxTaskGetNumberOfTasks();
+	buf_len = (num_of_tasks + 5) * 100;
+	buf = (char*)os_malloc(buf_len);
+	if (!buf) {
+		BK_DUMP_OUT("dump runtime status oom.\r\n");
+		return;
+	}
+
+	rtos_dump_task_history_percentage(buf, buf_len, eTime);
 
 	os_free(buf);
 

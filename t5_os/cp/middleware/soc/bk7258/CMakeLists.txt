@@ -82,7 +82,7 @@ endif()
 LOGI("[Select ld file]: ${LD_FILE}.")
 
 set(ld_header_dependencies
-	${armino_path}/include/soc/bk7258/reg_base.h
+	${armino_path}/include/soc/${target}/reg_base.h
 	$ENV{PARTITIONS_DIR}/partitions_gen.h
 )
 

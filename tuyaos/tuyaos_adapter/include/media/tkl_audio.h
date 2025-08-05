@@ -73,6 +73,7 @@ typedef enum
 {
     TKL_AUDIO_TYPE_UAC = 0,
     TKL_AUDIO_TYPE_BOARD,
+    TKL_AUDIO_TYPE_DUAL,
 }TKL_AUDIO_TYPE_E;
 
 typedef struct

@@ -367,6 +367,8 @@ audio_element_handle_t aec_algorithm_init(aec_algorithm_cfg_t *config)
     /* 20ms, 16bit */
     cfg.out_block_size = aec_alg->frame_size;
     cfg.out_block_num = config->out_block_num;
+    cfg.multi_out_port_num = config->multi_out_port_num;
+
     if (config->aec_cfg.mode == AEC_MODE_HARDWARE)
     {
         cfg.buffer_len = aec_alg->frame_size * 2;

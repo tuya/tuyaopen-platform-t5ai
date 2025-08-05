@@ -177,7 +177,9 @@ extern int hexstr2bin(const char *hex, u8 *buf, size_t len);
 #if (CONFIG_BUTTON || CONFIG_ADC_KEY)
 int cli_key_demo_init();
 #endif
-
+#if (CONFIG_BK_MODEM)
+int cli_modem_init(void);
+#endif
 #ifdef __cplusplus
 }
 #endif

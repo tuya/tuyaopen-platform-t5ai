@@ -1004,6 +1004,17 @@
     #define configSTACK_DEPTH_TYPE    uint16_t
 #endif
 
+
+#if ( configGENERATE_HISTORY_RUN_TIME_STATS == 1 )
+    #define configRECENT_RUN_TIME_CPUP 1
+    #define configHISTORY_RUNTIME_COUNT 10
+    #define configHISTORY_RUNTIME_RECORD_LEN ( configHISTORY_RUNTIME_COUNT + 1 )
+#endif
+
+#ifndef configRECENT_RUN_TIME_CPUP
+    #define configRECENT_RUN_TIME_CPUP 0
+#endif
+
 #ifndef configRUN_TIME_COUNTER_TYPE
 
 /* Defaults to uint32_t for backward compatibility, but can be overridden in
@@ -1320,6 +1331,9 @@ typedef struct xSTATIC_TCB
     #endif
     #if ( configGENERATE_RUN_TIME_STATS == 1 )
         configRUN_TIME_COUNTER_TYPE ulDummy16;
+    #if ( configRECENT_RUN_TIME_CPUP == 1)
+        configRUN_TIME_COUNTER_TYPE ulDummy16_1[ configHISTORY_RUNTIME_RECORD_LEN ];
+    #endif
     #endif
     #if ( ( configUSE_NEWLIB_REENTRANT == 1 ) || ( configUSE_C_RUNTIME_TLS_SUPPORT == 1 ) )
         configTLS_BLOCK_TYPE xDummy17;

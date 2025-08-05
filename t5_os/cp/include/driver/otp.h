@@ -187,6 +187,22 @@ bk_err_t bk_otp_apb_write_mask(otp1_id_t item, otp_privilege_t permission);
 */
 bk_err_t bk_otp_read_random_number(uint32_t* buf, uint32_t size);
 #endif
+
+/**
+ * @brief     OTP read with item real offset
+ *
+ * @param item_offset the real item offset to read from otp
+ * @param buf point to the buffer that reads the data
+ * @param size length of item to read
+ *
+ * @return
+ *    - BK_OK: succeed
+ *    - BK_ERR_NO_READ_PERMISSION: wrong permission to read
+ *    - BK_ERR_OTP_ADDR_OUT_OF_RANGE: param size not match item real size
+ *    - others: other errors.
+ */
+bk_err_t bk_otp_apb_read_by_offset(uint32_t item_offset, uint8_t* buf, uint32_t size);
+
 /**
  * @}
  */

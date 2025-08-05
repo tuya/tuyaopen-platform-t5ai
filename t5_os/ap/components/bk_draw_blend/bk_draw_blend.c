@@ -592,27 +592,27 @@ static bk_err_t blend_task_start(void)
         LOGE("%s, init blend_queue failed\r\n", __func__);
          return ret;;
     }
-    
+
     ret = rtos_create_thread(&blend->blend_task,
                              BEKEN_DEFAULT_WORKER_PRIORITY,
                              "blend_thread",
                              (beken_thread_function_t)blend_task_entry,
-                             1024,
+                             CONFIG_BLEND_TASK_STACK_SIZE,
                              (beken_thread_arg_t)NULL);
-    
+
     if (BK_OK != ret)
     {
         LOGE("%s blend_thread init failed\n", __func__);
         return ret;
     }
     ret = rtos_get_semaphore(&blend->task_sem, BEKEN_NEVER_TIMEOUT);
-    
+
     if (BK_OK != ret)
     {
         LOGE("%s decoder_sem get failed\n", __func__);
         return ret;
     }
-    
+
     return ret;
 }
 

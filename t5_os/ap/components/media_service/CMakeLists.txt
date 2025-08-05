@@ -3,11 +3,8 @@ set(srcs src/media_service.c
 )
 set(priv_req bk_common)
 
-if (("${ARMINO_SOC}" STREQUAL "bk7258") OR ("${ARMINO_SOC}" STREQUAL "bk7258_ap"))
-    list(APPEND priv_req multimedia)
-else()
-    list(APPEND priv_req media)
-endif()
+list(APPEND priv_req multimedia)
+
 
 list(APPEND incs bk_private)
 list(APPEND srcs

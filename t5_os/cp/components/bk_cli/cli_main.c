@@ -191,29 +191,23 @@ int handle_shell_input(char *inbuf, int in_buf_size, char * outbuf, int out_buf_
     Here we wait for enough memory before responding to command */
 
     while (1) {
-#if CONFIG_PSRAM_AS_SYS_MEMORY		//try again in PSRAM
-        ret = rtos_create_psram_thread(&shell_handle_thread_handle,
-                                    4,
-                                    "shell_handle",
-                                    (beken_thread_function_t)handle_shell_input_proxy,
-                                    1024*7,
-                                    (beken_thread_arg_t)(&cmd_par));
-        if (ret != kNoErr) {
-            ret = rtos_create_thread(&shell_handle_thread_handle,
-                                    4,
-                                    "shell_handle",
-                                    (beken_thread_function_t)handle_shell_input_proxy,
-                                    1024*7,
-                                    (beken_thread_arg_t)(&cmd_par));
-        }
-#else
         ret = rtos_create_thread(&shell_handle_thread_handle,
                                     4,
                                     "shell_handle",
                                     (beken_thread_function_t)handle_shell_input_proxy,
                                     1024*7,
                                     (beken_thread_arg_t)(&cmd_par));
+       
+        if (ret != kNoErr) {
+#if CONFIG_PSRAM_AS_SYS_MEMORY		//try again in PSRAM
+            ret = rtos_create_psram_thread(&shell_handle_thread_handle,
+                                    4,
+                                    "shell_handle",
+                                    (beken_thread_function_t)handle_shell_input_proxy,
+                                    1024*7,
+                                    (beken_thread_arg_t)(&cmd_par));
 #endif
+        }
         if (ret == kNoErr) 
         {
             break;

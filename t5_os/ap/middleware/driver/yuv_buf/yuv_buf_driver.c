@@ -113,7 +113,7 @@ bk_err_t bk_yuv_buf_init(const yuv_buf_config_t *config)
 	BK_RETURN_ON_NULL(config);
 	YUV_BUF_RETURN_ON_DRIVER_NOT_INIT();
 
-	// set cpu frequent to 320M
+	// set cpu frequent to 480M
 	bk_pm_module_vote_cpu_freq(PM_DEV_ID_JPEG, PM_CPU_FRQ_480M);
 
 	yuv_buf_init_common();

@@ -94,7 +94,7 @@ void http_ota_Command(char *pcWriteBuffer, int xWriteBufferLen, int argc, char *
 
 #ifdef CONFIG_FREERTOS_SMP
 	if (s_record_ota_flag == 0){
-		int ret = rtos_core0_create_thread(NULL, 
+		int ret = rtos_create_thread(NULL, 
 								BEKEN_APPLICATION_PRIORITY,
 								"http_ota",
 								(beken_thread_function_t)bk_http_start_download,

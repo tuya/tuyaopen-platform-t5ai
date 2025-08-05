@@ -98,11 +98,13 @@ void ethernetif_input(int iface, struct pbuf *p);
 void ethernetif_input(int iface, struct pbuf *p);
 #endif
 
+// Modified by TUYA Start
 #if CONFIG_ENABLE_TUYA_LWIP
 #include "tuya_cloud_types.h"
 #include "tkl_lwip.h"
 OPERATE_RET tkl_ethernetif_output(TKL_NETIF_HANDLE netif, TKL_PBUF_HANDLE p);
 #endif // CONFIG_ENABLE_TUYA_LWIP
+// Modified by TUYA End
 
 /**
  * In this function, the hardware should be initialized.
@@ -140,11 +142,13 @@ static void low_level_init(struct netif *netif)
 #endif /* LWIP_NETIF_HOSTNAME */
 
     /* set MAC hardware address length */
+// Modified by TUYA Start
 #if CONFIG_ENABLE_TUYA_LWIP
     bk_printf("low level init\r\n");
     bk_printf("mac %2x:%2x:%2x:%2x:%2x:%2x\r\n", macptr[0], macptr[1], macptr[2],
                  macptr[3], macptr[4], macptr[5]);
 #endif // CONFIG_ENABLE_TUYA_LWIP
+// Modified by TUYA End
 
     netif->hwaddr_len = ETHARP_HWADDR_LEN;
     memcpy(netif->hwaddr, macptr, ETHARP_HWADDR_LEN);
@@ -482,23 +486,27 @@ wlanif_init(struct netif *netif)
      */
     NETIF_INIT_SNMP(netif, snmp_ifType_ethernet_csmacd, 10000000);
 
+// Modified by TUYA Start
 #if CONFIG_ENABLE_TUYA_LWIP
     // Modified by TUYA Start
     // netif->name[0] = IFNAME0;
     // netif->name[1] = IFNAME1;
     // Modified by TUYA End
 #endif // CONFIG_ENABLE_TUYA_LWIP
+// Modified by TUYA End
     /* We directly use etharp_output() here to save a function call.
      * You can instead declare your own function an call etharp_output()
      * from it if you have to do some checks before sending (e.g. if link
      * is available...) */
     netif->output = etharp_output;
 	
+// Modified by TUYA Start
 #if CONFIG_ENABLE_TUYA_LWIP
-    netif->linkoutput = tkl_ethernetif_output; // low_level_output; // Modified by TUYA
+    netif->linkoutput = tkl_ethernetif_output;
 #else
 	netif->linkoutput = low_level_output;
 #endif // CONFIG_ENABLE_TUYA_LWIP
+// Modified by TUYA End
 #ifdef CONFIG_IPV6
     netif->output_ip6 = ethip6_output;
 #endif

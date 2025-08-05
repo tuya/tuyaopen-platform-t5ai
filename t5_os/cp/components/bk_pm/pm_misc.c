@@ -14,6 +14,7 @@
 
 #include<components/sensor.h>
 #include "sys_driver.h"
+#include "bk_pm_internal_api.h"
 
 #include "driver/aon_rtc.h"
 #include "bk_pm_internal_api.h"
@@ -61,6 +62,10 @@
 /*=====================VARIABLE  SECTION  START===================*/
 #if CONFIG_PM_LV_TIME_COST_DEBUG
 static uint64_t s_wakeup_lv_tick_step[PM_LV_STEP_MAX] = {0};
+#endif
+
+#if CONFIG_PM_LV_WDT_PROTECTION
+static wifi_event_t pm_wifi_connect_state = EVENT_WIFI_STA_DISCONNECTED;
 #endif
 /*=====================VARIABLE  SECTION  END=====================*/
 
@@ -217,5 +222,36 @@ uint64_t pm_lv_rtc_tick_get(pm_lv_step_e step)
 		interval = (uint64_t)(((s_wakeup_lv_tick_step[step] - s_wakeup_lv_tick_step[step-1])*1000000)/tick_count);
 	}
 	return interval;
+}
+#endif
+
+#if CONFIG_PM_LV_WDT_PROTECTION
+wifi_event_t bk_pm_wifi_event_state()
+{
+	return pm_wifi_connect_state;
+}
+static bk_err_t pm_wifi_event_cb(void *arg, event_module_t event_module,int event_id, void *event_data)
+{
+	switch (event_id)
+	{
+		case EVENT_WIFI_STA_CONNECTED:
+			pm_wifi_connect_state = EVENT_WIFI_STA_CONNECTED;
+			break;
+
+		case EVENT_WIFI_STA_DISCONNECTED:
+			pm_wifi_connect_state = EVENT_WIFI_STA_DISCONNECTED;
+			break;
+
+		default:
+			break;
+	}
+
+	return BK_OK;
+}
+
+bk_err_t pm_wifi_event_init()
+{
+	bk_event_register_cb(EVENT_MOD_WIFI, EVENT_ID_ALL, pm_wifi_event_cb, NULL);
+	return BK_OK;
 }
 #endif

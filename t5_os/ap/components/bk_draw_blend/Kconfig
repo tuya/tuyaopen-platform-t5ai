@@ -4,4 +4,10 @@ menu "Draw Blend"
         depends on MEDIA
 		bool "Enable Draw Blend"
 		default y
+
+	config BLEND_TASK_STACK_SIZE
+        depends on MEDIA
+		int "blend task stack size"
+		default 4096
+
 endmenu

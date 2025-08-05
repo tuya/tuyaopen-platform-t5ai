@@ -344,10 +344,10 @@ OPERATE_RET tkl_spi_irq_disable(TUYA_SPI_NUM_E port)
 
 /**
  * @brief spi get max supported dma data length.
- * 
+ *
  * @param[in] NULL
  *
- * @return >=0,number of supported dma data length. <0,err. 
+ * @return >=0,number of supported dma data length. <0,err.
  * during  tkl_spi_send, tkl_spi_recv and tkl_spi_transfer operation.
  */
 UINT32_T  tkl_spi_get_max_dma_data_length(VOID_T)

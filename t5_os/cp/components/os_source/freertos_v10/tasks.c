@@ -303,6 +303,9 @@ typedef struct tskTaskControlBlock       /* The old naming convention is used to
 
     #if ( configGENERATE_RUN_TIME_STATS == 1 )
         configRUN_TIME_COUNTER_TYPE ulRunTimeCounter; /*< Stores the amount of time the task has spent in the Running state. */
+    #if ( configRECENT_RUN_TIME_CPUP == 1 )
+        configRUN_TIME_COUNTER_TYPE ulHistoryRunTimeCounter[configHISTORY_RUNTIME_RECORD_LEN];
+    #endif
     #endif
 
     #if ( ( configUSE_NEWLIB_REENTRANT == 1 ) || ( configUSE_C_RUNTIME_TLS_SUPPORT == 1 ) )
@@ -409,6 +412,11 @@ PRIVILEGED_DATA static volatile UBaseType_t uxSchedulerSuspended = ( UBaseType_t
     PRIVILEGED_DATA static configRUN_TIME_COUNTER_TYPE ulTaskSwitchedInTime = 0UL;    /*< Holds the value of a timer/counter the last time a task was switched in. */
     PRIVILEGED_DATA static volatile configRUN_TIME_COUNTER_TYPE ulTotalRunTime = 0UL; /*< Holds the total amount of execution time as defined by the run time counter clock. */
 
+    #if ( configRECENT_RUN_TIME_CPUP == 1 )
+    PRIVILEGED_DATA static configRUN_TIME_COUNTER_TYPE ulTotalHistoryRunTime[configHISTORY_RUNTIME_RECORD_LEN] = {0};
+    PRIVILEGED_DATA static BaseType_t ulCurrentHistoryCountId = 0;
+    TimerHandle_t xCpupTimer = NULL;
+    #endif
 #endif
 
 /*lint -restore */
@@ -2158,6 +2166,12 @@ void vTaskStartScheduler( void )
 
     #if ( configUSE_TIMERS == 1 )
     {
+        #if ( configGENERATE_RUN_TIME_STATS == 1 && configRECENT_RUN_TIME_CPUP == 1 )
+            /* Create a software timer to count run-time per second. */
+            void vTaskCpupTimerCallback( TimerHandle_t xTimer );
+            xCpupTimer = xTimerCreate("HistCpup", pdMS_TO_TICKS( 1000 ), pdTRUE, NULL, vTaskCpupTimerCallback);
+            xTimerStart( xCpupTimer, 0 );
+        #endif
         if( xReturn == pdPASS )
         {
             xReturn = xTimerCreateTimerTask();
@@ -4000,6 +4014,221 @@ static void prvCheckTasksWaitingTermination( void )
     #endif /* INCLUDE_vTaskDelete */
 }
 /*-----------------------------------------------------------*/
+#if ( configGENERATE_RUN_TIME_STATS == 1 )
+    #if ( configRECENT_RUN_TIME_CPUP == 1 )
+    #define GET_PREV_ID(id) id == 0 ? configHISTORY_RUNTIME_COUNT : (id - 1)
+    #define GET_PREV_FIFTH_ID(id) id < 5 ? (id + 6) : (id - 5)
+
+    void vTaskMarkHistoryRuntime( configLIST_VOLATILE TCB_t * xTask )
+    {
+        configLIST_VOLATILE TCB_t * pxTCB;
+
+        /* xTask is NULL then get the state of the calling task. */
+        pxTCB = prvGetTCBFromHandle( xTask );
+
+        BaseType_t ulPrevId = GET_PREV_ID(ulCurrentHistoryCountId);
+
+        pxTCB->ulHistoryRunTimeCounter[ulPrevId] = pxTCB->ulRunTimeCounter;
+
+        if (pxTCB == pxCurrentTCB) {
+            #ifdef portALT_GET_RUN_TIME_COUNTER_VALUE
+                portALT_GET_RUN_TIME_COUNTER_VALUE( ulTotalRunTime );
+            #else
+                ulTotalRunTime = portGET_RUN_TIME_COUNTER_VALUE();
+            #endif
+            if ( ulTotalRunTime - ulTaskSwitchedInTime > 0 ) {
+                pxTCB->ulHistoryRunTimeCounter[ulPrevId] += ulTotalRunTime - ulTaskSwitchedInTime;
+            }
+        }
+    }
+
+    static void prvTaskMarkWithinSingleList( List_t * pxList )
+    {
+        configLIST_VOLATILE TCB_t * pxNextTCB;
+        configLIST_VOLATILE TCB_t * pxFirstTCB;
+
+        if( listCURRENT_LIST_LENGTH( pxList ) > ( UBaseType_t ) 0 )
+        {
+            listGET_OWNER_OF_NEXT_ENTRY( pxFirstTCB, pxList ); /*lint !e9079 void * is used as this macro is used with timers and co-routines too.  Alignment is known to be fine as the type of the pointer stored and retrieved is the same. */
+
+            do
+            {
+                listGET_OWNER_OF_NEXT_ENTRY( pxNextTCB, pxList ); /*lint !e9079 void * is used as this macro is used with timers and co-routines too.  Alignment is known to be fine as the type of the pointer stored and retrieved is the same. */
+                vTaskMarkHistoryRuntime(pxNextTCB);
+            } while( pxNextTCB != pxFirstTCB );
+        }
+        else
+        {
+            mtCOVERAGE_TEST_MARKER();
+        }
+    }
+
+    void vTaskCpupTimerCallback( TimerHandle_t xTimer )
+    {
+        #if configBK_FREERTOS
+            GLOBAL_INT_DECLARATION();
+            GLOBAL_INT_DISABLE();
+        #endif
+
+        UBaseType_t uxQueue = configMAX_PRIORITIES;
+        ulCurrentHistoryCountId = ( ulCurrentHistoryCountId + 1 ) % configHISTORY_RUNTIME_RECORD_LEN;
+        BaseType_t ulPrevId = GET_PREV_ID(ulCurrentHistoryCountId);
+
+        #ifdef portALT_GET_RUN_TIME_COUNTER_VALUE
+            portALT_GET_RUN_TIME_COUNTER_VALUE( ulTotalRunTime );
+        #else
+            ulTotalRunTime = portGET_RUN_TIME_COUNTER_VALUE();
+        #endif
+
+        ulTotalHistoryRunTime[ulPrevId] = ulTotalRunTime;
+
+        do
+        {
+            uxQueue--;
+            prvTaskMarkWithinSingleList( &(pxReadyTasksLists[ uxQueue ] ));
+        } while( uxQueue > ( UBaseType_t ) tskIDLE_PRIORITY ); /*lint !e961 MISRA exception as the casts are only redundant for some ports. */
+
+        prvTaskMarkWithinSingleList( pxDelayedTaskList );
+        prvTaskMarkWithinSingleList( pxOverflowDelayedTaskList );
+
+        #if ( INCLUDE_vTaskDelete == 1 )
+        {
+            prvTaskMarkWithinSingleList( &(xTasksWaitingTermination) );
+        }
+        #endif
+
+        #if ( INCLUDE_vTaskSuspend == 1 )
+        {
+            prvTaskMarkWithinSingleList( &(xSuspendedTaskList) );
+        }
+        #endif
+        #if configBK_FREERTOS
+            GLOBAL_INT_RESTORE();
+        #endif
+    }
+
+    void vTaskGetHistoryRunTime(configRUN_TIME_COUNTER_TYPE * const pulRunTime, configRUN_TIME_COUNTER_TYPE * const pulHistoryRunTimeArr, eCpuLoadTime eTime)
+    {
+        configRUN_TIME_COUNTER_TYPE  ulCurrRunTime = 0;
+        configRUN_TIME_COUNTER_TYPE  ulPrevRunTime = 0;
+        BaseType_t ulCurrId = GET_PREV_ID(ulCurrentHistoryCountId);
+        BaseType_t ulPrevId;
+        ulCurrRunTime = pulHistoryRunTimeArr[ulCurrId];
+        if (eTime == eGetOneSec) {
+            ulPrevId = GET_PREV_ID(ulCurrId);
+            ulPrevRunTime = pulHistoryRunTimeArr[ulPrevId];
+        } else if (eTime == eGetFiveSec) {
+            ulPrevId = GET_PREV_FIFTH_ID(ulCurrId);
+            ulPrevRunTime = pulHistoryRunTimeArr[ulPrevId];
+        } else if (eTime == eGetTenSec) {
+            ulPrevId = ulCurrentHistoryCountId;
+            ulPrevRunTime = pulHistoryRunTimeArr[ulPrevId];
+        }
+        *pulRunTime = ulCurrRunTime - ulPrevRunTime;
+    }
+    #endif
+
+    void vTaskGetHistoryRunTimeStats( char * pcWriteBuffer, eCpuLoadTime eTime )
+    {
+        #if ( configRECENT_RUN_TIME_CPUP == 1 )
+        TaskStatus_t * pxTaskStatusArray;
+        UBaseType_t uxArraySize, x;
+        configRUN_TIME_COUNTER_TYPE ulHistoryTotalTime, ulStatsAsPercentage, ulTaskHistoryTime;
+
+        /* Make sure the write buffer does not contain a string. */
+        *pcWriteBuffer = ( char ) 0x00;
+
+        /* Take a snapshot of the number of tasks in case it changes while this
+         * function is executing. */
+        uxArraySize = uxCurrentNumberOfTasks;
+
+        /* Allocate an array index for each task.  NOTE!  If
+         * configSUPPORT_DYNAMIC_ALLOCATION is set to 0 then pvPortMalloc() will
+         * equate to NULL. */
+        pxTaskStatusArray = pvPortMalloc( uxCurrentNumberOfTasks * sizeof( TaskStatus_t ) ); /*lint !e9079 All values returned by pvPortMalloc() have at least the alignment required by the MCU's stack and this allocation allocates a struct that has the alignment requirements of a pointer. */
+
+        if( pxTaskStatusArray != NULL )
+        {
+            /* Generate the (binary) data. */
+            uxArraySize = uxTaskGetSystemState( pxTaskStatusArray, uxArraySize, &ulHistoryTotalTime );
+
+            /* For percentage calculations. */
+            vTaskGetHistoryRunTime( &ulHistoryTotalTime, &ulTotalHistoryRunTime[0], eTime );
+            ulHistoryTotalTime /= 100UL;
+
+            /* Avoid divide by zero errors. */
+            if( ulHistoryTotalTime > 0UL )
+            {
+                /* Create a human readable table from the binary data. */
+                for( x = 0; x < uxArraySize; x++ )
+                {
+                    /* What percentage of the total run time has the task used?
+                     * This will always be rounded down to the nearest integer.
+                     * ulTotalRunTime has already been divided by 100. */
+                    vTaskGetHistoryRunTime( &ulTaskHistoryTime, &(pxTaskStatusArray[ x ].ulHistoryRunTimeCounter[0]), eTime );
+                    ulStatsAsPercentage = ulTaskHistoryTime / ulHistoryTotalTime;
+                    if (ulStatsAsPercentage >= 100) {
+                        ulStatsAsPercentage = 99;
+                    }
+
+                    /* Write the task name to the string, padding with
+                     * spaces so it can be printed in tabular form more
+                     * easily. */
+                    pcWriteBuffer = prvWriteNameToBuffer( pcWriteBuffer, pxTaskStatusArray[ x ].pcTaskName );
+
+                    if( ulStatsAsPercentage > 0UL )
+                    {
+                        #ifdef portLU_PRINTF_SPECIFIER_REQUIRED
+                        {
+                            sprintf( pcWriteBuffer, "\t%lu\t\t%lu%%\r\n", ulTaskHistoryTime, ulStatsAsPercentage );
+                        }
+                        #else
+                        {
+                            /* sizeof( int ) == sizeof( long ) so a smaller
+                             * printf() library can be used. */
+                            sprintf( pcWriteBuffer, "\t%u\t\t%u%%\r\n", ( unsigned int ) ulTaskHistoryTime, ( unsigned int ) ulStatsAsPercentage ); /*lint !e586 sprintf() allowed as this is compiled with many compilers and this is a utility function only - not part of the core kernel implementation. */
+                        }
+                        #endif
+                    }
+                    else
+                    {
+                        /* If the percentage is zero here then the task has
+                         * consumed less than 1% of the total run time. */
+                        #ifdef portLU_PRINTF_SPECIFIER_REQUIRED
+                        {
+                            sprintf( pcWriteBuffer, "\t%lu\t\t<1%%\r\n", ulTaskHistoryTime );
+                        }
+                        #else
+                        {
+                            /* sizeof( int ) == sizeof( long ) so a smaller
+                             * printf() library can be used. */
+                            sprintf( pcWriteBuffer, "\t%u\t\t<1%%\r\n", ( unsigned int ) ulTaskHistoryTime ); /*lint !e586 sprintf() allowed as this is compiled with many compilers and this is a utility function only - not part of the core kernel implementation. */
+                        }
+                        #endif
+                    }
+
+                    pcWriteBuffer += strlen( pcWriteBuffer ); /*lint !e9016 Pointer arithmetic ok on char pointers especially as in this case where it best denotes the intent of the code. */
+                }
+            }
+            else
+            {
+                mtCOVERAGE_TEST_MARKER();
+            }
+
+            /* Free the array again.  NOTE!  If configSUPPORT_DYNAMIC_ALLOCATION
+             * is 0 then vPortFree() will be #defined to nothing. */
+            vPortFree( pxTaskStatusArray );
+        }
+        else
+        {
+            mtCOVERAGE_TEST_MARKER();
+        }
+        #else
+        pcWriteBuffer[0] = 0;
+        #endif
+    }
+
+#endif /* configGENERATE_RUN_TIME_STATS */
 
 #if ( configUSE_TRACE_FACILITY == 1 )
 
@@ -4046,6 +4275,11 @@ static void prvCheckTasksWaitingTermination( void )
         #if ( configGENERATE_RUN_TIME_STATS == 1 )
         {
             pxTaskStatus->ulRunTimeCounter = pxTCB->ulRunTimeCounter;
+            #if ( configRECENT_RUN_TIME_CPUP == 1 )
+            for (size_t i = 0; i < configHISTORY_RUNTIME_RECORD_LEN; i++) {
+                pxTaskStatus->ulHistoryRunTimeCounter[i] = pxTCB->ulHistoryRunTimeCounter[i];
+            }
+            #endif
         }
         #else
         {

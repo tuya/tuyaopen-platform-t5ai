@@ -70,6 +70,7 @@ set(srcs
     src/system/tkl_system.c
     src/system/tkl_thread.c
     src/system/tkl_atomic.c
+    src/system/tkl_task_notify.c
     src/driver/tkl_watchdog.c
     src/driver/tkl_ipc.c
     src/misc/tuya_tkl_ipc.c
@@ -90,7 +91,6 @@ endif()
 
 if ("${CONFIG_CPU_INDEX}" STREQUAL "1")
     list(APPEND srcs
-        src/driver/tkl_lwip_1.c
         src/driver/tkl_wifi.c
         src/driver/tkl_hci_1.c
         src/driver/tkl_video_enc.c
@@ -98,6 +98,8 @@ if ("${CONFIG_CPU_INDEX}" STREQUAL "1")
         src/driver/tkl_mic.c
         src/driver/tkl_speaker.c
         src/driver/tkl_audio.c
+        src/driver/tkl_vad.c
+        src/driver/tkl_asr.c
         src/driver/tkl_pinmux.c
         src/driver/tkl_rgb.c
         src/driver/tkl_8080.c
@@ -111,8 +113,8 @@ if ("${CONFIG_CPU_INDEX}" STREQUAL "1")
         src/driver/tkl_gpio.c
         src/driver/tkl_i2c.c
         src/driver/tkl_timer.c
-        # src/driver/tkl_wired_1.c
-        # src/driver/tkl_i2s.c  # TODO
+        # src/driver/tkl_wired.c
+        src/driver/tkl_i2s.c
 
         src/misc/encrypt.c
         src/misc/fs_init.c
@@ -131,7 +133,11 @@ if ("${CONFIG_CPU_INDEX}" STREQUAL "1")
     list(APPEND srcs ${utilities_srcs})
 
     if (CONFIG_TUYA_TEST_CLI)
-        list(APPEND incs src/test/test_media)
+        list(APPEND incs
+            src/test/test_media
+            src/test/coremark
+            src/test/coremark/posix
+        )
         list(APPEND srcs
             src/test/test_adc.c
             src/test/test_audio.c
@@ -150,15 +156,28 @@ if ("${CONFIG_CPU_INDEX}" STREQUAL "1")
             src/test/test_media.c
             src/test/test_mic.c
             src/test/test_speaker.c
+            src/test/test_i2s.c
             src/test/test_mtd.c
+            src/test/test_i2s.c
             src/test/test_mtd/qspi_flash_GD5F1G.c
             src/test/test_media/test_media_audio.c
             src/test/test_media/test_media_camera.c
             src/test/test_media/test_media_h264.c
             src/test/test_media/test_media_lcd.c
+            # src/test/test_lp.c
+            # src/test/test_eth.c
+            # src/test/test_iperf.c
+            # src/test/test_mem.c
             src/test/cli_tuya_test_1.c
             src/test/test_dwt.c
             src/test/test_wifi.c
+
+            # src/test/coremark/core_list_join.c
+            # src/test/coremark/core_main.c
+            # src/test/coremark/core_matrix.c
+            # src/test/coremark/core_state.c
+            # src/test/coremark/core_util.c
+            # src/test/coremark/posix/core_portme.c
         )
     endif() # CONFIG_TUYA_TEST_CLI
 

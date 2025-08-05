@@ -120,7 +120,7 @@ bk_err_t camera_open_handle(media_device_t *dev)
 	return ret;
 }
 
-static bk_err_t camera_dvp_h264_reset_handle(void)
+bk_err_t camera_dvp_h264_reset_handle(void)
 {
     int ret = BK_FAIL;
 

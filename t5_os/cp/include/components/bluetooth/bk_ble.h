@@ -730,6 +730,18 @@ ble_err_t bk_ble_send_ind_value(uint8_t con_idx,uint32_t len, uint8_t *buf, uint
 ble_err_t bk_ble_reg_hci_recv_callback(ble_hci_to_host_cb evt_cb, ble_hci_to_host_cb acl_cb);
 
 /**
+ * @brief     reg sco hci recv callback
+ *
+ * @param
+ *    - sco_cb: sco callback function
+ *
+ * @return
+ *    - BK_ERR_BLE_SUCCESS: succeed
+ *    - others: other errors.
+ */
+ble_err_t bk_ble_reg_sco_hci_recv_callback(ble_hci_to_host_cb sco_cb);
+
+/**
  * @brief send hci to controller.
  *
  *
@@ -1293,6 +1305,35 @@ ble_err_t bk_ble_remove_devices_from_while_list(bd_addr_t *addr, uint8_t addr_ty
  * - others: fail
  */
 ble_err_t bk_ble_tx_power_set(float pwr_gain);
+
+/**
+ * @brief  register hci callback for host only
+ *
+ * @param
+ *    - cb: hci callback function used to recv hci data from host
+ *
+ * @attention used for host only
+ *
+ * @return
+ *    - BK_ERR_BLE_SUCCESS: succeed
+ *    - others: other errors.
+ */
+ble_err_t bk_ble_host_register_hci_callback(ble_hci_to_cp_cb cb);
+
+/**
+ * @brief send hci data to host.
+ *
+ * @param
+ * - buf: payload
+ * - len: buf's len
+ *
+ * @attention used for host only
+ *
+ * @return
+ * - BK_ERR_BLE_SUCCESS: succeed
+**/
+bk_err_t bk_ble_hci_send_to_host(uint8_t *buf, uint32_t len);
+
 /*
  * @}
  */

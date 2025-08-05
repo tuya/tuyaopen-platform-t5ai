@@ -100,7 +100,7 @@ typedef struct
 {
     uint8_t pro_enable;
     uint8_t stream_num;
-    EventGroupHandle_t handle;
+    beken_event_t handle;
     beken_thread_t stream_thread;
     beken_queue_t stream_queue;
     beken_thread_t pro_thread;

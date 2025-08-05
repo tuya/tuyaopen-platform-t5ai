@@ -2,7 +2,7 @@ menu "Voice Service"
 
 	config VOICE_SERVICE
 		bool "Enable Voice Service"
-		depends on ADK && ADK_RAW_STREAM && ADK_ONBOARD_MIC_STREAM && ADK_ONBOARD_SPEAKER_STREAM && ADK_G711_ENCODER && ADK_G711_DECODER && ADK_AEC_ALGORITHM 
+		depends on ADK && ADK_RAW_STREAM && ADK_ONBOARD_MIC_STREAM && ADK_ONBOARD_SPEAKER_STREAM && ADK_G711_ENCODER && ADK_G711_DECODER && (ADK_AEC_ALGORITHM || ADK_AEC_V3_ALGORITHM)
 		default n
 		help
 			Enable Voice Service Interface API used for voice call

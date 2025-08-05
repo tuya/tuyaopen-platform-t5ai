@@ -197,8 +197,8 @@ OPERATE_RET tkl_ota_flash_write(uint32_t addr, uint8_t *buf, uint32_t len, void*
                 ty_calc_crc((uint32_t *)(bbuf), 1);
                 lcnt -= 32-last_data_cnt;
                 off += 32-last_data_cnt;
-                last_data_cnt = 0;
                 address -= last_data_cnt;
+                last_data_cnt = 0;
                 tkl_watchdog_refresh();
                 //tkl_flash_set_protect(FALSE);
                 if(tkl_flash_write(BK_ADDR_CHANGE(TO_PHYSICS, address), bbuf, 34)) {
@@ -211,7 +211,7 @@ OPERATE_RET tkl_ota_flash_write(uint32_t addr, uint8_t *buf, uint32_t len, void*
                 address += 32;
             }
         }
-        while(lcnt > 32) {
+        while(lcnt >= 32) {
             encrypt_num = (lcnt > SEC_B_UNIT) ? (SEC_B_UNIT / 32) : lcnt / 32;
             ty_get_calc_buf((buf+off), bbuf, encrypt_num);
             ty_calc_crc((uint32_t *)bbuf, encrypt_num);

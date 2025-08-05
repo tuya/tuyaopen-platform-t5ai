@@ -67,6 +67,10 @@ menu "TKL_CONFIG"
         string "qspi flash type"
         default "gd25q127c"
 
+    config USE_PRIVATE_HELIX
+        bool "use private helix"
+        default n
+
     choice AUDIO_TYPE
         prompt "audio type select"
         default STREAM

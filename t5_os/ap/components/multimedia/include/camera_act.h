@@ -24,7 +24,6 @@
 extern "C" {
 #endif
 
-
 typedef struct {
     uint32_t param1;
     uint32_t param2;
@@ -34,6 +33,7 @@ bk_err_t camera_get_main_stream_handle(frame_list_node_t *node);
 bk_err_t camera_open_handle(media_device_t *dev);
 bk_err_t camera_close_handle(camera_handle_t *handle);
 bk_err_t camera_uvc_register_device_info_cb_handle(camera_state_cb_t cb);
+bk_err_t camera_dvp_h264_reset_handle(void);
 
 #ifdef __cplusplus
 }

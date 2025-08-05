@@ -101,11 +101,14 @@ typedef enum {
 typedef struct {
 	aud_dmic_chl_t dmic_chl;    /**< AUD DMIC channel */
 	uint32_t samp_rate;         /**< AUD DMIC sample rate */
+	aud_clk_t clk_src;          /**< AUD DMIC clk_src */
 } aud_dmic_config_t;
+
 
 #define DEFAULT_AUD_DMIC_CONFIG() {    \
         .dmic_chl = AUD_DMIC_CHL_L,    \
         .samp_rate = 32000,            \
+        .clk_src = AUD_CLK_APLL,       \
     }
 
 /**

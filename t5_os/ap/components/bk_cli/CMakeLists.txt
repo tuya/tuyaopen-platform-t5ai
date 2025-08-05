@@ -375,6 +375,10 @@ if (CONFIG_SCR)
 	list(APPEND srcs cli_scr.c)
 endif()
 
+if (CONFIG_BK_MODEM)
+	list(APPEND srcs cli_modem.c)
+endif()
+
 set(PRIV_REQUIRES_LIST bk_common psa_mbedtls bk_netif bk_ps fatfs bk_vfs bk_init bk_libs bk_wifi compal ota cmsis flashdb bk_wifi_driver lwip_intf_v2_1 console)
 
 armino_component_register(SRCS "${srcs}"

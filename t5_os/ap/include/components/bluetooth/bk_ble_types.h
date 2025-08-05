@@ -1152,6 +1152,8 @@ typedef void (*ble_notice_cb_t)(ble_notice_t notice, void *param);
 **/
 typedef ble_err_t (*ble_hci_to_host_cb)(uint8_t *buf, uint16_t len);
 
+typedef ble_err_t (*ble_hci_to_cp_cb)(uint8_t *buf, uint16_t len);
+
 /// Authentication mask
 enum gap_auth_mask
 {

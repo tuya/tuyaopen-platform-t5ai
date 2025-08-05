@@ -400,16 +400,11 @@ int doorbell_camera_turn_on(camera_parameters_t *parameters)
     if (ret != BK_OK)
     {
         LOGE("%s failed\n", __func__);
-        if (db_device_info->pipeline_enable)
+        if (media_app_h264_regenerate_idr(device.type) != BK_OK)
         {
-            int ret_val = 0;
-            ret_val = h264_jdec_pipeline_regenerate_idr_frame();
-            if (ret_val != BK_OK)
-            {
-                LOGE("%s h264_jdec_pipeline_regenerate_idr_frame failed\n", __func__);
-                return ret_val;
-            }
+            LOGE("%s h264_regenerate_idr failed\n", __func__);
         }
+
         return ret;
     }
 
@@ -436,7 +431,7 @@ int doorbell_camera_turn_on(camera_parameters_t *parameters)
 
     if (db_device_info->pipeline_enable)
     {
-        ret = h264_jdec_pipeline_open();
+        ret = media_app_pipeline_h264_open(NULL);
         if (ret != BK_OK)
         {
             LOGE("%s h264_pipeline_open failed\n", __func__);
@@ -448,17 +443,15 @@ int doorbell_camera_turn_on(camera_parameters_t *parameters)
     {
         if (device.type == UVC_CAMERA)
         {
-            lcd_jdec_pipeline_open();
+            media_app_jdec_open(JPEGDEC_BY_LINE);
         }
         else if (device.type == DVP_CAMERA)
         {
-            img_service_open();
+            media_app_jdec_open(JPEGDEC_BY_FRAME);
         }
     }
-    else
-    {
-        current_device.type = device.type;
-    }
+
+    current_device.type = device.type;
 
     return ret;
 }
@@ -473,7 +466,7 @@ int doorbell_camera_turn_off(void)
 
     //if (db_device_info->pipeline_enable)
     {
-        h264_jdec_pipeline_close();
+        media_app_pipeline_h264_close();
         LOGD("%s h264_pipeline close\n", __func__);
     }
 
@@ -607,17 +600,16 @@ int doorbell_display_turn_on(uint16_t id, uint16_t rotate, uint16_t fmt)
 
     if (current_device.type == UVC_CAMERA)
     {
-        lcd_jdec_pipeline_open();
+        media_app_jdec_open(JPEGDEC_BY_LINE);
     }
     else if (current_device.type == DVP_CAMERA)
     {
-        img_service_open();
+        media_app_jdec_open(JPEGDEC_BY_FRAME);
     }
 
     if (media_app_lcd_disp_open(&lcd_open) != BK_OK)
     {
-        lcd_jdec_pipeline_close();
-        img_service_close();
+        media_app_jdec_close();
     }
 
     db_device_info->lcd_id = id;
@@ -634,10 +626,8 @@ int doorbell_display_turn_off(void)
         return EVT_STATUS_ALREADY;
     }
 
-    lcd_jdec_pipeline_close();
-    img_service_close();
+    media_app_jdec_close();
     media_app_lcd_disp_close();
-
     db_device_info->lcd_id = 0;
     return 0;
 }

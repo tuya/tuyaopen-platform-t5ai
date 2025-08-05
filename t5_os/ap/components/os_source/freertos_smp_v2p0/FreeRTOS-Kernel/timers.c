@@ -258,14 +258,13 @@
                 uint32_t ulTimerTaskStackSize;
 
                 vApplicationGetTimerTaskMemory( &pxTimerTaskTCBBuffer, &pxTimerTaskStackBuffer, &ulTimerTaskStackSize );
-                xTimerTaskHandle = (TaskHandle_t) xTaskCreateStaticPinnedToCore( prvTimerTask,
+                xTimerTaskHandle = (TaskHandle_t) xTaskCreateStatic( prvTimerTask,
                                                                   configTIMER_SERVICE_TASK_NAME,
                                                                   ulTimerTaskStackSize,
                                                                   NULL,
                                                                   ( ( UBaseType_t ) configTIMER_TASK_PRIORITY ) | portPRIVILEGE_BIT,
                                                                   pxTimerTaskStackBuffer,
-                                                                  pxTimerTaskTCBBuffer,
-                                                                  0 );
+                                                                  pxTimerTaskTCBBuffer);
 
                 if( xTimerTaskHandle != NULL )
                 {

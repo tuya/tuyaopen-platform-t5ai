@@ -72,7 +72,7 @@ static void fatfs_operate(char *pcWriteBuffer, int xWriteBufferLen, int argc, ch
 			uint32_t start_addr = 0;
 			if(argc >= 5)
 			{
-				start_addr = os_strtoul(argv[4], NULL, 10);
+				start_addr = os_strtoul(argv[4], NULL, 16);
 			}
 			if(argc >= 6)
 			{

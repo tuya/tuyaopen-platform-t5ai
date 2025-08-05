@@ -57,11 +57,18 @@ extern "C" {
 #define CONFIG_ROLE_AP          1
 #define CONFIG_ROLE_STA         2
 
+typedef struct {
+	uint8_t is_sta_up;
+	uint8_t is_ap_up;
+	wifi_link_status_t link_status;
+	netif_ip4_config_t sta_ip4_info;
+	wifi_ap_config_t ap_info;
+	netif_ip4_config_t ap_ip4_info;
+} wifi_status_t;
+
 bk_err_t bk_wifi_api_test(void);
-bk_err_t bk_wifi_sta_start_ex(void);
-bk_err_t bk_wifi_sta_set_config_ex(const wifi_sta_config_t *config);
-bk_err_t bk_wifi_sta_get_config_ex(wifi_sta_config_t *config);
-bk_err_t bk_wifi_scan_start_ex(const wifi_scan_config_t *scan_config);
+bk_err_t bk_wifi_get_status(wifi_status_t *status);
+
 
 /**************************WLAN API**************************/
 /**

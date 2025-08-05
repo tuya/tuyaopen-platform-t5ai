@@ -266,6 +266,8 @@ typedef struct {
 	void (*_sr_flush_scan_results)(void *rst_ptr);
 	void *(*_rwnx_get_rlk_info_results)(void);
 	void (*_rwnx_flush_rlk_info_results)(void);
+	void (*_bk_wifi_set_rf_en)(UINT8 flag);
+	void (*_bk_task_wdt_feed)(void);
 } wifi_os_funcs_t;
 extern wifi_os_funcs_t g_wifi_os_funcs;
 

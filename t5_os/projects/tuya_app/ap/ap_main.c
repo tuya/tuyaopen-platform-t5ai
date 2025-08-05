@@ -14,6 +14,7 @@ extern OPERATE_RET tuya_ipc_init(void);
 extern int tuya_upgrade_main(void);
 extern void tuya_app_main(void);
 extern TUYA_OTA_PATH_E tkl_ota_is_under_seg_upgrade(void);
+extern void test_core_mark(void);
 
 static void entry_app_main(void)
 {
@@ -21,14 +22,15 @@ static void entry_app_main(void)
             xPortGetFreeHeapSize(), bk_misc_get_reset_reason() & 0xFF);
 
     tuya_ipc_init();
+    
     bk_printf("go to tuya\r\n");
     tuya_app_main();
+    // test_core_mark();
 
 #if (CONFIG_TUYA_TEST_CLI)
         extern int ap_cli_tuya_test_init(void);
         ap_cli_tuya_test_init();
 #endif
-
 }
 
 int main(void)

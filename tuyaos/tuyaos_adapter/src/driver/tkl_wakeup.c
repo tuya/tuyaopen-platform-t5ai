@@ -66,9 +66,6 @@ static int __save_wakeup_node(CONST TUYA_WAKEUP_SOURCE_BASE_CFG_T  *param)
 #if CONFIG_GPIO_WAKEUP_SUPPORT
 static void __gpio_wakeup_source_set(gpio_id_t id, TUYA_GPIO_WAKE_TYPE_E level)
 {
-    bk_printf("TODO ... %s %d\r\n", __func__, __LINE__);
-    return 0;
-#if 0
     gpio_int_type_t int_type = GPIO_INT_TYPE_FALLING_EDGE;
 
     // TODO irq type
@@ -92,15 +89,14 @@ static void __gpio_wakeup_source_set(gpio_id_t id, TUYA_GPIO_WAKE_TYPE_E level)
 
     bk_gpio_register_wakeup_source(id, int_type);
     bk_pm_wakeup_source_set(PM_WAKEUP_SOURCE_INT_GPIO, NULL);
-#endif
 }
 #endif //CONFIG_GPIO_WAKEUP_SUPPORT
 
 #if CONFIG_AON_RTC
 static void __rtc_wakeup_source_set(uint32_t ms)
 {
-    bk_printf("TODO ... %s %d\r\n", __func__, __LINE__);
-    return;
+    // TODO
+    bk_printf("TODO RTC WAKEUP\r\n");
 #if 0
     uint32_t rtc_ms_tick = bk_rtc_get_clock_freq()/1000;
     aon_pmu_drv_lpo_src_set(PM_LPO_SRC_ROSC);
@@ -229,9 +225,6 @@ OPERATE_RET tkl_wakeup_source_clear(CONST TUYA_WAKEUP_SOURCE_BASE_CFG_T *param)
         return OPRT_COM_ERROR;
     }
 
-    bk_printf("TODO ... %s %d\r\n", __func__, __LINE__);
-    return -1;
-#if 0
     static char clear_flag = 0;
 
     for (int i = 0; i < WAKEUP_SOURCE_CNT; i++) {
@@ -257,7 +250,6 @@ OPERATE_RET tkl_wakeup_source_clear(CONST TUYA_WAKEUP_SOURCE_BASE_CFG_T *param)
     }
 
     return OPRT_OK;
-#endif
 }
 
 

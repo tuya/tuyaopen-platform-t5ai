@@ -29,6 +29,11 @@
 #include <driver/pwr_clk.h>
 #include <modules/pm.h>
 
+#if CONFIG_VOICE_SERVICE_MP3_DECODER
+#include <components/bk_audio/audio_decoders/modules/mp3_decoder.h>
+#endif
+
+
 #define TAG "voc"
 
 #if 0
@@ -65,6 +70,7 @@ struct voice
     mic_type_t              mic_type;           /**< onboard mic or uac mic */
     audio_element_handle_t  mic_str;            /**< mic stream handle */
     bool                    aec_en;             /**< aec enable handle */
+    uint8_t                 aec_ver;            /**< aec version */
     audio_element_handle_t  aec_alg;            /**< aec algorithm handle */
     audio_port_handle_t     aec_alg_ref_rb;   /**< ringbuffer save refrence data of aec algorithm, [speaker]-->(ringbuffer)-->[aec] */
     audio_enc_type_t        enc_type;           /**< encoder type */
@@ -234,6 +240,17 @@ static bk_err_t record_pipeline_init(voice_handle_t voice_handle, voice_cfg_t *c
         VOICE_CHECK_NULL(voice_handle->mic_str, goto fail);
     }
 #endif
+#if CONFIG_ADK_ONBOARD_DUAL_DMIC_MIC_STREAM
+    else if (voice_handle->mic_type == MIC_TYPE_ONBOARD_DUAL_DMIC_MIC)
+    {
+        if(!cfg->aec_en && cfg->mic_cfg.onboard_dual_dmic_mic_cfg.dual_dmic)
+        {
+            cfg->mic_cfg.onboard_dual_dmic_mic_cfg.dual_dmic_sgl_out = 1;
+        }
+        voice_handle->mic_str = onboard_dual_dmic_mic_stream_init(&cfg->mic_cfg.onboard_dual_dmic_mic_cfg);
+        VOICE_CHECK_NULL(voice_handle->mic_str, goto fail);
+    }
+#endif
     else
     {
         //nothing todo
@@ -243,7 +260,28 @@ static bk_err_t record_pipeline_init(voice_handle_t voice_handle, voice_cfg_t *c
 
     if (voice_handle->aec_en)
     {
-        voice_handle->aec_alg = aec_algorithm_init(&cfg->aec_cfg.aec_alg_cfg);
+        if(3 == cfg->aec_ver)
+        {
+            #if CONFIG_ADK_AEC_V3_ALGORITHM
+            bk_voice_cal_vad_buf_size(cfg, voice_handle);
+            voice_handle->aec_alg = aec_v3_algorithm_init(&cfg->aec_cfg.aec_v3_alg_cfg);
+            #else
+            BK_LOGE(TAG, "%s, %d,AEC V%d but CONFIG_ADK_AEC_ALGORITHM is not set!\n", __func__, __LINE__, cfg->aec_ver);
+            #endif
+        }
+        else if(1 == cfg->aec_ver)
+        {
+            #if CONFIG_ADK_AEC_ALGORITHM
+            voice_handle->aec_alg = aec_algorithm_init(&cfg->aec_cfg.aec_alg_cfg);
+            #else
+            BK_LOGE(TAG, "%s, %d,AEC V%d but CONFIG_ADK_AEC_ALGORITHM is not set!\n", __func__, __LINE__, cfg->aec_ver);
+            #endif
+        }
+        else
+        {
+            BK_LOGE(TAG, "%s, %d,AEC V%d is not supported!\n", __func__, __LINE__, cfg->aec_ver);
+        }
+        
         VOICE_CHECK_NULL(voice_handle->aec_alg, goto fail);
     }
 
@@ -1077,6 +1115,49 @@ static bk_err_t voice_config_check(voice_cfg_t cfg)
             }
         }
     }
+    else if (cfg.mic_type == MIC_TYPE_ONBOARD_DUAL_DMIC_MIC)
+    {
+        if (cfg.mic_cfg.onboard_dual_dmic_mic_cfg.adc_cfg.sample_rate != 8000 && cfg.mic_cfg.onboard_dual_dmic_mic_cfg.adc_cfg.sample_rate != 16000)
+        {
+            BK_LOGE(TAG, "%s, %d, onboard dual dmic mic sample rate: %d not support\n", __func__, __LINE__, cfg.mic_cfg.onboard_dual_dmic_mic_cfg.adc_cfg.sample_rate);
+            return BK_FAIL;
+        }
+
+        if (cfg.mic_cfg.onboard_dual_dmic_mic_cfg.adc_cfg.bits != 16)
+        {
+            BK_LOGE(TAG, "%s, %d, onboard dual dmic mic adc bits: %d is not support\n", __func__, __LINE__, cfg.mic_cfg.onboard_dual_dmic_mic_cfg.adc_cfg.bits);
+            return BK_FAIL;
+        }
+
+        /*
+            When aec enable,
+            if aec mode is AEC_MODE_HARDWARE, mic channel is 2 (one channel is mic data, other channel is ref data from speaker)
+            if aec mode is AEC_MODE_SOFTWARE, mic channel is 1 (the channel is mic data)
+         */
+        if (cfg.aec_en)
+        {
+            if ((cfg.aec_cfg.aec_v3_alg_cfg.aec_cfg.mode == AEC_V3_MODE_HARDWARE && cfg.mic_cfg.onboard_dual_dmic_mic_cfg.adc_cfg.chl_num != 2)
+                || (cfg.aec_cfg.aec_v3_alg_cfg.aec_cfg.mode == AEC_V3_MODE_SOFTWARE && cfg.mic_cfg.onboard_dual_dmic_mic_cfg.adc_cfg.chl_num != 1))
+            {
+                BK_LOGE(TAG, "%s, %d, aec mode: %d, mic chanels: %d are not match\n", __func__, __LINE__, cfg.aec_cfg.aec_v3_alg_cfg.aec_cfg.mode, cfg.mic_cfg.onboard_dual_dmic_mic_cfg.adc_cfg.chl_num);
+                return BK_FAIL;
+            }
+
+            if ((cfg.aec_cfg.aec_v3_alg_cfg.aec_cfg.mode == AEC_V3_MODE_HARDWARE && !cfg.mic_cfg.onboard_dual_dmic_mic_cfg.ref_mode)
+                || (cfg.aec_cfg.aec_v3_alg_cfg.aec_cfg.mode == AEC_V3_MODE_SOFTWARE && cfg.mic_cfg.onboard_dual_dmic_mic_cfg.ref_mode))
+            {
+                BK_LOGE(TAG, "%s, %d, aec mode: %d, mic ref mode: %d are not match\n", __func__, __LINE__, cfg.aec_cfg.aec_v3_alg_cfg.aec_cfg.mode, cfg.mic_cfg.onboard_dual_dmic_mic_cfg.ref_mode);
+                return BK_FAIL;
+            }
+
+            if ((cfg.aec_cfg.aec_v3_alg_cfg.dual_ch && !cfg.mic_cfg.onboard_dual_dmic_mic_cfg.dual_dmic)
+                || (!cfg.aec_cfg.aec_v3_alg_cfg.dual_ch && cfg.mic_cfg.onboard_dual_dmic_mic_cfg.dual_dmic))
+            {
+                BK_LOGE(TAG, "%s, %d, aec dual dmic: %d, mic dual dmic: %d are not match\n", __func__, __LINE__, cfg.aec_cfg.aec_v3_alg_cfg.dual_ch, cfg.mic_cfg.onboard_dual_dmic_mic_cfg.dual_dmic);
+                return BK_FAIL;
+            }
+        }
+    }
     else
     {
         BK_LOGE(TAG, "%s, %d, cfg.mic_type: %d not support\n", __func__, __LINE__, cfg.mic_type);
@@ -1164,6 +1245,7 @@ voice_handle_t bk_voice_init(voice_cfg_t *cfg)
     /* copy config */
     voice_handle->mic_type = cfg->mic_type;
     voice_handle->aec_en = cfg->aec_en;
+    voice_handle->aec_ver = cfg->aec_ver;
     voice_handle->enc_type = cfg->enc_type;
     voice_handle->dec_type = cfg->dec_type;
     voice_handle->spk_type = cfg->spk_type;
@@ -1194,18 +1276,58 @@ voice_handle_t bk_voice_init(voice_cfg_t *cfg)
         ringbuf_port_cfg_t rb_config = {cfg->aec_cfg.aec_alg_cfg.aec_cfg.fs * 20 / 1000 * 2 * 2};
         voice_handle->aec_alg_ref_rb = ringbuf_port_init(&rb_config);
         VOICE_CHECK_NULL(voice_handle->aec_alg_ref_rb, goto fail);
-
-        /* link aec_alg_ref_rb to spk stream and aec algorithm */
-        if (BK_OK !=  audio_element_set_multi_input_port(voice_handle->aec_alg, voice_handle->aec_alg_ref_rb, 0))
+        
+        if(1 == voice_handle->aec_ver)
         {
-            BK_LOGE(TAG, "%s, %d, link aec_alg_ref_rb to aec_alg fail\n", __func__, __LINE__);
-            goto fail;
+            /* link aec_alg_ref_rb to spk stream and aec algorithm */
+            if (BK_OK !=  audio_element_set_multi_input_port(voice_handle->aec_alg, voice_handle->aec_alg_ref_rb, 0))
+            {
+                BK_LOGE(TAG, "%s, %d, link aec_alg_ref_rb to aec_alg fail\n", __func__, __LINE__);
+                goto fail;
+            }
+
+            if (BK_OK !=  audio_element_set_multi_output_port(voice_handle->spk_str, voice_handle->aec_alg_ref_rb, 0))
+            {
+                BK_LOGE(TAG, "%s, %d, link apk_stream to aec_alg_ref_rb fail\n", __func__, __LINE__);
+                goto fail;
+            }
         }
-
-        if (BK_OK !=  audio_element_set_multi_output_port(voice_handle->spk_str, voice_handle->aec_alg_ref_rb, 0))
+        else if(3 == voice_handle->aec_ver)
         {
-            BK_LOGE(TAG, "%s, %d, link apk_stream to aec_alg_ref_rb fail\n", __func__, __LINE__);
-            goto fail;
+            if(AEC_V3_MODE_HARDWARE == cfg->aec_cfg.aec_v3_alg_cfg.aec_cfg.mode)
+            {
+                /* link aec_alg_ref_rb to mic stream and aec algorithm */
+                if (BK_OK !=  audio_element_set_multi_input_port(voice_handle->aec_alg, voice_handle->aec_alg_ref_rb, 0))
+                {
+                    BK_LOGE(TAG, "%s, %d, link aec_alg_ref_rb to aec_alg fail\n", __func__, __LINE__);
+                    goto fail;
+                }
+
+                if (BK_OK !=  audio_element_set_multi_output_port(voice_handle->mic_str, voice_handle->aec_alg_ref_rb, 0))
+                {
+                    BK_LOGE(TAG, "%s, %d, link apk_stream to aec_alg_ref_rb fail\n", __func__, __LINE__);
+                    goto fail;
+                }
+            }
+            else
+            {
+                /* link aec_alg_ref_rb to spk stream and aec algorithm */
+                if (BK_OK !=  audio_element_set_multi_input_port(voice_handle->aec_alg, voice_handle->aec_alg_ref_rb, 0))
+                {
+                    BK_LOGE(TAG, "%s, %d, link aec_alg_ref_rb to aec_alg fail\n", __func__, __LINE__);
+                    goto fail;
+                }
+
+                if (BK_OK !=  audio_element_set_multi_output_port(voice_handle->spk_str, voice_handle->aec_alg_ref_rb, 0))
+                {
+                    BK_LOGE(TAG, "%s, %d, link apk_stream to aec_alg_ref_rb fail\n", __func__, __LINE__);
+                    goto fail;
+                }
+            }
+        }
+        else
+        {
+            BK_LOGE(TAG, "%s, %d, voice_handle->aec_ver:%d is invalid!\n", __func__, __LINE__,voice_handle->aec_ver);
         }
     }
 
@@ -1401,6 +1523,15 @@ int bk_voice_write_spk_data(voice_handle_t voice_handle, char *buffer, uint32_t 
     return raw_stream_write(voice_handle->raw_write, buffer, size);
 }
 
+int bk_voice_get_mic_str(voice_handle_t voice_handle, voice_cfg_t *cfg)
+{
+	VOICE_CHECK_NULL(voice_handle, return BK_FAIL);
+	if (cfg->aec_en)
+		return ((int)voice_handle->aec_alg);
+	else
+		return ((int)voice_handle->mic_str);
+}
+
 bk_err_t bk_voice_get_status(voice_handle_t voice_handle, voice_sta_t *status)
 {
     VOICE_CHECK_NULL(voice_handle, return BK_FAIL);
@@ -1447,3 +1578,62 @@ int bk_voice_abort_write_spk_data(voice_handle_t voice_handle)
     return audio_element_abort_output_port(voice_handle->raw_write);
 }
 #endif
+
+static uint8_t bk_voice_get_enc_frame_ms(voice_cfg_t *cfg)
+{
+    return cfg->enc_common.frame_in_ms;
+}
+
+static uint32_t bk_voice_get_enc_in_frame_size(voice_cfg_t *cfg)
+{
+    return cfg->enc_common.frame_in_size;
+}
+
+void bk_voice_cal_vad_buf_size(voice_cfg_t *cfg, voice_handle_t voice_handle)
+{
+    uint32_t enc_input_frame_size = bk_voice_get_enc_in_frame_size(cfg);
+    
+    if(cfg->aec_en && cfg->aec_cfg.aec_v3_alg_cfg.vad_cfg.vad_enable)
+    {
+        uint8_t enc_frame_in_ms = bk_voice_get_enc_frame_ms(cfg);
+        uint32 vad_buf_len;
+        vad_buf_len = enc_input_frame_size*((cfg->aec_cfg.aec_v3_alg_cfg.vad_cfg.vad_start_threshold + enc_frame_in_ms - 1)/enc_frame_in_ms);
+        cfg->aec_cfg.aec_v3_alg_cfg.vad_cfg.vad_buf_size = vad_buf_len;
+        cfg->aec_cfg.aec_v3_alg_cfg.vad_cfg.vad_frame_size = enc_input_frame_size;
+        BK_LOGD(TAG, "%s, %d, vad buf size: %p,frame size: %d\n", __func__, __LINE__, cfg->aec_cfg.aec_v3_alg_cfg.vad_cfg.vad_buf_size, cfg->aec_cfg.aec_v3_alg_cfg.vad_cfg.vad_frame_size);
+    }
+}
+
+#if CONFIG_VOICE_SERVICE_MP3_DECODER
+static uint16_t bk_voice_get_mp3_frame_sample_cnt(uint16_t sample_rate, uint8_t ch_num)
+{
+    uint16_t sample_cnt = MAX_NSAMP;
+    switch (sample_rate) //only support layer3
+    {
+        case 8000: //MPEG2.5,frame sample cnt:576,72ms
+        case 11025://MPEG2.5,frame sample cnt:576,52ms
+        case 12000://MPEG2.5,frame sample cnt:576,48ms
+        case 16000://MPEG2,frame sample cnt:576,36ms
+        case 22050://MPEG2,frame sample cnt:576,26ms
+        case 24000://MPEG2,frame sample cnt:576,24ms
+        {
+            break;
+        }
+        case 32000://MPEG1,frame sample cnt:1152,36ms
+        case 44100://MPEG1,frame sample cnt:1152,26ms
+        case 48000://MPEG1,frame sample cnt:1152,24ms
+        {
+            sample_cnt = MAX_NSAMP*MAX_NGRAN;
+            break;
+        }
+        default:
+        {
+            BK_LOGE(TAG, "%s,%d unsupported dac sample rate:%d\n",__func__, __LINE__,dac_sample_rate);
+            break;
+        }
+    }
+
+    return (sample_cnt*ch_num);
+}
+#endif
+

@@ -85,16 +85,19 @@ if (CONFIG_MEDIA_BT_AUDIO)
 endif()
 #endif()
 
-if (CONFIG_SOC_SMP) 
+if (CONFIG_SOC_SMP)
 list(APPEND srcs 
-	decode/sw_decode_cp2.c
-	decode/sw_decode.c
 	rotate/sw_rotate.c
 	)
 endif()
-
+if (CONFIG_JPEG_SW_DECODE_SUPPORT_BY_FRAME)
+    list(APPEND srcs
+	decode/sw_decode_cp2.c
+	decode/sw_decode.c
+    )
+endif()
 endif()
 
 list(APPEND srcs core/media_mem_share.c)
 
-armino_component_register(SRCS "${srcs}" INCLUDE_DIRS "${incs}" PRIV_REQUIRES bk_cli lvgl  unity media_utils bk_draw_blend display_service bk_dvp bk_uvc avdk_utils tuyaos_adapter)     # Modified by TUYA
+armino_component_register(SRCS "${srcs}" INCLUDE_DIRS "${incs}" PRIV_REQUIRES bk_cli lvgl  unity media_utils bk_draw_blend display_service bk_dvp bk_uvc avdk_utils bk_vfs tuyaos_adapter)     # Modified by TUYA

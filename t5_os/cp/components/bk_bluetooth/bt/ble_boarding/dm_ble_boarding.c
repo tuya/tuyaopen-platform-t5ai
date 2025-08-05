@@ -32,7 +32,7 @@
 #include "bk_wifi.h"
 #include "bluetooth_legacy_include.h"
 #include "ble_boarding.h"
-
+#include "components/bluetooth/bk_dm_bluetooth.h"
 
 static beken_semaphore_t ble_boarding_sema = NULL;
 static ble_err_t s_at_cmd_status = BK_ERR_BLE_SUCCESS;
@@ -382,15 +382,7 @@ int dm_ble_boarding_handle(int sync, int argc, char **argv)
     }
 
     bd_addr_t random_addr;
-    bk_get_mac((uint8_t *)random_addr.addr, MAC_TYPE_BLUETOOTH);
-
-    for (int i = 0; i < sizeof(random_addr.addr) / 2; i++)
-    {
-        uint8_t tmp_addr = random_addr.addr[i];
-        random_addr.addr[i] = random_addr.addr[sizeof(random_addr.addr) - 1 - i];
-        random_addr.addr[sizeof(random_addr.addr) - 1 - i] = tmp_addr;
-    }
-
+    bk_bluetooth_get_address((uint8_t *)random_addr.addr);
     random_addr.addr[0]++;
 
     retval = bk_ble_set_random_addr((bd_addr_t *)&random_addr, ble_at_cmd_cb);
@@ -697,15 +689,7 @@ int dm_ble_boarding_handle(char *pcWriteBuffer, int xWriteBufferLen, int argc, c
     }
 
     bd_addr_t random_addr;
-    bk_get_mac((uint8_t *)random_addr.addr, MAC_TYPE_BLUETOOTH);
-
-    for (int i = 0; i < sizeof(random_addr.addr) / 2; i++)
-    {
-        uint8_t tmp_addr = random_addr.addr[i];
-        random_addr.addr[i] = random_addr.addr[sizeof(random_addr.addr) - 1 - i];
-        random_addr.addr[sizeof(random_addr.addr) - 1 - i] = tmp_addr;
-    }
-
+    bk_bluetooth_get_address((uint8_t *)random_addr.addr);
     random_addr.addr[0]++;
 
     retval = bk_ble_set_random_addr((bd_addr_t *)&random_addr, ble_at_cmd_cb);

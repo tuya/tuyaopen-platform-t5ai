@@ -28,17 +28,13 @@ typedef struct {
 } yuv_mode_cfg_t;
 
 typedef struct {
-
-} h264_enc_mode_cfg_t;
-
-typedef struct {
 	yuv_mode_t work_mode;
 	mclk_div_t mclk_div;    /**< div yuv_buf module clock for MCLK and PCLK */
-	uint32_t x_pixel;    /**< sensor data's resolution for width */
-	uint32_t y_pixel;    /**< sensor data's resolution for height */
+	uint32_t x_pixel;       /**< sensor data's resolution for width */
+	uint32_t y_pixel;       /**< sensor data's resolution for height */
 	yuv_mode_cfg_t yuv_mode_cfg;
-	h264_enc_mode_cfg_t h264_enc_mode_cfg;
-	uint8_t *base_addr;  /**< used for save source yuv data base addr */
+	uint8_t *base_addr;     /**< used for save source yuv data base addr */
+	uint8_t *emr_base_addr; /**< bus read encode data base addr */
 } yuv_buf_config_t;
 
 typedef struct {

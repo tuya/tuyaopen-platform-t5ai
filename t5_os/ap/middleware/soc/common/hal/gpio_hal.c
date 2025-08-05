@@ -160,16 +160,9 @@ static bk_err_t gpio_hal_map_check(gpio_hal_t *hal, gpio_id_t gpio_id)
 		uint32 func_mode = gpio_ll_get_gpio_perial_mode((hal)->hw, gpio_id);
 		uint32 dev_use = gpio_map->dev[func_mode];
 
-        // Modified by TUYA Start
-        if (((gpio_id == 11) && (dev_use == GPIO_DEV_UART0_TXD)) ||
-            ((gpio_id == 10) && (dev_use == GPIO_DEV_UART0_RXD))) {
-			return BK_OK;
-        } else {
-			HAL_LOGW("[gpio_log]:gpio:%d was busy: device num:0x%x!\r\n", gpio_id, dev_use);
+		HAL_LOGV("[gpio_log]:gpio:%d was busy: device num:0x%x!\r\n", gpio_id, dev_use);
 
-			return BK_ERR_GPIO_INTERNAL_USED;
-        }
-        // Modified by TUYA End
+		return BK_ERR_GPIO_INTERNAL_USED;
 	}
 
 	return BK_OK;
@@ -222,8 +215,8 @@ bk_err_t gpio_hal_func_map(gpio_hal_t *hal, gpio_id_t gpio_id, gpio_dev_t dev)
 bk_err_t gpio_hal_func_unmap(gpio_hal_t *hal, gpio_id_t gpio_id)
 {
 	/*If detected that gpio_2_func_en is set,it indicates that the GPIO
-	is being used by other peripheral,will print a warning log to indicate
-	the risk,but the operation will continue to execute,without interrupting
+	is being used by other peripheral,will print a warning log to indicate 
+	the risk,but the operation will continue to execute,without interrupting 
 	the process*/
 	if(gpio_hal_map_check(hal, gpio_id)) {
 		HAL_LOGW("gpio: %d is used.Please confirm unmap isn't impact is working module.!\r\n", gpio_id);
@@ -366,7 +359,7 @@ bk_err_t gpio_hal_default_map_init(gpio_hal_t *hal)
 
 		HAL_LOGV("int_en: %d, int_type:%d \r\n",
 				default_map[i].int_en, default_map[i].int_type);
-
+		
 		//function mode
 		if(default_map[i].second_func_en) {
 			gpio_hal_func_unmap(hal, default_map[i].gpio_id);
@@ -430,7 +423,7 @@ bk_err_t gpio_hal_default_map_init(gpio_hal_t *hal)
 			gpio_hal_enable_interrupt(hal, default_map[i].gpio_id);
 		} else
 			gpio_hal_disable_interrupt(hal, default_map[i].gpio_id);
-
+			
 /*BK7258 and BK7256 are different, macros are used to isolate them.*/
 #if CONFIG_SOC_BK7236XX
 		gpio_hal_clear_chan_interrupt_status(hal,default_map[i].gpio_id);
@@ -439,7 +432,7 @@ bk_err_t gpio_hal_default_map_init(gpio_hal_t *hal)
 		gpio_hal_set_capacity(hal, default_map[i].gpio_id, default_map[i].driver_capacity);
 	}
 
-	return BK_OK;
+	return BK_OK;	
 }
 
 #endif

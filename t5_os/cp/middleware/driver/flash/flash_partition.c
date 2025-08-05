@@ -41,6 +41,8 @@
 
 #define SOC_FLASH_BASE_ADDR           0x02000000
 #define FLASH_LOGICAL_BASE_ADDR       SOC_FLASH_BASE_ADDR
+#define FLASH_ADDR_OFFSET             (0x18)
+#define FLASH_OFFSET_ENABLE           (0x19)
 
 #define PARTITION_IRAM         __attribute__((section(".iram")))
 
@@ -173,6 +175,11 @@ bk_err_t flash_partition_write_perm_check(bk_logic_partition_t *partition_info)
 	// flash ctrl only can read/write 16MB.
 	uint32_t   fun_flash_logical_addr = ((uint32_t)flash_partition_write_perm_check) & (FLASH_MAX_SIZE - 1) ;
 	uint32_t   fun_flash_phy_addr = FLASH_LOGICAL_2_PHY(fun_flash_logical_addr);
+	uint32_t   execute_part_val = (REG_READ(SOC_FLASH_REG_BASE + FLASH_OFFSET_ENABLE*4)) & 0x1;
+	if(execute_part_val == 1) //execute_B
+	{
+		fun_flash_phy_addr += FLASH_LOGICAL_2_PHY(REG_READ(SOC_FLASH_REG_BASE + FLASH_ADDR_OFFSET*4) - SOC_FLASH_BASE_ADDR) ;
+	}
 
 	if(fun_flash_phy_addr < partition_info->partition_start_addr)
 	{

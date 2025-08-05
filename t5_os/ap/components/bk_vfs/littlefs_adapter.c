@@ -171,7 +171,7 @@ static int setup_lfs_config(struct lfs_config *config, const struct bk_little_fs
 		config->prog = lfs_flashbd_prog;
 		config->erase = lfs_flashbd_erase;
 		config->sync = lfs_flashbd_sync;
-	}
+	} 
 #if (CONFIG_SPI_MST_FLASH)
 	else if ((part->part_type == LFS_SPI_FLASH) || (part->part_type == LFS_SPI_1_FLASH)) {
 		bd->device_id = SPI_ID_0 + (part->part_type - LFS_SPI_FLASH);
@@ -195,10 +195,10 @@ static int setup_lfs_config(struct lfs_config *config, const struct bk_little_fs
 
 		ret = lfs_qspi_flashbd_init(bd->device_id);
 #endif
-        // Modified by TUYA End
 
 		extern bk_err_t qflash_init(void);
 		ret = qflash_init();
+        // Modified by TUYA End
 		if (ret) {
 			os_free(config->context);
 			return -1;
@@ -472,7 +472,7 @@ static int _bk_lfs_close(struct bk_file *file) {
 	os_free(file->f_data);
 	file->f_data = NULL;
 
-	return ret;
+	return ret;	
 }
 
 static ssize_t _bk_lfs_read(struct bk_file *file, void *buf, size_t count) {

@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <lwip/sockets.h>
+#include <bk_ssl.h>
 
 typedef enum {
 	WEBSOCKET_STATE_ERROR = -1,
@@ -61,6 +62,8 @@ typedef struct {
 	void						*user_context;
 } websocket_config_t;
 
+typedef void  (*bk_event_handler_t)(void* event_handler_arg, char *event_base, int32_t event_id, void* event_data);
+
 typedef struct {
 	websocket_config_t			*config;
 	websocket_client_state_t	state;
@@ -80,6 +83,10 @@ typedef struct {
 	int 						payload_offset;
 	transport_ws_t			   *ws_transport;
 	int 						sockfd;
+	int							is_tls;
+	transport_bk_tls_t			*bk_ssl;
+	bk_event_handler_t			ws_event_handler;
+	beken_mutex_t 				mutex;
 }websocket_transport_info_t;
 
 typedef struct {
@@ -92,21 +99,29 @@ typedef struct {
 	const char					*user_agent;
 	const char					*headers;
 //	bool						disable_pingpong_discon;
+	bk_event_handler_t			ws_event_handler;
 } websocket_client_input_t;
 
 typedef websocket_transport_info_t *transport;
 typedef void (*websocket_event_cb)(int32_t event_id, char *event_data, int data_len);
 
-void bk_websocket_register_cb(websocket_event_cb cb);
-bk_err_t websocket_client_set_uri(transport client, const char *uri);
+/**
+ * @brief Websocket event data
+ */
+typedef struct {
+    char *data_ptr;
+    int data_len;
+    uint8_t op_code;
+    transport client;
+    void *user_context;
+    int payload_len;
+    int payload_offset;
+} bk_websocket_event_data_t;
+
 transport websocket_client_init(const websocket_client_input_t *input);
 bk_err_t websocket_client_destroy(transport client);
-void websocket_client_task(beken_thread_arg_t *thread_param);
 int websocket_client_start(transport client);
-bk_err_t websocket_client_stop(transport client);
-bk_err_t websocket_start(websocket_client_input_t *websocket_cfg);
-bk_err_t websocket_recv(transport client);
-bk_err_t websocket_send_text(websocket_client_input_t *websocket_cfg);
-bk_err_t websocket_send_ping(void);
-bk_err_t websocket_stop(void);
-bk_err_t websocket_send_ping_pong(websocket_client_input_t *websocket_cfg);
+bool websocket_client_is_connected(transport client);
+int websocket_client_send_text(transport client, const char *data, int len, int timeout);
+int websocket_client_send_binary(transport client, const char *data, int len, int timeout);
+

@@ -21,6 +21,7 @@ typedef enum
 {
     MIC_TYPE_ONBOARD = 1,
     MIC_TYPE_UAC,
+    MIC_TYPE_ONBOARD_DUAL_DMIC_MIC,
 } mic_type_t;
 
 /**************** audio interface speaker ****************/
@@ -40,7 +41,8 @@ typedef enum
     AUDIO_ENC_TYPE_AAC,
     AUDIO_ENC_TYPE_ADPCM,
     AUDIO_ENC_TYPE_LC3,
-    AUDIO_ENC_TYPE_OPUS
+    AUDIO_ENC_TYPE_OPUS,
+    AUDIO_ENC_TYPE_G722
 } audio_enc_type_t;
 
 typedef enum
@@ -52,7 +54,8 @@ typedef enum
     AUDIO_DEC_TYPE_ADPCM,
     AUDIO_DEC_TYPE_LC3,
     AUDIO_DEC_TYPE_MP3,
-    AUDIO_DEC_TYPE_OPUS
+    AUDIO_DEC_TYPE_OPUS,
+    AUDIO_DEC_TYPE_G722
 } audio_dec_type_t;
 
 typedef enum

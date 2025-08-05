@@ -3,18 +3,20 @@
 
 #define BK_VFS_COMPAT
 
+
+
 #include "bk_vfs.h"
 #include "bk_filesystem.h"
 
 #ifdef BK_VFS_COMPAT
 #undef open
-#define open		bk_vfs_open
+#define open(path, oflag)		bk_vfs_open(path, oflag)
 #undef close
-#define close		bk_vfs_close
+#define close(fd)		bk_vfs_close(fd)
 #undef read
-#define read		bk_vfs_read
+#define read(fd, buf, count)		bk_vfs_read(fd, buf, count)
 #undef write
-#define write		bk_vfs_write
+#define write(fd, buf, count)		bk_vfs_write(fd, buf, count)
 #undef lseek
 #define lseek		bk_vfs_lseek
 
@@ -48,6 +50,9 @@
 #define umount2		bk_vfs_umount2
 #define mkfs		bk_vfs_mkfs
 #define statfs(path,buf)	bk_vfs_statfs(path,buf)
+
+
+
 
 #endif /* BK_VFS_COMPAT */
 

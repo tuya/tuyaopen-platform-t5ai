@@ -1,0 +1,7 @@
+#TODO add depens 
+menu "Mcu_4g_modem"
+	config BK_MODEM
+	bool "Enable Beken Modem"
+	default n
+
+endmenu

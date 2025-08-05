@@ -17,16 +17,17 @@ export ARMINO_TOOL_WRAPPER := @$(ARMINO_TOOLS_PATH)/build_tools/build.sh
 soc_targets_ap := $(shell find  ap/middleware/soc/ -name "*.defconfig" -exec basename {} \; | cut -f1 -d ".")
 soc_targets_cp := $(shell find  cp/middleware/soc/ -name "*.defconfig" -exec basename {} \; | cut -f1 -d ".")
 
-soc_targets = soc_targets_ap soc_targets_cp
+soc_targets = $(soc_targets_ap) $(soc_targets_cp)
 
 cmake_not_supported_targets = help clean doc ap_doc cp_doc
 all_targets = cmake_not_supported_targets soc_targets_cp soc_targets_ap cmake_supported_targets
 export SOC_SUPPORTED_TARGETS_AP := ${soc_targets_ap}
 export SOC_SUPPORTED_TARGETS_CP := ${soc_targets_cp}
 
-export ARMINO_SOC := $(findstring $(MAKECMDGOALS), $(soc_targets))
+make_target := $(subst _cp,,$(MAKECMDGOALS))
+make_target := $(subst _ap,,$(make_target))
+export ARMINO_SOC := $(findstring $(make_target), $(soc_targets))
 export CMD_TARGET := $(MAKECMDGOALS)
-
 
 ifeq ("$(APP_VERSION)", "")
 	export APP_VERSION := unknown
@@ -56,7 +57,7 @@ else
 	ARMINO_TARGET := build
 endif
 
-export ARMINO_SOC_NAME ?= $(ARMINO_SOC)
+export ARMINO_SOC_NAME := $(ARMINO_SOC)
 
 export PROJECT_NAME := $(notdir $(PROJECT_DIR))
 ifneq ("$(BUILD_DIR)", "")
@@ -107,7 +108,7 @@ common:
 
 all: $(soc_targets) $(ARMINO_SOC)_cp
 
-$(soc_targets_ap): common build_prepare
+$(ARMINO_SOC)_ap: common build_prepare
 	@make $(ARMINO_SOC)_ap ARMINO_TOOLS_PATH=$(ARMINO_TOOLS_PATH) PROJECT_DIR=$(PROJECT_DIR) BUILD_DIR=$(PROJECT_BUILD_DIR) APP_NAME=$(APP_NAME) APP_VERSION=$(APP_VERSION) -C $(ARMINO_AP_DIR)
 
 $(ARMINO_SOC)_cp: common build_prepare
@@ -162,7 +163,7 @@ package_script := $(ARMINO_AVDK_DIR)/tools/build_tools/build_process/bk_build_pa
 package_dir := $(PROJECT_BUILD_DIR)/package
 package_json := $(PARTITIONS_DIR)/bk_package.json
 build_summary := $(package_dir)/build_summary.txt
-package: $(package_script) $(ARMINO_SOC)_cp $(soc_targets_ap)
+package: $(package_script) $(ARMINO_SOC)_cp $(ARMINO_SOC)_ap
 	@mkdir -p $(package_dir)
 	@python3 $(package_script) $(PROJECT_BUILD_DIR) $(package_json) $(build_summary)
 ifneq ($(PRINT_SUMMARY), 0)
@@ -183,7 +184,7 @@ doc: smp_doc ap_doc cp_doc
 # only build bootloader
 bootloader_build_script := $(ARMINO_AVDK_DIR)/tools/build_tools/build_process/bk_sdk/bl_build.py
 bl:
-	@python $(bootloader_build_script) $(PROJECT_DIR) $(CURDIR)/build bk7258
+	@python $(bootloader_build_script) $(PROJECT_DIR) $(CURDIR)/build $(ARMINO_SOC)
 
 clean:
 	@echo "rm -rf ./build"

@@ -122,6 +122,10 @@ struct iface {
 	ip_addr_t nmask;
 	ip_addr_t gw;
 	const char *name;
+#if CONFIG_LWIP_PPP_SUPPORT
+	//for ppp
+	void *arg;
+#endif
 };
 FUNCPTR sta_connected_func;
 
@@ -132,6 +136,9 @@ static struct iface g_eth = {{0}, .name = "eth"};
 #endif
 #if CONFIG_BRIDGE
 static struct iface g_br = {{0}, .name = "br"};
+#endif
+#if CONFIG_LWIP_PPP_SUPPORT
+static struct iface g_ppp = {{0}, .name = "ppp"};
 #endif
 net_sta_ipup_cb_fn sta_ipup_cb = NULL;
 
@@ -460,6 +467,34 @@ void *net_get_br_handle(void)
 }
 #endif
 
+#if CONFIG_LWIP_PPP_SUPPORT
+#include "ppp/ppp.h"
+void *net_get_ppp_netif_handle(void)
+{
+	return &g_ppp.netif;
+}
+
+void *net_get_ppp_pcb_handle(void)
+{
+	return g_ppp.arg;
+}
+
+void net_set_ppp_pcb_handle(void *ppp)
+{
+	g_ppp.arg = ppp;
+}
+
+uint32_t ppp_ip_is_start(void)
+{
+	ppp_pcb *ppp = net_get_ppp_pcb_handle();
+
+	if (ppp) {
+		if (ppp->err_code == PPPERR_NONE)
+			return true;
+	}
+	return false;
+}
+#endif
 void *net_get_netif_handle(uint8_t iface)
 {
 	return NULL;
@@ -579,6 +614,12 @@ void ap_set_default_netif(void)
 #if (IP_FORWARD && IP_NAPT)
 	if (netif_is_up(&g_eth.netif) && netif_is_link_up(&g_eth.netif))
 		netifapi_netif_set_default(&g_eth.netif);
+#endif
+#endif
+#ifdef CONFIG_LWIP_PPP_SUPPORT
+#if (IP_FORWARD && IP_NAPT)
+	if (netif_is_up(&g_ppp.netif) && netif_is_link_up(&g_ppp.netif))
+		netifapi_netif_set_default(&g_ppp.netif);
 #endif
 #endif
 }
@@ -854,6 +895,9 @@ int net_get_if_addr(struct wlan_ip_config *addr, void *intrfc_handle)
 		if (if_handle == &g_mlan
 #ifdef CONFIG_ETH
 			|| if_handle == &g_eth
+#endif			
+#if CONFIG_LWIP_PPP_SUPPORT
+			|| if_handle == &g_ppp
 #endif
 			) {
 			/* STA or ETH Mode */

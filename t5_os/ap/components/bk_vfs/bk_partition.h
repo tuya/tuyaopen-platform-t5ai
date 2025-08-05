@@ -3,10 +3,10 @@
 
 #include <stdint.h>
 
-#define MOUNT_TARGET_PATH
+#define VFS_MOUNT_TARGET_PATH
 
 /*
- *                      **** MOUNT SOURCE path defines ***
+ * **** MOUNT SOURCE path defines ***
  * There are many memories in one project, maybe one memory has many partitions,
  * it should select the source path with these defines.
  * NOTES:Please don't modify these paths which are used by SDK
@@ -14,62 +14,82 @@
  */
 #if 1	//Most cases:there is one type memory and one partition in one project, it's for mount source.
 //NOTES:Please don't modify the strings, because internal function parses these strings as memory devices type.
-#define INTERNAL_FLASH_PATITION_0    "if0"
-#define SPI_FLASH_0_PATITION_0       "sf0"
-#define SPI_FLASH_1_PATITION_0       "sf1"
-#define QSPI_FLASH_0_PATITION_0      "qf0"
-#define QSPI_FLASH_1_PATITION_0      "qf1"
+#define VFS_INTERNAL_FLASH_PATITION_0    "/if0"
+#define VFS_SPI_FLASH_0_PATITION_0       "/sf0"
+#define VFS_SPI_FLASH_1_PATITION_0       "/sf1"
+#define VFS_QSPI_FLASH_0_PATITION_0      "/qf0"
+#define VFS_QSPI_FLASH_1_PATITION_0      "/qf1"
 //If there are many SDCARDs, BEKEN chips set as SDIO Host.SDCARD or SD-NAND are SD memory type.
-#define SD_0_PATITION_0 "sd0"
+#define VFS_SD_0_PATITION_0              "/sd0"
 //If there are many Udisks, BEKEN chips set as USB Host.
-#define USB_0_PATITION_0 "ud0"
+#define VFS_USB_0_PATITION_0             "/ud0"
 #else
-#define INTERNAL_FLASH_PATITION_0 "if_0_0"
-#define INTERNAL_FLASH_PATITION_1 "if_0_1"
-#define INTERNAL_FLASH_PATITION_2 "if_0_2"
-#define INTERNAL_FLASH_PATITION_3 "if_0_3"
+#define VFS_INTERNAL_FLASH_PATITION_0    "/if_0_0"
+#define VFS_INTERNAL_FLASH_PATITION_1    "/if_0_1"
+#define VFS_INTERNAL_FLASH_PATITION_2    "/if_0_2"
+#define VFS_INTERNAL_FLASH_PATITION_3    "/if_0_3"
 
-#define SPI_FLASH_0_PATITION_0 "sf_0_0"
-#define SPI_FLASH_0_PATITION_1 "sf_0_1"
-#define SPI_FLASH_0_PATITION_2 "sf_0_2"
-#define SPI_FLASH_0_PATITION_3 "sf_0_3"
+#define VFS_SPI_FLASH_0_PATITION_0       "/sf_0_0"
+#define VFS_SPI_FLASH_0_PATITION_1       "/sf_0_1"
+#define VFS_SPI_FLASH_0_PATITION_2       "/sf_0_2"
+#define VFS_SPI_FLASH_0_PATITION_3       "/sf_0_3"
 
-#define SPI_FLASH_1_PATITION_0 "sf_1_0"
-#define SPI_FLASH_1_PATITION_1 "sf_1_1"
-#define SPI_FLASH_1_PATITION_2 "sf_1_2"
-#define SPI_FLASH_1_PATITION_3 "sf_1_3"
+#define VFS_SPI_FLASH_1_PATITION_0       "/sf_1_0"
+#define VFS_SPI_FLASH_1_PATITION_1       "/sf_1_1"
+#define VFS_SPI_FLASH_1_PATITION_2       "/sf_1_2"
+#define VFS_SPI_FLASH_1_PATITION_3       "/sf_1_3"
 
-#define QSPI_FLASH_0_PATITION_0 "qf_0_0"
-#define QSPI_FLASH_0_PATITION_1 "qf_0_1"
-#define QSPI_FLASH_0_PATITION_2 "qf_0_2"
-#define QSPI_FLASH_0_PATITION_3 "qf_0_3"
+#define VFS_QSPI_FLASH_0_PATITION_0      "/qf_0_0"
+#define VFS_QSPI_FLASH_0_PATITION_1      "/qf_0_1"
+#define VFS_QSPI_FLASH_0_PATITION_2      "/qf_0_2"
+#define VFS_QSPI_FLASH_0_PATITION_3      "/qf_0_3"
 
-#define QSPI_FLASH_1_PATITION_0 "qf_1_0"
-#define QSPI_FLASH_1_PATITION_1 "qf_1_1"
-#define QSPI_FLASH_1_PATITION_2 "qf_1_2"
-#define QSPI_FLASH_1_PATITION_3 "qf_1_3"
+#define VFS_QSPI_FLASH_1_PATITION_0      "/qf_1_0"
+#define VFS_QSPI_FLASH_1_PATITION_1      "/qf_1_1"
+#define VFS_QSPI_FLASH_1_PATITION_2      "/qf_1_2"
+#define VFS_QSPI_FLASH_1_PATITION_3      "/qf_1_3"
 
 //If there are many SDCARDs, BEKEN chips set as SDIO Host.SDCARD or SD-NAND are SD memory type.
-#define SD_0_PATITION_0 "sd_0_0"
-#define SD_0_PATITION_1 "sd_0_1"
-#define SD_0_PATITION_2 "sd_0_2"
-#define SD_0_PATITION_3 "sd_0_3"
+#define VFS_SD_0_PATITION_0              "/sd_0_0"
+#define VFS_SD_0_PATITION_1              "/sd_0_1"
+#define VFS_SD_0_PATITION_2              "/sd_0_2"
+#define VFS_SD_0_PATITION_3              "/sd_0_3"
 
-#define SD_1_PATITION_0 "sd_1_0"
-#define SD_1_PATITION_1 "sd_1_1"
-#define SD_1_PATITION_2 "sd_1_2"
-#define SD_1_PATITION_3 "sd_1_3"
+#define VFS_SD_1_PATITION_0              "/sd_1_0"
+#define VFS_SD_1_PATITION_1              "/sd_1_1"
+#define VFS_SD_1_PATITION_2              "/sd_1_2"
+#define VFS_SD_1_PATITION_3              "/sd_1_3"
 
 //If there are many Udisks, BEKEN chips set as USB Host.
-#define USB_0_PATITION_0 "u_0_0"
-#define USB_0_PATITION_1 "u_0_1"
-#define USB_0_PATITION_2 "u_0_2"
-#define USB_0_PATITION_3 "u_0_3"
+#define VFS_USB_0_PATITION_0             "/u_0_0"
+#define VFS_USB_0_PATITION_1             "/u_0_1"
+#define VFS_USB_0_PATITION_2             "/u_0_2"
+#define VFS_USB_0_PATITION_3             "/u_0_3"
 
-#define USB_1_PATITION_0 "u_1_0"
-#define USB_1_PATITION_1 "u_1_1"
-#define USB_1_PATITION_2 "u_1_2"
-#define USB_1_PATITION_3 "u_1_3"
+#define VFS_USB_1_PATITION_0             "/u_1_0"
+#define VFS_USB_1_PATITION_1             "/u_1_1"
+#define VFS_USB_1_PATITION_2             "/u_1_2"
+#define VFS_USB_1_PATITION_3             "/u_1_3"
+#endif
+
+
+
+
+
+
+/************  Important path for app using  **************/
+// Example:  fd = open(PATH_SD_FILE("config.txt"), O_RDWR); 
+#define PATH_SD_FILE(name)               VFS_SD_0_PATITION_0"/"name
+#define PATH_INTERNAL_FLASH_FILE(name)   VFS_INTERNAL_FLASH_PATITION_0"/"name
+#define PATH_SPI_FLASH_0_FILE(name)      VFS_SPI_FLASH_0_PATITION_0"/"name
+#define PATH_SPI_FLASH_1_FILE(name)      VFS_SPI_FLASH_1_PATITION_0"/"name
+#define PATH_QSPI_FLASH_0_FILE(name)     VFS_QSPI_FLASH_0_PATITION_0"/"name
+#define PATH_QSPI_FLASH_1_FILE(name)     VFS_QSPI_FLASH_1_PATITION_0"/"name
+#define PATH_USB_FILE(name)              VFS_USB_0_PATITION_0"/"name
+/************  Important path for app using  **************/
+
+#ifndef VFS_FILE_MAX_LEN
+#define VFS_FILE_MAX_LEN                 50
 #endif
 
 #define FS_TYPE_LFS "lfs"

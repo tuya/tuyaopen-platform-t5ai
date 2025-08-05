@@ -80,6 +80,39 @@ if (CONFIG_BRIDGE)
 	)
 endif()
 
+if(CONFIG_LWIP_PPP_SUPPORT)
+        list(APPEND srcs
+        lwip-2.1.2/src/netif/ppp/auth.c
+        lwip-2.1.2/src/netif/ppp/ccp.c
+        lwip-2.1.2/src/netif/ppp/chap-md5.c
+        lwip-2.1.2/src/netif/ppp/chap-new.c
+        lwip-2.1.2/src/netif/ppp/chap_ms.c
+        lwip-2.1.2/src/netif/ppp/demand.c
+        lwip-2.1.2/src/netif/ppp/eap.c
+        lwip-2.1.2/src/netif/ppp/ecp.c
+        lwip-2.1.2/src/netif/ppp/eui64.c
+        lwip-2.1.2/src/netif/ppp/fsm.c
+        lwip-2.1.2/src/netif/ppp/ipcp.c
+        lwip-2.1.2/src/netif/ppp/ipv6cp.c
+        lwip-2.1.2/src/netif/ppp/lcp.c
+        lwip-2.1.2/src/netif/ppp/magic.c
+        lwip-2.1.2/src/netif/ppp/mppe.c
+        lwip-2.1.2/src/netif/ppp/multilink.c
+        lwip-2.1.2/src/netif/ppp/ppp.c
+        lwip-2.1.2/src/netif/ppp/pppapi.c
+        lwip-2.1.2/src/netif/ppp/pppcrypt.c
+        lwip-2.1.2/src/netif/ppp/pppoe.c
+        lwip-2.1.2/src/netif/ppp/pppol2tp.c
+        lwip-2.1.2/src/netif/ppp/pppos.c
+        lwip-2.1.2/src/netif/ppp/upap.c
+        lwip-2.1.2/src/netif/ppp/utils.c
+        lwip-2.1.2/src/netif/ppp/vj.c
+        lwip-2.1.2/src/netif/ppp/polarssl/arc4.c
+        lwip-2.1.2/src/netif/ppp/polarssl/des.c
+        lwip-2.1.2/src/netif/ppp/polarssl/md4.c
+        lwip-2.1.2/src/netif/ppp/polarssl/md5.c
+        lwip-2.1.2/src/netif/ppp/polarssl/sha1.c)
+endif()
 else()
 
 

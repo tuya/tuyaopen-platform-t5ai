@@ -1,0 +1,12 @@
+menu "Headset Example Configuration"
+
+    config A2DP_SINK_DEMO
+        bool "a2dp sink demo"
+        depends on BT
+        default y
+
+    config HFP_HF_DEMO
+        bool "hfp hf demo"
+        depends on BT
+        default n
+endmenu

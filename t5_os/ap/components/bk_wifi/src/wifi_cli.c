@@ -49,7 +49,9 @@ void wdrv_demo_connect(char *oob_ssid, char *connect_key)
 int wdrv_demo_softap_init(char *ap_ssid, char *ap_key, char *ap_channel)
 {
     wifi_ap_config_t ap_config = WIFI_DEFAULT_AP_CONFIG();
+#if 0
     netif_ip4_config_t ip4_config = {0};
+#endif
     int len, key_len = 0;
     len = os_strlen(ap_ssid);
     if (ap_key)
@@ -70,12 +72,13 @@ int wdrv_demo_softap_init(char *ap_ssid, char *ap_key, char *ap_channel)
         WDRV_LOGE("key more than 64 Bytes\r\n");
         return BK_FAIL;
     }
-
+#if 0
     os_strcpy(ip4_config.ip, WLAN_DEFAULT_IP);
     os_strcpy(ip4_config.mask, WLAN_DEFAULT_MASK);
     os_strcpy(ip4_config.gateway, WLAN_DEFAULT_GW);
     os_strcpy(ip4_config.dns, WLAN_DEFAULT_GW);
     BK_RETURN_ON_ERR(bk_netif_set_ip4_config(NETIF_IF_AP, &ip4_config));
+#endif
 
     os_strcpy(ap_config.ssid, ap_ssid);
     if (ap_key)
@@ -177,9 +180,9 @@ void demo_scan_adv_app_init(uint8_t *oob_ssid)
 
     if (oob_ssid) {
         os_strncpy(scan_config.ssid, (char *)oob_ssid, WIFI_SSID_STR_LEN);
-        BK_LOG_ON_ERR(bk_wifi_scan_start_ex(&scan_config));
+        BK_LOG_ON_ERR(bk_wifi_scan_start(&scan_config));
     } else
-        BK_LOG_ON_ERR(bk_wifi_scan_start_ex(NULL));
+        BK_LOG_ON_ERR(bk_wifi_scan_start(NULL));
 }
 
 static const char *wdr_ifname[NETIF_IF_COUNT] = {
@@ -345,12 +348,12 @@ static void wdrv_handle_cli_commmand(char *pcWriteBuffer, int xWriteBufferLen, i
             password = argV[3];
         char *oob_ssid_tp = ssid;
         if (oob_ssid_tp)
-            demo_sta_app_init_ex((char *)oob_ssid_tp, password);
+            demo_sta_app_init((char *)oob_ssid_tp, password);
     } else if (!strcasecmp(argV[1], "stop_sta")) {
         bk_wifi_sta_stop();
     } else if (!strcasecmp(argV[1], "get_config")) {
         wifi_sta_config_t config;
-        bk_wifi_sta_get_config_ex(&config);
+        bk_wifi_sta_get_config(&config);
         WDRV_LOGD("ssid:%s pw:%s\r\n", config.ssid, config.password);
     } else if (!strcasecmp(argV[1], "get_mac")) {
         uint8_t base_mac[BK_MAC_ADDR_LEN] = {0};

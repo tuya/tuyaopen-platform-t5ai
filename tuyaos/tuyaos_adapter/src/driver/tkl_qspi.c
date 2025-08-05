@@ -63,10 +63,10 @@ OPERATE_RET tkl_qspi_init(TUYA_QSPI_NUM_E port, const TUYA_QSPI_BASE_CFG_T *cfg)
         return OPRT_INVALID_PARM;
     }
 
-    if (cfg->is_dma) {
-       bk_printf("QSPI DMA mode is not supported yet!\n");
+    if (cfg->is_dma)
+    {
+        return OPRT_NOT_SUPPORTED;
     }
-    
     if(bk_qspi_driver_init() != BK_OK)
         return OPRT_COM_ERROR;
 

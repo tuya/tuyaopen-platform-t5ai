@@ -178,7 +178,7 @@ OPERATE_RET tkl_vi_init(TKL_VI_CONFIG_T *pconfig, INT32_T count)
             return OPRT_NOT_SUPPORTED;
         }
     }
-    
+
     ret = media_app_camera_open(&video_handle, &device);
     if (ret != BK_OK) {
         bk_printf("%s, %d, open failed...\n", __func__, __LINE__);
@@ -197,7 +197,6 @@ OPERATE_RET tkl_vi_init(TKL_VI_CONFIG_T *pconfig, INT32_T count)
         vi_dvp_status = 1;
         img_service_open();
         sg_vi_disp_cb = pconfig->disp_cb;
-        img_register_display_cb(tkl_vi_dvp_display_frame_cb);
     }
 
     vi_handle = video_handle;
@@ -237,20 +236,6 @@ OPERATE_RET tkl_vi_uninit(TKL_VI_CAMERA_TYPE_E device_type)
     }
     return ret;
 }
-
-/**
-* @brief vi set display lcd handle
-*
-* @param[in] handle: lcd handle
-*
-* @return OPRT_OK on success. Others on error, please refer to tkl_error_code.h
-*/
-OPERATE_RET tkl_vi_set_lcd(void *handle)
-{
-    im_lcd_handle(handle);
-    return OPRT_OK;
-}
-
 
 /**
 * @brief vi set mirror and flip

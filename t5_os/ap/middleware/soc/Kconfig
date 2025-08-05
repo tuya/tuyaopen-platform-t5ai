@@ -5,6 +5,8 @@ menu "SOC_CONFIG"
 
 		default SOC_BK7258 if "$ARMINO_SOC" = "bk7258"
 		default SOC_BK7258_AP if "$ARMINO_SOC" = "bk7258_ap"
+		default SOC_BK7257 if "$ARMINO_SOC" = "bk7257"
+		default SOC_BK7257_AP if "$ARMINO_SOC" = "bk7257_ap"
 
 
 		config SOC_BK7258
@@ -13,6 +15,12 @@ menu "SOC_CONFIG"
 		config SOC_BK7258_AP
 			select SOC_BK7236XX
 			bool "BK7258_AP"
+		config SOC_BK7257
+			select SOC_BK7236XX
+			bool "BK7257"
+		config SOC_BK7257_AP
+			select SOC_BK7236XX
+			bool "BK7257_AP"
 
 	endchoice
 
@@ -26,6 +34,8 @@ menu "SOC_CONFIG"
 		string "SoC string"
 		default "bk7258"  if SOC_BK7258
 		default "bk7258_ap"  if SOC_BK7258_AP
+		default "bk7257"  if SOC_BK7257
+		default "bk7257_ap"  if SOC_BK7257_AP
 		default "$ARMINO_SOC"
 
 	config SOC_ARCH

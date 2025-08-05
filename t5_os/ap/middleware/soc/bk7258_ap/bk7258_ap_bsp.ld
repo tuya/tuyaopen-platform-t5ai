@@ -135,6 +135,15 @@ SECTIONS
         __apps_start = .;
         KEEP (*(.apps_data))
         __apps_end = .;
+
+        . = ALIGN(4);
+        __wifi_dp_code_start = .;
+        *libiperf.a:*(.text*)
+        *liblwip_intf_v2_1.a:*(.text*)
+        *libbk_wifi_driver.a:*(.text*)
+        *libbk_wifi.a:*(.text*)
+        __wifi_dp_code_end = .;
+
         _etext = .;
         . = ALIGN(4);
     } > FLASH
@@ -190,9 +199,11 @@ SECTIONS
         LONG (__data_start__)
         LONG ((__data_end__ - __data_start__) / 4)
 
+#if CONFIG_PSRAM
         LONG (__psram_text)
         LONG (__psram_data_start__)
         LONG ((__psram_data_end__ - __psram_data_start__) / 4)
+#endif
 
 #if ((!defined(CONFIG_SOC_SMP)) || (0 == CONFIG_SOC_SMP))
         LONG (__itcm_text)
@@ -221,8 +232,10 @@ SECTIONS
         LONG (_heap_start)
         LONG ((_heap_end - _heap_start) / 4)
         /* Add each additional bss section here */
+    #if CONFIG_PSRAM
         LONG (__psram_bss_start__)
         LONG ((__psram_bss_end__ - __psram_bss_start__) / 4)
+    #endif
         __zero_table_end__ = .;
     } > FLASH
 
@@ -412,6 +425,9 @@ SECTIONS
         PROVIDE(__spinlock_begin = LOADADDR(.spinlock));
         _spinlock_start = .;
         *(.sram_spinlock_section)
+    #if (CONFIG_ASR_SERVICE)
+        *(.wanson_asr_data2)
+    #endif
         . = ALIGN(4);
          _spinlock_end = .;
     } > SPINLOCK AT > FLASH

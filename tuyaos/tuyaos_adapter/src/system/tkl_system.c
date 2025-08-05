@@ -168,6 +168,12 @@ INT_T tkl_system_get_free_heap_size(VOID_T)
     return (INT_T)xPortGetFreeHeapSize();
 }
 
+INT_T tkl_system_get_minimum_heap_size(VOID_T)
+{
+    return (INT_T)xPortGetMinimumEverFreeHeapSize();
+}
+
+
 /**
 * @brief Get system reset reason
 *
@@ -370,3 +376,9 @@ UINT_T tkl_system_get_coreid(VOID_T)
     return rtos_get_core_id();
 }
 #endif
+
+void tkl_system_task_info_dump(void)
+{
+    rtos_dump_task_list();
+}
+

@@ -61,6 +61,10 @@ enum CIF_WIFI_API_CMD_TYPE
     SET_MAC_ADDRESS                     = 0x364,
     STA_GET_MAC                         = 0x365,
     AP_GET_MAC                          = 0x366,
+    GET_STATUS                          = 0x367,
+    WIFI_SET_MEDIA_MODE                 = 0x368,
+    WIFI_SET_VIDEO_QUALITY              = 0x369,
+    WIFI_SET_CSA_COEXIST_MODE_FLAG      = 0x36A,
 
     //Common PHY command section
     PHY_CAL_RFCALI                      = 0x380,

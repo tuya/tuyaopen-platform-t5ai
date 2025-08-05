@@ -87,6 +87,35 @@ static void rtos_dump_plat_memory(void) {
     stack_mem_dump((uint32_t)SOC_SRAM2_DATA_BASE, (uint32_t)SOC_SRAM3_DATA_BASE);
 }
 
+static void dump_peri_regs(void) {
+    stack_mem_dump((uint32_t)SOC_SYS_REG_BASE, (uint32_t)SOC_SYS_REG_BASE + (0x5c*4));
+    stack_mem_dump((uint32_t)SOC_FLASH_REG_BASE, (uint32_t)SOC_FLASH_REG_BASE + (0x20*4));
+    stack_mem_dump((uint32_t)SOC_AON_PMU_REG_BASE, (uint32_t)SOC_AON_PMU_REG_BASE + (0x7f*4));
+#if (GEN_SECURITY_DEV_UART1_IS_SECURE && !CONFIG_SPE) // if UART1 is used for TFM debug, NSPE cannot access gpio0/1 reg
+    stack_mem_dump((uint32_t)SOC_AON_GPIO_REG_BASE+ (0x2*4), (uint32_t)SOC_AON_GPIO_REG_BASE + (0x30*4));
+#else
+    stack_mem_dump((uint32_t)SOC_AON_GPIO_REG_BASE, (uint32_t)SOC_AON_GPIO_REG_BASE + (0x30*4));
+#endif
+
+#if CONFIG_GENERAL_DMA
+    stack_mem_dump((uint32_t)SOC_GENER_DMA_REG_BASE, (uint32_t)SOC_GENER_DMA_REG_BASE + (0x44*4));
+#if (SOC_DMA_UNIT_NUM > 1)
+    stack_mem_dump((uint32_t)SOC_GENER_DMA1_REG_BASE, (uint32_t)SOC_GENER_DMA1_REG_BASE + (0x44*4));
+#endif
+#endif
+#if CONFIG_MAILBOX
+    stack_mem_dump((uint32_t)SOC_MBOX0_REG_BASE, (uint32_t)SOC_MBOX0_REG_BASE + (0x38*4));
+    stack_mem_dump((uint32_t)SOC_MBOX1_REG_BASE, (uint32_t)SOC_MBOX1_REG_BASE + (0x38*4));
+#endif
+#if CONFIG_AON_RTC
+    stack_mem_dump((uint32_t)SOC_AON_RTC_REG_BASE, (uint32_t)SOC_AON_RTC_REG_BASE + (0x0a*4));
+#endif
+#if CONFIG_PSRAM
+    stack_mem_dump((uint32_t)SOC_PSRAM_REG_BASE, (uint32_t)SOC_PSRAM_REG_BASE + (0x17*4));
+#endif
+
+}
+
 
 unsigned int arch_is_enter_exception(void) {
     return g_enter_exception;
@@ -137,6 +166,7 @@ void rtos_regist_plat_dump_hook(uint32_t mem_base_addr, uint32_t mem_size)
 
 void rtos_dump_plat_sys_mems(void) {
 #if CONFIG_MEMDUMP_ALL
+    dump_peri_regs();
     rtos_dump_plat_memory();
 
     for (int i = 0; i < s_mem_count; i++) {

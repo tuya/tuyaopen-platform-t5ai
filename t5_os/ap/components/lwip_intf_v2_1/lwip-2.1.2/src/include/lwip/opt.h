@@ -1672,7 +1672,7 @@
  *   }
  */
 #if !defined LWIP_NETIF_TX_SINGLE_PBUF || defined __DOXYGEN__
-#define LWIP_NETIF_TX_SINGLE_PBUF       0
+#define LWIP_NETIF_TX_SINGLE_PBUF       1
 #endif /* LWIP_NETIF_TX_SINGLE_PBUF */
 
 /**

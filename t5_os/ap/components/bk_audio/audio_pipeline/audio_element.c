@@ -1743,7 +1743,7 @@ port_type_t audio_element_get_input_port_type(audio_element_handle_t el)
 
 bk_err_t audio_element_set_output_port_type(audio_element_handle_t el, port_type_t type)
 {
-    if (el)
+    if (!el)
     {
         return BK_FAIL;
     }
@@ -1755,7 +1755,7 @@ bk_err_t audio_element_set_output_port_type(audio_element_handle_t el, port_type
 
 bk_err_t audio_element_set_input_port_type(audio_element_handle_t el, port_type_t type)
 {
-    if (el)
+    if (!el)
     {
         return BK_FAIL;
     }

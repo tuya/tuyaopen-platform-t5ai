@@ -15,7 +15,7 @@
 #pragma once
 
 #include <common/bk_include.h>
-#include <driver/aud_types.h>
+//#include <driver/aud_types.h>
 
 #ifdef __cplusplus
 extern "C" {

@@ -22,6 +22,7 @@
 #include <modules/pm.h>
 #include "aon_pmu_driver.h"
 #include <driver/pwr_clk.h>
+#include "bk_pm_internal_api.h"
 #if CONFIG_ROSC_CALIB_SW
 #include <driver/rosc_32k.h>
 #endif
@@ -163,7 +164,7 @@ static int app_bt_init(void)
 	if (!ate_is_enabled())
 		bt_activate(NULL);
 #endif
-#if (CONFIG_BT_AT_ENABLE)
+#if (CONFIG_BT_AT_ENABLE && !CONFIG_BTDM_CONTROLLER_ONLY)
 	bt_at_cmd_init();
 #endif
 
@@ -272,7 +273,7 @@ int bk_init(void)
 #endif
 
 	bk_pm_mailbox_init();
-#if 0 // CONFIG_AT
+#if 0 // CONFIG_AT  // Modified by TUYA
 	at_server_init();
 #endif
 
@@ -334,7 +335,7 @@ int bk_init(void)
 
 
 	app_cli_init();
-#if 0 // CONFIG_AT
+#if 0 // CONFIG_AT  // Modified by TUYA
 	extern int atsvr_app_init(void);
 	if(0 != atsvr_app_init())
 		return -1;
@@ -377,7 +378,9 @@ extern int mp_do_startup(int heap_len);
 #if CONFIG_CPU_DEFAULT_FREQ_60M
 	bk_pm_module_vote_cpu_freq(PM_DEV_ID_DEFAULT,PM_CPU_FRQ_60M);
 #endif
-
+#if CONFIG_PM_LV_WDT_PROTECTION
+	pm_wifi_event_init();
+#endif
 #if CONFIG_USB //&& CONFIG_MENTOR_USB
 	bk_usb_driver_init();
 #endif

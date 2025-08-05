@@ -1571,22 +1571,6 @@ static void shell_rx_wakeup(int gpio_id)
 	}
 }
 
-// if use psram as dynamic log memory, first malloc will init psram.
-// in the process of psram-initialization, will output some logs.
-// in the case, logs psram-init can not use dynamic logs.
-// so, initialization psram in advace will prevent logs discard at startup.
-static void dynamic_log_init(void)
-{
-#if CONFIG_PSRAM_AS_SYS_MEMORY
-	bool bk_psram_heap_init_flag_get();
-	if (bk_psram_heap_init_flag_get() == bFALSE) {
-		void *ptr = LOG_MALLOC(0);
-		if (ptr != NULL)
-			LOG_FREE(ptr);
-	}
-#endif
-}
-
 static void shell_log_tx_init(void)
 {
 	u16		i;
@@ -1647,8 +1631,6 @@ static void shell_log_tx_init(void)
 		u8 pm_uart_port = uart_id_to_pm_uart_id(uart_port);
 		bk_pm_sleep_register_cb(PM_MODE_LOW_VOLTAGE, pm_uart_port, &enter_config, &exit_config);
 	}
-
-	dynamic_log_init();
 }
 
 
@@ -2652,13 +2634,21 @@ static void check_and_free_dynamic_node(void)
 	}
 }
 
+static void *dynamic_log_malloc(size_t size)
+{
+	if (s_dynamic_log_total_len <= 0x800) {
+		return os_malloc(size);
+	}
+	return LOG_MALLOC(size);
+}
+
 static u8 *alloc_dynamic_log_blk(u16 log_len, u16 *blk_tag)
 {
 	if (rtos_is_in_interrupt_context()) {
 		return NULL;
 	}
 	int total_len = log_len + DYM_NODE_SIZE;
-	dynamic_log_node *node = (dynamic_log_node *)LOG_MALLOC(total_len);
+	dynamic_log_node *node = (dynamic_log_node *)dynamic_log_malloc(total_len);
 	if (node == NULL) {
 		return NULL;
 	}

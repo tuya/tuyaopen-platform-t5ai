@@ -1137,7 +1137,7 @@ static void spi_isr_common(spi_id_t id)
 	int_status = spi_hal_get_interrupt_status(hal);
 	spi_hal_clear_interrupt_status(hal, int_status);
 
-	// SPI_LOGE("int_status:%x\r\n", int_status);
+	SPI_LOGV("int_status:%x\r\n", int_status);
 
 	if (spi_hal_is_rx_fifo_int_triggered_with_status(hal, int_status)) {
 		SPI_STATIS_INC(spi_statis->rx_fifo_isr_cnt);

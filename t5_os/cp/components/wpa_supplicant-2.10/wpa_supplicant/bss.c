@@ -997,6 +997,42 @@ int wpa_bss_init(struct wpa_supplicant *wpa_s)
 	return 0;
 }
 
+#ifdef BK_SUPPLICANT
+static struct wpa_bss *
+wpa_bss_force_update(struct wpa_supplicant *wpa_s, struct wpa_bss *bss)
+{
+	struct wpa_bss *nbss = NULL;
+	struct dl_list *prev = bss->list_id.prev;
+
+	nbss = os_zalloc(sizeof(*bss) + bss->ie_len +
+				bss->beacon_ie_len);
+
+	if (nbss) {
+		unsigned int i;
+
+		dl_list_del(&bss->list);
+		dl_list_del(&bss->list_id);
+		for (i = 0; i < wpa_s->last_scan_res_used; i++) {
+			if (wpa_s->last_scan_res[i] == bss) {
+				wpa_s->last_scan_res[i] = nbss;
+				break;
+			}
+		}
+		if (wpa_s->current_bss == bss)
+			wpa_s->current_bss = nbss;
+		wpa_bss_update_pending_connect(wpa_s, bss, nbss);
+
+		os_memcpy(nbss, bss, sizeof(*bss) + bss->ie_len +
+				bss->beacon_ie_len);
+		nbss->ie_len = bss->ie_len;
+		nbss->beacon_ie_len = bss->beacon_ie_len;
+		dl_list_add(prev, &nbss->list_id);
+		dl_list_add_tail(&wpa_s->bss, &nbss->list);
+		os_free(bss);
+	}
+	return nbss;
+}
+#endif
 
 /**
  * wpa_bss_flush - Flush all unused BSS entries
@@ -1012,8 +1048,12 @@ void wpa_bss_flush(struct wpa_supplicant *wpa_s)
 		return; /* BSS table not yet initialized */
 
 	dl_list_for_each_safe(bss, n, &wpa_s->bss, struct wpa_bss, list) {
-		if (wpa_bss_in_use(wpa_s, bss))
+		if (wpa_bss_in_use(wpa_s, bss)) {
+#ifdef BK_SUPPLICANT
+			wpa_bss_force_update(wpa_s, bss);
+#endif
 			continue;
+		}
 		wpa_bss_remove(wpa_s, bss, __func__);
 	}
 }

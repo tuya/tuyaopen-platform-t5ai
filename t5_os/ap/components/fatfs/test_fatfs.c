@@ -138,13 +138,16 @@ void test_getfree(DISK_NUMBER number)
     DWORD getnclst;
     sprintf(cFileName, "%d:", number);
     fr = f_getfree(cFileName, &getnclst, &pfs);
-    BK_LOGD(NULL, "test_getfree getnclst:DEC %d free space: %dMB\r\n", getnclst, getnclst/SD_CLUSTER_TO_MEM_64KB);
     if (fr != FR_OK)
     {
         BK_LOGD(NULL, "f_getfree failed:%d\r\n", fr);
     }
     else
     {
+        DWORD total_MB = (pfs->n_fatent - 2) * (pfs->csize) * (pfs->ssize) / 1024 /1024;  //1024 convert to MB
+        DWORD free_MB = getnclst*(pfs->csize)*(pfs->ssize)/1024 /1024;
+        os_printf("total size: %lu MB.\r\n", total_MB);
+        os_printf("test_getfree getnclst:DEC %d free space: %dMB\r\n", getnclst, free_MB);
         BK_LOGD(NULL, "f_getfree OK!\r\n");
     }
     BK_LOGD(NULL, "----- test_getfree %d over  -----\r\n\r\n", number);
@@ -486,7 +489,8 @@ void test_fatfs_auto_test(DISK_NUMBER number, char *filename, uint32_t len, uint
 			FATFS_LOGE("f_getfree failed 1 fr = %d\r\n", fr);
 			goto exit;
 		} else if(freenclst < SD_MIN_NUMBER_REMAINING_CLUSTERS) {
-			FATFS_LOGE("Insufficient Space! freenclst: %d free_mem:%d MB\r\n",freenclst, freenclst/SD_CLUSTER_TO_MEM_64KB);
+			//1024 convert KB to MB
+			FATFS_LOGE("Insufficient Space! freenclst: %d free_mem:%d MB\r\n",freenclst, freenclst*(checkspace_pfs->csize)*(checkspace_pfs->ssize)/1024/1024);
 			goto exit;
 		}
 

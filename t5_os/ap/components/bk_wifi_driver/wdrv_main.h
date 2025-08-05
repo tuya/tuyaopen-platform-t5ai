@@ -68,6 +68,34 @@ extern "C" {
 #define WDRV_IRQ_DISABLE(int_level) do { int_level = rtos_disable_int(); } while(0)
 #define WDRV_IRQ_ENABLE(int_level)  do { rtos_enable_int(int_level); } while(0)
 
+#define WDRV_ENTER_TXMSG_CRITICAL(int_level) do { int_level = wdrv_txmsg_enter_critical(); } while(0)
+#define WDRV_EXIT_TXMSG_CRITICAL(int_level)  do { wdrv_txmsg_exit_critical(int_level); } while(0)
+
+#if CONFIG_SOC_SMP
+#include "spinlock.h"
+static SPINLOCK_SECTION volatile spinlock_t wdrv_tx_msg_spin_lock = SPIN_LOCK_INIT;
+#endif // CONFIG_SOC_SMP
+static inline uint32_t wdrv_txmsg_enter_critical()
+{
+	uint32_t flags = rtos_disable_int();
+
+#if CONFIG_SOC_SMP
+	spin_lock(&wdrv_tx_msg_spin_lock);
+#endif // CONFIG_SOC_SMP
+
+	return flags;
+}
+
+static inline void wdrv_txmsg_exit_critical(uint32_t flags)
+{
+#if CONFIG_SOC_SMP
+	spin_unlock(&wdrv_tx_msg_spin_lock);
+#endif // CONFIG_SOC_SMP
+
+	rtos_enable_int(flags);
+}
+
+
 enum wdrv_task_msg_evt
 {
     WDRV_TASK_MSG_CMD = 0,
@@ -179,16 +207,21 @@ struct bk_msg_common
 
 typedef struct wdrv_stats
 {
-    uint16_t rx_alloc_num; //CP RX buffer numbers in use.
-    uint16_t rx_win;
+    uint16_t rx_alloc_num; //CP RX buffer numbers in use. Need CONFIG_CONTROLLER_RX_DIRECT_PSH = 0
+    uint16_t rx_win;       // CONFIG_CONTROLLER_RX_DIRECT_PSH = 0
     uint16_t tx_alloc_num;
     uint16_t tx_list_num;
 
-    uint32_t tx_eth_num;
-    uint32_t tx_process_num;
-    uint32_t tx_free_total;
+    uint32_t wdrv_tx_cnt;
+    uint32_t wdrv_tx_process_cnt;
+    uint32_t wdrv_txc_cnt;
 
-    uint32_t rx_total_recv;
+    uint32_t wdrv_rx_cnt;
+    uint32_t wdrv_rxc_cnt;
+
+    uint32_t wdrv_rx_cpy_fail;
+    uint32_t wdrv_tx_snder_fail;
+    uint32_t wdrv_msg_snder_fail;
 
     uint32_t ipc_tx_cnt;
     uint32_t ipc_txc_cnt;

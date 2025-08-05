@@ -99,8 +99,10 @@ static void bk_usb_init_all_device_driver_sw(void)
 #endif
 
 #if CONFIG_USB_CDC
-	extern void usbh_cdc_acm_class_register();
-	usbh_cdc_acm_class_register();
+//	extern void usbh_cdc_acm_class_register();
+//	usbh_cdc_acm_class_register();
+	extern void usbh_cdc_data_class_register();
+	usbh_cdc_data_class_register();
 #endif
 #if CONFIG_USBH_SERIAL_CH340
 	usbh_class_serial_ch340_register_driver();
@@ -250,8 +252,8 @@ bk_err_t bk_usb_open(uint32_t usb_mode)
 
 	USB_DRIVER_RETURN_NOT_INIT();
 	USB_RETURN_NOT_CLOSED();
-
-	USB_DRIVER_LOGV("USB_DRV_USB_OPEN!\r\n");
+	bk_pm_module_vote_sleep_ctrl(PM_SLEEP_MODULE_NAME_USB_1, 0, 0);
+	USB_DRIVER_LOGI("USB_DRV_USB_OPEN!\r\n");
 	if(usb_mode == USB_HOST_MODE) {
 #if CONFIG_USB_HOST	
 		bk_analog_layer_usb_sys_related_ops(USB_HOST_MODE, true);
@@ -290,7 +292,7 @@ bk_err_t bk_usb_close(void)
 	bk_analog_layer_usb_sys_related_ops(USB_DEVICE_MODE, false);
 #endif
 	s_usb_open_close_flag = 0;
-
+	bk_pm_module_vote_sleep_ctrl(PM_SLEEP_MODULE_NAME_USB_1, 1, 0);
 	return ret;
 }
 

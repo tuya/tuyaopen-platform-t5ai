@@ -229,3 +229,4 @@ INT_T tkl_system_psram_get_free_heap_size(VOID_T)
 {
     return (INT_T)xPortGetPsramFreeHeapSize();
 }
+

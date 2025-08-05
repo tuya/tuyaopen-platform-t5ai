@@ -2645,7 +2645,7 @@ int wpas_select_network_from_last_scan(struct wpa_supplicant *wpa_s,
 				wpa_supplicant_rsn_preauth_scan_results(wpa_s);
 		} else
 #endif
-		if (own_request) {
+		if (own_request && (!wpa_s->scanning)) {
 			/*
 			 * No SSID found. If SCAN results are as a result of
 			 * own scan request and not due to a scan request on

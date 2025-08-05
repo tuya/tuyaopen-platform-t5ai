@@ -60,6 +60,10 @@ menu "Lwip_intf_v2_1"
                 bool "Enable SAP"
                 default n
 
+	config LWIP_PPP_SUPPORT
+                bool "Enable Ppp Protocol"
+                default n
+
 	menu "Modify Lwip Config"
 		depends on LWIP
 
@@ -79,6 +83,13 @@ menu "Lwip_intf_v2_1"
 		config MDNS
 			bool "Enable MDNS"
 			default n
+
+		config DNS_TABLE_SIZE
+			int "Default Maximum Number of DNS Entries to Maintain Locally"
+			range 1 4
+			default 4
+			help
+				Number of DNS Entries
 
 		config TASK_LWIP_PRIO
 			depends on WIFI_ENABLE
@@ -155,14 +166,14 @@ menu "Lwip_intf_v2_1"
 
 	config LWIP_MEM_SIZE
 		int "Default size of the LWIP heap memory"
-		range 1 102400
+		range 1 150000
 		default 51200
 		help
 			Set the size of the heap memory. The recommended value is 51200 .
 
 	config LWIP_MEM_MAX_RX_SIZE
 		int "Default size of the max memory rx used"
-		range 1 102400
+		range 1 150000
 		default 38400
 		help
 			Set the size of the max memory rx used. The recommended value is 
@@ -170,7 +181,7 @@ menu "Lwip_intf_v2_1"
 
 	config LWIP_MEM_MAX_TX_SIZE
 		int "Default the size of the max memory tx used"
-		range 1 102400
+		range 1 150000
 		default 42666
 		help
 			Set the size of the max memory tx used. The recommended value is 

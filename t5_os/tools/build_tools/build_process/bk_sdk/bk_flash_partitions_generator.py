@@ -54,14 +54,10 @@ class bk_flash_denpendecny_generator(bk_flash_partition_content_generator):
 
             s_hdr += f"#define {macro_offset:<45} 0x{part.Offset:08x}\n"
             s_hdr += f"#define {macro_size:<45} 0x{part.Size:08x}\n"
-            if part.Execute:
-                partitions_options = (
-                    "PAR_OPT_EXECUTE_EN | PAR_OPT_READ_EN | PAR_OPT_WRITE_DIS"
-                )
-            else:
-                partitions_options = (
-                    "PAR_OPT_EXECUTE_DIS | PAR_OPT_READ_EN | PAR_OPT_WRITE_EN"
-                )
+            exe_mode = "PAR_OPT_EXECUTE_" + ("EN" if part.Execute else "DIS")
+            read_mode = "PAR_OPT_READ_" + ("EN" if part.Read else "DIS")
+            write_mode = "PAR_OPT_WRITE_" + ("EN" if part.Write else "DIS")
+            partitions_options = f"{exe_mode} | {read_mode} | {write_mode}"
             partition_struct_array += (
                 f'    [{part.Id}] = {{BK_FLASH_EMBEDDED, "{part.Name}", {macro_offset}, '
                 + f"{macro_size}, {partitions_options}}}, \\\n"

@@ -346,12 +346,11 @@ int pthread_create( pthread_t * thread,
     {
         /* Create the FreeRTOS task that will run the pthread. */
 #if CONFIG_FREERTOS_SMP
-		if( rtos_core1_create_thread( (void *)&pxThread->xTaskHandle, xSchedParam.sched_priority, posixconfigPTHREAD_TASK_NAME,
+		if( rtos_create_thread( (void *)&pxThread->xTaskHandle, xSchedParam.sched_priority, posixconfigPTHREAD_TASK_NAME,
 			prvRunThread, ( uint16_t ) ( pxThread->xAttr.usStackSize ), ( void * ) pxThread) != 0 )
 
 #else
         if( xTaskCreate( prvRunThread,
-#endif
                          posixconfigPTHREAD_TASK_NAME,
                          ( uint16_t ) ( pxThread->xAttr.usStackSize / sizeof( StackType_t ) ),
                          ( void * ) pxThread,

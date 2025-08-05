@@ -121,6 +121,7 @@ typedef enum {
     DMA_DEV_SPI0,        /**< DMA device SPI 0 */
     DMA_DEV_SPI1,        /**< DMA device SPI 1 */
     DMA_DEV_H264,        /**< DMA device H264 */
+    DMA_DEV_AUD_DMIC,    /**< DMA device AUDIO */
     DMA_DEV_MAX,
 } dma_dev_t;
 

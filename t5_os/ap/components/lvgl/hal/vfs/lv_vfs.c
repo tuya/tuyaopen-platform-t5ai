@@ -14,10 +14,10 @@ static int _fs_mount(void)
     partition.part_type = FATFS_DEVICE;
 #if (CONFIG_SDCARD)
     partition.part_dev.device_name = FATFS_DEV_SDCARD;
-    partition.mount_path = SD_0_PATITION_0;
+    partition.mount_path = VFS_SD_0_PATITION_0;
 #else
     partition.part_dev.device_name = FATFS_DEV_FLASH;
-    partition.mount_path = INTERNAL_FLASH_PATITION_0;
+    partition.mount_path = VFS_INTERNAL_FLASH_PATITION_0;
 #endif
 
     ret = mount("SOURCE_NONE", partition.mount_path, fs_name, 0, &partition);
@@ -33,8 +33,8 @@ static int _fs_mount_lfs(void)
 
     struct bk_little_fs_partition partition;
     char *fs_name = NULL;
-#ifdef BK_PARTITION_LITTLEFS_USER
-    bk_logic_partition_t *pt = bk_flash_partition_get_info(BK_PARTITION_LITTLEFS_USER);
+#ifdef BK_PARTITION_LITTLEFS
+    bk_logic_partition_t *pt = bk_flash_partition_get_info(BK_PARTITION_LITTLEFS);
 #else
     bk_logic_partition_t *pt = bk_flash_partition_get_info(BK_PARTITION_USR_CONFIG);
 #endif
@@ -43,7 +43,7 @@ static int _fs_mount_lfs(void)
     partition.part_type = LFS_FLASH;
     partition.part_flash.start_addr = pt->partition_start_addr;
     partition.part_flash.size = pt->partition_length;
-    partition.mount_path = INTERNAL_FLASH_PATITION_0;
+    partition.mount_path = VFS_INTERNAL_FLASH_PATITION_0;
 
     ret = mount("SOURCE_NONE", partition.mount_path, fs_name, 0, &partition);
 
@@ -84,14 +84,14 @@ bk_err_t lv_vfs_deinit(void)
 
 #if (CONFIG_FATFS)
 #if (CONFIG_SDCARD)
-    ret = umount(SD_0_PATITION_0);
+    ret = umount(VFS_SD_0_PATITION_0);
 #else
-    ret = umount(INTERNAL_FLASH_PATITION_0);
+    ret = umount(VFS_INTERNAL_FLASH_PATITION_0);
 #endif
 #endif
 
 #if (CONFIG_LITTLEFS)
-    ret = umount(INTERNAL_FLASH_PATITION_0);
+    ret = umount(VFS_INTERNAL_FLASH_PATITION_0);
 #endif
 
     if (BK_OK != ret) {

@@ -3872,9 +3872,7 @@ static void wpas_start_assoc_cb(struct wpa_radio_work *work, int deinit)
 	 * previous association. */
 	wpa_sm_set_assoc_wpa_ie(wpa_s->wpa, NULL, 0);
 	wpa_sm_set_assoc_rsnxe(wpa_s->wpa, NULL, 0);
-#if BK_SUPPLICANT
-	wlan_sta_bss_flush(0);
-#endif
+
 	wpa_s->rsnxe_len = 0;
 	wpa_s->mscs_setup_done = false;
 

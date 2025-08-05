@@ -344,6 +344,47 @@ bk_err_t cif_handle_wifi_api_cmd(struct bk_msg_hdr *msg)
             ret = bk_wifi_ap_get_mac((uint8_t *)arg_info->args[0]);
             break;
         }
+        case GET_STATUS:
+        {
+            extern bk_err_t bk_wifi_get_wifi_status(void *out);
+            ret = bk_wifi_get_wifi_status((void *)arg_info->args[0]);
+            break;
+        }
+        case AP_STOP:
+        {
+            ret = bk_wifi_ap_stop();
+            break;
+        }
+        case STA_STOP:
+        {
+            ret = bk_wifi_sta_stop();
+            break;
+        }
+        case WIFI_SET_MEDIA_MODE:
+        {
+            ret = bk_wifi_set_wifi_media_mode((bool)arg_info->args[0]);
+            break;
+        }
+        case WIFI_SET_VIDEO_QUALITY:
+        {
+            ret = bk_wifi_set_video_quality((uint8_t)arg_info->args[0]);
+            break;
+        }
+        case WIFI_SET_CSA_COEXIST_MODE_FLAG:
+        {
+            ret = bk_wifi_set_csa_coexist_mode_flag((bool)arg_info->args[0]);
+            break;
+        }
+        case AP_SET_CONFIG:
+        {
+            ret = bk_wifi_ap_set_config((wifi_ap_config_t *)arg_info->args[0]);
+            break;
+        }
+        case AP_START:
+        {
+            ret = bk_wifi_ap_start();
+            break;
+        }
         default:
         {
             ret = BK_ERR_NOT_FOUND;

@@ -19,6 +19,13 @@ extern "C" {
 #endif
 #include <os/os.h>
 
+typedef enum
+{
+	BK_GetOneSec = 0,
+	BK_GetFiveSec,
+	BK_GetTenSec,
+} BK_CpuLoadTime;
+
 /* In debug version, the corresponding debugging function is enabled by default */
 #if CONFIG_DEBUG_VERSION
 
@@ -32,6 +39,13 @@ void rtos_dump_stack_memory_usage(void);
 void rtos_dump_task_runtime_stats(void);
 void rtos_dump_task_backtrace(beken_thread_t *thread);
 void rtos_dump_backtrace(void);
+/**
+ * @brief     	dump cpu percentage of tasks from past few seconds
+ * 				if in smp version, this functino will dump tasks percentage of cpu0 and cpu1 respectively.
+ * @param eTime CpuLoadTime eTime
+ * 				pass period of cpu percentage to the function
+ */
+void rtos_dump_task_history_runtime_stats(BK_CpuLoadTime eTime);
 
 
 #ifdef __cplusplus

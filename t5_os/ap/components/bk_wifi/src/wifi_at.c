@@ -324,7 +324,7 @@ static int at_wlan_scan_start(wifi_scan_config_t *scan_config,AT_WLAN_SCAN_ATTR_
 					BK_LOGE(TAG,"scan time exceeded!\r\n");
 				}
 			}
-			bk_wifi_scan_get_result(&scan_result); 
+			BK_LOG_ON_ERR(bk_wifi_scan_get_result(&scan_result));
 			BK_LOG_ON_ERR(bk_wifi_scan_dump_result(&scan_result));
 			bk_wifi_scan_free_result(&scan_result);
 		}
@@ -499,6 +499,7 @@ error:
 static int at_wlan_get_listen_interval(int sync,int argc, char **argv)
 {
 	u8 listen_interval = 0;
+	char resultbuf[50];
 
 	if(argc != 0){
 		atsvr_cmd_rsp_error();
@@ -506,6 +507,9 @@ static int at_wlan_get_listen_interval(int sync,int argc, char **argv)
 	}
 
 	if(bk_wifi_get_listen_interval(&listen_interval) == BK_OK){
+		os_memset(resultbuf,0,50);
+		snprintf(resultbuf,sizeof(resultbuf), "EVT: get wifi listen interval %d.\n",listen_interval);
+		atsvr_output_msg(resultbuf);
 		atsvr_cmd_rsp_ok();
 		return 0;
 	}else{
@@ -885,20 +889,22 @@ static int at_wlan_get_station_cur_status(void)
 	return (at_wlan_stat.station_status == AT_WLAN_STATION_UP) ? 1 : 0;
 }
 
+#include "wifi_api.h"
 static int at_wlan_get_station_status(int sync, int argc, char **argv)
 {
 	int err = kNoErr;
 	char resultbuf[200];
 	char* tag = NULL;
+
+	wifi_status_t status = {0};
+	os_memset(&status, 0x0, sizeof(wifi_status_t));
+	bk_wifi_get_status(&status);
 	
-	bool is_sta_ipup = wifi_netif_sta_is_got_ip();
-	bool is_ap_ipup = uap_ip_is_start();
+	bool is_sta_ipup = status.is_sta_up;
+	bool is_ap_ipup = status.is_ap_up;
 	os_memset(resultbuf,0,200);
 	if (argc == 0) 
 	{
-		wifi_link_status_t link_status = {0};
-		wifi_ap_config_t ap_info = {0};
-		netif_ip4_config_t ap_ip4_info = {0};
 		char ssid[33] = {0};
 #if CONFIG_WIFI4
 		snprintf(resultbuf,sizeof(resultbuf), "sta: %d, ap: %d, b/g/n\r\n",is_sta_ipup,is_ap_ipup);
@@ -909,110 +915,86 @@ static int at_wlan_get_station_status(int sync, int argc, char **argv)
 #endif
 		//sta_ip_is_start()
 		if (is_sta_ipup) {
-			os_memset(&link_status, 0x0, sizeof(link_status));
-			BK_RETURN_ON_ERR(bk_wifi_sta_get_link_status(&link_status));
-			os_memcpy(ssid, link_status.ssid, 32);
+
+			os_memcpy(ssid, status.link_status.ssid, 32);
 			os_memset(resultbuf,0,200);
 			snprintf(resultbuf,sizeof(resultbuf), "EVT:sta:rssi=%d,aid=%d,ssid=%s,bssid=%pm,channel=%d,cipher_type=%s\r\n",
-													link_status.rssi, link_status.aid, ssid, link_status.bssid,
-													link_status.channel, wifi_sec_type_string(link_status.security));
+													status.link_status.rssi, status.link_status.aid, ssid, status.link_status.bssid,
+													status.link_status.channel, wifi_sec_type_string(status.link_status.security));
 			atsvr_output_msg(resultbuf);	
 		}
 		if (is_ap_ipup) 
 		{
-			os_memset(&ap_info, 0x0, sizeof(ap_info));
-			BK_RETURN_ON_ERR(bk_wifi_ap_get_config(&ap_info));
-			os_memcpy(ssid, ap_info.ssid, 32);
+			os_memcpy(ssid, status.ap_info.ssid, 32);
 			//BK_LOGD(TAG, "[KW:]softap: ssid=%s, channel=%d, cipher_type=%s\r\n",
 			//		ssid, ap_info.channel, wifi_sec_type_string(ap_info.security));
 			os_memset(resultbuf,0,200);
-			snprintf(resultbuf,sizeof(resultbuf), "[KW:]softap: ssid=%s, channel=%d, cipher_type=%s\r\n",
-					ssid, ap_info.channel, wifi_sec_type_string(ap_info.security));
+			snprintf(resultbuf,sizeof(resultbuf), "EVT:softap: ssid=%s, channel=%d, cipher_type=%s\r\n",
+					ssid, status.ap_info.channel, wifi_sec_type_string(status.ap_info.security));
 			atsvr_output_msg(resultbuf);
-			//BK_RETURN_ON_ERR(bk_netif_get_ip4_config_api_temp(NETIF_IF_AP, &ap_ip4_info));
 
-			BK_RETURN_ON_ERR(bk_netif_get_ip4_config(NETIF_IF_AP, &ap_ip4_info));
 			os_memset(resultbuf,0,200);
 			//BK_LOGD(TAG, "[KW:]ap_ip=%s,ap_gate=%s,ap_mask=%s,ap_dns=%s\r\n",
 			//		ap_ip4_info.ip, ap_ip4_info.gateway, ap_ip4_info.mask, ap_ip4_info.dns);
 			snprintf(resultbuf,sizeof(resultbuf), "EVT:ap_ip=%s,ap_gate=%s,ap_mask=%s,ap_dns=%s\r\n",
-					ap_ip4_info.ip, ap_ip4_info.gateway, ap_ip4_info.mask, ap_ip4_info.dns);
+					status.ap_ip4_info.ip, status.ap_ip4_info.gateway, status.ap_ip4_info.mask, status.ap_ip4_info.dns);
 			atsvr_output_msg(resultbuf);	
 		}
 		atsvr_cmd_rsp_ok();
 	}
 	else if (argc == 1) {
 		if (os_strcmp(argv[0], "STA") == 0) {
-			if (sta_ip_is_start()){
+			if (is_sta_ipup){
 				snprintf(resultbuf,sizeof(resultbuf), "%s:%s\r\n","CMDRSP:","STA_WIFI_CONNECT");
 				atsvr_output_msg(resultbuf);
-				atsvr_cmd_rsp_ok();
 			}
 			else {
 				snprintf(resultbuf,sizeof(resultbuf), "%s:%s\r\n","CMDRSP:","STA_WIFI_DISCONNECT");
 				atsvr_output_msg(resultbuf);
-				atsvr_cmd_rsp_ok();
-
 			}
-			return err;
 		}
-
 		else if (os_strcmp(argv[0], "AP") == 0) {
 			if (is_ap_ipup){				
 				snprintf(resultbuf,sizeof(resultbuf), "%s:%s\r\n","CMDRSP:","AP_WIFI_START");
 				atsvr_output_msg(resultbuf);
-				atsvr_cmd_rsp_ok();
-
 			}
 			else {
 				snprintf(resultbuf,sizeof(resultbuf), "%s:%s\r\n","CMDRSP:","AP_WIFI_CLOSE");
 				atsvr_output_msg(resultbuf);
-				atsvr_cmd_rsp_ok();
 			}
-			return err;
 		}
+		atsvr_cmd_rsp_ok();
+		return err;
 	}
 	else if (argc == 2) {
 		if (os_strcmp(argv[0], "STA") == 0) {
 			tag = "sta";
-			if (sta_ip_is_start()) {
-				wifi_link_status_t link_status = {0};
-				os_memset(&link_status, 0x0, sizeof(link_status));
-				err = bk_wifi_sta_get_link_status(&link_status);
-				if(err != kNoErr) {
-					err = kGeneralErr;
-					goto error;
-				}
+			if (is_sta_ipup) {
+
 				if (os_strcmp(argv[1], "RSSI") == 0) {
-					snprintf(resultbuf,sizeof(resultbuf), "%s:%s_%s:%d\r\n","CMDRSP",tag,"rssi",link_status.rssi);
+					snprintf(resultbuf,sizeof(resultbuf), "%s:%s_%s:%d\r\n","CMDRSP",tag,"rssi",status.link_status.rssi);
 					atsvr_output_msg(resultbuf);
 				}
 
 				else if (os_strcmp(argv[1], "CHANNEL") == 0) {
-					snprintf(resultbuf,sizeof(resultbuf),"%s:%s_%s:%d\r\n","CMDRSP",tag,"chnl",link_status.channel);
+					snprintf(resultbuf,sizeof(resultbuf),"%s:%s_%s:%d\r\n","CMDRSP",tag,"chnl",status.link_status.channel);
 					atsvr_output_msg(resultbuf);
 				}
 
 				else if (os_strcmp(argv[1], "BSSID") == 0) {
-					snprintf(resultbuf,sizeof(resultbuf), "%s:%s_%s:" MACSTR "\r\n","CMDRSP",tag,"bssid",MAC2STR(link_status.bssid));
+					snprintf(resultbuf,sizeof(resultbuf), "%s:%s_%s:" MACSTR "\r\n","CMDRSP",tag,"bssid",MAC2STR(status.link_status.bssid));
 					atsvr_output_msg(resultbuf);
 				}
 
 				else if (os_strcmp(argv[1], "SSID") == 0) {
-					snprintf(resultbuf,sizeof(resultbuf), "%s:%s_%s::%s\r\n","CMDRSP",tag,"ssid",link_status.ssid);
+					snprintf(resultbuf,sizeof(resultbuf), "%s:%s_%s::%s\r\n","CMDRSP",tag,"ssid",status.link_status.ssid);
 					atsvr_output_msg(resultbuf);
 				}
 
 				else if (os_strcmp(argv[1], "IP") == 0) {
-					netif_ip4_config_t sta_ip4_info = {0};
-					//err = bk_netif_get_ip4_config(NETIF_IF_STA, &sta_ip4_info);
-					err = bk_netif_get_ip4_config(NETIF_IF_STA, &sta_ip4_info);
-					if(err != kNoErr) {
-						BK_LOGD(NULL, "get ip fail!\n");
-						err = kGeneralErr;
-						goto error;
-					}
-					snprintf(resultbuf,sizeof(resultbuf), "%s:STA_IP=%s,GATE=%s,MASK=%s,DNS=%s\r\n","CMDRSP",sta_ip4_info.ip, sta_ip4_info.gateway, sta_ip4_info.mask, sta_ip4_info.dns);
+
+					snprintf(resultbuf,sizeof(resultbuf), "%s:STA_IP=%s,GATE=%s,MASK=%s,DNS=%s\r\n","CMDRSP",
+						status.sta_ip4_info.ip, status.sta_ip4_info.gateway, status.sta_ip4_info.mask, status.sta_ip4_info.dns);
 					atsvr_output_msg(resultbuf);
 				}
 
@@ -1034,41 +1016,26 @@ static int at_wlan_get_station_status(int sync, int argc, char **argv)
 		else if (os_strcmp(argv[0], "AP") == 0) {
 			if (is_ap_ipup) {
 				tag = "ap";
-				wifi_ap_config_t ap_info = {0};
-				os_memset(&ap_info, 0x0, sizeof(ap_info));
-				err = bk_wifi_ap_get_config(&ap_info);
-				if(err != kNoErr) {
-					BK_LOGD(NULL, "get ap link status fail!\n");
-					err = kGeneralErr;
-					goto error;
-				}
 
 				if (os_strcmp(argv[1], "SSID") == 0) {
-					snprintf(resultbuf,sizeof(resultbuf), "%s:%s_%s:%s\r\n","CMDRSP",tag,"ssid",ap_info.ssid);
+					snprintf(resultbuf,sizeof(resultbuf), "%s:%s_%s:%s\r\n","CMDRSP",tag,"ssid",status.ap_info.ssid);
 					atsvr_output_msg(resultbuf);
 
 				}
 				else if (os_strcmp(argv[1], "CHANNEL") == 0) {
-					snprintf(resultbuf,sizeof(resultbuf), "%s:%s_%s:%d\r\n","CMDRSP",tag,"chnl",ap_info.channel);
+					snprintf(resultbuf,sizeof(resultbuf), "%s:%s_%s:%d\r\n","CMDRSP",tag,"chnl",status.ap_info.channel);
 					atsvr_output_msg(resultbuf);
 
 				}
 				else if (os_strcmp(argv[1], "SECURITY") == 0) {				
-					snprintf(resultbuf,sizeof(resultbuf), "%s:%s_%s:%s\r\n","CMDRSP",tag,"security",wifi_sec_type_string(ap_info.security));
+					snprintf(resultbuf,sizeof(resultbuf), "%s:%s_%s:%s\r\n","CMDRSP",tag,"security",wifi_sec_type_string(status.ap_info.security));
 					atsvr_output_msg(resultbuf);
 
 				}
 
 				else if (os_strcmp(argv[1], "IP") == 0) {
-					netif_ip4_config_t ap_ip4_info = {0};
-					//err = bk_netif_get_ip4_config(NETIF_IF_AP, &ap_ip4_info);
-					err = bk_netif_get_ip4_config(NETIF_IF_AP, &ap_ip4_info);
-					if(err != kNoErr) {
-						BK_LOGD(NULL, "get ip fail!\n");
-						err = kGeneralErr;
-						goto error;
-					}
-					snprintf(resultbuf,sizeof(resultbuf), "%s:AP_IP=%s,GATE=%s,MASK=%s,DNS=%s\r\n","CMDRSP",ap_ip4_info.ip, ap_ip4_info.gateway, ap_ip4_info.mask, ap_ip4_info.dns);
+					snprintf(resultbuf,sizeof(resultbuf), "%s:AP_IP=%s,GATE=%s,MASK=%s,DNS=%s\r\n","CMDRSP",
+						status.ap_ip4_info.ip, status.ap_ip4_info.gateway, status.ap_ip4_info.mask, status.ap_ip4_info.dns);
 					atsvr_output_msg(resultbuf);
 
 				}
@@ -1716,7 +1683,9 @@ static int at_wlan_hidden_softap_start(int sync, int argc, char **argv)
 	}
 
 	wifi_ap_config_t ap_config = WIFI_DEFAULT_AP_CONFIG();
+#if 0
 	netif_ip4_config_t ip4_config = {0};
+#endif
 	int len;
 
 	if (ap_ssid) {
@@ -1726,7 +1695,7 @@ static int at_wlan_hidden_softap_start(int sync, int argc, char **argv)
 			err = kParamErr;
 			goto error;
 		}
-
+#if 0
 		os_strcpy(ip4_config.ip, WLAN_DEFAULT_IP);
 		os_strcpy(ip4_config.mask, WLAN_DEFAULT_MASK);
 		os_strcpy(ip4_config.gateway, WLAN_DEFAULT_GW);
@@ -1735,7 +1704,7 @@ static int at_wlan_hidden_softap_start(int sync, int argc, char **argv)
 			err = kParamErr;
 			goto error;
 		}
-
+#endif
 		os_strcpy(ap_config.ssid, ap_ssid);
 		os_strcpy(ap_config.password, ap_key);
 

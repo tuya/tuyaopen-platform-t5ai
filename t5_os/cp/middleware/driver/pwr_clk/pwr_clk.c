@@ -44,6 +44,8 @@
 #define PM_SEMA_WAIT_FOREVER                 (0xFFFFFFFF)    /*Wait Forever*/
 
 #define PM_BOOT_CP1_TRY_COUNT                (3)
+#define PM_CP_NOTIFY_AP_MAX_COUNT            (100)
+#define PM_CP_NOTIFY_DELAY_TIME_US           (10)  //10us
 
 #define TAG "CP"
 #define LOGD(...) BK_LOGD(TAG, ##__VA_ARGS__)
@@ -79,6 +81,7 @@ static bk_err_t pm_cp0_mailbox_send_data(uint32_t cmd, uint32_t param1,uint32_t 
 static void pm_module_shutdown_cpu1(pm_power_module_name_e module);
 bk_err_t bk_pm_cp1_recovery_module_state_ctrl(pm_cp1_prepare_close_module_name_e module,pm_cp1_module_recovery_state_e state);
 #endif
+extern void bk_delay_us(UINT32 us);
 /*================FUNCTION DECLARATION  SECTION  END========*/
 
 pm_lpo_src_e bk_clk_32k_customer_config_get(void)
@@ -236,8 +239,8 @@ static void pm_cp0_mailbox_rx_isr(int *pm_mb, mb_chnl_cmd_t *cmd_buf)
 		case PM_RTC_DEEPSLEEP_CMD:
 			ret = pm_cp0_send_msg(LOW_PWR_CORE_RTC_DEEPSLEEP, cmd_buf->param1,cmd_buf->param2,cmd_buf->param3);
 			break;
-		case PM_STARTUP_TIME_CMD:
-			ret = pm_cp0_send_msg(LOW_PWR_CORE_STARTUP_TIME, cmd_buf->param1,cmd_buf->param2,cmd_buf->param3);
+		case PM_GET_PM_DATA_CMD:
+			ret = pm_cp0_send_msg(LOW_PWR_CORE_GET_CP_DATA, cmd_buf->param1,cmd_buf->param2,cmd_buf->param3);
 			break;
 		case PM_CTRL_AP_STATE_CMD:
 			ret = pm_cp0_send_msg(LOW_PWR_CORE_CTRL_CP2_STATE, cmd_buf->param1,cmd_buf->param2,cmd_buf->param3);
@@ -487,13 +490,19 @@ bk_err_t bk_pm_cp_wakeup_ap_from_wfi(uint8_t core_id)
 	ret = mb_chnl_write(MB_CHNL_PWC, &mb_cmd);
     while(ret != BK_OK)
 	{
-		//bk_delay_us(20);
+		bk_delay_us(PM_CP_NOTIFY_DELAY_TIME_US);
 		ret = mb_chnl_write(MB_CHNL_PWC, &mb_cmd);
 		retry_count++;
-		if((retry_count > 4)||(ret == BK_OK))
+		if((retry_count > PM_CP_NOTIFY_AP_MAX_COUNT)||(ret == BK_OK))
 		{
 			break;
 		}
+	}
+	FIXED_ADDR_WAKEUP_CP_COUNT += 1;
+	if(retry_count > PM_CP_NOTIFY_AP_MAX_COUNT)
+	{
+		BK_LOGE(NULL,"Wakeup Ap[%d]retry_count[%d]time out\r\n",ret,retry_count);
+		BK_ASSERT(0);
 	}
 #endif
 	return ret;

@@ -160,7 +160,7 @@ static void ble_at_cmd_cb(ble_cmd_t cmd, ble_cmd_param_t *param)
 
 static void ble_boarding_operation_handle(uint16_t opcode, uint16_t length, uint8_t *data)
 {
-    LOGE("%s, opcode: %04X, length: %04X\n", __func__, opcode, length);
+    LOGW("%s, opcode: %04X, length: %04X\n", __func__, opcode, length);
 
     switch (opcode)
     {
@@ -261,7 +261,7 @@ static void ble_at_legacy_notice_cb(ble_notice_t notice, void *param)
 
                         if (w_req->len < 2)
                         {
-                            LOGE("error input: operation code length: " + w_req->len);
+                            LOGW("error input: operation code length: " + w_req->len);
                             break;
                         }
 
@@ -294,7 +294,7 @@ static void ble_at_legacy_notice_cb(ble_notice_t notice, void *param)
                     {
                         if (ble_boarding_info == NULL)
                         {
-                            LOGE("ble_boarding_info should not be NULL\n");
+                            LOGW("ble_boarding_info should not be NULL\n");
                             break;
                         }
 
@@ -321,7 +321,7 @@ static void ble_at_legacy_notice_cb(ble_notice_t notice, void *param)
                     {
                         if (ble_boarding_info == NULL)
                         {
-                            LOGE("ble_boarding_info should not be NULL\n");
+                            LOGW("ble_boarding_info should not be NULL\n");
                             break;
                         }
 
@@ -673,7 +673,7 @@ int ble_boarding_init(ble_boarding_info_t *info)
 
     if (ret != BK_ERR_BLE_SUCCESS)
     {
-        LOGE("create gatt db failed %d\n", ret);
+        LOGW("create gatt db failed %d\n", ret);
         goto error;
     }
 
@@ -681,7 +681,7 @@ int ble_boarding_init(ble_boarding_info_t *info)
 
     if (ret != BK_OK)
     {
-        LOGE("wait semaphore failed at %d, %d\n", ret, __LINE__);
+        LOGW("wait semaphore failed at %d, %d\n", ret, __LINE__);
         goto error;
     }
     else
@@ -707,7 +707,7 @@ int ble_boarding_adv_only_start_csi(void)
 
     if (ret != BK_ERR_BLE_SUCCESS)
     {
-        LOGE("start adv failed %d\n", ret);
+        LOGW("start adv failed %d\n", ret);
         goto error;
     }
 
@@ -715,7 +715,7 @@ int ble_boarding_adv_only_start_csi(void)
 
     if (ret != BK_OK)
     {
-        LOGE("wait semaphore failed at %d, %d\n", ret, __LINE__);
+        LOGW("wait semaphore failed at %d, %d\n", ret, __LINE__);
         goto error;
     }
     else
@@ -755,7 +755,7 @@ int ble_boarding_adv_start(uint8_t *adv_data, uint16_t adv_len)
 
     if (ret != BK_ERR_BLE_SUCCESS)
     {
-        LOGE("config adv paramters failed %d\n", ret);
+        LOGW("config adv paramters failed %d\n", ret);
         goto error;
     }
 
@@ -763,7 +763,7 @@ int ble_boarding_adv_start(uint8_t *adv_data, uint16_t adv_len)
 
     if (ret != BK_OK)
     {
-        LOGE("wait semaphore failed at %d, %d\n", ret, __LINE__);
+        LOGW("wait semaphore failed at %d, %d\n", ret, __LINE__);
         goto error;
     }
     else
@@ -776,7 +776,7 @@ int ble_boarding_adv_start(uint8_t *adv_data, uint16_t adv_len)
 
     if (ret != BK_ERR_BLE_SUCCESS)
     {
-        LOGE("set adv data failed %d\n", ret);
+        LOGW("set adv data failed %d\n", ret);
         goto error;
     }
 
@@ -784,7 +784,7 @@ int ble_boarding_adv_start(uint8_t *adv_data, uint16_t adv_len)
 
     if (ret != BK_OK)
     {
-        LOGE("wait semaphore failed at %d, %d\n", ret, __LINE__);
+        LOGW("wait semaphore failed at %d, %d\n", ret, __LINE__);
         goto error;
     }
     else
@@ -797,7 +797,7 @@ int ble_boarding_adv_start(uint8_t *adv_data, uint16_t adv_len)
 
     if (ret != BK_ERR_BLE_SUCCESS)
     {
-        LOGE("start adv failed %d\n", ret);
+        LOGW("start adv failed %d\n", ret);
         goto error;
     }
 
@@ -805,7 +805,7 @@ int ble_boarding_adv_start(uint8_t *adv_data, uint16_t adv_len)
 
     if (ret != BK_OK)
     {
-        LOGE("wait semaphore failed at %d, %d\n", ret, __LINE__);
+        LOGW("wait semaphore failed at %d, %d\n", ret, __LINE__);
         goto error;
     }
     else
@@ -847,7 +847,7 @@ int ble_boarding_legacy_handle(int sync, int argc, char **argv)
 
         if (ble_boarding_info == NULL)
         {
-            LOGE("ble_boarding_info malloc failed\n");
+            LOGW("ble_boarding_info malloc failed\n");
 
             goto error;
         }
@@ -1035,7 +1035,7 @@ int ble_boarding_legacy_handle(char *pcWriteBuffer, int xWriteBufferLen, int arg
 
         if (ble_boarding_info == NULL)
         {
-            LOGE("ble_boarding_info malloc failed\n");
+            LOGW("ble_boarding_info malloc failed\n");
 
             goto error;
         }

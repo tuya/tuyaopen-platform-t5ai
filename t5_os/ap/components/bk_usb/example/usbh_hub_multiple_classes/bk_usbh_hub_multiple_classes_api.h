@@ -11,7 +11,7 @@
 #include "usb_driver.h"
 
 #if (CONFIG_USB_CDC)
-#include "usbh_cdc_acm.h"
+#include <components/cherryusb/usbh_cdc_acm.h>
 #endif
 
 #include "os/os.h"

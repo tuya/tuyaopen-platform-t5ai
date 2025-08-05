@@ -343,6 +343,20 @@ typedef enum
 	PM_ROSC_CALI_MANUAL,    // 1:manual calibration
 	PM_ROSC_CALI_STOP,      // 2:stop calibration
 }pm_rosc_cali_mode_e;
+typedef enum
+{
+	PM_ENTER_LV_TIME_OUT_MODULE_APP = 0,
+	PM_ENTER_LV_TIME_OUT_MODULE_MAX,
+}pm_enter_lv_timeout_module_e;
+typedef bk_err_t (*pm_enter_lv_timeout_cb)(void *args);
+typedef struct {
+    pm_enter_lv_timeout_cb cb;
+    void *args;
+} pm_lv_timeout_cb_conf_t;
+typedef struct {
+    pm_enter_lv_timeout_module_e module;
+    pm_lv_timeout_cb_conf_t cfg;
+} pm_enter_lv_timeout_cb_t;
 typedef int (*pm_cb)(uint64_t sleep_time, void *args);
 typedef struct {
     pm_cb cb;
@@ -457,6 +471,66 @@ typedef enum
 #define PM_CP1_AUTO_POWER_DOWN_CTRL      (PM_CP1_AUTO_POWER_DOWN_ENABLE)
 
 /*=====================CONFIG  SECTION  END=======================*/
+/**
+ * @brief get the video vote power state
+ *
+ * get the video vote power state
+ *
+ * @attention
+ * - This API is used to get the video vote power state
+ *
+ * @param
+ * -void
+ * @return
+ * - the video vote power state(refer to the enum:power_sub_module_name_vidp_e)
+ *
+ */
+uint32_t bk_pm_get_video_vote_pwr_state();
+/**
+ * @brief get the audio vote power state
+ *
+ * get the audio vote power state
+ *
+ * @attention
+ * - This API is used to get the audio vote power state
+ *
+ * @param
+ * -void
+ * @return
+ * - the audio vote power state(refer to the enum:power_sub_module_name_audp_e)
+ *
+ */
+uint32_t bk_pm_get_audio_vote_pwr_state();
+/**
+ * @brief check whether enter low voltage sleep mode time out
+ *
+ * check whether enter low voltage sleep mode time out
+ *
+ * @attention
+ * - This API is used to check whether enter low voltage sleep mode time out
+ *
+ * @param
+ * -void
+ * @return
+ * - BK_OK: succeed
+ * - others: other errors.
+ */
+bk_err_t bk_pm_check_enter_lv_time_out();
+/**
+ * @brief register enter low voltage sleep mode time out callback
+ *
+ * register enter low voltage sleep mode time out callback
+ *
+ * @attention
+ * - This API is used to register enter low voltage sleep mode time out callback
+ *
+ * @param
+ * -lv_timeout_cb:enter low voltage sleep mode time out callback
+ * @return
+ * - BK_OK: succeed
+ * - others: other errors.
+ */
+bk_err_t bk_pm_enter_lv_time_out_register_callback(pm_enter_lv_timeout_cb_t* lv_timeout_cb);
 /**
  * @brief clear the lv sleep state
  *

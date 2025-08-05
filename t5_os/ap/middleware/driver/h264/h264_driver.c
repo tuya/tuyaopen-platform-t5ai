@@ -484,7 +484,7 @@ uint32_t bk_h264_get_encode_count()
 	return h264_hal_get_encode_count(&s_h264.hal);
 }
 
-uint32_t bk_h264_get_p_frame_number(void)
+uint32_t bk_h264_get_pframe_num(void)
 {
 	H264_RETURN_ON_DRIVER_NOT_INIT();
 
@@ -532,7 +532,7 @@ bk_err_t bk_h264_get_h264_base_config(h264_base_config_t *config)
 
 	config->h264_state = s_h264.hal.hw->enc_ctrl.enc_en;
 	config->profile_id = s_h264.hal.hw->profile_idc & 0x1;
-	config->p_frame_cnt = bk_h264_get_p_frame_number() & 0xFF;
+	config->p_frame_cnt = bk_h264_get_pframe_num() & 0xFF;
 	config->qp = s_h264.hal.hw->qp & 0xFF;
 	config->num_imb_bits = s_h264.hal.hw->iframe_bit_ctrl.num_imb_bits & 0xFFF;
 	config->num_pmb_bits = s_h264.hal.hw->num_pmb_bits & 0xFFFF;
@@ -633,7 +633,7 @@ bk_err_t bk_h264_soft_reset(void)
 	return BK_OK;
 }
 
-bk_err_t bk_h264_updata_encode_fps(uint32 fps)
+bk_err_t bk_h264_updata_encode_fps(uint32_t fps)
 {
     H264_RETURN_ON_DRIVER_NOT_INIT();
     h264_hal_set_vui_fps(&s_h264.hal, fps);

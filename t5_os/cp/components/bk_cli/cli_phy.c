@@ -9,34 +9,26 @@ extern void pwr_tbl_command(char *pcWriteBuffer, int xWriteBufferLen, int argc, 
 
 static void phy_cca_test(char *pcWriteBuffer, int xWriteBufferLen, int argc, char **argv)
 {
-	if (argc != 2) {
-		BK_LOGD(NULL,"cca open\r\n");
-		BK_LOGD(NULL,"cca close\r\n");
-		BK_LOGD(NULL,"cca show\r\n");
-		return;
-	}
-
 	if (os_strncmp(argv[1], "open", 4) == 0) {
 		phy_open_cca();
 		BK_LOGD(NULL,"cca opened\r\n");
 	} else if (os_strncmp(argv[1], "close", 4) == 0) {
 		phy_close_cca();
 		BK_LOGD(NULL,"cca closed\r\n");
-	} else if (os_strncmp(argv[1], "show", 4) == 0)
+	} else if (os_strncmp(argv[1], "show", 4) == 0) {
 		phy_show_cca();
-	else {
+	} else if (os_strncmp(argv[1], "test", 4) == 0) {
+		UINT8 flag = os_strtoul(argv[2], NULL, 10);
+		phy_cca_busy_test(flag);
+	} else {
 		BK_LOGD(NULL,"cca open\r\n");
 		BK_LOGD(NULL,"cca close\r\n");
 		BK_LOGD(NULL,"cca show\r\n");
+		BK_LOGD(NULL,"cca test\r\n");
 	}
 }
 
-#if (CONFIG_SOC_BK7256XX)
-//extern void cmd_saradc_auto_test(char *pcWriteBuffer, int xWriteBufferLen, int argc, char **argv);
-//extern void cmd_sigtest(char *pcWriteBuffer, int xWriteBufferLen, int argc, char **argv);
-//extern void cmd_inter_freq_config(char *pcWriteBuffer, int xWriteBufferLen, int argc, char **argv);
-//extern void nv_ate_param_select(char *pcWriteBuffer, int xWriteBufferLen, int argc, char **argv);
-#endif
+
 #if (CONFIG_SOC_BK7236XX) || (CONFIG_SOC_BK7239XX) || (CONFIG_SOC_BK7286XX)
 extern void rfconfig_command(char *pcWriteBuffer, int xWriteBufferLen, int argc, char **argv);
 #endif
@@ -57,25 +49,11 @@ static const struct cli_command s_phy_commands[] = {
 	{"rfcali_cfg_tssi_b",    "0-255",                 cmd_rfcali_cfg_tssi_b},
 	{"rfcali_show_data",     "",                      cmd_rfcali_show_data},
 	{"rfcali_cfg_rate_dist", "b g n40 ble (0-31)",    cmd_rfcali_cfg_rate_dist},
-
-	
-#if (CONFIG_SOC_BK7256XX)
-	{"cali", "cali auto_test",                        cmd_cali},
-    {"rfcali_get_cfg_mode",      "",                  cmd_rfcali_get_cfg_mode},
-    {"rfcali_get_cfg_tssi",    "",                    cmd_rfcali_get_cfg_tssi},
-
-	//{"saradc", "start close",                         cmd_saradc_auto_test},
-	//{"inter_freq", "start close",                     cmd_inter_freq_config},
-	//{"ate_param_select", "flag",                      nv_ate_param_select},
-	{"rfcali_cfg_to_flash",  "",                      cmd_rfcali_cfg_to_flash},
-#endif
 #endif
 #if CONFIG_POWER_TABLE
 	{"pwrtbl", "pwrtbl cal/set/get <value>", pwr_tbl_command},
 #endif
-#if (CONFIG_SOC_BK7256XX)
-    {"la", "la rf_adc/fe_adc/rf_dac/fe_dac", cmd_la_sample_test},
-#elif (CONFIG_SOC_BK7236XX) || (CONFIG_SOC_BK7239XX) || (CONFIG_SOC_BK7286XX)
+#if (CONFIG_SOC_BK7236XX) || (CONFIG_SOC_BK7239XX) || (CONFIG_SOC_BK7286XX)
     {"cali", "cali auto_test",                        cmd_cali},
     {"rfconfig", "rfconfig bt_polar|bt_btpll|bt_wifipll|wifi_btpll|wifi_wifipll",rfconfig_command},
     {"la", "la rf_adc_40M/rf_adc[_80M]/fe_adc/rf_dac/fe_dac", cmd_la_sample_test},

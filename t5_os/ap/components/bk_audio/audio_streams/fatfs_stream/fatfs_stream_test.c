@@ -18,15 +18,18 @@
 #include <components/bk_audio/audio_pipeline/audio_pipeline.h>
 #include <components/bk_audio/audio_pipeline/audio_mem.h>
 #include <components/bk_audio/audio_streams/fatfs_stream.h>
-#if CONFIG_SYS_CPU0
-#include "ff.h"
-#include "diskio.h"
+#if CONFIG_VFS
+#include "bk_posix.h"
 #endif
 
 #define TAG  "FTFS_STR_TEST"
 
-#define TEST_FATFS_READER  "1:/mic.pcm"
-#define TEST_FATFS_WRITER  "1:/mic_fatfs_stream.pcm"
+//#define TEST_FATFS_READER  "1:/mic.pcm"
+//#define TEST_FATFS_WRITER  "1:/mic_fatfs_stream.pcm"
+
+#define TEST_FATFS_READER  "/sd0/aec_mic.pcm"
+#define TEST_FATFS_WRITER  "/sd0/mic_fatfs_stream.pcm"
+
 
 #define TEST_CHECK_NULL(ptr) do {\
         if (ptr == NULL) {\
@@ -35,7 +38,7 @@
         }\
     } while(0)
 
-#if CONFIG_SYS_CPU0
+#if 0// CONFIG_SYS_CPU0
 static bk_err_t tf_mount(FATFS *pfs)
 {
     FRESULT fr;
@@ -87,22 +90,31 @@ static bk_err_t tf_unmount(FATFS *pfs)
 
     return BK_OK;
 }
+#endif
 
 static uint64_t get_file_size(const char *name)
 {
-    FRESULT fr;
-    FIL f;
     uint64_t size = 0;
+#if CONFIG_VFS
+    int fd = 0;
+    int ret = 0;
+	struct stat statbuf;
 
-    fr = f_open(&f, name, FA_READ);
-    if (fr != FR_OK)
-    {
-        BK_LOGE(TAG, "Failed to open. File name: %s, error: %d, line: %d \n", name, fr, __LINE__);
-        return BK_FAIL;
-    }
+	fd = open(name, O_RDONLY);
+	if (fd < 0) {
+		BK_LOGE(TAG, "Failed to open. File name: %s, fd: %d, line: %d \n", name, fd, __LINE__);
+		return BK_FAIL;
+	}
 
-    size = f_size(&f);
-    f_close(&f);
+	ret = stat(name, &statbuf);
+	if (ret < 0) {
+		BK_LOGE(TAG, "Failed to stat. File name: %s, ret: %d, line: %d \n", name, ret, __LINE__);
+		return BK_FAIL;
+	}
+    size = statbuf.st_size;
+
+    close(fd);
+#endif
     return size;
 }
 static void file_size_comparison(const char *file1, const char *file2)
@@ -119,7 +131,7 @@ static void file_size_comparison(const char *file1, const char *file2)
         BK_LOGD(TAG, "The two files are not the same size \n");
     }
 }
-#endif
+
 
 /* The case check fatfs stream memory leaks. */
 bk_err_t adk_fatfs_stream_test_case_0(void)
@@ -315,9 +327,7 @@ bk_err_t adk_fatfs_stream_test_case_1(void)
     }
 
     BK_LOGD(TAG, "--------- step9: check test result ----------\n");
-#if CONFIG_SYS_CPU0
     file_size_comparison(TEST_FATFS_READER, TEST_FATFS_WRITER);
-#endif
 
     BK_LOGD(TAG, "--------- step10: deinit pipeline ----------\n");
     if (BK_OK != audio_pipeline_terminate(pipeline))

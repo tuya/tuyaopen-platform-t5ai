@@ -63,6 +63,7 @@ bk_err_t cif_handle_txdata(void *head)
 #if CONFIG_CONTROLLER_RX_DIRECT_PSH
     if(cpdu->co_hdr.need_free)
     {
+        cif_stats_ptr->cif_rxc_cnt++;
         CIF_LOGV("%s free p:%x,p->ref:%d\r\n",__func__, pbuf,pbuf->ref);
         pbuf->ref--;
         pbuf_free(pbuf);
@@ -70,7 +71,7 @@ bk_err_t cif_handle_txdata(void *head)
     }
 #endif
     CIF_STATS_INC(buf_in_txdata);
-
+    cif_stats_ptr->cif_tx_cnt++;
     //CTRL_IF_DATA("%s,1 length:%d\n",__func__,hdr->co_hdr.length);
     //tx_desc = (struct tx_desc_tag *)(hdr + 1);
     //stack_mem_dump((uint32_t)head,(uint32_t)head + hdr->co_hdr.length);
@@ -92,19 +93,6 @@ bk_err_t cif_handle_txdata(void *head)
         cif_free_ap_txbuf(pbuf);
         ret = false;
     }
-
-//    int_level = rtos_disable_int();
-//    cif_stats_ptr->buf_in_ctrlif_data--;
-//    
-//    if(cif_stats_ptr->buf_in_ctrlif_data <= 2)
-//    {
-//        cif_traffic_predictor_upd(BUFFER_TX);
-//    }
-//
-//    rtos_enable_int(int_level);
-//    BK_ASSERT(cif_stats_ptr->buf_in_ctrlif_data >= 0);
-
-//    pbuf_free(pbuf);
 
     return ret;
 }
@@ -339,7 +327,7 @@ bool cif_rx_local_packet_check(struct pbuf **p_ptr, struct eth_hdr * ethhdr,void
                 #endif
             }else
             {
-                cif_stats_ptr->total_recv_cnt++;
+                cif_stats_ptr->cif_rx_cnt++;
             }
 
             break;
@@ -403,7 +391,7 @@ bool cif_rx_local_packet_check(struct pbuf **p_ptr, struct eth_hdr * ethhdr,void
                     #endif
                 }else
                 {
-                    cif_stats_ptr->total_recv_cnt++;
+                    cif_stats_ptr->cif_rx_cnt++;
                 }
 
 

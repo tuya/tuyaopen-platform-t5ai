@@ -47,8 +47,6 @@
 #define LOGV(...) BK_LOGV(TAG, ##__VA_ARGS__)
 
 
-#define JPEGDEC_BUFFER_LENGTH        (60 * 1024)
-
 #ifdef DECODE_DIAG_DEBUG
 #define DECODER_FRAME_START()		do { GPIO_UP(GPIO_DVP_D0); } while (0)
 #define DECODER_FRAME_END()			do { GPIO_DOWN(GPIO_DVP_D0); } while (0)
@@ -463,8 +461,10 @@ void jpeg_decode_set_rotate_angle(media_rotate_t rotate_angle)
 			if (jdec_config->sw_dec_init)
 			{
 				jdec_config->rotate_angle = rotate_angle;
+#if CONFIG_JPEG_SW_DECODE_SUPPORT_BY_FRAME
 				software_decode_set_rotate(jdec_config->rotate_angle);
 				software_decode_minor_set_rotate(jdec_config->rotate_angle);
+#endif
 			}
 		}
 	}
@@ -474,6 +474,7 @@ void jpeg_decode_set_rotate_angle(media_rotate_t rotate_angle)
 	}
 }
 
+#if CONFIG_JPEG_SW_DECODE_SUPPORT_BY_FRAME
 void jpeg_software_decode_callback_cp1(uint8_t ret)
 {
 	jpeg_decode_task_send_msg(JPEGDEC_FRAME_CP1_FINISH, ret);
@@ -594,6 +595,7 @@ static void jpeg_decode_software_decode_start_handle(frame_module_t module)
 	}
 	jpeg_decode_get_next_frame();
 }
+#endif
 
 static void jpeg_decode_start_handle(frame_buffer_t *jpeg_frame, frame_module_t module)
 {
@@ -721,6 +723,8 @@ static void jpeg_decode_start_handle(frame_buffer_t *jpeg_frame, frame_module_t 
 				jpeg_decode_task_send_msg(JPEGDEC_RESET, 0);
 				return;
 			}
+
+#if CONFIG_JPEG_SW_DECODE_SUPPORT_BY_FRAME
 			LOGD("%s, FMT: YUV420, PPI: %dX%d, use SOFTWARE DECODE\r\n",
 				__func__, jdec_config->jpeg_frame->width, jdec_config->jpeg_frame->height);
 			if (jdec_config->jpeg_frame->width >= PIXEL_1280 && jdec_config->jpeg_frame->height >= PIXEL_720)
@@ -743,12 +747,25 @@ static void jpeg_decode_start_handle(frame_buffer_t *jpeg_frame, frame_module_t 
 				LOGD("%s %d \r\n", __func__, __LINE__);
 				software_decode_minor_set_rotate(jdec_config->rotate_angle);
 			}
+#else
+#if CONFIG_JPEG_SW_DECODE_SUPPORT_BY_LINE
+			jdec_config->jdec_mode = JPEGDEC_SW_MODE;
+			jdec_config->jdec_type = JPEGDEC_BY_LINE;
+#else
+			LOGE("%s %d do not support software decode\n", __func__, __LINE__);
+			frame_buffer_fb_read_free(jdec_config->stream, jdec_config->jpeg_frame, module);
+			jdec_config->jpeg_frame = NULL;
+			jdec_config->jdec_init = false;
+			jpeg_get_task_send_msg(JPEGDEC_START, module);
+			return;
+#endif
+#endif
 		}
 
 		LOGV("%s, [0]:%d, [1]%d\n", __func__, jdec_config->mux_buf[0].state[PIPELINE_MOD_SW_DEC], jdec_config->mux_buf[1].state[PIPELINE_MOD_SW_DEC]);
 	}
 
-	if (jdec_config->jdec_mode == JPEGDEC_HW_MODE)
+	if (jdec_config->jdec_mode == JPEGDEC_HW_MODE || jdec_config->jdec_type == JPEGDEC_BY_LINE)
 	{
 		if (module == MODULE_DECODER_CP1)
 		{
@@ -845,6 +862,7 @@ static void jpeg_decode_start_handle(frame_buffer_t *jpeg_frame, frame_module_t 
 	{
 		if (jdec_config->jdec_type == JPEGDEC_BY_LINE)
 		{
+#if CONFIG_JPEG_SW_DECODE_SUPPORT_BY_LINE
 			sw_jpeg_dec_res_t result;
 			rtos_lock_mutex(&jdec_info->lock);
 
@@ -879,13 +897,22 @@ static void jpeg_decode_start_handle(frame_buffer_t *jpeg_frame, frame_module_t 
 			}
 
 			ret = bk_jpeg_dec_sw_start_by_handle(jdec_config->jpeg_dec_handle, JPEGDEC_BY_LINE, jdec_config->jpeg_frame->frame, jdec_config->decoder_buf,
-						jdec_config->jpeg_frame->length, JPEGDEC_BUFFER_LENGTH, &result);
+						jdec_config->jpeg_frame->length, DECODE_MAX_PIPELINE_LINE_SIZE * 2, &result);
+#else
+			ret = BK_FAIL;
+			LOGW("%s %d software decode by line is not support\n", __func__, __LINE__);
+#endif
 		}
 		else
 		{
-			DECODER_FRAME_START();
+#if CONFIG_JPEG_SW_DECODE_SUPPORT_BY_FRAME
+            DECODER_FRAME_START();
 			jpeg_decode_software_decode_start_handle(module);
 			return;
+#else
+			ret = BK_FAIL;
+			LOGW("%s %d software decode by frame is not support\n", __func__, __LINE__);
+#endif
 		}
 	}
 
@@ -1077,10 +1104,17 @@ static void jpeg_decode_task_deinit(void)
 {
 	LOGV("%s\r\n", __func__);
 	jpeg_get_task_close();
+#if CONFIG_JPEG_SW_DECODE_SUPPORT_BY_FRAME
 	if(check_software_decode_task_is_open())
 	{
 		software_decode_task_close();
 	}
+#else
+#if CONFIG_JPEG_SW_DECODE_SUPPORT_BY_LINE
+	bk_jpeg_dec_sw_deinit_by_handle(jdec_config->jpeg_dec_handle);
+	jdec_config->jpeg_dec_handle = NULL;
+#endif
+#endif
 	if (jdec_config)
 	{
 		bk_jpeg_dec_driver_deinit();
@@ -1194,7 +1228,8 @@ static void jpeg_decode_notify_handle(uint32_t param, pipeline_module_t module)
 			LOGW("%s multi notify from: %d, index: %d, ignore\n", __func__, module, mux_buf->buffer.index);
 			//BK_ASSERT_EX(0, "%s multi notify from: %d, index: %d, input state: %d, ignore\n",
 			//	__func__, module, mux_buf->buffer.index, decoder_buffer->state);
-			return;
+			rtos_unlock_mutex(&jdec_info->lock);
+			goto out;
 		}
 
 		if (jpeg_decode_frame_is_last_line(mux_buf->buffer.index))
@@ -1277,6 +1312,7 @@ static void jpeg_decode_reset(void)
 	jpeg_decode_finish_handle(MUX_DEC_TIMEOUT);
 }
 
+#if CONFIG_JPEG_SW_DECODE_SUPPORT_BY_FRAME
 static bk_err_t h264_encode_frame_complete_callback(void *param)
 {
 	LOGV("%s\n", __func__);
@@ -1501,6 +1537,8 @@ out:
 	}
 
 }
+#endif
+
 
 static void jpeg_decode_main(beken_thread_arg_t data)
 {
@@ -1529,6 +1567,7 @@ static void jpeg_decode_main(beken_thread_arg_t data)
 					jpeg_decode_finish_handle(msg.param);
 					break;
 
+#if CONFIG_JPEG_SW_DECODE_SUPPORT_BY_FRAME
 				case JPEGDEC_FRAME_CP1_FINISH:
 					jpeg_decode_software_decode_finish_handle(MODULE_DECODER_CP1, msg.param);
 					break;
@@ -1536,6 +1575,7 @@ static void jpeg_decode_main(beken_thread_arg_t data)
 				case JPEGDEC_FRAME_CP2_FINISH:
 					jpeg_decode_software_decode_finish_handle(MODULE_DECODER_CP2, msg.param);
 					break;
+#endif
 
 				case JPEGDEC_H264_NOTIFY:
 					jpeg_decode_notify_handle(msg.param, PIPELINE_MOD_H264);
@@ -1557,12 +1597,14 @@ static void jpeg_decode_main(beken_thread_arg_t data)
 					jpeg_decode_notify_handle(msg.param, PIPELINE_MOD_SCALE);
 					break;
 
+#if CONFIG_JPEG_SW_DECODE_SUPPORT_BY_FRAME
 				case JPEGDEC_H264_FRAME_NOTIFY:
 				{
 					complex_buffer_t *decoder_buffer = (complex_buffer_t *)msg.param;
 					jpeg_decode_h264_frame_notify(decoder_buffer);
 					break;
 				}
+#endif
 
 				case JPEGDEC_RESET:
 					//msg_send_req_to_media_major_mailbox_sync(EVENT_SAVE_FRAME_DATA_IND, APP_MODULE, (uint32_t)jdec_config->jpeg_frame, NULL);
@@ -1616,10 +1658,12 @@ static void jpeg_decode_main(beken_thread_arg_t data)
 							break;
 						}
 					}
+#if CONFIG_JPEG_SW_DECODE_SUPPORT_BY_FRAME
 					if (jdec_config->sw_dec_init == 1)
 					{
 						software_decode_minor_task_close();
 					}
+#endif
 					if (rtos_is_oneshot_timer_running(&jdec_config->decoder_timer))
 					{
 						rtos_stop_oneshot_timer(&jdec_config->decoder_timer);
@@ -1798,6 +1842,7 @@ bk_err_t jpeg_decode_task_open(media_decode_mode_t jdec_mode, media_decode_type_
 
 	// step 5: init jdec_task
 	INIT_LIST_HEAD(&jdec_config->jpeg_decode_queue);
+#if CONFIG_JPEG_SW_DECODE_SUPPORT_BY_FRAME
 #if CONFIG_SOFTWARE_DECODE_SRAM_MAPPING
 	ret = software_decode_task_open((uint32_t)(mux_sram_buffer->rotate + ROTATE_MAX_PIPELINE_LINE_SIZE));
 #else
@@ -1808,6 +1853,11 @@ bk_err_t jpeg_decode_task_open(media_decode_mode_t jdec_mode, media_decode_type_
 		LOGE("%s, software_decode_task_open failed\r\n", __func__);
 		goto error;
 	}
+#else
+#if CONFIG_JPEG_SW_DECODE_SUPPORT_BY_LINE
+	bk_jpeg_dec_sw_init_by_handle(&jdec_config->jpeg_dec_handle, NULL, 0);
+#endif
+#endif
 
 	ret = rtos_init_queue(&jdec_config->jdec_queue,
 							"jdec_que",
@@ -1879,6 +1929,7 @@ bk_err_t jpeg_decode_task_close()
 
 	jpeg_get_task_close();
 
+#if CONFIG_JPEG_SW_DECODE_SUPPORT_BY_FRAME
 	if(check_software_decode_task_is_open())
 	{
 		software_decode_task_close();
@@ -1890,6 +1941,7 @@ bk_err_t jpeg_decode_task_close()
 		vote_stop_cpu2_core(CPU2_USER_JPEG_SW_DEC);
 #endif
 	}
+#endif
 
 	jpeg_decode_task_deinit();
 

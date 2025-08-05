@@ -13,9 +13,7 @@
 // limitations under the License.
 
 #include "dma_driver.h"
-//Modified by TUYA Start
 #include "bk_misc.h"
-//Modified by TUYA End
 #ifdef CONFIG_FREERTOS_SMP
 #include "spinlock.h"
 static SPINLOCK_SECTION volatile  spinlock_t dma_spin_lock = SPIN_LOCK_INIT;
@@ -409,9 +407,7 @@ uint32_t dma_wait_to_idle(dma_id_t id)
 		uint32_t i = 0;
 		while(dma_hal_get_enable_status(&s_dma[dma_num].hal, dma_channel))
 		{
-//Modified by TUYA Start
 			bk_delay_us(1);
-//Modified by TUYA End
 
 			i++;
 			if(i > DMA_MAX_BUSY_TIME)

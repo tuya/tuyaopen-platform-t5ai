@@ -7,7 +7,7 @@
 primary_bootloader,,68k,code,TRUE,FALSE
 primary_cp_app,,1360k,code,TRUE,TRUE
 primary_ap_app,,1156k,code,TRUE,TRUE
-s_app,,2312k,data,TRUE,TRUE
+s_app,,2516k,data,TRUE,TRUE
 ota_fina_executive,,4K,data,TRUE,TRUE
 usr_config,,56K,data,TRUE,TRUE
 easyflash,0x7fa000,8K,data,TRUE,TRUE

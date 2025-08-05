@@ -367,7 +367,7 @@ int bk_http_ota_download(const char *uri)
 							80,/*port*/
 							NULL,
 							HTTPCLIENT_GET,
-							180000,
+							300000,
 							&httpclient_data);
 
 
@@ -394,10 +394,10 @@ int bk_http_ota_download(const char *uri)
 		{
 			return ret_val;
 		}
-		OTA_LOGD("success.\r\n");
+		OTA_LOGI("success.\r\n");
 		bk_reboot();
 #else
-		OTA_LOGD("success.\r\n");
+		OTA_LOGI("success.\r\n");
 		bk_reboot();
 #endif /*CONFIG_HTTP_AB_PARTITION*/
 	}

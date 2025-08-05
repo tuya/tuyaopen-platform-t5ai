@@ -41,9 +41,13 @@ extern void *net_get_br_handle(void);
 int host_wlan_add_netif(uint8_t *mac);
 int host_wlan_remove_netif(void);
 int host_wlan_remove_sap_netif(void);
-
 #endif
-
+#if CONFIG_LWIP_PPP_SUPPORT
+void *net_get_ppp_netif_handle(void);
+void *net_get_ppp_pcb_handle(void);
+void net_set_ppp_pcb_handle(void *ppp);  
+uint32_t ppp_ip_is_start(void);
+#endif
 #ifdef __cplusplus
 }
 #endif

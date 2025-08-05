@@ -1703,8 +1703,15 @@ int bk_cli_init(void)
 #endif
 /*-----open the cli comand both at release and debug vertion end ------*/
 
-
+#if (CONFIG_BK_MODEM)
+	cli_modem_init();
+#endif
 /*--------------------platform cli command init end--------------------*/
+
+#if (CONFIG_VOICE_SERVICE_TEST)
+    int cli_voice_init(void);
+    cli_voice_init();
+#endif
 
 	/* sort cmds after registered all cmds. */
 	cli_sort_command(NULL, 0, 0, NULL);

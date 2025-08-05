@@ -88,7 +88,7 @@ static int ch0_tx_data_handle_cb(uint32_t size)
  *
  * @return err or size
  */
-static INT32_T ch0_rx_data_handle_cb(uint32_t size)
+static int ch0_rx_data_handle_cb(uint32_t size)
 {
     int ret = 0;
     ret = tkl_semaphore_post(m_semaphore[TUYA_I2S_NUM_0]);
@@ -318,7 +318,6 @@ OPERATE_RET tkl_i2s_init(TUYA_I2S_NUM_E i2s_num, const TUYA_I2S_BASE_CFG_T *cfg)
 OPERATE_RET tkl_i2s_deinit(TUYA_I2S_NUM_E i2s_num)
 {
     // --- BEGIN: user implements ---
-    VOID_T *data = NULL;
     if (i2s_num >= TUYA_I2S_NUM_MAX) {
         bk_printf("i2s port %d is invalid\n", i2s_num);
         return OPRT_INVALID_PARM;
@@ -348,7 +347,6 @@ OPERATE_RET tkl_i2s_deinit(TUYA_I2S_NUM_E i2s_num)
 OPERATE_RET tkl_i2s_send(TUYA_I2S_NUM_E i2s_num, VOID_T *buff, UINT32_T len)
 {
     // --- BEGIN: user implements ---
-    VOID_T *data = NULL;
     INT32_T ret = 0;
     uint32_t write_flag = 0U;
     if ((i2s_num >= TUYA_I2S_NUM_MAX) || ((m_i2s_config[i2s_num].i2s_dma_flags) && (len > DMA_FRAME_SIZE)) || (buff == NULL)) {
@@ -390,7 +388,6 @@ INT_T tkl_i2s_recv(TUYA_I2S_NUM_E i2s_num, VOID_T *buff, UINT32_T len)
 {
     // --- BEGIN: user implements ---
     INT_T ret = 0L;
-    VOID_T *data = NULL;
     uint32_t read_flag = 0U;
     if ((i2s_num >= TUYA_I2S_NUM_MAX) || ((m_i2s_config[i2s_num].i2s_dma_flags) && (len < DMA_FRAME_SIZE)) || (buff == NULL)) {
         bk_printf("i2s port %d is invalid\n", i2s_num);

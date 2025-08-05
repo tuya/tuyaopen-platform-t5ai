@@ -22,7 +22,7 @@ extern "C" {
 //#include "wifi_types.h"
 
 
-int demo_sta_app_init_ex(char *oob_ssid, char *connect_key);
+int demo_sta_app_init(char *oob_ssid, char *connect_key);
 
 
 #ifdef __cplusplus

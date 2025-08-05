@@ -40,6 +40,7 @@ CONST TKL_OS_T TKL_OS  = {
     .psram_free             = tkl_system_psram_free,
     .psram_calloc           = tkl_system_psram_calloc,
     .psram_realloc          = tkl_system_psram_realloc,
+    .psarm_get_free_heap_size = tkl_system_psram_get_free_heap_size,
 #endif
     //! thread
     .thread_create          = tkl_thread_create,

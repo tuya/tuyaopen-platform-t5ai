@@ -19,6 +19,23 @@
 #include <os/mem.h>
 #include "sdkconfig.h"
 
+/* If MBEDTLS_BK_CUSTOMER_CONFIG_FILE is defined, use it.
+ * Otherwise, use the default config file.
+ *eg, add below code in CMakeLists.txt(locate in project's main directory),
+ * and add mbedtls_bk_custom_config_file.h：
+ armino_component_register(SRCS "${srcs}" ......
+
+ set(bk_mbedtls_custom_define
+	-I${CMAKE_CURRENT_SOURCE_DIR}
+	-DMBEDTLS_BK_CUSTOMER_CONFIG_FILE=<mbedtls_bk_custom_config_file.h>
+	-fvisibility=hidden -Wno-attributes)
+armino_build_set_property(COMPILE_OPTIONS "${bk_mbedtls_custom_define}" APPEND)
+
+*/
+#if defined(MBEDTLS_BK_CUSTOMER_CONFIG_FILE)
+#include MBEDTLS_BK_CUSTOMER_CONFIG_FILE
+#else
+
 #if CONFIG_FULL_MBEDTLS
 
 /**
@@ -215,6 +232,17 @@
  * Enable this layer to allow use of alternative memory allocators.
  */
 #define MBEDTLS_PLATFORM_MEMORY
+#if defined( MBEDTLS_PLATFORM_MEMORY )
+extern void *tls_mbedtls_mem_calloc(size_t n, size_t size);
+extern void tls_mbedtls_mem_free(void *ptr);
+#define MBEDTLS_PLATFORM_STD_CALLOC             tls_mbedtls_mem_calloc
+#define MBEDTLS_PLATFORM_STD_FREE               tls_mbedtls_mem_free
+#endif
+#define MBEDTLS_PLATFORM_STD_SNPRINTF        snprintf
+#define os_calloc(nmemb,size)   ((size) && (nmemb) > (~( unsigned int) 0)/(size))?0:os_zalloc((nmemb)*(size))
+//#define MBEDTLS_PLATFORM_CALLOC_MACRO        os_calloc /**< Default allocator macro to use, can be undefined. See MBEDTLS_PLATFORM_STD_CALLOC for requirements. */
+//#define MBEDTLS_PLATFORM_FREE_MACRO            os_free /**< Default free macro to use, can be undefined. See MBEDTLS_PLATFORM_STD_FREE for requirements. */
+#define MBEDTLS_PLATFORM_PRINTF_MACRO        os_printf /**< Default printf macro to use, can be undefined */
 
 /**
  * \def MBEDTLS_PLATFORM_NO_STD_FUNCTIONS
@@ -3887,17 +3915,16 @@
 //#define MBEDTLS_PLATFORM_STD_NV_SEED_WRITE  mbedtls_platform_std_nv_seed_write /**< Default nv_seed_write function to use, can be undefined */
 //#define MBEDTLS_PLATFORM_STD_NV_SEED_FILE  "seedfile" /**< Seed file to read/write with default implementation */
 
-#define os_calloc(nmemb,size)   ((size) && (nmemb) > (~( unsigned int) 0)/(size))?0:os_zalloc((nmemb)*(size))
+//#define os_calloc(nmemb,size)   ((size) && (nmemb) > (~( unsigned int) 0)/(size))?0:os_zalloc((nmemb)*(size))
 /* To use the following function macros, MBEDTLS_PLATFORM_C must be enabled. */
 /* MBEDTLS_PLATFORM_XXX_MACRO and MBEDTLS_PLATFORM_XXX_ALT cannot both be defined */
-#define MBEDTLS_PLATFORM_CALLOC_MACRO        os_calloc /**< Default allocator macro to use, can be undefined. See MBEDTLS_PLATFORM_STD_CALLOC for requirements. */
-#define MBEDTLS_PLATFORM_FREE_MACRO            os_free /**< Default free macro to use, can be undefined. See MBEDTLS_PLATFORM_STD_FREE for requirements. */
+//#define MBEDTLS_PLATFORM_CALLOC_MACRO        os_calloc /**< Default allocator macro to use, can be undefined. See MBEDTLS_PLATFORM_STD_CALLOC for requirements. */
 //#define MBEDTLS_PLATFORM_EXIT_MACRO            exit /**< Default exit macro to use, can be undefined */
 //#define MBEDTLS_PLATFORM_SETBUF_MACRO      setbuf /**< Default setbuf macro to use, can be undefined */
 //#define MBEDTLS_PLATFORM_TIME_MACRO            time /**< Default time macro to use, can be undefined. MBEDTLS_HAVE_TIME must be enabled */
 //#define MBEDTLS_PLATFORM_TIME_TYPE_MACRO       time_t /**< Default time macro to use, can be undefined. MBEDTLS_HAVE_TIME must be enabled */
 //#define MBEDTLS_PLATFORM_FPRINTF_MACRO      fprintf /**< Default fprintf macro to use, can be undefined */
-#define MBEDTLS_PLATFORM_PRINTF_MACRO        os_printf /**< Default printf macro to use, can be undefined */
+//#define MBEDTLS_PLATFORM_PRINTF_MACRO        os_printf /**< Default printf macro to use, can be undefined */
 /* Note: your snprintf must correctly zero-terminate the buffer! */
 // #define MBEDTLS_PLATFORM_SNPRINTF_MACRO    snprintf /**< Default snprintf macro to use, can be undefined */
 //#define MBEDTLS_PLATFORM_VSNPRINTF_MACRO    vsnprintf /**< Default vsnprintf macro to use, can be undefined */
@@ -4200,13 +4227,20 @@
 #define MBEDTLS_THREADING_ALT
 #define MBEDTLS_THREADING_C
 #define MBEDTLS_PLATFORM_MEMORY
+#if defined( MBEDTLS_PLATFORM_MEMORY )
+extern void *tls_mbedtls_mem_calloc(size_t n, size_t size);
+extern void tls_mbedtls_mem_free(void *ptr);
+#define MBEDTLS_PLATFORM_STD_CALLOC             tls_mbedtls_mem_calloc
+#define MBEDTLS_PLATFORM_STD_FREE               tls_mbedtls_mem_free
+#endif
 #define MBEDTLS_PLATFORM_STD_SNPRINTF        snprintf
 #define os_calloc(nmemb,size)   ((size) && (nmemb) > (~( unsigned int) 0)/(size))?0:os_zalloc((nmemb)*(size))
-#define MBEDTLS_PLATFORM_CALLOC_MACRO        os_calloc /**< Default allocator macro to use, can be undefined. See MBEDTLS_PLATFORM_STD_CALLOC for requirements. */
-#define MBEDTLS_PLATFORM_FREE_MACRO            os_free /**< Default free macro to use, can be undefined. See MBEDTLS_PLATFORM_STD_FREE for requirements. */
+//#define MBEDTLS_PLATFORM_CALLOC_MACRO        os_calloc /**< Default allocator macro to use, can be undefined. See MBEDTLS_PLATFORM_STD_CALLOC for requirements. */
+//#define MBEDTLS_PLATFORM_FREE_MACRO            os_free /**< Default free macro to use, can be undefined. See MBEDTLS_PLATFORM_STD_FREE for requirements. */
 #define MBEDTLS_PLATFORM_PRINTF_MACRO        os_printf /**< Default printf macro to use, can be undefined */
 
 #endif //CONFIG_FULL_MBEDTLS
+#endif
 
 #ifdef CRYPTO_NV_SEED
 #include "tfm_mbedcrypto_config_extra_nv_seed.h"

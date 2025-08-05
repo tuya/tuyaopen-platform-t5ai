@@ -135,6 +135,77 @@ static void cli_test_stack_guard_cmd(char *pcWriteBuffer, int xWriteBufferLen, i
 #endif
 }
 
+#if CONFIG_FREERTOS
+
+static uint32_t s_xtop_enable = 0;
+static beken_thread_t s_xtop_thread = NULL;
+
+static void xtop_cpu_percentage( void *arg )
+{
+	uint32_t timeToDump = (uint32_t)arg;
+	uint32_t timeEnum;
+	if (timeToDump == 1) {
+		timeEnum = 0;
+	} else if (timeToDump == 5) {
+		timeEnum = 1;
+	} else if (timeToDump == 10) {
+		timeEnum = 2;
+	} else {
+		BK_LOGD(NULL, "time = %u\r\n", timeToDump);
+		return;
+	}
+
+	while (s_xtop_enable) {
+		rtos_dump_task_history_runtime_stats(timeEnum);
+		rtos_delay_milliseconds(timeToDump * 1000);
+	}
+	s_xtop_thread = NULL;
+	rtos_delete_thread(NULL);
+}
+
+static void start_xtop_task(uint32_t timeToDump)
+{
+	bk_err_t ret;
+	s_xtop_enable = 1;
+	ret = rtos_create_thread(&s_xtop_thread,
+							 BEKEN_DEFAULT_WORKER_PRIORITY,
+							 "ostop",
+							 (beken_thread_function_t)xtop_cpu_percentage,
+							 1024,
+							 (void *)timeToDump);
+	
+	(void)ret;
+}
+#endif
+
+static void cli_task_xtop_cmd(char *pcWriteBuffer, int xWriteBufferLen, int argc, char **argv)
+{
+#if CONFIG_FREERTOS
+	if (s_xtop_enable == 1 || s_xtop_thread != NULL) {
+		BK_LOGW(NULL, "top cmd has not end\r\n");
+		return;
+	}
+	uint32_t timeToDump;
+	if (argc >= 2) {
+        timeToDump = strtoll(argv[1], NULL, 10);
+		if (timeToDump != 1 && timeToDump != 5 && timeToDump != 10) {
+			return;
+		}
+    } else {
+        BK_LOGD(NULL, "\r\n");
+		return;
+    }
+	start_xtop_task(timeToDump);
+#endif
+}
+
+static void cli_task_end_xtop_cmd(char *pcWriteBuffer, int xWriteBufferLen, int argc, char **argv)
+{
+#if CONFIG_FREERTOS
+	s_xtop_enable = 0;
+#endif
+}
+
 #define OS_CMD_CNT (sizeof(s_os_commands) / sizeof(struct cli_command))
 static const struct cli_command s_os_commands[] = {
 	{"tasklist", "list tasks", cli_task_list_cmd},
@@ -145,6 +216,10 @@ static const struct cli_command s_os_commands[] = {
 	{"stackguard", "stackguard <override_len>", cli_test_stack_guard_cmd},
 #if (CONFIG_FREERTOS_TRACE)
 	{"trace", "test trace information", cli_trace_cmd},
+#endif
+#if CONFIG_FREERTOS_HISTORY_CPU_PERCENT
+	{"ostop", "xtop {1|5|10}", cli_task_xtop_cmd},
+	{"ostop_end", "terminate top cmd", cli_task_end_xtop_cmd},
 #endif
 };
 

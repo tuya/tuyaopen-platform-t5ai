@@ -95,6 +95,20 @@ bk_err_t media_app_set_rotate(media_rotate_t rotate)
     return ret;
 }
 
+bk_err_t media_app_set_scale(media_ppi_t ppi)
+{
+    int ret = BK_FAIL;
+    ret = image_scale_set(ppi);
+    return ret;
+}
+
+bk_err_t media_app_set_proc_order(img_proc_order_t order)
+{
+    int ret = BK_FAIL;
+    ret = image_service_set_order(order);
+    return ret;
+}
+
 bk_err_t media_app_get_main_camera_stream(frame_list_node_t *node)
 {
     int ret = BK_FAIL;
@@ -148,6 +162,45 @@ bk_err_t media_app_lcd_disp_close(void)
     return ret;
 }
 
+
+bk_err_t media_app_jdec_open(uint32_t dec_type)
+{
+    int ret = BK_FAIL;
+
+    bk_pm_module_vote_psram_ctrl(PM_POWER_PSRAM_MODULE_NAME_VIDP_JPEG_DE, PM_POWER_MODULE_STATE_ON);
+    if (dec_type == JPEGDEC_BY_LINE)
+    {
+        ret = lcd_jdec_pipeline_open();
+    }
+    if (dec_type == JPEGDEC_BY_FRAME)
+    {
+        ret = img_service_open();
+    }
+    LOGI("%s complete %x\n", __func__, ret);
+    return ret;
+}
+
+bk_err_t media_app_jdec_close(void)
+{
+    int ret = BK_FAIL;
+
+    ret = img_service_close();
+    if (ret != BK_OK)
+    {
+        LOGE("%s fail\n", __func__);
+        return ret;
+    }
+    ret = lcd_jdec_pipeline_close();
+    if (ret != BK_OK)
+    {
+        LOGE("%s fail\n", __func__);
+        return ret;
+    }
+    bk_pm_module_vote_psram_ctrl(PM_POWER_PSRAM_MODULE_NAME_VIDP_JPEG_DE, PM_POWER_MODULE_STATE_OFF);
+    LOGI("%s complete %x\n", __func__, ret);
+    return ret;
+}
+
 bk_err_t media_app_camera_open(camera_handle_t *handle, media_camera_device_t *device)
 {
     int ret = BK_FAIL;
@@ -169,7 +222,6 @@ bk_err_t media_app_camera_open(camera_handle_t *handle, media_camera_device_t *d
     camera_handle_t tmp = bk_camera_handle_node_get_by_id_and_fomat(device->port, device->format);
     if (tmp)
     {
-        ret = BK_OK;
         LOGD("%s already opened, %p\n", __func__, tmp);
         *handle = tmp;
         return ret;
@@ -243,6 +295,64 @@ bk_err_t media_app_camera_close(camera_handle_t *handle)
     }
 
     LOGD("%s complete %d\n", __func__, ret);
+
+    return ret;
+}
+
+bk_err_t media_app_pipeline_h264_open(void *config)
+{
+    int ret = BK_FAIL;
+
+    if (list_empty(&media_modules_state->cam_list))
+    {
+        LOGE("%s camera not open\n", __func__);
+        return ret;
+    }
+
+    ret = h264_jdec_pipeline_open();;
+
+    LOGI("%s complete %x\n", __func__, ret);
+
+    return ret;
+}
+
+bk_err_t media_app_pipeline_h264_close(void)
+{
+    int ret = BK_FAIL;
+
+    if (list_empty(&media_modules_state->cam_list))
+    {
+        LOGE("%s camera not open\n", __func__);
+        return ret;
+    }
+
+    ret = h264_jdec_pipeline_close();
+
+    LOGI("%s complete %x\n", __func__, ret);
+
+    return ret;
+}
+
+bk_err_t media_app_h264_regenerate_idr(camera_type_t type)
+{
+    int ret = BK_FAIL;
+
+    if (list_empty(&media_modules_state->cam_list))
+    {
+        LOGE("%s camera not open\n", __func__);
+        return ret;
+    }
+
+    if (type == UVC_CAMERA)
+    {
+        ret = h264_jdec_pipeline_regenerate_idr_frame();
+    }
+    else
+    {
+        ret = camera_dvp_h264_reset_handle();
+    }
+
+    LOGI("%s complete %x\n", __func__, ret);
 
     return ret;
 }

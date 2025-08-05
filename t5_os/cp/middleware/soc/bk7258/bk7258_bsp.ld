@@ -126,6 +126,15 @@ SECTIONS
         __apps_start = .;
         KEEP (*(.apps_data))
         __apps_end = .;
+
+        . = ALIGN(4);
+        __wifi_dp_code_start = .;
+        *libcontroller_if.a:*(.text*)
+        *libbk_wifi.a:*(.text*)
+        *libwifi.a:*(.text*)
+        *liblwip_intf_v2_1.a:*(.text*)
+        __wifi_dp_code_end = .;
+
         _etext = .;
         . = ALIGN(4);
     } > FLASH
@@ -220,11 +229,11 @@ SECTIONS
         *rwip_driver.c.obj(*.bss *.bss.*)
         *uart_ble.c.obj(*.bss *.bss.*)
         *hci_packet_parser.c.obj(*.bss *.bss.*)
-		*sdp_common.c.obj(*.bss *.bss.*)
+        *sdp_common.c.obj(*.bss *.bss.*)
         *app_ble.c.obj(*.bss *.bss.*)
         *prf.c.obj(*.bss *.bss.*)
         *gapm.c.obj(*.bss *.bss.*)
-		*ble_util_buf.c.obj(*.bss *.bss.*)
+        *ble_util_buf.c.obj(*.bss *.bss.*)
         *sch_prog.c.obj(*.bss *.bss.*)
         *sch_slice.c.obj(*.bss *.bss.*)
         *llm.c.obj(*.bss *.bss.*)
@@ -270,7 +279,7 @@ SECTIONS
         __tcm_copy_table_end__ = .;
     } > FLASH
 
-	tcm_cpu0_core_id = CPU0_CORE_ID;
+    tcm_cpu0_core_id = CPU0_CORE_ID;
     .itcm_cpu0 :
     {
         . = ALIGN(4);
@@ -294,7 +303,7 @@ SECTIONS
         __dtcm_cpu0_end__ = .;
     } > DTCM0 AT > FLASH
 
-	tcm_cpu1_core_id = CPU1_CORE_ID;
+    tcm_cpu1_core_id = CPU1_CORE_ID;
     .itcm_cpu1 :
     {
         . = ALIGN(4);
@@ -318,7 +327,7 @@ SECTIONS
         __dtcm_cpu1_end__ = .;
     } > DTCM1 AT > FLASH
 
-	tcm_cpu2_core_id = CPU2_CORE_ID;
+    tcm_cpu2_core_id = CPU2_CORE_ID;
     .itcm_cpu2 :
     {
         . = ALIGN(4);
@@ -469,7 +478,7 @@ SECTIONS
         *rwip_driver.c.obj(*.bss *.bss.*)
         *uart_ble.c.obj(*.bss *.bss.*)
         *hci_packet_parser.c.obj(*.bss *.bss.*)
-		*sdp_common.c.obj(*.bss *.bss.*)
+        *sdp_common.c.obj(*.bss *.bss.*)
         *app_ble.c.obj(*.bss *.bss.*)
         *prf.c.obj(*.bss *.bss.*)
         *gapm.c.obj(*.bss *.bss.*)

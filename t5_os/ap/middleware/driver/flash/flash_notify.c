@@ -19,6 +19,7 @@
 // #include "mb_ipc_cmd.h"
 
 static void (*s_flash_op_notify)(uint32_t param) = NULL;
+static void (*s_flash_op_notify_dvp)(uint32_t param) = NULL;
 
 bk_err_t mb_flash_register_op_notify(void * notify_cb)
 {
@@ -32,6 +33,23 @@ bk_err_t mb_flash_unregister_op_notify(void * notify_cb)
 	if(s_flash_op_notify == notify_cb)
 	{
 		s_flash_op_notify = NULL;
+		return BK_OK;
+	}
+
+	return BK_ERR_FLASH_WAIT_CB_NOT_REGISTER;
+}
+bk_err_t mb_flash_register_op_dvp_notify(void * notify_cb)
+{
+	s_flash_op_notify_dvp = (void (*)(uint32_t))notify_cb;
+
+	return BK_OK;
+}
+
+bk_err_t mb_flash_unregister_op_dvp_notify(void * notify_cb)
+{
+	if(s_flash_op_notify_dvp == notify_cb)
+	{
+		s_flash_op_notify_dvp = NULL;
 		return BK_OK;
 	}
 
@@ -74,6 +92,10 @@ static void cpu1_pause_handle(mb_chnl_cmd_t *cmd_buf)
 		// disable the LCD dev interrupt.
 		if(s_flash_op_notify != NULL)
 			s_flash_op_notify(0);
+        if(s_flash_op_notify_dvp != NULL)
+        {
+			s_flash_op_notify_dvp(0);
+        }
 	}
 	else if(cmd_buf->hdr.cmd == IPC_FLASH_OP_END)
 	{
@@ -163,6 +185,8 @@ bk_err_t mb_flash_op_prepare(void)
 	// disable the LCD dev interrupt.
 	if(s_flash_op_notify != NULL)
 		s_flash_op_notify(0);
+	if(s_flash_op_notify_dvp != NULL)
+		s_flash_op_notify_dvp(0);
 
 	return BK_OK;
 }

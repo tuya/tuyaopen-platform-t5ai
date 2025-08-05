@@ -253,7 +253,7 @@ static void iperf_report_avg_bandwidth(uint64_t pkt_len)
 	{
 		double total_f;
 		total_f = (double)pkt_len * 8;
-		total_f /= (double)(IPERF_MILLION_UNIT * s_tick_delta);
+		total_f /= (double)(IPERF_MEGA_UNIT * s_tick_delta);
 		BK_LOGD(NULL,"[%d-%d] sec bandwidth: %.2f  Mbits/sec.\r\n",
 				0, s_tick_delta , total_f);
 	}

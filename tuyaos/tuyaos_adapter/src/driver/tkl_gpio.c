@@ -104,6 +104,7 @@ OPERATE_RET tkl_gpio_deinit(TUYA_GPIO_NUM_E pin_id)
 {
     PIN_DEV_CHECK_ERROR_RETURN(pin_id, OPRT_INVALID_PARM);
 
+    gpio_dev_unmap(pinmap[pin_id].gpio);
     //Set gpio to input floating mode
     bk_gpio_disable_interrupt(pinmap[pin_id].gpio);
     bk_gpio_disable_output(pinmap[pin_id].gpio);

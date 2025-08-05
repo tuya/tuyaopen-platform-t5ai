@@ -132,9 +132,9 @@
 // }
 
 #ifdef CONFIG_CONNECT_THROUGH_PSK_OR_SAE_PASSWORD
-int demo_sta_app_init_ex(char *oob_ssid, u8* psk, char *connect_key)
+int demo_sta_app_init(char *oob_ssid, u8* psk, char *connect_key)
 #else
-int demo_sta_app_init_ex(char *oob_ssid, char *connect_key)
+int demo_sta_app_init(char *oob_ssid, char *connect_key)
 #endif
 {
 	wifi_sta_config_t sta_config = {0};
@@ -156,8 +156,8 @@ int demo_sta_app_init_ex(char *oob_ssid, char *connect_key)
 	os_strcpy(sta_config.password, connect_key);
 
 	WIFI_LOGD("ssid:%s key:%s\r\n", sta_config.ssid, sta_config.password);
-	BK_LOG_ON_ERR(bk_wifi_sta_set_config_ex(&sta_config));
-	BK_LOG_ON_ERR(bk_wifi_sta_start_ex());
+	BK_LOG_ON_ERR(bk_wifi_sta_set_config(&sta_config));
+	BK_LOG_ON_ERR(bk_wifi_sta_start());
 	return BK_OK;
 }
 

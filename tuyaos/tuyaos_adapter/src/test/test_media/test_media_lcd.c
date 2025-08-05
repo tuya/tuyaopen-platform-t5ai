@@ -94,7 +94,7 @@ void test_media_lcd_open(int pipeline)
     tal_display_bl_open(tkl_test_lcd_handle);
     bk_printf("--- trace %s %d\r\n", __func__, __LINE__);
 
-    tkl_vi_set_lcd(tkl_test_lcd_handle);
+    // tkl_vi_set_lcd(tkl_test_lcd_handle);
     // tkl_thread_create(&test_random_test_thread, "random", 2048, 6, func_random_test, tkl_test_lcd_handle);
     bk_printf("--- trace %s %d\r\n", __func__, __LINE__);
 }

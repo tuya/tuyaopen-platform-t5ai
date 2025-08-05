@@ -1447,6 +1447,8 @@ __attribute__((section(".dtcm_sec_data "))) wifi_os_funcs_t g_wifi_os_funcs = {
 	._sr_flush_scan_results = sr_flush_scan_results,
 	._rwnx_get_rlk_info_results = rwnx_get_rlk_info_results,
 	._rwnx_flush_rlk_info_results = rwnx_flush_rlk_info_results,
+	._bk_wifi_set_rf_en = bk_wifi_set_rf_en,
+	._bk_task_wdt_feed = bk_task_wdt_feed,
 };
 
 __attribute__((section(".dtcm_sec_data "))) wifi_os_variable_t g_wifi_os_variable = {

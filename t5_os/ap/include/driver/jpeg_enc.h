@@ -33,7 +33,6 @@ extern "C" {
  *   - register jpegenc isr
  *
  * @attention 1. This API should be called before any other jpeg APIs.
- * @attention 2. This API will power up video when soc is bk7256XX 
  *
  * @return
  *    - BK_OK: succeed

@@ -16,10 +16,11 @@ void cif_free_ap_txbuf(struct pbuf * pbuf)
 #endif
     if(cif_msg_sender(pbuf+1,CIF_TASK_MSG_RX_DATA,0) != BK_OK)
     {
+        CIF_STATS_INC(cif_tx_buf_leak);
         CIF_LOGE("%s,%d,addr send fail mem_leak:%d\n",__func__,__LINE__,pbuf);
         return;
     }
-
+    cif_stats_ptr->cif_txc_cnt++;
     CIF_STATS_DEC(buf_in_txdata);
 }
 

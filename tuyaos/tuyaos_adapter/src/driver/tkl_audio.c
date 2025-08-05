@@ -65,7 +65,7 @@ int voice_read_callback(unsigned char *data, unsigned int len, void *args)
     TKL_AUDIO_FRAME_INFO_T pframe = {0};
     pframe.buf_size = len;
     pframe.used_size = len;
-    pframe.pbuf = data;
+    pframe.pbuf = (char *)data;
     if (user_mic_cb)
     {
         user_mic_cb(&pframe);
@@ -77,7 +77,6 @@ int tkl_ai_status(void)
 {
     int status = 0;
     bk_voice_get_status(g_voice_handle, (voice_sta_t*)&status); 
-    bk_printf("cur status %d\n",status);
     return status;
 }
 /**
@@ -94,9 +93,9 @@ OPERATE_RET tkl_ai_init(TKL_AUDIO_CONFIG_T *pconfig, INT32_T count)
     UINT32_T sample_rate = TKL_AUDIO_SAMPLE_8K;
     uac_mic_stream_cfg_t uac_mic_cfg = UAC_MIC_STREAM_CFG_DEFAULT();
     onboard_mic_stream_cfg_t onboard_mic_cfg = ONBOARD_MIC_ADC_STREAM_CFG_DEFAULT();
+    onboard_dual_dmic_mic_stream_cfg_t onboard_dual_mic_cfg = DEFAULT_ONBOARD_DUAL_DMIC_STREAM_CONFIG();
     voice_cfg_t voice_cfg = {0};
     os_memset(&voice_cfg, 0, sizeof(voice_cfg_t));
-    bk_printf("audio trace: %s %d\r\n", __func__, __LINE__);
     if (pconfig == NULL)
         return OPRT_INVALID_PARM;
     switch (pconfig->sample) {
@@ -123,7 +122,28 @@ OPERATE_RET tkl_ai_init(TKL_AUDIO_CONFIG_T *pconfig, INT32_T count)
         uac_mic_cfg.out_block_num = 2;
         memcpy(&voice_cfg.mic_cfg.uac_mic_cfg, &uac_mic_cfg,
                sizeof(uac_mic_stream_cfg_t));
-        bk_printf("audio trace: %s %d\r\n", __func__, __LINE__);
+    } else if (pconfig->card == TKL_AUDIO_TYPE_DUAL) {
+        voice_cfg.mic_type = MIC_TYPE_ONBOARD_DUAL_DMIC_MIC;
+        if (pconfig->mic_volume)
+        {
+            onboard_mic_cfg.adc_cfg.dig_gain = (uint32_t)(pconfig->mic_volume * 0x3F / 100);
+        }
+        onboard_dual_mic_cfg.adc_cfg.bits = pconfig->datebits;
+        if (sample_rate == 16000)
+        {
+            onboard_dual_mic_cfg.adc_cfg.sample_rate = sample_rate;
+        }
+        else
+        {
+            bk_printf("only support 16k samplerate\r\n"); 
+        }
+        
+        /* one farme size, 20ms */
+        onboard_dual_mic_cfg.frame_size =
+            sample_rate * CHANNEL_NUM * TIME_SAMPLE_MS / MS_PER_SEC; // one frame size(20ms)
+        onboard_dual_mic_cfg.out_block_size = onboard_dual_mic_cfg.frame_size;
+        memcpy(&voice_cfg.mic_cfg.onboard_dual_dmic_mic_cfg, &onboard_dual_mic_cfg,
+               sizeof(onboard_dual_dmic_mic_stream_cfg_t));
     } else {
         voice_cfg.mic_type = MIC_TYPE_ONBOARD;
         if (pconfig->mic_volume)
@@ -139,7 +159,6 @@ OPERATE_RET tkl_ai_init(TKL_AUDIO_CONFIG_T *pconfig, INT32_T count)
 
         memcpy(&voice_cfg.mic_cfg.onboard_mic_cfg, &onboard_mic_cfg,
                sizeof(onboard_mic_stream_cfg_t));
-        bk_printf("audio trace: %s %d\r\n", __func__, __LINE__);
     }
     if (pconfig->enable) {
         if ((pconfig->sample != TKL_AUDIO_SAMPLE_8K) && (pconfig->sample != TKL_AUDIO_SAMPLE_16K)) {
@@ -151,17 +170,39 @@ OPERATE_RET tkl_ai_init(TKL_AUDIO_CONFIG_T *pconfig, INT32_T count)
 
     if ((pconfig->spk_sample == 0) || (pconfig->enable)) {
         aec_algorithm_cfg_t aec_alg_cfg = DEFAULT_AEC_ALGORITHM_CONFIG();
+        aec_v3_algorithm_cfg_t aec_v3_alg_cfg = DEFAULT_AEC_V3_ALGORITHM_CONFIG();
         // enable置1,表示语音对讲，此时因AEC需要，mic跟spk的
         // 采样率需要相等
-        voice_cfg.aec_en = true;
+        voice_cfg.aec_en = 1;
         aec_alg_cfg.out_block_num = 1;
         aec_alg_cfg.aec_cfg.fs = sample_rate;
-        voice_cfg.aec_cfg.aec_alg_cfg = aec_alg_cfg;
+        if (pconfig->card == TKL_AUDIO_TYPE_DUAL)
+        {
+            voice_cfg.aec_ver = 3;
+            aec_v3_alg_cfg.dual_ch = 1;
+            if(aec_v3_alg_cfg.vad_cfg.vad_enable)
+            {
+                voice_cfg.enc_common.frame_in_ms = TIME_SAMPLE_MS;
+                voice_cfg.enc_common.frame_in_size = sample_rate*TIME_SAMPLE_MS/MS_PER_SEC*CHANNEL_NUM;
+                voice_cfg.aec_cfg.aec_v3_alg_cfg = aec_v3_alg_cfg;
+            }
+            voice_cfg.mic_cfg.onboard_dual_dmic_mic_cfg.dual_dmic_sgl_out = false;
+        }
+        else
+        {
+            voice_cfg.aec_ver = 1;
+            voice_cfg.aec_cfg.aec_alg_cfg = aec_alg_cfg;
+        }
+        
     } else {
         // 否则直接使用用户传入的采样率
         sample_rate = pconfig->spk_sample? pconfig->spk_sample : TKL_AUDIO_SAMPLE_8K;
         voice_cfg.aec_en = false;
         voice_cfg.aec_cfg.reserve = 0;
+        if (pconfig->card == TKL_AUDIO_TYPE_DUAL)
+        {
+            voice_cfg.mic_cfg.onboard_dual_dmic_mic_cfg.dual_dmic_sgl_out = true;
+        }
     }
     switch (pconfig->codectype) {
         case TKL_CODEC_AUDIO_G711A:
@@ -228,7 +269,6 @@ OPERATE_RET tkl_ai_init(TKL_AUDIO_CONFIG_T *pconfig, INT32_T count)
             ONBOARD_SPEAKER_STREAM_CFG_DEFAULT();
         if (pconfig->spk_volume)
         {
-            uint32_t new_vol;
             if (pconfig->spk_volume <= 30) {
                 // 0-30% 映射到 0-50%
                 pconfig->spk_volume = pconfig->spk_volume * 50 / 30;
@@ -407,7 +447,6 @@ OPERATE_RET tkl_ai_set_vol(INT32_T card, TKL_AI_CHN_E chn, INT32_T vol)
     g_audio_gain.mic_gain = vol;
     uint32_t volume = 0;
     volume =(uint32_t)(vol * 0x3F / 100);
-
     return bk_aud_adc_set_gain(volume);
 }
 
@@ -584,7 +623,6 @@ OPERATE_RET tkl_ao_set_vol(INT32_T card, TKL_AO_CHN_E chn, VOID *handle,
     uint32_t volume = 0;
     if (card == TKL_AUDIO_TYPE_BOARD) {
         // 重新映射音量范围
-        uint32_t new_vol;
         if (vol <= 30) {
             // 0-30% 映射到 0-50%
             vol = vol * 50 / 30;

@@ -17,13 +17,21 @@ void cif_print_debug_info()
     CIF_LOGI("cif rx bank cnt:%d\n",cif_rxbank_ptr->rx_buf_bank_cnt);
     CIF_LOGI("cif rx drop cnt:%d\n",cif_stats_ptr->rx_drop_cnt);
     CIF_LOGI("cif rx data cnt:%d\n",cif_stats_ptr->cif_rx_data);
-    CIF_LOGI("buf_in_rx_data cnt:%d\n",cif_stats_ptr->buf_in_rx_data);
 
-    CIF_LOGI("cif tx data cnt:%d\n",cif_stats_ptr->buf_in_txdata);
-    CIF_LOGI("cif tx total cnt:%d\n",cif_stats_ptr->total_in_cif);
+    CIF_LOGI("cif tx current cnt:%d\n",cif_stats_ptr->buf_in_txdata);
+    CIF_LOGI("cif tx total cnt:%d\n",cif_stats_ptr->cif_tx_cnt);
+    CIF_LOGI("cif txc total cnt:%d\n",cif_stats_ptr->cif_txc_cnt);
+    CIF_LOGI("cif tx and rxc total cnt:%d\n",cif_stats_ptr->cif_tx_dnld_cnt);
 
-    CIF_LOGI("rx recv:%d, ipc tx cnt:%d, ipc txc cnt:%d, ipc tx fail cnt:%d \n",
-    cif_stats_ptr->total_recv_cnt,cif_stats_ptr->ipc_tx_cnt,cif_stats_ptr->ipc_txc_cnt,cif_stats_ptr->ipc_tx_fail_cnt);
+    CIF_LOGI("rx total cnt:%d\n",cif_stats_ptr->cif_rx_cnt);
+    CIF_LOGI("rxc total cnt:%d\n",cif_stats_ptr->cif_rxc_cnt);
+
+    CIF_LOGI("ipc tx cnt:%d, ipc txc cnt:%d, ipc tx fail cnt:%d \n",
+    cif_stats_ptr->ipc_tx_cnt,cif_stats_ptr->ipc_txc_cnt,cif_stats_ptr->ipc_tx_fail_cnt);
+
+    CIF_LOGI("cif msg snder fail:%d\n",cif_stats_ptr->cif_msg_snder_fail);
+    CIF_LOGI("cif txbuf leak:%d\n",cif_stats_ptr->cif_tx_buf_leak);
+
     for(uint8_t j = 0; j<cif_rxbank_ptr->rx_buf_bank_cnt ;j++)
     {
         CIF_LOGI("cnt:%d,addr:0x%x \n",j,cif_rxbank_ptr->rx_buf_bank[j]);
@@ -45,6 +53,7 @@ bk_err_t cif_msg_sender(void* head,enum cif_task_msg_evt type,uint8_t retry)
     msg.retry_flag = retry;
     ret = rtos_push_to_queue(&cif_env.io_queue, &msg, BEKEN_NO_WAIT);
     if (BK_OK != ret) {
+        CIF_STATS_INC(cif_msg_snder_fail);
         CIF_LOGW("%s failed, ret=%d\r\n",__func__, ret);
     }
 
@@ -121,7 +130,7 @@ uint8_t cif_dnld_buffer(void *param, void *payload)
             }
             case TX_MSDU_DATA:
             {
-                cif_stats_ptr->total_in_cif += 1;
+                cif_stats_ptr->cif_tx_dnld_cnt += 1;
                 //ret = cif_handle_txdata(head);
                 cif_msg_sender(head,CIF_TASK_MSG_DATA,0);
                 break;
@@ -315,12 +324,6 @@ bk_err_t cif_init()
     cif_ipc_init();
     //Init event buffer(for CP->AP use)
     cif_tx_event_buffer_init();
-
-//    ret = cif_attach_free_buffer(TX_BK_CMD_DATA,5);
-//    if(ret != BK_OK) CIF_LOGE("%s,TX_BK_CMD_DATA attach buff fail\n",__func__);
-//    cif_stats_ptr->tx_win = INIT_NUM_IN_CTRLIF;
-//    ret = cif_attach_tx_buffer();
-//    if(ret != BK_OK) CIF_LOGE("%s,TX_MSDU_DATA attach buff fail\n",__func__);
 
     ret = rtos_init_oneshot_timer(&(cif_env.enter_lv_timer), CNTRL_IF_ENTER_LV_DELAY_TIME_MS,
                     cif_enter_lv_timer_cb, 0, 0);

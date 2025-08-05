@@ -14,4 +14,4 @@ if (CONFIG_ADK_FATFS_STREAM_TEST)
 endif()
 endif()#(CONFIG_ADK_FATFS_STREAM)
 
-armino_component_register(SRCS "${srcs}" INCLUDE_DIRS "${incs}" PRIV_REQUIRES bk_common)
+armino_component_register(SRCS "${srcs}" INCLUDE_DIRS "${incs}" PRIV_REQUIRES bk_common bk_vfs)

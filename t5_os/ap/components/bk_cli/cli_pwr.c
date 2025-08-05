@@ -270,16 +270,6 @@ static void cli_pm_cmd(char *pcWriteBuffer, int xWriteBufferLen, int argc, char 
 	}
 
 	bk_pm_ap_sleep_mode_set(pm_sleep_mode);
-
-	/*multimedia vote close cp1*/
-	//bk_pm_module_vote_boot_cp1_ctrl(PM_BOOT_CP1_MODULE_NAME_APP,PM_POWER_MODULE_STATE_OFF);
-
-	/*Close cpu2*/
-	extern void stop_cpu2_core(void);
-	stop_cpu2_core();
-
-	pm_printf_current_temperature();
-
 }
 static void cli_pm_debug(char *pcWriteBuffer, int xWriteBufferLen, int argc, char **argv)
 {
@@ -298,6 +288,8 @@ static void cli_pm_debug(char *pcWriteBuffer, int xWriteBufferLen, int argc, cha
 	{
 		//pm_debug_pwr_clk_state();
 		//pm_debug_lv_state();
+		BK_LOGD(NULL, "Deepsleep wakeup source[%d]\r\n",bk_pm_deep_sleep_wakeup_source_get());
+		BK_LOGD(NULL, "Low vol wakeup source[%d]\r\n",bk_pm_exit_low_vol_wakeup_source_get());
 	}
 	/*for temp debug*/
 	if(pm_debug == 16)

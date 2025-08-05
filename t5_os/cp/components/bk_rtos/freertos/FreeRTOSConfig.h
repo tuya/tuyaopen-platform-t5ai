@@ -198,6 +198,12 @@
 #define portGET_RUN_TIME_COUNTER_VALUE()            bk_get_tick()
 #endif
 
+#if (CONFIG_FREERTOS_HISTORY_CPU_PERCENT && configGENERATE_RUN_TIME_STATS)
+#define configGENERATE_HISTORY_RUN_TIME_STATS       1
+#else
+#define configGENERATE_HISTORY_RUN_TIME_STATS       0
+#endif
+
 #if CONFIG_FREERTOS_POSIX
 #define configUSE_POSIX_ERRNO                       1
 #endif

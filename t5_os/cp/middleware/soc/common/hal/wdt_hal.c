@@ -115,9 +115,10 @@ void wdt_hal_force_reboot(void)
 #if (CONFIG_SOC_BK7236XX) || (CONFIG_SOC_BK7239XX) || (CONFIG_SOC_BK7286XX)
 __attribute__((section(".itcm_sec_code"))) void wdt_hal_close(void)
 {
+        #if !CONFIG_AON_WDT
         REG_WRITE(SOC_AON_WDT_REG_BASE, 0x5A0000);
         REG_WRITE(SOC_AON_WDT_REG_BASE, 0xA50000);
-
+        #endif
         REG_SET(SOC_WDT_REG_BASE + 4 * 2, 1, 1, 1);
         REG_WRITE(SOC_WDT_REG_BASE + 4 * 4, 0x5A0000);
         REG_WRITE(SOC_WDT_REG_BASE + 4 * 4, 0xA50000);

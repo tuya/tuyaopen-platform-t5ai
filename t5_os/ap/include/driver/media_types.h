@@ -119,6 +119,12 @@ typedef enum
 
 typedef enum
 {
+	IMG_PROC_ROTATE_FIRST = 0,
+	IMG_PROC_SCALE_FIRST,
+}img_proc_order_t;
+
+typedef enum
+{
 	PPI_DEFAULT     = 0,
 	PPI_170X320     = (PIXEL_170 << 16) | PIXEL_320,
 	PPI_320X240     = (PIXEL_320 << 16) | PIXEL_240,

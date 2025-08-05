@@ -71,6 +71,33 @@ bt_err_t bk_bluetooth_deinit(void);
  */
 bt_err_t bk_bluetooth_get_address(uint8_t *addr);
 
+/**
+ * @brief  register hci callback for dual mode host only
+ *
+ * @param
+ *    - cb: hci callback function used to recv hci data from host
+ *
+ * @attention used for dual mode host only
+ *
+ * @return
+ *    - BT_OK: succeed
+ *    - others: other errors.
+ */
+bt_err_t bk_dual_host_register_hci_callback(dual_hci_to_cp_cb cb);
+
+/**
+ * @brief send hci data to host.
+ *
+ * @param
+ * - buf: payload
+ * - len: buf's len
+ *
+ * @attention used for dual mode host only
+ *
+ * @return
+ * - BT_OK: succeed
+**/
+bt_err_t bk_dual_hci_send_to_host(uint8_t *buf, uint32_t len);
 ///@}
 
 #ifdef __cplusplus

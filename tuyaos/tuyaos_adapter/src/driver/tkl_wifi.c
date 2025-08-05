@@ -249,8 +249,8 @@ static OPERATE_RET tkl_wifi_all_ap_scan(AP_IF_S **ap_ary, unsigned int *num)
     bk_event_register_cb(EVENT_MOD_WIFI, EVENT_WIFI_SCAN_DONE,
             scan_cb, NULL);
 
-    extern bk_err_t bk_wifi_scan_start_ex(const wifi_scan_config_t *scan_config);
-    BK_LOG_ON_ERR(bk_wifi_scan_start_ex(NULL));
+    extern bk_err_t bk_wifi_scan_start(const wifi_scan_config_t *scan_config);
+    BK_LOG_ON_ERR(bk_wifi_scan_start(NULL));
 
     // ret = tkl_semaphore_wait(scanHandle, semaphore_timeout);
     tkl_semaphore_release(scanHandle);
@@ -1355,7 +1355,9 @@ OPERATE_RET tkl_wifi_station_get_conn_ap_rssi(SCHAR_T *rssi)
     for (i = 0; i < 5; i++) {
         memset(&link_status, 0x00, sizeof(link_status));
         ret = bk_wifi_sta_get_link_status(&link_status);
-        if (OPRT_OK == ret) {
+        if ((OPRT_OK == ret) &&
+           ((WIFI_LINKSTATE_STA_GOT_IP == link_status.state) ||
+            (WIFI_LINKSTATE_STA_CONNECTED == link_status.state))) {
             tmp_rssi = link_status.rssi;
             if (tmp_rssi > max_rssi) {
                 max_rssi = tmp_rssi;
@@ -1364,17 +1366,22 @@ OPERATE_RET tkl_wifi_station_get_conn_ap_rssi(SCHAR_T *rssi)
                 min_rssi = tmp_rssi;
             }
             //bk_printf("get rssi: %d\r\n", tmp_rssi);
+            sum_rssi += tmp_rssi;
         } else {
             //bk_printf("get rssi error\r\n");
             error_cnt++;
         }
-        sum_rssi += tmp_rssi;
+
+        bk_printf("error_cnt %d, ret %d, tmp_rssi %d, link_status->state %d\r\n",
+                error_cnt, ret, tmp_rssi, link_status.state);
         tkl_system_sleep(10);
     }
-    if (error_cnt > 2) {
+
+    if (error_cnt) {
+        *rssi = 0;
         ret = OPRT_COM_ERROR;
     } else {
-        *rssi = (sum_rssi - min_rssi - max_rssi)/(3 - error_cnt);
+        *rssi = (sum_rssi - min_rssi - max_rssi)/3;
     }
 
     return ret;

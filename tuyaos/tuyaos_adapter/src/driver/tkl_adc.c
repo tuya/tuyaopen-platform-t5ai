@@ -58,6 +58,7 @@ gpio_id_t tkl_adc_to_pin_func(adc_chan_t adc)
     switch (adc) {
         case ADC_1:  gpio_pin = GPIO_25; break;
         case ADC_2:  gpio_pin = GPIO_24; break;
+        case ADC_3:  gpio_pin = GPIO_23; break;
         case ADC_4:  gpio_pin = GPIO_28; break;
         case ADC_15: gpio_pin = GPIO_13; break;
         case ADC_14: gpio_pin = GPIO_12; break;
@@ -113,19 +114,19 @@ OPERATE_RET tkl_adc_init(TUYA_ADC_NUM_E unit_num, TUYA_ADC_BASE_CFG_T *cfg)
 
     for(int i = 0; i < 16; i++) {
         if(cfg->ch_list.data & (1 << i)) {
-            //bk_printf("cfg->ch_list.data:%d, %d\r\n",cfg->ch_list.data, cfg->ch_list.data & (1 << i));
+            bk_printf("cfg->ch_list.data:%d, %d\r\n",cfg->ch_list.data, cfg->ch_list.data & (1 << i));
             g_config[cnt].chan = i;
-            g_config[cnt].clk = 0x30e035;
-            g_config[cnt].sample_rate = 0x20;
-            g_config[cnt].adc_filter = 0;
-            g_config[cnt].steady_ctrl = 7;
             g_config[cnt].adc_mode = ty_to_bk_adc(cfg->mode);
+            g_config[cnt].src_clk = ADC_SCLK_XTAL_26M;
+            g_config[cnt].clk = 0x30e035;
+            g_config[cnt].saturate_mode = ADC_SATURATE_MODE_3;
+            g_config[cnt].steady_ctrl = 7;
+            g_config[cnt].adc_filter = 0;
+            g_config[cnt].sample_rate = 0x20;
             if(g_config[cnt].adc_mode == ADC_CONTINUOUS_MODE) {
                 g_config[cnt].sample_rate = 0;
             }
 
-            g_config[cnt].src_clk = ADC_SCLK_XTAL_26M;
-            g_config[cnt].saturate_mode = ADC_SATURATE_MODE_3;
             g_config[cnt].is_open = FALSE;
             g_config[cnt].output_buf = &adc_buf[0];
             g_config[cnt].output_buf_len = cfg->conv_cnt;

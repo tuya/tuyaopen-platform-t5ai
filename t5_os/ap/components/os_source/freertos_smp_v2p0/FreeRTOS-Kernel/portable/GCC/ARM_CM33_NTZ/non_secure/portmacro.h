@@ -267,7 +267,7 @@ void vTaskExitCritical(void);
 
     #define portRESTORE_INTERRUPTS(ulState) __asm volatile ("msr PRIMASK,%0"::"r" (ulState) : )
 
-    void vPortYieldCore(int xCoreID);
+    bk_err_t vPortYieldCore(int xCoreID);
     #define portYIELD_CORE(a) vPortYieldCore(a)
 
     extern volatile spinlock_t isr_spin_lock;

@@ -3,7 +3,43 @@ menu "Bk_ble"
 		bool "bluetooth ap"
 		default y
 
-	config BLUETOOTH_SUPPORT_IPC
-        bool "bt support ipc"
+    config BLUETOOTH_HOST_ONLY
+		bool "bluetooth host only"
+		depends on BLUETOOTH_AP
+		default y
+
+	config BT
+		bool "Enable Bt"
+		depends on BLUETOOTH_HOST_ONLY
+		default n
+
+	config BLE
+		bool "Enable Ble"
+		depends on BLUETOOTH_HOST_ONLY
+		default y
+
+	config BLUETOOTH_RELEASE_CODESIZE
+		bool "reduce ble stack size"
+		depends on BLE
+		default n
+		help
+			This option is used to reduce ble stack size for IoT scenarios that
+			only use ble provisioning network.It supports two ble advertise,
+			one ble link, and ble scan at the same time.it does not support SMP and central role.
+			when config this option,BLUETOOTH_BLE_SLAVE_ONLY will be invalid.
+
+	config BLUETOOTH_BLE_SLAVE_ONLY
+		bool "only supports ble slave"
+		depends on !BLUETOOTH_RELEASE_CODESIZE
+		default n
+
+    config BLUETOOTH_BLE_DISCOVER_AUTO
+        bool "auto ble discover. Only used when single ble host"
         default y
+
+    config BLUETOOTH_SUPPORT_IPC
+        bool "bt support ipc"
+		depends on BLUETOOTH_AP
+        default y
+
 endmenu

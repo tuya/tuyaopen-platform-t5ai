@@ -65,12 +65,12 @@ static volatile  pm_mailbox_communication_state_e s_pm_cp1_init                 
 static volatile  pm_mailbox_communication_state_e s_pm_external_ldo_ctrl         = 0;
 static volatile  pm_mailbox_communication_state_e s_pm_psram_power_ctrl          = 0;
 static volatile  pm_mailbox_communication_state_e s_pm_cp2_rtc_deepsleep_finish  = 0;
-static volatile  pm_mailbox_communication_state_e s_pm_cp2_startup_time_finish   = 0;
+static volatile  pm_mailbox_communication_state_e s_pm_ap_get_cp_data_finish     = 0;
 static volatile  pm_mailbox_communication_state_e s_pm_cp2_ctrl_state_finish     = 0;
 static volatile  pm_mailbox_communication_state_e s_pm_cp2_deepsleep_finish      = 0;
 static volatile  pm_mailbox_communication_state_e s_pm_cp2_wakeup_src_cfg_finish = 0;
 
-static volatile  uint32_t                         s_chip_startup_time            = 0;
+static mb_chnl_cmd_t                              s_pm_mb_data                   = {0};
 
 static volatile  uint32_t                         s_pm_cp1_boot_try_count        = 0;
 
@@ -167,13 +167,13 @@ bk_err_t bk_pm_ap_ctrl_state_set(pm_mailbox_communication_state_e state)
     return BK_OK;
 }
 
-pm_mailbox_communication_state_e bk_pm_ap_startup_time_get()
+pm_mailbox_communication_state_e bk_pm_ap_getting_cp_data_state_get()
 {
-    return s_pm_cp2_startup_time_finish;
+    return s_pm_ap_get_cp_data_finish;
 }
-bk_err_t bk_pm_ap_startup_time_set(pm_mailbox_communication_state_e state)
+bk_err_t bk_pm_ap_getting_cp_data_state_set(pm_mailbox_communication_state_e state)
 {
-    s_pm_cp2_startup_time_finish = state;
+    s_pm_ap_get_cp_data_finish = state;
     return BK_OK;
 }
 
@@ -399,9 +399,10 @@ static void pm_cp1_mailbox_rx_isr(int *pm_mb, mb_chnl_cmd_t *cmd_buf)
 				ret = BK_FAIL;
 			}
 			break;
-		case PM_STARTUP_TIME_CMD:
-			s_chip_startup_time = cmd_buf->param1;
-			s_pm_cp2_startup_time_finish = PM_MAILBOX_COMMUNICATION_FINISH;
+		case PM_GET_PM_DATA_CMD:
+			memset(&s_pm_mb_data,0x0,sizeof(pm_ap_core_msg_t));
+			memcpy(&s_pm_mb_data,cmd_buf,sizeof(pm_ap_core_msg_t));
+			bk_pm_ap_getting_cp_data_state_set(PM_MAILBOX_COMMUNICATION_FINISH);
 			break;
 		case PM_CTRL_AP_STATE_CMD:
 			bk_pm_ap_ctrl_state_set(PM_MAILBOX_COMMUNICATION_FINISH);
@@ -560,16 +561,20 @@ bk_err_t bk_pm_ap_rtc_enter_deepsleep(pm_ap_rtc_enter_deepsleep_module_name_e mo
 
     return BK_OK;
 }
-bk_err_t bk_pm_ap_misc_get_time_interval_from_startup(uint32_t* time_interval)
+static bk_err_t pm_ap_get_cp_data(uint32_t type, uint32_t *data)
 {
-
-#if CONFIG_MAILBOX
+	#if CONFIG_MAILBOX
     uint64_t previous_tick  = 0;
     uint64_t current_tick   = 0;
     int ret = 0;
 
-    bk_pm_ap_startup_time_set(PM_MAILBOX_COMMUNICATION_INIT);
-    ret = pm_cp1_mailbox_send_data(PM_STARTUP_TIME_CMD, 0,0,0);
+	if(data == NULL)
+	{
+		return BK_FAIL;
+	}
+
+    bk_pm_ap_getting_cp_data_state_set(PM_MAILBOX_COMMUNICATION_INIT);
+    ret = pm_cp1_mailbox_send_data(PM_GET_PM_DATA_CMD,type,0,0);
     if(ret != BK_OK)
     {
         return BK_FAIL;
@@ -579,21 +584,39 @@ bk_err_t bk_pm_ap_misc_get_time_interval_from_startup(uint32_t* time_interval)
     current_tick = previous_tick;
     while((current_tick - previous_tick) < (PM_SEND_CMD_CP1_RESPONSE_TIEM*PM_AON_RTC_DEFAULT_TICK_COUNT))
     {
-        if (bk_pm_ap_startup_time_get()) // wait the cp0 response
+        if (bk_pm_ap_getting_cp_data_state_get()) // wait the cp0 response
         {
             break;
         }
         current_tick = pm_cp1_aon_rtc_counter_get();
     }
 
-    if(!bk_pm_ap_startup_time_get())
+    if(!bk_pm_ap_getting_cp_data_state_get())
     {
-        LOGE("ap get startup time time out\r\n");
+        LOGE("AP get cp data time out\r\n");
     }
-    *time_interval = s_chip_startup_time;
-    LOGD("ap get startup time\r\n");
+    *data = s_pm_mb_data.param2;
+
 #endif//CONFIG_MAILBOX
 	return BK_OK;
+}
+bk_err_t bk_pm_ap_misc_get_time_interval_from_startup(uint32_t* time_interval)
+{
+	bk_err_t ret = BK_OK;
+	ret = pm_ap_get_cp_data(PM_CP_DATE_TYPE_TIME_INTERVAL_FROM_STARTUP, time_interval);
+	return ret;
+}
+pm_wakeup_source_e bk_pm_deep_sleep_wakeup_source_get()
+{
+	uint32_t wakeup_source = PM_WAKEUP_SOURCE_INT_NONE;
+	pm_ap_get_cp_data(PM_CP_DATE_TYPE_DEEP_SLEEP_WAKEUP_SOURCE, &wakeup_source);
+	return wakeup_source;
+}
+pm_wakeup_source_e bk_pm_exit_low_vol_wakeup_source_get()
+{
+	uint32_t wakeup_source = PM_WAKEUP_SOURCE_INT_NONE;
+	pm_ap_get_cp_data(PM_CP_DATE_TYPE_EXIT_LOW_VOL_WAKEUP_SOURCE, &wakeup_source);
+	return wakeup_source;
 }
 bk_err_t bk_pm_module_vote_boot_cp1_ctrl(pm_boot_cp1_module_name_e module,pm_power_module_state_e power_state)
 {

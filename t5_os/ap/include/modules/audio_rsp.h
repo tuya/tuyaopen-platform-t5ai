@@ -15,7 +15,7 @@
 #ifndef __AUDIO_RSP_H__
 #define __AUDIO_RSP_H__
 #include <stdint.h>
-
+#include "audio_rsp_types.h"
 #ifdef  __cplusplus
 extern "C" {
 #endif//__cplusplus

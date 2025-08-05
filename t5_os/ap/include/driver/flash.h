@@ -376,6 +376,11 @@ bk_err_t mb_flash_register_op_notify(void * notify_cb);
 bk_err_t mb_flash_unregister_op_notify(void * notify_cb);
 
 
+bk_err_t mb_flash_register_op_dvp_notify(void * notify_cb);
+
+
+bk_err_t mb_flash_unregister_op_dvp_notify(void * notify_cb);
+
 uint32_t flash_get_excute_enable();
 
 #ifdef __cplusplus

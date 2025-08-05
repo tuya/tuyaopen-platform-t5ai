@@ -2945,12 +2945,15 @@ bk_err_t bk_wifi_sta_disconnect(void)
 bk_err_t bk_wifi_scan_get_result(wifi_scan_result_t *scan_result)
 {
 	ScanResult_adv ap_list = {0};
-	wifi_scan_ap_info_t *ap;
-	int ret = BK_OK;
+	wifi_scan_ap_info_t *ap = NULL;
+	bk_err_t ret = BK_OK;
 	int j = 0;
 
 	if (!scan_result)
 		return BK_ERR_NULL_PARAM;
+
+	scan_result->ap_num = 0;
+	scan_result->aps = NULL;
 
 	ap_list.ApList = NULL;
 	ret = wlan_sta_scan_result(&ap_list);
@@ -2962,7 +2965,6 @@ bk_err_t bk_wifi_scan_get_result(wifi_scan_result_t *scan_result)
 	if (ap_list.ApNum == 0)
 		goto _free_and_exit;
 
-	scan_result->ap_num = 0;
 #if CONFIG_PSRAM_AS_SYS_MEMORY
 	scan_result->aps = psram_zalloc(sizeof(wifi_scan_ap_info_t) * ap_list.ApNum);
 #else
@@ -3000,7 +3002,8 @@ bk_err_t bk_wifi_scan_get_result(wifi_scan_result_t *scan_result)
 
 _free_and_exit:
 	os_free(ap_list.ApList);
-	return BK_OK;
+
+	return ret;
 }
 
 static void wifi_scan_dump_ap(const wifi_scan_ap_info_t *ap)
@@ -3059,11 +3062,11 @@ void bk_wifi_scan_free_result(wifi_scan_result_t *scan_result)
 {
 	if (!scan_result)
 		return;
-	if (scan_result->ap_num > 0 && scan_result->aps) {
+	if (scan_result->aps) {
 		os_free(scan_result->aps);
 		scan_result->aps = NULL;
-		scan_result->ap_num = 0;
 	}
+	scan_result->ap_num = 0;
 	os_memset(&scan_param_dump_env, 0, sizeof(scan_param_dump_env));
 	WIFI_LOGV("scan free result\n");
 }
@@ -3222,8 +3225,26 @@ static bk_err_t wifi_ap_set_config(const wifi_ap_config_t *ap_config)
 bk_err_t bk_wifi_ap_set_config(const wifi_ap_config_t *ap_config)
 {
 	int ret = BK_OK;
+	netif_ip4_config_t ip4_config = {0};
 
 	WIFI_LOGV("ap configuring\n");
+
+#if CONFIG_BRIDGE
+	if (!bridge_is_enabled) {
+#endif
+		os_strcpy(ip4_config.ip, WLAN_DEFAULT_IP);
+		os_strcpy(ip4_config.mask, WLAN_DEFAULT_MASK);
+		os_strcpy(ip4_config.gateway, WLAN_DEFAULT_GW);
+		os_strcpy(ip4_config.dns, WLAN_DEFAULT_GW);
+#if CONFIG_BRIDGE
+	} else {
+		os_strcpy(ip4_config.ip, WLAN_ANY_IP);
+		os_strcpy(ip4_config.mask, WLAN_ANY_IP);
+		os_strcpy(ip4_config.gateway, WLAN_ANY_IP);
+		os_strcpy(ip4_config.dns, WLAN_ANY_IP);
+	}
+#endif
+	BK_RETURN_ON_ERR(bk_netif_set_ip4_config(NETIF_IF_AP, &ip4_config));
 
 	if (!wifi_is_inited()) {
 		WIFI_LOGV("set ap config fail, wifi not init\n");
@@ -3710,6 +3731,36 @@ bk_err_t bk_wifi_ap_get_mac(uint8_t *mac)
 		return BK_ERR_NULL_PARAM;
 
 	bk_get_mac(mac, MAC_TYPE_AP);
+	return BK_OK;
+}
+typedef struct {
+	uint8_t is_sta_up;
+	uint8_t is_ap_up;
+	wifi_link_status_t link_status;
+	netif_ip4_config_t sta_ip4_info;
+	wifi_ap_config_t ap_info;
+	netif_ip4_config_t ap_ip4_info;
+} wifi_status_t;
+
+bk_err_t bk_wifi_get_wifi_status(void *out)
+{
+	wifi_status_t* status = (wifi_status_t*)out;
+	if (!status)
+		return BK_ERR_NULL_PARAM;
+	status->is_sta_up = wifi_netif_sta_is_got_ip();
+	status->is_ap_up = uap_ip_is_start();
+	if(status->is_sta_up)
+	{
+		os_memset(&status->link_status, 0x0, sizeof(wifi_link_status_t));
+		BK_RETURN_ON_ERR(bk_wifi_sta_get_link_status(&status->link_status));
+		BK_RETURN_ON_ERR(bk_netif_get_ip4_config(NETIF_IF_STA, &status->sta_ip4_info));
+	}
+	if(status->is_ap_up)
+	{
+		os_memset(&status->ap_info, 0x0, sizeof(wifi_ap_config_t));
+		BK_RETURN_ON_ERR(bk_wifi_ap_get_config(&status->ap_info));
+		BK_RETURN_ON_ERR(bk_netif_get_ip4_config(NETIF_IF_AP, &status->ap_ip4_info));
+	}
 	return BK_OK;
 }
 

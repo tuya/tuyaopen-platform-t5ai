@@ -48,7 +48,7 @@
 #define CLIENT_PORT_NUM		12  // max client PORT num supported by this design is 48 (16~63).
 
 #define SERVER_PORT_MIN		1   // port 0 is invaid.
-#define SERVER_PORT_MAX		(SERVER_PORT_MIN + SERVER_PORT_NUM - 1)
+#define SERVER_PORT_MAX		(SERVER_PORT_MIN + SERVER_PORT_NUM - 1)   
 #define SERVER_SOCKET_NUM	(SERVER_PORT_NUM * MAX_CONNET_PER_SVR)
 
 #define CLIENT_PORT_MIN		16
@@ -74,21 +74,21 @@ typedef union
 		/* u32   param1; */  /* this param1 is used internally by router/API-implemant layer. */
 		u8               dst_port      : 6;
 		u8               dst_cpu       : 2;   // byte-0
-
+		
 		u8               src_port      : 6;
 		u8               src_cpu       : 2;   // byte-1
-
+		
 		u8               tag              ;   // byte-2,.
-
+		
 		u8               api_impl_status  : 4;
 		u8               route_status     : 4;   // byte-3, used for router/api-implementation layer status.
-
+		
 		/* param2, param3 are used for API call parameters. */
 		/* u32   param2; */
 		u32              cmd_data_len  : 16;
 		u32              cmd_data_crc8 : 8;
 		u32              user_cmd      : 8;      // NOTE: 0xFF is an invalid ID.
-
+		
 		/* u32   param3; */
 		void           * cmd_data_buff;
 	};
@@ -108,10 +108,10 @@ typedef union
 		u8      connect_id  : 2;   /* used for server port. support max 4 connections to server. */
 		u8      reserved1   : 5;
 		u8      sock_valid  : 1;
-
+		
 		u16      reserved2;
 	};
-
+	
 	u32		data;
 } mb_ipc_socket_handle_t;
 
@@ -141,7 +141,7 @@ typedef struct
 
 	u8                  dst_port : 6;
 	u8                  dst_cpu  : 2;
-
+	
 	u8                  src_port : 6;
 	u8                  src_cpu  : 2;
 
@@ -156,11 +156,11 @@ typedef struct
 
 	beken_semaphore_t	 tx_notify_sema;
 	// notify sender when receiver has responded.(receiver has read the cmd data.)
-	// because the rx/tx sides share the cmd buffer,
+	// because the rx/tx sides share the cmd buffer, 
 	// so receiver must notify sender the buffer share completed.
-
+	
 	mb_ipc_cmd_t		tx_cmd;
-
+		
 	/* rx cmd data */
 	u32					rx_read_offset;
 
@@ -176,16 +176,16 @@ typedef struct
 	mb_ipc_socket_handle_t   handle;
 } mb_ipc_socket_t;
 
-static mb_ipc_route_t		ipc_route_tbl[] =
+static mb_ipc_route_t		ipc_route_tbl[] = 
 	{
 #if CONFIG_SOC_SMP
 		//cpu0 + smp(cpu1,cpu2)
-		{.dst_cpus = (IPC_CPU0_BIT),                .log_chnl = CP0_MB_CHNL_IPC,
+		{.dst_cpus = (IPC_CPU0_BIT),                .log_chnl = CP0_MB_CHNL_IPC, 
 			.chnl_tx_queue_out_idx = 0, .chnl_tx_queue_in_idx = 0,  },
 #else
-		{.dst_cpus = IPC_CPU0_BIT,                .log_chnl = CP0_MB_CHNL_IPC,
+		{.dst_cpus = IPC_CPU0_BIT,                .log_chnl = CP0_MB_CHNL_IPC, 
 			.chnl_tx_queue_out_idx = 0, .chnl_tx_queue_in_idx = 0,  },
-		{.dst_cpus = IPC_CPU2_BIT,                .log_chnl = CP2_MB_CHNL_IPC,
+		{.dst_cpus = IPC_CPU2_BIT,                .log_chnl = CP2_MB_CHNL_IPC, 
 			.chnl_tx_queue_out_idx = 0, .chnl_tx_queue_in_idx = 0,  },
 #endif
 	};
@@ -255,19 +255,19 @@ static inline void mb_ipc_exit_critical(uint32_t flags)
 	rtos_enable_int(flags);
 }
 
-static void mb_atomic_set(u8 * data, u8 bit_flag)
-{
-	u32 temp = mb_ipc_enter_critical();
-	*data |= bit_flag;
-	mb_ipc_exit_critical(temp);
-}
-
-static void mb_atomic_clear(u8 * data, u8 bit_flag)
-{
-	u32 temp = mb_ipc_enter_critical();
-	*data &= ~bit_flag;
-	mb_ipc_exit_critical(temp);
-}
+static void mb_atomic_set(u8 * data, u8 bit_flag)
+{
+	u32 temp = mb_ipc_enter_critical();
+	*data |= bit_flag;
+	mb_ipc_exit_critical(temp);
+}
+
+static void mb_atomic_clear(u8 * data, u8 bit_flag)
+{
+	u32 temp = mb_ipc_enter_critical();
+	*data &= ~bit_flag;
+	mb_ipc_exit_critical(temp);
+}
 
 /**********************************************************************************************/
 /****                                                                                      ****/
@@ -293,10 +293,10 @@ static mb_ipc_route_t * ipc_router_search_route(u8 dst_cpu, u32 * route_id)
 }
 
 /*
- * because ipc_cmd is a pointer,
- * it may pending in the tx_queue,
+ * because ipc_cmd is a pointer, 
+ * it may pending in the tx_queue, 
  * so the memory ipc_cmd pointed must **NOT** be in stack (temporary memory).
- *
+ * 
  */
 static int ipc_router_send(mb_ipc_route_t *ipc_route, mb_ipc_cmd_t *ipc_cmd)
 {
@@ -316,22 +316,22 @@ static int ipc_router_send(mb_ipc_route_t *ipc_route, mb_ipc_cmd_t *ipc_cmd)
 		free_cnt  = ipc_route->chnl_tx_queue_out_idx - ipc_route->chnl_tx_queue_in_idx;
 		queue_cnt = ARRAY_SIZE(ipc_route->chnl_tx_queue) - free_cnt;
 	}
-
+	
 	if( free_cnt <= 1 )  // reserved one for empty judgement.
 	{
 		mb_ipc_exit_critical(temp);
-
+		
 		return  IPC_ROUTE_QUEUE_FULL;
 	}
-
+	
 	u16  tx_idx = ipc_route->chnl_tx_queue_in_idx;
-
+	
 	// memcpy(&ipc_route->chnl_tx_queue[tx_idx], ipc_cmd, sizeof(mb_ipc_cmd_t));
 	ipc_route->chnl_tx_queue[tx_idx].mb_cmd.hdr.data = ipc_cmd->mb_cmd.hdr.data;
 	ipc_route->chnl_tx_queue[tx_idx].mb_cmd.param1 = ipc_cmd->mb_cmd.param1;
 	ipc_route->chnl_tx_queue[tx_idx].mb_cmd.param2 = ipc_cmd->mb_cmd.param2;
 	ipc_route->chnl_tx_queue[tx_idx].mb_cmd.param3 = ipc_cmd->mb_cmd.param3;
-
+	
 	tx_idx = (tx_idx + 1) % ARRAY_SIZE(ipc_route->chnl_tx_queue);
 	ipc_route->chnl_tx_queue_in_idx = tx_idx;
 
@@ -346,7 +346,7 @@ static int ipc_router_send(mb_ipc_route_t *ipc_route, mb_ipc_cmd_t *ipc_cmd)
 	return IPC_ROUTE_STATUS_OK;
 }
 
-/*
+/* 
  * it MUST be protected by critical-section.
  * it is called by RX-ISR.
  */
@@ -396,7 +396,7 @@ static void ipc_router_rx_isr(void *param, mb_chnl_cmd_t *cmd_buf)
 	if(ipc_cmd->route_status != IPC_ROUTE_STATUS_OK)
 	{
 		// ipc_socket may be == NULL, don't reference it.
-		BK_LOGE(MOD_TAG, "rx error: cmd-%02x, param1=%08x!\r\n",
+		BK_LOGE(MOD_TAG, "rx error: cmd-%02x, param1=%08x!\r\n", 
 			ipc_cmd->hdr.cmd, ipc_cmd->mb_cmd.param1);
 	}
 	#endif
@@ -420,14 +420,14 @@ static void ipc_router_tx_cmpl_isr(void *param, mb_chnl_ack_t *ack_buf)  /* tx_c
 	if(ipc_route_tbl[route_id].chnl_tx_queue_in_idx == ipc_route_tbl[route_id].chnl_tx_queue_out_idx)
 	{
 		// queue empty.
-		BK_LOGE(MOD_TAG, "%s error @%d, indx=%d!\r\n", __FUNCTION__, __LINE__,
+		BK_LOGE(MOD_TAG, "%s error @%d, indx=%d!\r\n", __FUNCTION__, __LINE__, 
 			ipc_route_tbl[route_id].chnl_tx_queue_in_idx);
-
+		
 		return;   /* something wrong. */
 	}
 
 	u16  tx_idx = ipc_route_tbl[route_id].chnl_tx_queue_out_idx;
-
+	
 	mb_ipc_cmd_t * queue_cmd = &ipc_route_tbl[route_id].chnl_tx_queue[tx_idx];
 
 	// data sanity check.
@@ -435,17 +435,17 @@ static void ipc_router_tx_cmpl_isr(void *param, mb_chnl_ack_t *ack_buf)  /* tx_c
 		|| (queue_cmd->hdr.cmd != ipc_cmd->hdr.cmd)
 		#if DEBUG_MB_IPC
 		|| (queue_cmd->mb_cmd.param2 != ipc_cmd->mb_cmd.param2)
-		|| (queue_cmd->mb_cmd.param3 != ipc_cmd->mb_cmd.param3)
+		|| (queue_cmd->mb_cmd.param3 != ipc_cmd->mb_cmd.param3) 
 		#endif
 		) /* param1, other fields not compared. */
 	{
-		BK_LOGE(MOD_TAG, "%s tx2 error @%d! %x != %x.\r\n", __FUNCTION__, __LINE__,
+		BK_LOGE(MOD_TAG, "%s tx2 error @%d! %x != %x.\r\n", __FUNCTION__, __LINE__, 
 			queue_cmd->mb_cmd.param1, ipc_cmd->mb_cmd.param1);
 
 		#if DEBUG_MB_IPC
-		BK_LOGE(MOD_TAG, "tx2 error: ipc-cmd-%02x, %x != %x.\r\n", ipc_cmd->hdr.cmd,
+		BK_LOGE(MOD_TAG, "tx2 error: ipc-cmd-%02x, %x != %x.\r\n", ipc_cmd->hdr.cmd, 
 			queue_cmd->mb_cmd.param2, ipc_cmd->mb_cmd.param2);
-		BK_LOGE(MOD_TAG, "tx2 error: que-cmd-%02x, %x != %x.\r\n", queue_cmd->hdr.cmd,
+		BK_LOGE(MOD_TAG, "tx2 error: que-cmd-%02x, %x != %x.\r\n", queue_cmd->hdr.cmd, 
 			queue_cmd->mb_cmd.param3, ipc_cmd->mb_cmd.param3);
 		#endif
 
@@ -460,10 +460,10 @@ static void ipc_router_tx_cmpl_isr(void *param, mb_chnl_ack_t *ack_buf)  /* tx_c
 	// it is a forwarded cmd/rsp.
 	if( ipc_cmd->src_cpu != CURRENT_CPU )
 	{
-		if( (ipc_cmd->hdr.state & CHNL_STATE_COM_FAIL) ||
+		if( (ipc_cmd->hdr.state & CHNL_STATE_COM_FAIL) || 
 			(ipc_cmd->route_status != IPC_ROUTE_STATUS_OK) )
 		{
-			BK_LOGE(MOD_TAG, "Fwd failed, cmd %02x, param1=%08x!\r\n",
+			BK_LOGE(MOD_TAG, "Fwd failed, cmd %02x, param1=%08x!\r\n", 
 				ipc_cmd->hdr.cmd, ipc_cmd->mb_cmd.param1);
 		}
 
@@ -472,13 +472,13 @@ static void ipc_router_tx_cmpl_isr(void *param, mb_chnl_ack_t *ack_buf)  /* tx_c
 	#endif
 
 	mb_ipc_socket_t * ipc_socket;
-
+	
 	// search the ipc_socket by port;
 	ipc_socket = ipc_socket_search_sender(ipc_cmd->src_port, ipc_cmd->dst_cpu, ipc_cmd->dst_port);
 
 	if(ipc_socket == NULL)
 	{
-		BK_LOGE(MOD_TAG, "%s tx error @%d!, cmd-%02x, param1=%08x!\r\n", __FUNCTION__, __LINE__,
+		BK_LOGE(MOD_TAG, "%s tx error @%d!, cmd-%02x, param1=%08x!\r\n", __FUNCTION__, __LINE__, 
 			ipc_cmd->hdr.cmd, ipc_cmd->mb_cmd.param1);
 
 		goto tx_cmpl_isr_next_cmd;
@@ -512,11 +512,11 @@ tx_cmpl_isr_next_cmd:
 static mb_ipc_socket_t * ipc_socket_search_sender(u8 src_port, u8 dst_cpu, u8 dst_port)
 {
 	mb_ipc_socket_t * ipc_socket = NULL;
-
+	
 	if( IS_SERVER_PORT(src_port) )
 	{
 		int svr_idx = src_port - SERVER_PORT_MIN;
-
+		
 		for(int i = 0; i < MAX_CONNET_PER_SVR; i++)
 		{
 			if(ipc_server_socket_tbl[svr_idx][i].dst_port != dst_port)
@@ -525,17 +525,17 @@ static mb_ipc_socket_t * ipc_socket_search_sender(u8 src_port, u8 dst_cpu, u8 ds
 				continue;
 
 			ipc_socket = &ipc_server_socket_tbl[svr_idx][i];
-
+			
 			// data sanity check.
 			#if DEBUG_MB_IPC
-			if( (ipc_socket->handle.connect_id != i) ||
-				(ipc_socket->handle.src_port != src_port) ||
+			if( (ipc_socket->handle.connect_id != i) || 
+				(ipc_socket->handle.src_port != src_port) || 
 				(ipc_socket->handle.sock_valid == 0) )
 			{
 				BK_LOGE(MOD_TAG, "%s error @%d!\r\n", __FUNCTION__, __LINE__);
 			}
 			#endif
-
+			
 			break;
 		}
 	}
@@ -550,7 +550,7 @@ static mb_ipc_socket_t * ipc_socket_search_sender(u8 src_port, u8 dst_cpu, u8 ds
 
 		#if DEBUG_MB_IPC
 		// data sanity check.
-		if( (ipc_socket->handle.src_port != src_port) ||
+		if( (ipc_socket->handle.src_port != src_port) || 
 			(ipc_socket->handle.sock_valid == 0) )
 		{
 			BK_LOGE(MOD_TAG, "%s error @%d!\r\n", __FUNCTION__, __LINE__);
@@ -570,11 +570,11 @@ static mb_ipc_socket_t * ipc_socket_search_sender(u8 src_port, u8 dst_cpu, u8 ds
 static mb_ipc_socket_t * ipc_socket_search_recver(u8 dst_port, u8 src_cpu, u8 src_port)
 {
 	mb_ipc_socket_t * ipc_socket = NULL;
-
+	
 	if( IS_SERVER_PORT(dst_port) )
 	{
 		int svr_idx = dst_port - SERVER_PORT_MIN;
-
+		
 		for(int i = 0; i < MAX_CONNET_PER_SVR; i++)
 		{
 			if(ipc_server_socket_tbl[svr_idx][i].dst_port != src_port)
@@ -583,18 +583,18 @@ static mb_ipc_socket_t * ipc_socket_search_recver(u8 dst_port, u8 src_cpu, u8 sr
 				continue;
 
 			ipc_socket = &ipc_server_socket_tbl[svr_idx][i];
-
+			
 			// data sanity check.
 			#if DEBUG_MB_IPC
-			if( (ipc_socket->handle.connect_id != i) ||
-				(ipc_socket->handle.src_cpu  != CURRENT_CPU) ||
-				(ipc_socket->handle.src_port != dst_port) ||
+			if( (ipc_socket->handle.connect_id != i) || 
+				(ipc_socket->handle.src_cpu  != CURRENT_CPU) || 
+				(ipc_socket->handle.src_port != dst_port) || 
 				(ipc_socket->handle.sock_valid == 0) )
 			{
 				BK_LOGE(MOD_TAG, "%s error @%d!\r\n", __FUNCTION__, __LINE__);
 			}
 			#endif
-
+			
 			break;
 		}
 	}
@@ -606,10 +606,10 @@ static mb_ipc_socket_t * ipc_socket_search_recver(u8 dst_port, u8 src_cpu, u8 sr
 		{
 			return NULL;
 		}
-
+		
 		#if DEBUG_MB_IPC
 		// data sanity check.
-		if( (ipc_socket->handle.src_port != dst_port) ||
+		if( (ipc_socket->handle.src_port != dst_port) || 
 			(ipc_socket->handle.sock_valid == 0) )
 		{
 			BK_LOGE(MOD_TAG, "%s error @%d!\r\n", __FUNCTION__, __LINE__);
@@ -629,32 +629,32 @@ static mb_ipc_socket_t * ipc_socket_search_recver(u8 dst_port, u8 src_cpu, u8 sr
 static mb_ipc_socket_t * ipc_socket_server_accept(u8 dst_port, u8 src_cpu, u8 src_port)
 {
 	mb_ipc_socket_t * ipc_socket = NULL;
-
+	
 	if( IS_SERVER_PORT(dst_port) )
 	{
 		int svr_idx = dst_port - SERVER_PORT_MIN;
-
+		
 		for(int i = 0; i < MAX_CONNET_PER_SVR; i++)
 		{
 			if( (ipc_server_socket_tbl[svr_idx][i].use_flag & USE_FLAG_ALLOCATED) == 0 )
 				break;  // something wrong in system.
 
 			int svr_dst_port = ipc_server_socket_tbl[svr_idx][i].dst_port;
-
+			
 			if( IS_CLIENT_PORT(svr_dst_port) ) // connected with someone client.
 				continue;
 
 			ipc_socket = &ipc_server_socket_tbl[svr_idx][i];
-
+			
 			// data sanity check.
 			#if DEBUG_MB_IPC
-			if( (ipc_socket->src_port != dst_port) ||
+			if( (ipc_socket->src_port != dst_port) || 
 				(ipc_socket->src_cpu  != CURRENT_CPU ) )
 			{
 				BK_LOGE(MOD_TAG, "%s error @%d!\r\n", __FUNCTION__, __LINE__);
 			}
 			#endif
-
+			
 			ipc_socket->dst_cpu  = src_cpu;
 			ipc_socket->dst_port = src_port;
 
@@ -664,14 +664,14 @@ static mb_ipc_socket_t * ipc_socket_server_accept(u8 dst_port, u8 src_cpu, u8 sr
 
 			// data sanity check.
 			#if DEBUG_MB_IPC
-			if( (ipc_socket->handle.connect_id != i) ||
-				(ipc_socket->handle.src_port != dst_port) ||
+			if( (ipc_socket->handle.connect_id != i) || 
+				(ipc_socket->handle.src_port != dst_port) || 
 				(ipc_socket->handle.src_cpu  != CURRENT_CPU ) )
 			{
 				BK_LOGE(MOD_TAG, "%s error @%d!\r\n", __FUNCTION__, __LINE__);
 			}
 			#endif
-
+			
 			break;
 		}
 	}
@@ -696,10 +696,10 @@ static int ipc_socket_local_tx_cmd(mb_ipc_socket_t * ipc_socket, mb_ipc_cmd_t *i
 static int ipc_socket_local_tx_rsp(mb_ipc_socket_t * ipc_socket, mb_ipc_cmd_t *ipc_cmd);
 
 /*
- * because ipc_cmd is a pointer,
- * it may pending in the tx_queue,
+ * because ipc_cmd is a pointer, 
+ * it may pending in the tx_queue, 
  * so the memory ipc_cmd pointed must **NOT** be in stack (temporary memory).
- *
+ * 
  */
 static int ipc_socket_tx_rsp(mb_ipc_socket_t * ipc_socket, mb_ipc_cmd_t *ipc_cmd)
 {
@@ -707,7 +707,7 @@ static int ipc_socket_tx_rsp(mb_ipc_socket_t * ipc_socket, mb_ipc_cmd_t *ipc_cmd
 	{
 		return ipc_socket_local_tx_rsp(ipc_socket, ipc_cmd);
 	}
-
+	
 	u32               temp;
 	mb_ipc_route_t  * ipc_route = ipc_router_search_route(ipc_socket->dst_cpu, &temp);
 
@@ -718,7 +718,7 @@ static int ipc_socket_tx_rsp(mb_ipc_socket_t * ipc_socket, mb_ipc_cmd_t *ipc_cmd
 	}
 
 	ipc_cmd->hdr.cmd |= MB_IPC_RSP_FLAG;   // set to rsp packet.
-
+	
 	ipc_socket_set_addr(ipc_socket, ipc_cmd);
 
 	int route_status = ipc_router_send(ipc_route, ipc_cmd);
@@ -726,17 +726,17 @@ static int ipc_socket_tx_rsp(mb_ipc_socket_t * ipc_socket, mb_ipc_cmd_t *ipc_cmd
 	if(route_status != IPC_ROUTE_STATUS_OK)
 	{
 		// ipc_socket->run_state &= ~STATE_RX_IN_PROCESS;  // clear rx_in_process.
-		mb_atomic_clear(&ipc_socket->run_state, STATE_RX_IN_PROCESS);
+		mb_atomic_clear(&ipc_socket->run_state, STATE_RX_IN_PROCESS);
 	}
 
 	return route_status;
 }
 
 /*
- * because ipc_cmd is a pointer,
- * it may pending in the tx_queue,
+ * because ipc_cmd is a pointer, 
+ * it may pending in the tx_queue, 
  * so the memory ipc_cmd pointed must **NOT** be in stack (temporary memory).
- *
+ * 
  */
 static int ipc_socket_tx_cmd(mb_ipc_socket_t * ipc_socket, mb_ipc_cmd_t *ipc_cmd, u32 retry)
 {
@@ -745,12 +745,12 @@ static int ipc_socket_tx_cmd(mb_ipc_socket_t * ipc_socket, mb_ipc_cmd_t *ipc_cmd
 		ipc_socket->tx_tag++;
 	}
 	ipc_cmd->tag = ipc_socket->tx_tag;
-
+	
 	if(ipc_socket->dst_cpu == ipc_socket->src_cpu)
 	{
 		return ipc_socket_local_tx_cmd(ipc_socket, ipc_cmd);
 	}
-
+	
 	u32               temp;
 	mb_ipc_route_t  * ipc_route = ipc_router_search_route(ipc_socket->dst_cpu, &temp);
 
@@ -762,14 +762,14 @@ static int ipc_socket_tx_cmd(mb_ipc_socket_t * ipc_socket, mb_ipc_cmd_t *ipc_cmd
 
 	ipc_socket_set_addr(ipc_socket, ipc_cmd);
 
-	mb_atomic_set(&ipc_socket->run_state, STATE_TX_IN_PROCESS);
-
+	mb_atomic_set(&ipc_socket->run_state, STATE_TX_IN_PROCESS);
+	
 	int route_status = ipc_router_send(ipc_route, ipc_cmd);
 
 	if(route_status != IPC_ROUTE_STATUS_OK)
 	{
-		// ipc_socket->run_state |= STATE_TX_IN_PROCESS;
-		mb_atomic_clear(&ipc_socket->run_state, STATE_TX_IN_PROCESS);
+	//	ipc_socket->run_state &= ~STATE_TX_IN_PROCESS;
+		mb_atomic_clear(&ipc_socket->run_state, STATE_TX_IN_PROCESS);
 	}
 
 	return route_status;
@@ -791,7 +791,7 @@ static void ipc_socket_rx_notify(mb_ipc_socket_t * ipc_socket)
 static void ipc_socket_tx_cmpl_notify(mb_ipc_socket_t * ipc_socket)
 {
 	// ipc_socket->run_state &= ~STATE_TX_IN_PROCESS;  // clear tx_in_process.
-	mb_atomic_clear(&ipc_socket->run_state, STATE_TX_IN_PROCESS);
+	mb_atomic_clear(&ipc_socket->run_state, STATE_TX_IN_PROCESS);
 
 	/* tx_complete notification. */
 	rtos_set_semaphore(&ipc_socket->tx_notify_sema);
@@ -803,23 +803,23 @@ static void ipc_socket_tx_cmpl_handler(mb_ipc_socket_t * ipc_socket, mb_ipc_cmd_
 	/* refer to <design document> P44 tx_cmpl_isr 1). */
 	if( ipc_cmd->hdr.cmd & MB_IPC_RSP_FLAG )
 	{
-		if( (ipc_cmd->hdr.state & CHNL_STATE_COM_FAIL) ||
+		if( (ipc_cmd->hdr.state & CHNL_STATE_COM_FAIL) || 
 			(ipc_cmd->route_status != IPC_ROUTE_STATUS_OK) )
 		{
-			BK_LOGE(MOD_TAG, "Rsp failed, cmd %02x, param1=%08x!\r\n",
+			BK_LOGE(MOD_TAG, "Rsp failed, cmd %02x, param1=%08x!\r\n", 
 				ipc_cmd->hdr.cmd, ipc_cmd->mb_cmd.param1);
 		}
 
 		// completed the rx-process, so clear the flag.
 		// ipc_socket->run_state &= ~STATE_RX_IN_PROCESS;  // clear rx_in_process.
-		mb_atomic_clear(&ipc_socket->run_state, STATE_RX_IN_PROCESS);
+		mb_atomic_clear(&ipc_socket->run_state, STATE_RX_IN_PROCESS);
 
 		if(ipc_cmd->hdr.cmd == (MB_IPC_RSP_FLAG | MB_IPC_DISCONNECT_CMD)) // disconnect rsp send ok.
 		{
 			ipc_socket->dst_cpu  = 0;
 			ipc_socket->dst_port = 0;  // clear the connection.
 		}
-
+		
 		return;
 	}
 
@@ -833,32 +833,32 @@ static void ipc_socket_tx_cmpl_handler(mb_ipc_socket_t * ipc_socket, mb_ipc_cmd_
 		|| (queue_cmd->hdr.cmd != ipc_cmd->hdr.cmd)
 		#if DEBUG_MB_IPC
 		|| (queue_cmd->mb_cmd.param2 != ipc_cmd->mb_cmd.param2)
-		|| (queue_cmd->mb_cmd.param3 != ipc_cmd->mb_cmd.param3)
+		|| (queue_cmd->mb_cmd.param3 != ipc_cmd->mb_cmd.param3) 
 		#endif
 		) /* param1, other fields not compared. */
 	{
-		BK_LOGE(MOD_TAG, "%s tx2 error @%d! %x != %x.\r\n", __FUNCTION__, __LINE__,
+		BK_LOGE(MOD_TAG, "%s tx2 error @%d! %x != %x.\r\n", __FUNCTION__, __LINE__, 
 			queue_cmd->mb_cmd.param1, ipc_cmd->mb_cmd.param1);
 
 		#if DEBUG_MB_IPC
-		BK_LOGE(MOD_TAG, "tx2 error: ipc-cmd-%02x, %x != %x.\r\n", ipc_cmd->hdr.cmd,
+		BK_LOGE(MOD_TAG, "tx2 error: ipc-cmd-%02x, %x != %x.\r\n", ipc_cmd->hdr.cmd, 
 			queue_cmd->mb_cmd.param2, ipc_cmd->mb_cmd.param2);
-		BK_LOGE(MOD_TAG, "tx2 error: que-cmd-%02x, %x != %x.\r\n", queue_cmd->hdr.cmd,
+		BK_LOGE(MOD_TAG, "tx2 error: que-cmd-%02x, %x != %x.\r\n", queue_cmd->hdr.cmd, 
 			queue_cmd->mb_cmd.param3, ipc_cmd->mb_cmd.param3);
 		#endif
 
 		return;   /* something wrong. */ /* not the CMD just sent. */
 	}
-
+	
 	// if send failed.
 	/* refer to <design document> P44 tx_cmpl_isr 2). */
-	if( (ipc_cmd->hdr.state & CHNL_STATE_COM_FAIL) ||
+	if( (ipc_cmd->hdr.state & CHNL_STATE_COM_FAIL) || 
 		(ipc_cmd->route_status != IPC_ROUTE_STATUS_OK) )
 	{
 
 		if(ipc_cmd->hdr.state & CHNL_STATE_COM_FAIL)
 		{
-			// mailbox channel tx failed.
+			// mailbox channel tx failed. 
 			ipc_socket->tx_status = MB_IPC_TX_FAILED;
 		}
 		else  // (ipc_cmd->route_status != IPC_ROUTE_STATUS_OK)
@@ -903,12 +903,12 @@ static int ipc_socket_rx_rsp_handler(mb_ipc_socket_t * ipc_socket, mb_ipc_cmd_t 
 	if( (ipc_socket->tx_cmd.tag != ipc_cmd->tag)
 		#if DEBUG_MB_IPC
 		|| (ipc_socket->tx_cmd.mb_cmd.param2 != ipc_cmd->mb_cmd.param2)
-		|| (ipc_socket->tx_cmd.mb_cmd.param3 != ipc_cmd->mb_cmd.param3)
+		|| (ipc_socket->tx_cmd.mb_cmd.param3 != ipc_cmd->mb_cmd.param3) 
 		#endif
 		) /* param1, other fields not compared. */
 	{
 		#if DEBUG_MB_IPC
-		BK_LOGE(MOD_TAG, "%s error @%d, %d != %d.\r\n", __FUNCTION__, __LINE__,
+		BK_LOGE(MOD_TAG, "%s error @%d, %d != %d.\r\n", __FUNCTION__, __LINE__, 
 			ipc_socket->tx_cmd.tag, ipc_cmd->tag);
 		#endif
 
@@ -948,8 +948,8 @@ static void ipc_socket_rx_cmd_error_handler(mb_ipc_socket_t * ipc_socket, int er
 static int ipc_socket_rx_cmd_connect(mb_ipc_socket_t * ipc_socket)
 {
 	ipc_socket->use_flag  |= USE_FLAG_CONNECTED;
-	// ipc_socket->run_state &= ~STATE_TX_IN_PROCESS;  // must have no cmd in sending, clear tx_in_process to be sure.
-	mb_atomic_clear(&ipc_socket->run_state, STATE_TX_IN_PROCESS);
+	// ipc_socket->run_state &= ~STATE_TX_IN_PROCESS;  // must have no cmd in sending, clear tx_in_process to be sure. 
+	mb_atomic_clear(&ipc_socket->run_state, STATE_TX_IN_PROCESS);
 	ipc_socket->tx_status = 0;  // must have no cmd in sending, so clear the tx status too.
 
 	ipc_socket_tx_rsp(ipc_socket, &ipc_socket->rx_cmd);
@@ -970,7 +970,7 @@ static int ipc_socket_rx_cmd_disconnect(mb_ipc_socket_t * ipc_socket)
 
 	ipc_socket->use_flag  &= ~USE_FLAG_CONNECTED;
 	// ipc_socket->run_state &= ~STATE_TX_IN_PROCESS;    // cleared TX_IN_PROCESS.
-	mb_atomic_clear(&ipc_socket->run_state, STATE_TX_IN_PROCESS);
+	mb_atomic_clear(&ipc_socket->run_state, STATE_TX_IN_PROCESS);
 
 	ipc_socket_tx_rsp(ipc_socket, &ipc_socket->rx_cmd);
 
@@ -981,7 +981,7 @@ static int ipc_socket_rx_cmd_disconnect(mb_ipc_socket_t * ipc_socket)
 		// if it is a client, notify app to close socket to free resources.
 		// server must NOT close socket. it will wait for new connection.
 	}
-
+	
 	return -1;  // don't notify upper layer for further process.
 
 }
@@ -993,7 +993,7 @@ static int ipc_socket_rx_cmd_default_handler(mb_ipc_socket_t * ipc_socket)
 	if( (ipc_socket->use_flag & USE_FLAG_CONNECTED) == 0 )
 	{
 		ipc_socket_rx_cmd_error_handler(ipc_socket, IPC_API_IMPL_RX_NOT_CONNECT);
-
+		
 		return -1;  // need not to notify upper layer.
 	}
 
@@ -1004,7 +1004,7 @@ static int ipc_socket_rx_cmd_default_handler(mb_ipc_socket_t * ipc_socket)
 
 		return -1;  // need not to notify upper layer.
 	}
-
+	
 //	ipc_socket_rx_notify(ipc_socket);
 
 	return 0;  // need to notify upper layer for further process.
@@ -1033,7 +1033,7 @@ static int ipc_socket_rx_cmd_handler(mb_ipc_socket_t * ipc_socket, mb_ipc_cmd_t 
 		}
 	}
 
-	int route_status = IPC_ROUTE_STATUS_OK;  // return to indicate that cmd has reached target.
+	int route_status = IPC_ROUTE_STATUS_OK;  // return to indicate that cmd has reached target. 
 
 	if( ipc_socket->run_state & STATE_RX_IN_PROCESS )	/* has a cmd uncompleted. */
 	{
@@ -1060,22 +1060,22 @@ static int ipc_socket_rx_cmd_handler(mb_ipc_socket_t * ipc_socket, mb_ipc_cmd_t 
 		ipc_socket->rx_cmd.mb_cmd.param1 = ipc_cmd->mb_cmd.param1;
 		ipc_socket->rx_cmd.mb_cmd.param2 = ipc_cmd->mb_cmd.param2;
 		ipc_socket->rx_cmd.mb_cmd.param3 = ipc_cmd->mb_cmd.param3;
-
+		
 		ipc_socket->rx_read_offset = 0;
 		// ipc_socket->run_state |= STATE_RX_IN_PROCESS;
-		mb_atomic_set(&ipc_socket->run_state, STATE_RX_IN_PROCESS);
+		mb_atomic_set(&ipc_socket->run_state, STATE_RX_IN_PROCESS);
 
 		if( (ipc_socket->use_flag & USE_FLAG_ALLOCATED) == 0 )  // socket must have been initialized.
 		{
 			ipc_socket_rx_cmd_error_handler(ipc_socket, IPC_API_IMPL_NOT_INITED);
-
+			
 			return IPC_ROUTE_STATUS_OK;
 		}
 
 		ipc_socket->rx_cmd.api_impl_status = IPC_API_IMPL_STATUS_OK;  // clear the status before providing to upper layer.
 
 		int  ret_val = 0;
-
+		
 		/* rx cmd process. */
 		switch(ipc_socket->rx_cmd.hdr.cmd)
 		{
@@ -1090,7 +1090,7 @@ static int ipc_socket_rx_cmd_handler(mb_ipc_socket_t * ipc_socket, mb_ipc_cmd_t 
 			case MB_IPC_SEND_CMD:
 				// no special process, go through to default handler.
 				// break;
-
+				
 			default:
 				ret_val = ipc_socket_rx_cmd_default_handler(ipc_socket);
 				break;
@@ -1100,7 +1100,7 @@ static int ipc_socket_rx_cmd_handler(mb_ipc_socket_t * ipc_socket, mb_ipc_cmd_t 
 
 		if(ret_val == 0)  // need to notify app for further process.
 			ipc_socket_rx_notify(ipc_socket);
-
+		
 		route_status = IPC_ROUTE_STATUS_OK;  // return to indicate that cmd has reached target.
 		// must return IPC_ROUTE_STATUS_OK !!!!
 		// because the communication is ok, the cmd result will be returned in RSP package.
@@ -1118,7 +1118,7 @@ static int ipc_socket_rx_handler(mb_ipc_socket_t * ipc_socket, mb_ipc_cmd_t *ipc
 		// this status return is worthless but for debug.
 		return ipc_socket_rx_rsp_handler(ipc_socket, ipc_cmd);
 	}
-	else   // it is a cmd.
+	else   // it is a cmd. 
 	{
 		/* please refer to <design document> P45 rx_isr 4). */
 
@@ -1129,18 +1129,18 @@ static int ipc_socket_rx_handler(mb_ipc_socket_t * ipc_socket, mb_ipc_cmd_t *ipc
 static int ipc_socket_local_tx_cmd(mb_ipc_socket_t * ipc_socket, mb_ipc_cmd_t *ipc_cmd)
 {
 	mb_ipc_socket_t * tx_ipc_socket = ipc_socket;
-
+	
 	mb_ipc_cmd_t	  rx_cmd;
 
 	// simulate the mailbox tx and rx process.
-
-	// simulate local tx, (set tx flag).
+	
+	// simulate local tx, (set tx flag). 
 	// always tx successfully, because target resides in local cpu.
 	ipc_socket->run_state |= STATE_TX_IN_PROCESS;
 
 	ipc_socket_set_addr(ipc_socket, ipc_cmd);
 
-	// simulate the target rx.
+	// simulate the target rx. 
 	// copy mailbox data from device registers to statck variable.
 	// memcpy(&rx_cmd, ipc_cmd, sizeof(rx_cmd));  // receive the cmd.
 	rx_cmd.mb_cmd.hdr.data = ipc_cmd->mb_cmd.hdr.data;
@@ -1165,7 +1165,7 @@ static int ipc_socket_local_tx_cmd(mb_ipc_socket_t * ipc_socket, mb_ipc_cmd_t *i
 static int ipc_socket_local_tx_rsp(mb_ipc_socket_t * ipc_socket, mb_ipc_cmd_t *ipc_cmd)
 {
 	mb_ipc_socket_t * tx_ipc_socket = ipc_socket;
-
+	
 	mb_ipc_cmd_t	  rx_cmd;
 
 	// simulate the mailbox tx and rx process.
@@ -1173,8 +1173,8 @@ static int ipc_socket_local_tx_rsp(mb_ipc_socket_t * ipc_socket, mb_ipc_cmd_t *i
 	ipc_socket_set_addr(ipc_socket, ipc_cmd);
 
 	ipc_cmd->hdr.cmd |= MB_IPC_RSP_FLAG;   // set to rsp packet.
-
-	// simulate the target rx.
+	
+	// simulate the target rx. 
 	// copy mailbox data from device registers to statck variable.
 	// memcpy(&rx_cmd, ipc_cmd, sizeof(rx_cmd));  // receive the rsp.
 	rx_cmd.mb_cmd.hdr.data = ipc_cmd->mb_cmd.hdr.data;
@@ -1218,7 +1218,7 @@ static u32 get_handle_from_socket(mb_ipc_socket_t * ipc_socket, u8 idx)
 
 	ipc_handle.connect_id = (idx & SOCKET_CONNECT_ID_MASK);
 	ipc_handle.sock_valid = 1;
-
+	
 	return ipc_handle.data;
 }
 
@@ -1234,7 +1234,7 @@ static mb_ipc_socket_t * get_socket_from_handle(u32 handle)
 	{
 		return NULL;
 	}
-
+	
 	#if !CONFIG_SOC_SMP
 	if(ipc_handle.src_cpu != CURRENT_CPU)
 	{
@@ -1243,14 +1243,14 @@ static mb_ipc_socket_t * get_socket_from_handle(u32 handle)
 	#endif
 
 	u8     src_port = ipc_handle.src_port;
-
+	
 	if( IS_SERVER_PORT(src_port) )
 	{
 		if(ipc_handle.connect_id >= MAX_CONNET_PER_SVR)
 		{
 			return NULL;
 		}
-
+		
 		ipc_socket = &ipc_server_socket_tbl[src_port - SERVER_PORT_MIN][ipc_handle.connect_id];
 	}
 	else if( IS_CLIENT_PORT(src_port) )
@@ -1269,7 +1269,7 @@ static mb_ipc_socket_t * get_socket_from_handle(u32 handle)
 static void init_client_socket(void)
 {
 	memset(&ipc_client_socket_tbl[0], 0, sizeof(ipc_client_socket_tbl));
-
+	
 	for(int i = 0; i < CLIENT_PORT_NUM; i++)
 	{
 		ipc_client_socket_tbl[i].src_cpu  = CURRENT_CPU;
@@ -1281,7 +1281,7 @@ static void init_client_socket(void)
 static void init_server_socket(void)
 {
 	memset(&ipc_server_socket_tbl[0][0], 0, sizeof(ipc_server_socket_tbl));
-
+	
 	for(int i = 0; i < SERVER_PORT_NUM; i++)
 	{
 		for(int j = 0; j < MAX_CONNET_PER_SVR; j++)
@@ -1296,7 +1296,7 @@ static void init_server_socket(void)
 static u8 ipc_allocate_port(u8 port)
 {
 	int   port_idx = 0;
-
+	
 	if(port == 0)  // invalid port number.
 	{
 		#if 0
@@ -1306,7 +1306,7 @@ static u8 ipc_allocate_port(u8 port)
 			if(ipc_client_socket_tbl[port_idx].use_flag == 0 )
 			{
 				port = port_idx + CLIENT_PORT_MIN;
-
+				
 				return port;
 			}
 		}
@@ -1327,7 +1327,7 @@ static u8 ipc_allocate_port(u8 port)
 	else if( IS_SERVER_PORT(port) )
 	{
 		port_idx = port - SERVER_PORT_MIN;
-
+		
 		if(ipc_server_socket_tbl[port_idx][0].use_flag != 0)
 		{
 			return 0;
@@ -1354,7 +1354,7 @@ u32 mb_ipc_socket(u8 port, void * rx_callback)
 	beken_semaphore_t  rx_semaphore = NULL;
 
 	rtos_init_semaphore(&tx_semaphore, 1);
-
+	
 	if(tx_semaphore == NULL)
 	{
 		return ipc_handle.data;
@@ -1363,17 +1363,17 @@ u32 mb_ipc_socket(u8 port, void * rx_callback)
 	if(rx_callback == NULL)  // not callback notification
 	{
 		rtos_init_semaphore(&rx_semaphore, 1);
-
+		
 		if(rx_semaphore == NULL)
 		{
 			rtos_deinit_semaphore(&tx_semaphore);
-
+			
 			return ipc_handle.data;
 		}
 	}
 
 	u32   temp = mb_ipc_enter_critical();
-
+	
 	port = ipc_allocate_port(port);
 
 	if(port == 0)
@@ -1405,15 +1405,15 @@ u32 mb_ipc_socket(u8 port, void * rx_callback)
 			ipc_client_socket_tbl[port_idx].ctrl_mode &= ~CTRL_RX_SEMA_NOTIFY; // callback notification.
 			ipc_client_socket_tbl[port_idx].rx_notify_isr = (mb_ipc_notify_isr_t)rx_callback;
 		}
-
+		
 		ipc_client_socket_tbl[port_idx].use_flag = USE_FLAG_ALLOCATED;
 		ipc_handle.data = ipc_client_socket_tbl[port_idx].handle.data;
-
+		
 	}
 	else if( IS_SERVER_PORT(port) )
 	{
 		port_idx = port - SERVER_PORT_MIN;
-
+		
 		// the same setting for all clients connected to this server.
 		for(int j = 0; j < MAX_CONNET_PER_SVR; j++)
 		{
@@ -1429,10 +1429,10 @@ u32 mb_ipc_socket(u8 port, void * rx_callback)
 				ipc_server_socket_tbl[port_idx][j].ctrl_mode &= ~CTRL_RX_SEMA_NOTIFY; // callback notification.
 				ipc_server_socket_tbl[port_idx][j].rx_notify_isr = (mb_ipc_notify_isr_t)rx_callback;
 			}
-
+			
 			ipc_server_socket_tbl[port_idx][j].use_flag = USE_FLAG_ALLOCATED;
 		}
-
+		
 		ipc_handle.data = ipc_server_socket_tbl[port_idx][0].handle.data;
 	}
 
@@ -1451,7 +1451,7 @@ int mb_ipc_connect(u32 handle, u8 dst_cpu, u8 dst_port, u32 time_out)
 	{
 		return -MB_IPC_INVALID_PORT;
 	}
-
+	
 	mb_ipc_socket_t * ipc_socket = get_socket_from_handle(handle);
 
 	if(ipc_socket == NULL)
@@ -1473,7 +1473,7 @@ int mb_ipc_connect(u32 handle, u8 dst_cpu, u8 dst_port, u32 time_out)
 	// set the dst cpu-port firstly, because the tx_cmd/rx_rsp need these informations.
 	ipc_socket->dst_cpu  = dst_cpu;
 	ipc_socket->dst_port = dst_port;
-
+	
 	ipc_socket->run_state = 0;
 	ipc_socket->tx_status = 0;
 	ipc_socket->rx_read_offset = 0;
@@ -1488,9 +1488,9 @@ int mb_ipc_connect(u32 handle, u8 dst_cpu, u8 dst_port, u32 time_out)
 	do
 	{
 		rtos_get_semaphore(&ipc_socket->tx_notify_sema, 0);  // clear the semaphore state.
-
+		
 		int route_status = ipc_socket_tx_cmd(ipc_socket, &ipc_socket->tx_cmd, retry);
-
+		
 		if(route_status != IPC_ROUTE_STATUS_OK)
 		{
 			ret_val = -(MB_IPC_ROUTE_BASE_FAILED + route_status);
@@ -1498,16 +1498,16 @@ int mb_ipc_connect(u32 handle, u8 dst_cpu, u8 dst_port, u32 time_out)
 		}
 
 		route_status = rtos_get_semaphore(&ipc_socket->tx_notify_sema, time_out);
-
+		
 		if(route_status != 0)
 		{
-			// ipc_socket->run_state &= ~STATE_TX_IN_PROCESS;  // clear tx_in_process. prevent cmd from being handled in ISR.
-			mb_atomic_clear(&ipc_socket->run_state, STATE_TX_IN_PROCESS);
+		//	ipc_socket->run_state &= ~STATE_TX_IN_PROCESS;  // clear tx_in_process. prevent cmd from being handled in ISR.
+			mb_atomic_clear(&ipc_socket->run_state, STATE_TX_IN_PROCESS);
 			ret_val = -MB_IPC_TX_TIMEOUT;
 			// rtos_delay_milliseconds(MB_IPC_RETRY_DELAY);
 			continue;
 		}
-
+		
 		if(ipc_socket->tx_status == MB_IPC_TX_OK)
 		{
 			ipc_socket->use_flag |= USE_FLAG_CONNECTED;
@@ -1553,9 +1553,9 @@ int mb_ipc_disconnect(u32 handle, u8 dst_cpu, u8 dst_port, u32 time_out)
 
 	ipc_socket->dst_cpu  = dst_cpu;
 	ipc_socket->dst_port = dst_port;
-
+	
 	// ipc_socket->run_state &= ~STATE_TX_IN_PROCESS;  // clear tx_in_process. prevent previous cmd from being handled in ISR.
-	mb_atomic_clear(&ipc_socket->run_state, STATE_TX_IN_PROCESS);
+	mb_atomic_clear(&ipc_socket->run_state, STATE_TX_IN_PROCESS);
 
 	memset(&ipc_socket->tx_cmd, 0, sizeof(ipc_socket->tx_cmd));
 
@@ -1567,9 +1567,9 @@ int mb_ipc_disconnect(u32 handle, u8 dst_cpu, u8 dst_port, u32 time_out)
 	do
 	{
 		rtos_get_semaphore(&ipc_socket->tx_notify_sema, 0);  // clear the semaphore state.
-
+		
 		int route_status = ipc_socket_tx_cmd(ipc_socket, &ipc_socket->tx_cmd, retry);
-
+		
 		if(route_status != IPC_ROUTE_STATUS_OK)
 		{
 			ret_val = -(MB_IPC_ROUTE_BASE_FAILED + route_status);
@@ -1577,11 +1577,11 @@ int mb_ipc_disconnect(u32 handle, u8 dst_cpu, u8 dst_port, u32 time_out)
 		}
 
 		route_status = rtos_get_semaphore(&ipc_socket->tx_notify_sema, time_out);
-
+		
 		if(route_status != 0)
 		{
 			// ipc_socket->run_state &= ~STATE_TX_IN_PROCESS;  // clear tx_in_process. prevent cmd from being handled in ISR.
-			mb_atomic_clear(&ipc_socket->run_state, STATE_TX_IN_PROCESS);
+			mb_atomic_clear(&ipc_socket->run_state, STATE_TX_IN_PROCESS);
 			ret_val = -MB_IPC_TX_TIMEOUT;
 			// rtos_delay_milliseconds(MB_IPC_RETRY_DELAY);
 			continue;
@@ -1597,13 +1597,13 @@ int mb_ipc_disconnect(u32 handle, u8 dst_cpu, u8 dst_port, u32 time_out)
 		{
 			ipc_socket->dst_cpu  = 0;
 			ipc_socket->dst_port = 0;
-
+			
 			ipc_socket->use_flag &= ~USE_FLAG_CONNECTED;
 			return 0;
 		}
 		else
 		{
-			if( (ipc_socket->tx_status > MB_IPC_API_BASE_FAILED) ||
+			if( (ipc_socket->tx_status > MB_IPC_API_BASE_FAILED) || 
 				(ipc_socket->tx_status == (MB_IPC_ROUTE_BASE_FAILED + IPC_ROUTE_UNREACHABLE)) )
 			{
 				ipc_socket->dst_cpu  = 0;
@@ -1641,7 +1641,7 @@ int mb_ipc_close(u32 handle, u32 time_out)
 		// server sockets are not closed, so can't free any resources.
 		return 0;
 	}
-
+	
 	// free resources.
 	rtos_deinit_semaphore(&ipc_socket->tx_notify_sema);
 
@@ -1649,9 +1649,9 @@ int mb_ipc_close(u32 handle, u32 time_out)
 	{
 		rtos_deinit_semaphore(&ipc_socket->rx_notify_sema);
 	}
-
+	
 	ipc_socket->use_flag = 0;   // &= ~(USE_FLAG_CONNECTED | USE_FLAG_ALLOCATED); // disconnected, socket closed.
-
+	
 	return 0;
 }
 
@@ -1683,14 +1683,14 @@ int mb_ipc_send_async(u32 handle, u8 user_cmd, u8 * data_buff, u32 data_len)
 	memset(&ipc_socket->tx_cmd, 0, sizeof(ipc_socket->tx_cmd));
 
 	ipc_socket->tx_cmd.hdr.cmd = MB_IPC_SEND_CMD;
-
+	
 	ipc_socket->tx_cmd.user_cmd      = user_cmd;
 	ipc_socket->tx_cmd.cmd_data_len  = data_len;
 	ipc_socket->tx_cmd.cmd_data_buff = data_buff;
 	ipc_socket->tx_cmd.cmd_data_crc8 = cal_crc8_0x31(data_buff, data_len);
 
 	int route_status = ipc_socket_tx_cmd(ipc_socket, &ipc_socket->tx_cmd, 0);
-
+	
 	if(route_status != IPC_ROUTE_STATUS_OK)
 	{
 		return -(MB_IPC_ROUTE_BASE_FAILED + route_status);
@@ -1727,7 +1727,7 @@ int mb_ipc_send(u32 handle, u8 user_cmd, u8 * data_buff, u32 data_len, u32 time_
 	memset(&ipc_socket->tx_cmd, 0, sizeof(ipc_socket->tx_cmd));
 
 	ipc_socket->tx_cmd.hdr.cmd = MB_IPC_SEND_CMD;
-
+	
 	ipc_socket->tx_cmd.user_cmd      = user_cmd;
 	ipc_socket->tx_cmd.cmd_data_len  = data_len;
 	ipc_socket->tx_cmd.cmd_data_buff = data_buff;
@@ -1741,7 +1741,7 @@ int mb_ipc_send(u32 handle, u8 user_cmd, u8 * data_buff, u32 data_len, u32 time_
 		rtos_get_semaphore(&ipc_socket->tx_notify_sema, 0);  // clear the semaphore state.
 
 		int route_status = ipc_socket_tx_cmd(ipc_socket, &ipc_socket->tx_cmd, retry);
-
+		
 		if(route_status != IPC_ROUTE_STATUS_OK)
 		{
 			ret_val = -(MB_IPC_ROUTE_BASE_FAILED + route_status);
@@ -1749,16 +1749,16 @@ int mb_ipc_send(u32 handle, u8 user_cmd, u8 * data_buff, u32 data_len, u32 time_
 		}
 
 		route_status = rtos_get_semaphore(&ipc_socket->tx_notify_sema, time_out);
-
+		
 		if(route_status != 0)
 		{
 			// ipc_socket->run_state &= ~STATE_TX_IN_PROCESS;  // clear tx_in_process. prevent cmd from being handled in ISR.
-			mb_atomic_clear(&ipc_socket->run_state, STATE_TX_IN_PROCESS);
+			mb_atomic_clear(&ipc_socket->run_state, STATE_TX_IN_PROCESS);
 			ret_val = -MB_IPC_TX_TIMEOUT;
 			// rtos_delay_milliseconds(MB_IPC_RETRY_DELAY);
 			continue;
 		}
-
+		
 		if(ipc_socket->tx_status == MB_IPC_TX_OK)
 		{
 			return 0;
@@ -1815,10 +1815,10 @@ int mb_ipc_get_recv_data_len(u32 handle)
 			{
 				ipc_socket_rx_cmd_error_handler(ipc_socket, IPC_API_IMPL_RX_DATA_FAILED);
 			}
-
+			
 			return -MB_IPC_NO_DATA;
 		}
-
+		
 		int recv_len = ipc_socket->rx_cmd.cmd_data_len;
 		return recv_len;
 	}
@@ -1834,7 +1834,7 @@ int mb_ipc_get_recv_event(u32 handle, u32 * event_flag)
 		return -MB_IPC_INVALID_PARAM;
 
 	*event_flag = MB_IPC_CMD_MAX + 1;
-
+	
 	mb_ipc_socket_t * ipc_socket = get_socket_from_handle(handle);
 
 	if(ipc_socket == NULL)
@@ -1870,7 +1870,7 @@ int mb_ipc_get_recv_event(u32 handle, u32 * event_flag)
 
 		*event_flag = MB_IPC_CONNECT_CMD;  // connect cmd reponsed automatically before notifying app.
 	}
-
+	
 	return 0;
 }
 
@@ -1916,12 +1916,12 @@ int mb_ipc_recv_async(u32 handle, u8 * user_cmd, u8 * data_buff, u32 buff_len)
 
 			return 0;
 		}
-
+		
 		if(user_cmd != NULL)
 		{
 			*user_cmd = ipc_socket->rx_cmd.user_cmd;
 		}
-
+		
 		if( (data_buff == NULL) || (buff_len == 0) )
 		{
 			// discard all data in buffer. after this call, rx_cmd.hdr.cmd is changed.
@@ -1962,7 +1962,7 @@ int mb_ipc_recv_async(u32 handle, u8 * user_cmd, u8 * data_buff, u32 buff_len)
 		{
 			ipc_socket_tx_rsp(ipc_socket, &ipc_socket->rx_cmd);  // after this call, rx_cmd.hdr.cmd is changed.
 		}
-
+		
 		return read_len;
 	}
 
@@ -1981,18 +1981,18 @@ int mb_ipc_recv(u32 handle, u8 * user_cmd, u8 * data_buff, u32 buff_len, u32 tim
 	int   read_len;
 
 recv_data_async:
-
+	
 	read_len = mb_ipc_recv_async(handle, user_cmd, data_buff, buff_len);
 
 	if(read_len != 0)
 		return read_len;
-
+	
 	if(user_cmd != NULL)
 	{
 		if(*user_cmd != INVALID_USER_CMD_ID)
 			return read_len;
 	}
-
+	
 	if(ipc_socket->ctrl_mode & CTRL_RX_SEMA_NOTIFY)
 	{
 		// wait to receive send command.
@@ -2034,7 +2034,7 @@ u32 mb_ipc_server_get_connect_handle(u32 handle, u32 connect_id)
 	}
 
 	ipc_handle.connect_id = (connect_id & SOCKET_CONNECT_ID_MASK);
-
+	
 	return ipc_handle.data;
 }
 
@@ -2060,7 +2060,7 @@ int mb_ipc_server_close(u32 handle, u32 time_out)
 
 	u32   svr_handle;
 	mb_ipc_socket_t  * svr_socket;
-
+	
 	for(int j = 0; j < MAX_CONNET_PER_SVR; j++)
 	{
 		// svr_handle = mb_ipc_server_get_connect_handle(handle, j);
@@ -2076,7 +2076,7 @@ int mb_ipc_server_close(u32 handle, u32 time_out)
 		{
 			mb_ipc_close(svr_handle, time_out);
 		}
-
+		
 		svr_socket->use_flag = 0; // disconnected & closed.
 	}
 
@@ -2119,7 +2119,7 @@ int mb_ipc_server_send(u32 handle, u8 user_cmd, u8 * data_buff, u32 data_len, u3
 		svr_handle = get_handle_from_socket(ipc_socket, j);
 
 		run_status = mb_ipc_send(svr_handle, user_cmd, data_buff, data_len, time_out);
-
+		
 		if(run_status == 0)
 		{
 			cnt++;
@@ -2163,7 +2163,7 @@ svr_recv_data_async:
 
 		if(read_len < 0)
 			continue;
-
+		
 		if(user_cmd != NULL)
 		{
 			if(*user_cmd != INVALID_USER_CMD_ID)
@@ -2208,14 +2208,14 @@ bk_err_t mb_ipc_init(void)
 	for(route_id = 0; route_id < ARRAY_SIZE(ipc_route_tbl); route_id++)
 	{
 		u8    chnl_id = ipc_route_tbl[route_id].log_chnl;
-
+		
 		ret_code = mb_chnl_open(chnl_id, (void *)route_id);
-
+		
 		if(ret_code != BK_OK)
 		{
 			goto init_exit;
 		}
-
+		
 		mb_chnl_ctrl(chnl_id, MB_CHNL_SET_RX_ISR, (void *)ipc_router_rx_isr);
 		mb_chnl_ctrl(chnl_id, MB_CHNL_SET_TX_CMPL_ISR, (void *)ipc_router_tx_cmpl_isr);
 	}
@@ -2232,7 +2232,7 @@ mb_ipc_test_init();
 	return BK_OK;
 
 init_exit:
-
+	
 	for(int i =0; i < route_id; i++)
 	{
 		mb_chnl_close(ipc_route_tbl[i].log_chnl);

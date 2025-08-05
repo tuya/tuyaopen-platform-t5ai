@@ -17,26 +17,6 @@
 #include "portmacro.h"
 #include "projdefs.h"
 
-VOID_T tkl_system_TaskNotifyTake(BOOL_T xClearCountOnExit)
-{
-    if (xClearCountOnExit)
-        ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
-    else
-        ulTaskNotifyTake(pdFALSE, portMAX_DELAY);
-}
-
-VOID_T tkl_system_TaskNotifyGive(TKL_THREAD_HANDLE TaskHandle)
-{
-    xTaskNotifyGive((TaskHandle_t)TaskHandle);
-}
-
-VOID_T tkl_system_TaskNotifyGiveFromISR(TKL_THREAD_HANDLE TaskHandle)
-{
-    BaseType_t xHigherPriorityTaskWoken = pdFALSE;
-    vTaskNotifyGiveFromISR((TaskHandle_t)TaskHandle, &xHigherPriorityTaskWoken);
-    portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
-}
-
 /**
 * @brief Create thread
 *

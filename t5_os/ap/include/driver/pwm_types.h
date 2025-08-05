@@ -49,6 +49,7 @@ extern "C" {
 #define BK_ERR_PWM_GROUP_SAME_CHAN (BK_ERR_PWM_BASE - 14) /**< PWM group channel is same */
 #define BK_ERR_PWM_INVALID_GPIO_MODE (BK_ERR_PWM_BASE - 15) /**< PWM invalid gpio mode */
 #define BK_ERR_PWM_PHASE_SHIFT_CHAN_NUM (BK_ERR_PWM_BASE - 16) /**< PWM phase shift invalid chan number */
+#define BK_ERR_PWM_UNIT_ID (BK_ERR_PWM_BASE - 17) /**< PWM unit ID is invalid */
 
 /**
  * @brief default PWM configuration

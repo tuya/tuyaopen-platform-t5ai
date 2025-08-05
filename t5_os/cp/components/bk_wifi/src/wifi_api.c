@@ -65,7 +65,9 @@ extern uint8 bridge_is_enabled;
 int demo_softap_app_init(char *ap_ssid, char *ap_key, char *ap_channel)
 {
 	wifi_ap_config_t ap_config = {0};//WIFI_DEFAULT_AP_CONFIG();
+#if 0
 	netif_ip4_config_t ip4_config = {0};
+#endif
 	int len, key_len = 0;
 	len = os_strlen(ap_ssid);
 	if (ap_key)
@@ -86,6 +88,7 @@ int demo_softap_app_init(char *ap_ssid, char *ap_key, char *ap_channel)
 		BK_LOGW(TAG, "key more than 64 Bytes\r\n");
 		return BK_FAIL;
 	}
+#if 0
 #if CONFIG_BRIDGE
 	if (!bridge_is_enabled) {
 #endif
@@ -102,7 +105,7 @@ int demo_softap_app_init(char *ap_ssid, char *ap_key, char *ap_channel)
 	}
 #endif
 	BK_RETURN_ON_ERR(bk_netif_set_ip4_config(NETIF_IF_AP, &ip4_config));
-
+#endif
 	os_strcpy(ap_config.ssid, ap_ssid);
 	if (ap_key)
 		os_strcpy(ap_config.password, ap_key);
@@ -128,7 +131,9 @@ int demo_softap_app_init(char *ap_ssid, char *ap_key, char *ap_channel)
 int demo_softap_hidden_init(char *ap_ssid, char *ap_key, char *ap_channel)
 {
 	wifi_ap_config_t ap_config = {0};//WIFI_DEFAULT_AP_CONFIG();
+#if 0
 	netif_ip4_config_t ip4_config = {0};
+#endif
 	int len, key_len = 0;
 	len = os_strlen(ap_ssid);
 	if (ap_key)
@@ -149,6 +154,7 @@ int demo_softap_hidden_init(char *ap_ssid, char *ap_key, char *ap_channel)
 		BK_LOGW(TAG, "key more than 64 Bytes\r\n");
 		return BK_FAIL;
 	}
+#if 0
 #if CONFIG_BRIDGE
 	if (!bridge_is_enabled) {
 #endif
@@ -165,6 +171,7 @@ int demo_softap_hidden_init(char *ap_ssid, char *ap_key, char *ap_channel)
 	}
 #endif
 	BK_RETURN_ON_ERR(bk_netif_set_ip4_config(NETIF_IF_AP, &ip4_config));
+#endif
 
 	os_strcpy(ap_config.ssid, ap_ssid);
 	if (ap_key)

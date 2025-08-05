@@ -286,9 +286,11 @@ int lfs_qspi_flashbd_init(uint32_t id) {
 	return ret;
 }
 
+// Modified by TUYA Start
 extern bk_err_t qflash_erase(uint32_t addr, uint32_t size);
 extern bk_err_t qflash_read(uint32_t addr, uint8_t *buff, uint32_t size);
 extern bk_err_t qflash_write(uint32_t addr, const uint8_t *buff, uint32_t size);
+// Modified by TUYA End
 
 int lfs_qspi_flashbd_read(const struct lfs_config *cfg, lfs_block_t block,
         lfs_off_t off, void *buffer, lfs_size_t size) {

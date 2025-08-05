@@ -62,7 +62,7 @@ VOID_T *tkl_system_memcpy(VOID_T* src, CONST VOID_T* dst, CONST SIZE_T n);
 
 /**
  * @brief Allocate and clear the memory
- * 
+ *
  * @param[in]       nitems      the numbers of memory block
  * @param[in]       size        the size of the memory block
  *
@@ -72,7 +72,7 @@ VOID_T *tkl_system_calloc(size_t nitems, size_t size);
 
 /**
  * @brief Re-allocate the memory
- * 
+ *
  * @param[in]       nitems      source memory address
  * @param[in]       size        the size after re-allocate
  *
@@ -88,6 +88,8 @@ VOID_T *tkl_system_realloc(VOID_T* ptr, size_t size);
 * @return heap size
 */
 INT_T tkl_system_get_free_heap_size(VOID_T);
+
+INT_T tkl_system_get_minimum_heap_size(VOID_T);
 
 INT_T tkl_system_memcmp(CONST VOID_T *str1, CONST VOID_T *str2, SIZE_T n);
 
@@ -144,11 +146,21 @@ VOID_T *tkl_system_psram_realloc(VOID_T* ptr, size_t size);
 */
 INT_T tkl_system_get_free_heap_size(VOID_T);
 
+/**
+* @brief Get free heap size in psram
+*
+* @param VOID
+*
+* @note This API is used for getting free heap size.
+*
+* @return size of free heap
+*/
+INT_T tkl_system_psram_get_free_heap_size(VOID_T);
 #endif
 
 #ifdef __cplusplus
 }
 #endif /* __cplusplus */
 
-#endif 
+#endif
 

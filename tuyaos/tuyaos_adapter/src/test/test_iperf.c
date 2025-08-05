@@ -20,6 +20,7 @@
 #include "net.h"
 #endif
 #include "bk_misc.h"
+#include <tkl_thread.h>
 #if CONFIG_PSA_MBEDTLS_TEST
 #include <tls_connect.h>
 #endif
@@ -84,7 +85,7 @@ static uint32_t iperf_tos = 0; // TOS_BE: 0, BK: 0x20, VI: 0xA0, VO: 0xD0
 extern void bk_task_wdt_feed(void);
 #endif
 
-static void iperf_reset(void)
+static void tuya_iperf_reset(void)
 {
 	s_param.mode = IPERF_MODE_NONE;
 	if (s_param.host)
@@ -96,7 +97,7 @@ static void iperf_reset(void)
 #endif
 }
 
-static void iperf_set_sock_opt(int sock)
+static void tuya_iperf_set_sock_opt(int sock)
 {
 	struct timeval tv;
 	int flag = 1;
@@ -119,7 +120,7 @@ static void iperf_set_sock_opt(int sock)
 	setsockopt(sock, IPPROTO_IP, IP_TOS, &tosval, sizeof(tosval));
 }
 
-static void iperf_report_init(void)
+static void tuya_iperf_report_init(void)
 {
 	beken_time_get_time(&s_tick_last);
 	//s_tick_last /= 1000;
@@ -127,7 +128,7 @@ static void iperf_report_init(void)
 	s_pkt_delta = 0;
 }
 
-static void iperf_report(int pkt_len)
+static void tuya_iperf_report(int pkt_len)
 {
 	uint32_t tick_now = 0;
 	uint32_t delta_tick  = 0;
@@ -158,10 +159,10 @@ etharp_request(struct netif *netif, const ip4_addr_t *ipaddr);
 extern void *net_get_sta_handle(void);
 extern void *net_get_uap_handle(void);
 
-struct netif * get_netif(ip4_addr_t *ipaddr)
+struct netif * tuya_get_netif(ip4_addr_t *ipaddr)
 {
     // sta
-    return tkl_lwip_get_netif_by_index(0);
+    return net_get_eth_handle();
 }
 #endif
 
@@ -173,13 +174,13 @@ static int iperf_bw_delay(int send_size)
     if (speed_limit > 0) {
 		pkts_per_tick = speed_limit * 1.0 / (send_size * 8) / 500;
 		period_us = 2000 / pkts_per_tick;
-		os_printf("iperf_size:%d, speed_limit:%d, period_us:%d pkts_per_tick:%d\n",
+		os_printf("iperf_size:%u, speed_limit:%u, period_us:%u pkts_per_tick:%u\n",
 			send_size, speed_limit, period_us, pkts_per_tick);
 	}
 	return period_us;
 }
 
-static void iperf_client(void *thread_param)
+static void tuya_iperf_client(void *thread_param)
 {
 	int i, sock, ret;
 	uint8_t *send_buf;
@@ -199,7 +200,6 @@ static void iperf_client(void *thread_param)
 	send_buf = (uint8_t *) os_malloc(iperf_size);
 	if (!send_buf)
 		goto _exit;
-
 	for (i = 0; i < iperf_size; i++)
 		send_buf[i] = i & 0xff;
 
@@ -263,7 +263,7 @@ static void iperf_client(void *thread_param)
 #ifndef CONFIG_IPV6
 			{
 				struct netif *netif;
-				netif = get_netif((ip4_addr_t *)&addr.sin_addr.s_addr);
+				netif = tuya_get_netif((ip4_addr_t *)&addr.sin_addr.s_addr);
 				if (netif) {
 					etharp_request(netif, (ip4_addr_t *)&addr.sin_addr.s_addr);
 					rtos_delay_milliseconds(1000);
@@ -279,8 +279,8 @@ static void iperf_client(void *thread_param)
 			}
 		}
 		BK_LOGI(TAG, "iperf: connect to iperf server successful!\n");
-		iperf_set_sock_opt(sock);
-		iperf_report_init();
+		tuya_iperf_set_sock_opt(sock);
+		tuya_iperf_report_init();
 		prev_time = rtos_get_time();
 		while (s_param.state == IPERF_STATE_STARTED) {
 			if (speed_limit > 0) {
@@ -305,9 +305,9 @@ _tx_retry:
 #endif
 				ret = send(sock, send_buf, iperf_size, 0);
 			if (ret > 0) {
-				iperf_report(ret);
+				tuya_iperf_report(ret);
 				if (fdelay_us > 0) {
-					delay_us(fdelay_us);
+					bk_delay_us(fdelay_us);
 				}
 			}
 			else {
@@ -346,12 +346,12 @@ _exit:
 #endif
 	if (send_buf)
 		os_free(send_buf);
-	iperf_reset();
+	tuya_iperf_reset();
 	BK_LOGI(TAG, "iperf: is stopped\n");
 	rtos_delete_thread(NULL);
 }
 
-void iperf_server(void *thread_param)
+void tuya_iperf_server(void *thread_param)
 {
 	uint8_t *recv_data;
 	uint32_t sin_size = sizeof(struct sockaddr_in);
@@ -410,7 +410,7 @@ void iperf_server(void *thread_param)
 			goto __exit;
 		}
 	}
-	iperf_set_sock_opt(sock);
+	tuya_iperf_set_sock_opt(sock);
 	while (s_param.state == IPERF_STATE_STARTED) {
 _accept_retry:
 #if CONFIG_PSA_MBEDTLS_TEST
@@ -452,8 +452,8 @@ _accept_retry:
 					  inet_ntoa(client_addr.sin_addr),
 					  ntohs(client_addr.sin_port));
 		}
-		iperf_set_sock_opt(connected);
-		iperf_report_init();
+		tuya_iperf_set_sock_opt(connected);
+		tuya_iperf_report_init();
 
 		while (s_param.state == IPERF_STATE_STARTED) {
 			retry_cnt = 0;
@@ -479,7 +479,7 @@ _rx_retry:
 				break;
 			}
 
-			iperf_report(bytes_received);
+			tuya_iperf_report(bytes_received);
 #if (CONFIG_TASK_WDT)
 		bk_task_wdt_feed();
 #endif
@@ -508,12 +508,12 @@ __exit:
 		recv_data = NULL;
 	}
 
-	iperf_reset();
+	tuya_iperf_reset();
 	BK_LOGI(TAG, "iperf: iperf is stopped\n");
 	rtos_delete_thread(NULL);
 }
 
-static void iperf_udp_client(void *thread_param)
+static void tuya_iperf_udp_client(void *thread_param)
 {
 	int sock, ret;
 	uint32_t *buffer;
@@ -553,15 +553,16 @@ static void iperf_udp_client(void *thread_param)
 #ifndef CONFIG_IPV6
 		{
 			struct netif *netif;
-			netif = get_netif((ip4_addr_t *)&server.sin_addr.s_addr);
+			netif = tuya_get_netif((ip4_addr_t *)&server.sin_addr.s_addr);
 			if (netif) {
 				etharp_request(netif, (ip4_addr_t *)&server.sin_addr.s_addr);
+				os_printf("iperf udp mode netif...%x %x %x\n",netif, server.sin_addr.s_addr, server.sin_addr.s_addr);
 				rtos_delay_milliseconds(1000);
 			}
 		}
 #endif
 		prev_time = rtos_get_time();
-		iperf_report_init();
+		tuya_iperf_report_init();
 		while (IPERF_STATE_STARTED == s_param.state) {
 			if (speed_limit > 0) {
 				send_time = rtos_get_time();
@@ -585,12 +586,14 @@ static void iperf_udp_client(void *thread_param)
 tx_retry:
 			ret = sendto(sock, buffer, send_size, 0, (struct sockaddr *)&server, sizeof(struct sockaddr_in));
 			if (ret) {
-				iperf_report(ret);
+		os_printf("iperf udp mode %u...\n", send_size);
+				tuya_iperf_report(ret);
 				if (fdelay_us > 0) {
-					delay_us(fdelay_us);
+					bk_delay_us(fdelay_us);
 				}
 			}
 			else {
+		os_printf("iperf udp send to fail...\n");
 				retry_cnt ++;
 
 				if (IPERF_STATE_STARTED != s_param.state)
@@ -624,12 +627,12 @@ udp_exit:
 		os_free(buffer);
 		buffer = NULL;
 	}
-	iperf_reset();
+	tuya_iperf_reset();
 	os_printf("iperf_udp: is stopped\n");
 	rtos_delete_thread(NULL);
 }
 
-static void iperf_udp_server(void *thread_param)
+static void tuya_iperf_udp_server(void *thread_param)
 {
 	int sock;
 	uint32_t *buffer;
@@ -675,7 +678,7 @@ static void iperf_udp_server(void *thread_param)
 		r_size = recvfrom(sock, buffer, iperf_size, 0, (struct sockaddr *)&sender, (socklen_t *)&sender_len);
 
 		if (r_size > 12 ){
-			iperf_report_init();
+			tuya_iperf_report_init();
 			break;
 			}
 		}
@@ -690,7 +693,7 @@ static void iperf_udp_server(void *thread_param)
 					last_pcount = pcount;
 				last_pcount = pcount;
 
-				iperf_report(r_size);
+				tuya_iperf_report(r_size);
 			}
 			tick2 = bk_get_tick();
 
@@ -709,12 +712,12 @@ userver_exit:
 		buffer = NULL;
 	}
 
-	iperf_reset();
+	tuya_iperf_reset();
 	os_printf("iperf_udp: iperf is stopped\n");
 	rtos_delete_thread(NULL);
 }
 
-int iperf_param_find_id(int argc, char **argv, char *param)
+int tuya_iperf_param_find_id(int argc, char **argv, char *param)
 {
 	int i;
 	int index;
@@ -734,19 +737,19 @@ find_over:
 	return index;
 }
 
-int iperf_param_find(int argc, char **argv, char *param)
+int tuya_iperf_param_find(int argc, char **argv, char *param)
 {
 	int id;
 	int find_flag = 0;
 
-	id = iperf_param_find_id(argc, argv, param);
+	id = tuya_iperf_param_find_id(argc, argv, param);
 	if (IPERF_INVALID_INDEX != id)
 		find_flag = 1;
 
 	return find_flag;
 }
 
-void iperf_usage(void)
+void tuya_iperf_usage(void)
 {
 	os_printf("Usage: iperf [-s|-c host] [options]\n");
 	os_printf("       iperf [-h|--stop]\n");
@@ -768,7 +771,7 @@ void iperf_usage(void)
 	return;
 }
 
-static void iperf_stop(void)
+static void tuya_iperf_stop(void)
 {
 	if (s_param.state == IPERF_STATE_STARTED) {
 		s_param.state = IPERF_STATE_STOPPING;
@@ -776,7 +779,11 @@ static void iperf_stop(void)
 	}
 }
 
-static void iperf_start(int mode, char *host, int port)
+static TKL_THREAD_HANDLE iperf_tcp_c_test_thread = NULL;
+static TKL_THREAD_HANDLE iperf_tcp_s_test_thread = NULL;
+static TKL_THREAD_HANDLE iperf_udp_c_test_thread = NULL;
+static TKL_THREAD_HANDLE iperf_udp_s_test_thread = NULL;
+static void tuya_iperf_start(int mode, char *host, int port)
 {
 	if (s_param.state == IPERF_STATE_STOPPED) {
 		s_param.state = IPERF_STATE_STARTED;
@@ -789,47 +796,22 @@ static void iperf_start(int mode, char *host, int port)
 
 		if (host)
 			s_param.host = os_strdup(host);
-
 		if (mode == IPERF_MODE_TCP_CLIENT) {
-#ifdef CONFIG_FREERTOS_SMP
-			rtos_create_thread_with_affinity(NULL, -1, iperf_priority, "iperf_tcp_c",
-							   iperf_client, THREAD_SIZE,
+			tkl_thread_create(&iperf_tcp_c_test_thread, "iperf_tcp_c",THREAD_SIZE, iperf_priority,
+							   tuya_iperf_client, 
 							   (beken_thread_arg_t) 0);
-#else
-			rtos_create_thread(NULL, iperf_priority, "iperf_tcp_c",
-							   iperf_client, THREAD_SIZE,
-							   (beken_thread_arg_t) 0);
-#endif
 		} else if (mode == IPERF_MODE_TCP_SERVER) {
-#ifdef CONFIG_FREERTOS_SMP
-			rtos_create_thread_with_affinity(NULL, -1, iperf_priority, "iperf_tcp_s",
-							   iperf_server, THREAD_SIZE,
+			tkl_thread_create(&iperf_tcp_s_test_thread, "iperf_tcp_s",THREAD_SIZE, iperf_priority, 
+							   tuya_iperf_server, 
 							   (beken_thread_arg_t) 0);
-#else
-			rtos_create_thread(NULL, iperf_priority, "iperf_tcp_s",
-							   iperf_server, THREAD_SIZE,
-							   (beken_thread_arg_t) 0);
-#endif
 		} else if (mode == IPERF_MODE_UDP_CLIENT) {
-#ifdef CONFIG_FREERTOS_SMP
-			rtos_create_thread_with_affinity(NULL, -1, iperf_priority, "iperf_udp_c",
-							   iperf_udp_client, THREAD_SIZE,
+			tkl_thread_create(&iperf_udp_c_test_thread, "iperf_udp_c",THREAD_SIZE,  iperf_priority,
+							   tuya_iperf_udp_client,
 							   (beken_thread_arg_t) 0);
-#else
-			rtos_create_thread(NULL, iperf_priority, "iperf_udp_c",
-							   iperf_udp_client, THREAD_SIZE,
-							   (beken_thread_arg_t) 0);
-#endif
 		} else if (mode == IPERF_MODE_UDP_SERVER) {
-#ifdef CONFIG_FREERTOS_SMP
-			rtos_create_thread_with_affinity(NULL, -1, iperf_priority, "iperf_udp_s",
-							   iperf_udp_server, THREAD_SIZE,
+			tkl_thread_create(&iperf_udp_s_test_thread, "iperf_udp_s", THREAD_SIZE,iperf_priority,
+							   tuya_iperf_udp_server,
 							   (beken_thread_arg_t) 0);
-#else
-			rtos_create_thread(NULL, iperf_priority, "iperf_udp_s",
-							   iperf_udp_server, THREAD_SIZE,
-							   (beken_thread_arg_t) 0);
-#endif
 		} else
 			os_printf("iperf: invalid iperf mode=%d\n", mode);
 	} else if (s_param.state == IPERF_STATE_STOPPING)
@@ -837,7 +819,7 @@ static void iperf_start(int mode, char *host, int port)
 	else
 		os_printf("iperf: iperf is running, stop first!\n");
 }
-void iperf_config(int argc, char **argv)
+void tuya_iperf_config(int argc, char **argv)
 {
     if (os_strcmp(argv[1], "config"))
     {
@@ -866,7 +848,7 @@ void iperf_config(int argc, char **argv)
     }
 }
 
-static void iperf_set_defaults(void) {
+static void tuya_iperf_set_defaults(void) {
 	iperf_size = IPERF_BUFSZ;
 	speed_limit = IPERF_DEFAULT_SPEED_LIMIT;
 }
@@ -879,29 +861,34 @@ void cli_iperf_cmd(char *pcWriteBuffer, int xWriteBufferLen, int argc, char **ar
 	int port = IPERF_PORT;
 	int is_server_mode, is_client_mode;
 	uint32_t value;
+    bk_printf("argc: %d\r\n cmd: ", argc);
+    for (int i = 0; i < argc; i++) {
+        bk_printf("%s ", argv[i]);
+    }
+    bk_printf("\r\n");
 
-	iperf_set_defaults();
+	tuya_iperf_set_defaults();
 	/* check parameters of command line*/
-	if (iperf_param_find(argc, argv, "-h") || (argc == 1))
+	if (tuya_iperf_param_find(argc, argv, "-h") || (argc == 1))
 		goto __usage;
-	else if (iperf_param_find(argc, argv, "--stop")
-			 || iperf_param_find(argc, argv, "-stop")) {
-		iperf_stop();
+	else if (tuya_iperf_param_find(argc, argv, "--stop")
+			 || tuya_iperf_param_find(argc, argv, "-stop")) {
+		tuya_iperf_stop();
 		return;
 	}
-	else if(iperf_param_find(argc, argv, "config"))
+	else if(tuya_iperf_param_find(argc, argv, "config"))
 	{
-		iperf_config(argc, argv);
+		tuya_iperf_config(argc, argv);
 		return;
 	}
 
-	is_server_mode = iperf_param_find(argc, argv, "-s");
-	is_client_mode = iperf_param_find(argc, argv, "-c");
+	is_server_mode = tuya_iperf_param_find(argc, argv, "-s");
+	is_client_mode = tuya_iperf_param_find(argc, argv, "-c");
 	if ((is_client_mode && is_server_mode)
 		|| ((0 == is_server_mode) && (0 == is_client_mode)))
 		goto __usage;
 
-	if (iperf_param_find(argc, argv, "-u"))
+	if (tuya_iperf_param_find(argc, argv, "-u"))
 		is_udp_flag = 1;
 
 	/* config iperf operation mode*/
@@ -917,11 +904,11 @@ void cli_iperf_cmd(char *pcWriteBuffer, int xWriteBufferLen, int argc, char **ar
 			mode = IPERF_MODE_TCP_CLIENT;
 	}
 #if CONFIG_PSA_MBEDTLS_TEST
-	if (iperf_param_find(argc, argv, "-tls"))
+	if (tuya_iperf_param_find(argc, argv, "-tls"))
 		is_tls = 1;
 #endif
 	/* config protocol port*/
-	id = iperf_param_find_id(argc, argv, "-p");
+	id = tuya_iperf_param_find_id(argc, argv, "-p");
 	if (IPERF_INVALID_INDEX != id) {
 		port = atoi(argv[id + 1]);
 
@@ -930,7 +917,7 @@ void cli_iperf_cmd(char *pcWriteBuffer, int xWriteBufferLen, int argc, char **ar
 	}
 
 	if (is_client_mode) {
-		id = iperf_param_find_id(argc, argv, "-c");
+		id = tuya_iperf_param_find_id(argc, argv, "-c");
 		if (IPERF_INVALID_INDEX != id) {
 			host = argv[id + 1];
 
@@ -939,7 +926,7 @@ void cli_iperf_cmd(char *pcWriteBuffer, int xWriteBufferLen, int argc, char **ar
 		}
 	}
 
-	id = iperf_param_find_id(argc, argv, "-l");
+	id = tuya_iperf_param_find_id(argc, argv, "-l");
 	if (IPERF_INVALID_INDEX != id) {
 		iperf_size = atoi(argv[id + 1]);
 
@@ -947,7 +934,7 @@ void cli_iperf_cmd(char *pcWriteBuffer, int xWriteBufferLen, int argc, char **ar
 			goto __usage;
 	}
 
-	id = iperf_param_find_id(argc, argv, "-b");
+	id = tuya_iperf_param_find_id(argc, argv, "-b");
 	if (IPERF_INVALID_INDEX != id) {
 		if (argv[id + 1] == NULL) {
 			speed_limit = 0;
@@ -975,12 +962,12 @@ void cli_iperf_cmd(char *pcWriteBuffer, int xWriteBufferLen, int argc, char **ar
 		}
 	}
 
-	iperf_start(mode, host, port);
+	tuya_iperf_start(mode, host, port);
 
 	return;
 
 __usage:
-	iperf_usage();
+	tuya_iperf_usage();
 
 	return;
 }

@@ -3,9 +3,6 @@
 #include <os/mem.h>
 #include <os/str.h>
 
-#include "FreeRTOS.h"
-#include "event_groups.h"
-
 #include <driver/media_types.h>
 #include <driver/hw_scale_types.h>
 
@@ -59,9 +56,8 @@ static uint8_t task_running = 0;
 static beken_semaphore_t scale_sem;
 static beken_queue_t scale_queue;
 static beken_thread_t scale_thread;
-static beken_semaphore_t block_sem;
 
-static EventGroupHandle_t scale_event_handle;
+static beken_event_t scale_event_handle;
 
 typedef struct
 {
@@ -158,6 +154,8 @@ static void scale_main_entry(beken_thread_arg_t data)
     int ret = BK_OK;
     task_running = true;
     LOGD("%s %d\n", __func__, __LINE__);
+    bk_hw_scale_driver_init(HW_SCALE0);
+    bk_hw_scale_isr_register(HW_SCALE0, scale0_complete_cb, NULL);
 
     rtos_set_semaphore(&scale_sem);
 
@@ -251,7 +249,7 @@ static void scale_main_entry(beken_thread_arg_t data)
 #if 0
                     rtos_set_semaphore(&s_scale.scale_sem);
 #else
-                    xEventGroupSetBits(scale_event_handle, SCALE_EVT_FRAME_COMPLETE);
+                    rtos_set_event_flags(&scale_event_handle, SCALE_EVT_FRAME_COMPLETE);
 #endif
                 }
                 break;
@@ -261,6 +259,7 @@ static void scale_main_entry(beken_thread_arg_t data)
             }
         }
     }
+    bk_hw_scale_driver_deinit(HW_SCALE0);
 }
 
 void scale_block_cb(scale_result_t *src, scale_result_t *dst)
@@ -415,9 +414,9 @@ bk_err_t bk_hw_scale(frame_buffer_t *src, frame_buffer_t *dst)
 
     do
     {
-        int event = xEventGroupWaitBits(scale_event_handle,
+        int event = rtos_wait_for_event_flags(&scale_event_handle,
                                         SCALE_WAIT_EVENT,
-                                        true, false, portMAX_DELAY);
+                                        true, false, BEKEN_WAIT_FOREVER);
 
         if (event & SCALE_EVT_FRAME_COMPLETE)
         {
@@ -432,20 +431,40 @@ bk_err_t bk_hw_scale(frame_buffer_t *src, frame_buffer_t *dst)
     return ret;
 }
 
-
-
 bk_err_t bk_scale_deinit(void)
 {
     bk_err_t ret = BK_OK;
-
-    ret = rtos_deinit_semaphore(&s_scale.scale_sem);
-
-    if (ret != BK_OK)
+    task_running = false;
+    if (scale_thread)
     {
-        LOGE("%s s_scale.scale_semdeinit failed: %d\n", __func__, ret);
-        return ret;
+        rtos_thread_join(&scale_thread);
+        scale_thread = NULL;
     }
-    bk_hw_scale_driver_deinit(HW_SCALE0);
+
+    if (s_scale.scale_sem)
+    {
+        ret = rtos_deinit_semaphore(&s_scale.scale_sem);
+        if (ret != BK_OK)
+        {
+            LOGE("%s s_scale.scale_sem deinit failed: %d\n", __func__, ret);
+        }
+    }
+    if (scale_sem)
+    {
+        ret = rtos_deinit_semaphore(&scale_sem);
+        if (ret != BK_OK)
+        {
+            LOGE("%s scale_sem deinit failed: %d\n", __func__, ret);
+        }
+    }
+    if (scale_event_handle)
+    {
+        rtos_deinit_event_flags(&scale_event_handle);
+    }
+    if (scale_queue)
+    {
+        rtos_deinit_queue(&scale_queue);
+    }
     return ret;
 }
 
@@ -461,10 +480,6 @@ bk_err_t bk_scale_init(void)
         LOGE("%s s_scale.scale_sem init failed: %d\n", __func__, ret);
         return ret;
     }
-
-    bk_hw_scale_driver_init(HW_SCALE0);
-    bk_hw_scale_isr_register(HW_SCALE0, scale0_complete_cb, NULL);
-
     ret = rtos_init_queue(&scale_queue,
                           "scale_queue",
                           sizeof(scale_msg_t),
@@ -475,17 +490,19 @@ bk_err_t bk_scale_init(void)
         LOGE("%s, init rot_queue failed\r\n", __func__);
         goto error;
     }
-
-    scale_event_handle = xEventGroupCreate();
-
-    if (scale_event_handle == NULL)
+    ret = rtos_init_event_flags(&scale_event_handle);
+    if (ret != BK_OK)
+    {
+        LOGE("%s scale_event_handle null!\n", __func__);
+        goto error;
+    }
+    ret = rtos_init_semaphore(&scale_sem, 1);
+    if (ret != BK_OK)
     {
         LOGE("%s scale_event_handle null!\n", __func__);
         goto error;
     }
 
-    ret = rtos_init_semaphore(&scale_sem, 1);
-    ret = rtos_init_semaphore(&block_sem, 1);
     ret = rtos_create_thread(&scale_thread,
                              BEKEN_DEFAULT_WORKER_PRIORITY,
                              "scale_thread",
@@ -504,6 +521,7 @@ bk_err_t bk_scale_init(void)
     return ret;
 
 error:
+    bk_scale_deinit();
     return ret;
 }
 

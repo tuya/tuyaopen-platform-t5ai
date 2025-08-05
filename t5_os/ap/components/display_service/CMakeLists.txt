@@ -1,4 +1,3 @@
-if (CONFIG_SOC_BK7258)
 set(incs include)
 set(srcs "")
 
@@ -22,7 +21,7 @@ if (CONFIG_LCD_SPI_DISPLAY)
 endif()
 
 set(priv_req bk_common unity include )
-endif()
+
 
 armino_component_register(
     SRCS "${srcs}"

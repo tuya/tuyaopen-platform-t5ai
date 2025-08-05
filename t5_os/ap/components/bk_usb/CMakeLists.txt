@@ -123,12 +123,13 @@ if (CONFIG_USB)
 		)
 	endif() # CONFIG_USB_DEVICE && CONFIG_USB_HOST
 
-if (CONFIG_USB_CDC_ACM_DEMO)
+if (CONFIG_USB_CDC_MODEM)
     list (APPEND incs
         example/usb_cdc_acm
     )
     list (APPEND srcs
         example/usb_cdc_acm/bk_cherry_usb_cdc_acm_api.c
+		example/usb_cdc_acm/bk_usb_cdc_modem.c
     )
 endif() # CONFIG_USB_CDC_ACM_DEMO
 

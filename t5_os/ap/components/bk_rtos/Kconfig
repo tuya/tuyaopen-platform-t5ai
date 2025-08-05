@@ -117,8 +117,11 @@ menu "Bk_rtos"
 			int "OS adapter layer timer Debug count value"
 			default 128
 			help
-				set OS adapter layer timer Debug count value            
+				set OS adapter layer timer Debug count value    
 
+        config FREERTOS_HISTORY_CPU_PERCENT
+			bool "Enable FreeRTOS CPU usage percent record"
+			default n             
 
 	endmenu
 

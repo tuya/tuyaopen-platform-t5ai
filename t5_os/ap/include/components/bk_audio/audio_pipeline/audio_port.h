@@ -32,7 +32,7 @@ extern "C" {
 #define PORT_DONE               (-2)
 #define PORT_ABORT              (-3)
 #define PORT_TIMEOUT            (-4)
-#define PORT_SIZE_OUT_RANGE     (-4)
+#define PORT_SIZE_OUT_RANGE     (-5)
 
 typedef enum
 {

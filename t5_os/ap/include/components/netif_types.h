@@ -40,6 +40,7 @@ typedef enum {
 	NETIF_IF_AP,        /**< WiFi AP interface */
 	NETIF_IF_BRIDGE,	/**< WiFi BR interface */
 	NETIF_IF_ETH,       /**< ETH interface */
+	NETIF_IF_PPP,		/**< PPP interface */	
 	NETIF_IF_COUNT,     /**< Number of BK netif */
 	NETIF_IF_INVALID,   /**< Invalid BK netif */
 } netif_if_t;

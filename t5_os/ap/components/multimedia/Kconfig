@@ -133,4 +133,12 @@ menu "Media"
 		bool "enable audio asr"
 		default n
 
+	config JPEG_SW_DECODE_SUPPORT_BY_FRAME
+		bool "Enable JPEG software decode by frame"
+		default y
+
+	config JPEG_SW_DECODE_SUPPORT_BY_LINE
+		bool "Enable JPEG software decode by line"
+		default y
+
 endmenu

@@ -41,7 +41,6 @@ static void bk_otp_init(otp_hal_t *hal)
 	}
 	hal->hw = (otp_hw_t *)OTP_LL_REG_BASE();
 	hal->hw2 = (otp2_hw_t *)OTP2_LL_REG_BASE();
-	otp_hal_init(&s_otp.hal);
 
 	s_otp_driver_is_init = true;
 
@@ -53,25 +52,18 @@ static void otp_sleep()
 #if CONFIG_ATE_TEST
 	return ;
 #endif
-#if CONFIG_AON_ENCP
-	otp_hal_sleep(&s_otp.hal);
-#else
-	otp_hal_deinit(&s_otp.hal);
-#endif
+	//otp_hal_power_off(&s_otp.hal);
 }
 
 static int otp_active()
 {
+	bk_otp_init(&s_otp.hal);
 #if CONFIG_ATE_TEST
 	return 0;
 #endif
-	bk_otp_init(&s_otp.hal);
-#if CONFIG_AON_ENCP
-	return otp_hal_active(&s_otp.hal);
-#else
-	return otp_hal_init(&s_otp.hal);
-#endif
+	return otp_hal_power_on(&s_otp.hal);
 }
+
 static int switch_map(uint8_t map_id)
 {
 	if(otp_map == NULL){
@@ -333,6 +325,55 @@ bk_err_t bk_otp_apb_read(otp1_id_t item, uint8_t* buf, uint32_t size)
 }
 
 /**
+ * @brief     OTP read with item real offset
+ *
+ * @param item_offset the real item offset to read from otp
+ * @param buf point to the buffer that reads the data
+ * @param size length of item to read
+ *
+ * @return
+ *    - BK_OK: succeed
+ *    - BK_ERR_OTP_ADDR_OUT_OF_RANGE: param size not match item real size
+ *    - others: other errors.
+ */
+bk_err_t bk_otp_apb_read_by_offset(uint32_t item_offset, uint8_t* buf, uint32_t size)
+{
+	OTP_ACTIVE(1)
+
+	uint32_t location = item_offset / 4;
+	uint32_t start = item_offset % 4;
+	uint32_t value;
+
+	while(size > 0) {
+		value = otp_read_otp(location);
+
+		uint8_t * src_data = (uint8_t *)&value;
+		int cpy_cnt;
+
+		src_data += start;
+
+		cpy_cnt = (size >= (4 - start)) ? (4 - start) : size;
+
+		switch( cpy_cnt ) {
+			case 4:
+				*buf++ = *src_data++;
+			case 3:
+				*buf++ = *src_data++;
+			case 2:
+				*buf++ = *src_data++;
+			case 1:
+				*buf++ = *src_data++;
+		}
+
+		size -= cpy_cnt;
+		location++;
+		start = 0;
+	}
+	OTP_SLEEP()
+	return BK_OK;
+}
+
+/**
  * update APB OTP value in little endian with item ID:
  * 1. allowed start address of item not aligned
  * 2. allowed end address of item not aligned
@@ -412,7 +453,7 @@ bk_err_t bk_otp_apb_update(otp1_id_t item, uint8_t* buf, uint32_t size)
 	while(size > 0) {
 		int cpy_cnt = (size >= (4 - start)) ? (4 - start) : size;
 
-		value = 0;
+		value = otp_read_otp(location);
 		dst_data = (uint8_t *)&value;
 		dst_data += start;
 
@@ -566,7 +607,7 @@ bk_err_t bk_otp_ahb_update(otp2_id_t item, uint8_t* buf, uint32_t size)
 	while(size > 0) {
 		int cpy_cnt = (size >= (4 - start)) ? (4 - start) : size;
 
-		value = 0;
+		value = otp2_read_otp(location);
 		dst_data = (uint8_t *)&value;
 		dst_data += start;
 

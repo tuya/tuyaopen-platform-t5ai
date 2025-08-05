@@ -202,18 +202,9 @@ bk_err_t bk_sw_rotate(frame_buffer_t *src, frame_buffer_t *dst, uint8_t rotate)
     src_width = decoder_frame->width;
     src_height = decoder_frame->height;
 
-#if CONFIG_CACHE_ENABLE
-#if CONFIG_SOC_BK7256XX
-    register uint8_t *dst_frame_temp = rotate_frame->frame + 0x4000000;
-    register uint8_t *src_frame_temp = decoder_frame->frame + 0x4000000;
-#else
     register uint8_t *dst_frame_temp = rotate_frame->frame ;
     register uint8_t *src_frame_temp = decoder_frame->frame;
-#endif
-#else
-    register uint8_t *dst_frame_temp = rotate_frame->frame ;
-    register uint8_t *src_frame_temp = decoder_frame->frame;
-#endif
+
 #if  CONFIG_CACHE_ENABLE
     flush_dcache(src_frame_temp, decoder_frame->length);
     flush_dcache(dst_frame_temp, rotate_frame->length);

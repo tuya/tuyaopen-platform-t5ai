@@ -303,7 +303,9 @@ void cli_wifi_ap_cmd(char *pcWriteBuffer, int xWriteBufferLen, int argc, char **
 void cli_wifi_hidden_ap_cmd(char *pcWriteBuffer, int xWriteBufferLen, int argc, char **argv)
 {
 	wifi_ap_config_t ap_config = WIFI_DEFAULT_AP_CONFIG();
+#if 0
 	netif_ip4_config_t ip4_config = {0};
+#endif
 	int len;
 	char *ap_ssid = NULL;
 	char *ap_key = "";
@@ -334,13 +336,13 @@ void cli_wifi_hidden_ap_cmd(char *pcWriteBuffer, int xWriteBufferLen, int argc, 
 			CLI_LOGE("ssid name more than 32 Bytes\r\n");
 			return;
 		}
-
+#if 0
 		os_strcpy(ip4_config.ip, WLAN_DEFAULT_IP);
 		os_strcpy(ip4_config.mask, WLAN_DEFAULT_MASK);
 		os_strcpy(ip4_config.gateway, WLAN_DEFAULT_GW);
 		os_strcpy(ip4_config.dns, WLAN_DEFAULT_GW);
 		ret = bk_netif_set_ip4_config(NETIF_IF_AP, &ip4_config);
-
+#endif
 		os_strcpy(ap_config.ssid, ap_ssid);
 		os_strcpy(ap_config.password, ap_key);
 

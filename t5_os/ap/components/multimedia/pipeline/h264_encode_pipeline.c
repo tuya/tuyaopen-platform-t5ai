@@ -893,7 +893,6 @@ static void h264_encode_main(beken_thread_arg_t data)
 						h264_encode_config->decoder_free_cb(NULL);
 					}
 
-					h264_encode_config->task_state = false;
 					rtos_deinit_queue(&h264_encode_config->h264_queue);
 					h264_encode_config->h264_queue = NULL;
 					h264_encode_config->h264_thread = NULL;
@@ -1123,11 +1122,9 @@ bk_err_t h264_encode_task_close(void)
 	if (h264_encode_config == NULL || !h264_encode_config->task_state)
 		return BK_FAIL;
 
-	GLOBAL_INT_DECLARATION();
-	GLOBAL_INT_DISABLE();
+	rtos_lock_mutex(&h264_info->lock);
 	h264_encode_config->task_state = false;
-	GLOBAL_INT_RESTORE();
-
+	rtos_unlock_mutex(&h264_info->lock);
 	h264_encode_task_stop();
 
 	h264_encode_task_deinit();
@@ -1144,7 +1141,7 @@ bk_err_t bk_h264_encode_request(pipeline_encode_request_t *request, mux_callback
 	if (h264_encode_config == NULL || h264_encode_config->task_state == false)
 	{
 		LOGD("%s not open\n", __func__);
-		goto error1;
+		goto error;
 	}
 
 	h264_request = (pipeline_encode_request_t *)os_malloc(sizeof(pipeline_encode_request_t));
@@ -1152,7 +1149,7 @@ bk_err_t bk_h264_encode_request(pipeline_encode_request_t *request, mux_callback
 	if (h264_request == NULL)
 	{
 		LOGD("%s malloc failed\n", __func__);
-		goto error1;
+		goto error;
 	}
 
 	os_memcpy(h264_request, request, sizeof(pipeline_encode_request_t));
@@ -1169,12 +1166,6 @@ bk_err_t bk_h264_encode_request(pipeline_encode_request_t *request, mux_callback
 	return BK_OK;
 
 error:
-	if (h264_encode_config
-		&& h264_encode_config->decoder_free_cb)
-	{
-		h264_encode_config->decoder_free_cb = NULL;
-	}
-error1:
 	if (h264_request)
 	{
 		os_free(h264_request);

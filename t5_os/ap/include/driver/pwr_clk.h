@@ -35,7 +35,7 @@ extern "C" {
 #define PM_CP1_RECOVERY_CMD                  (0xa)
 
 #define PM_ENTER_DEEP_SLEEP_CMD              (0xb)
-#define PM_STARTUP_TIME_CMD                  (0xc)
+#define PM_GET_PM_DATA_CMD                   (0xc)
 #define PM_CTRL_AP_STATE_CMD                 (0xd)
 #define PM_RTC_DEEPSLEEP_CMD                 (0xe)
 #define PM_WAKEUP_CONFIG_CMD                 (0xf)
@@ -46,6 +46,10 @@ extern "C" {
 
 #define FIXED_ADDR_PSRAM_USDE_COUNT          (*(volatile uint32_t *)CONFIG_PWR_MNG_ADDR)
 #define FIXED_ADDR_PSRAM_POWER_DOWN          (*(volatile uint32_t *)(CONFIG_PWR_MNG_ADDR+4))
+#define FIXED_ADDR_WAKEUP_CP_COUNT           (*(volatile uint32_t *)(CONFIG_PWR_MNG_ADDR+8))
+#define FIXED_ADDR_WAKEUP_AP0_COUNT          (*(volatile uint32_t *)(CONFIG_PWR_MNG_ADDR+12))
+#define FIXED_ADDR_WAKEUP_AP1_COUNT          (*(volatile uint32_t *)(CONFIG_PWR_MNG_ADDR+16))
+#define FIXED_ADDR_WAKEUP_AP1_DEBUG          (*(volatile uint32_t *)(CONFIG_PWR_MNG_ADDR+20))
 
 #define PM_PSRAM_POWER_DOWN_MAGIC            (0x123)
 
@@ -68,6 +72,7 @@ typedef enum
 	PM_BOOT_CP1_MODULE_NAME_BT              ,// 14
 	PM_BOOT_CP1_MODULE_NAME_WIFI            ,// 15
 	PM_BOOT_CP1_MODULE_NAME_AOV             ,// 16
+	PM_BOOT_CP1_MODULE_NAME_BK_MODEM  ,// 17
 	PM_BOOT_CP1_MODULE_NAME_MAX             ,// attention: MAX value can not exceed 31.
 }pm_boot_cp1_module_name_e;
 
@@ -139,6 +144,13 @@ typedef enum
 	PM_AP_RTC_ENTER_DEEPSLEEP_MODULE_NAME_AOV       = 0,
 	PM_AP_RTC_ENTER_DEEPSLEEP_MODULE_NAME_MAX          ,// attention: MAX value can not exceed 31.
 }pm_ap_rtc_enter_deepsleep_module_name_e;
+typedef enum
+{
+	PM_CP_DATE_TYPE_TIME_INTERVAL_FROM_STARTUP      = 0,
+	PM_CP_DATE_TYPE_DEEP_SLEEP_WAKEUP_SOURCE,
+	PM_CP_DATE_TYPE_EXIT_LOW_VOL_WAKEUP_SOURCE,
+	PM_CP_DATE_TYPE_MAX,                            // attention: MAX value can not exceed 31.
+}pm_ap_get_cp_data_type_e;
 
 /**
  * @brief gpio wakeup source config

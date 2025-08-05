@@ -41,6 +41,9 @@
 #include <driver/wdt.h>
 #include <bk_wdt.h>
 #endif
+#if CONFIG_AON_WDT
+#include <driver/aon_wdt.h>
+#endif
 #if (CONFIG_CPU_CNT > 1)
 #include <driver/mailbox_channel.h>
 #endif
@@ -102,13 +105,15 @@ static uint32_t s_pm_phy_calibration_state    = 0;
 */
 static bool     s_pm_is_phy_reinit_flag       = false;
 #if 1
-static uint32_t s_pm_bakp_pm_state                      = 0;
-static uint32_t s_pm_ahpb_pm_state                      = 0;
-static uint32_t s_pm_audio_pm_state                     = 0;
-static uint32_t s_pm_video_pm_state                     = 0;
-static uint32_t s_pm_phy_pm_state                       = 0;
-static uint32_t s_pm_cp1_auto_power_down_flag           = PM_CP1_AUTO_POWER_DOWN_CTRL;
-static pm_mem_auto_ctrl_e s_pm_mem_auto_power_down_flag = PM_MEM_AUTO_CTRL_ENABLE;
+static volatile uint32_t s_pm_bakp_pm_state                      = 0;
+static volatile uint32_t s_pm_ahpb_pm_state                      = 0;
+static volatile uint32_t s_pm_audio_pm_state                     = 0;
+static volatile uint32_t s_pm_video_pm_state                     = 0;
+static volatile uint32_t s_pm_phy_pm_state                       = 0;
+static volatile uint32_t s_pm_cp1_auto_power_down_flag           = PM_CP1_AUTO_POWER_DOWN_CTRL;
+static volatile pm_mem_auto_ctrl_e s_pm_mem_auto_power_down_flag = PM_MEM_AUTO_CTRL_ENABLE;
+static volatile uint64_t s_pm_check_lv_enter_time_out            = 0;
+static pm_enter_lv_timeout_cb_t s_pm_lv_timeout_cb_arr[PM_ENTER_LV_TIME_OUT_MODULE_MAX]= {0};
 #if (CONFIG_CPU_CNT > 1)
 static uint32_t s_pm_cp1_psram_malloc_count_state       = 0;
 #endif
@@ -169,6 +174,8 @@ static void pm_module_check_power_on(pm_power_module_name_e module);
 static void pm_module_check_power_off(pm_power_module_name_e module);
 static void pm_deep_sleep_wakeup_source_set();
 bk_err_t pm_debug_module_state();
+static bk_err_t pm_check_enter_lv_time_out();
+static bk_err_t pm_lv_enter_time_out_clear();
 #endif
 static void pm_check_power_on_module();
 static bk_err_t pm_wakeup_from_deepsleep_handle();
@@ -201,7 +208,6 @@ extern void bk_delay_us(UINT32 us);
 void pm_hardware_init()
 {
 #if 1
-	FIXED_ADDR_PSRAM_POWER_DOWN  = 0x0;
 	sys_drv_low_power_hardware_init();
 
 	/*config vote for entering low vol modules*/
@@ -849,7 +855,14 @@ bk_err_t bk_pm_module_vote_power_ctrl(pm_power_module_name_e module, pm_power_mo
 	return BK_OK;
 
 }
-
+uint32_t bk_pm_get_audio_vote_pwr_state()
+{
+	return s_pm_audio_pm_state;
+}
+uint32_t bk_pm_get_video_vote_pwr_state()
+{
+	return s_pm_video_pm_state ;
+}
 uint32_t bk_pm_low_vol_vote_state_get()
 {
 	return ((s_pm_sleeped_modules & s_pm_enter_low_vol_modules) == s_pm_enter_low_vol_modules);
@@ -935,6 +948,7 @@ bk_err_t bk_pm_module_vote_sleep_ctrl(pm_sleep_module_name_e module, uint32_t sl
 		}
 		else if (module == PM_SLEEP_MODULE_NAME_APP)
 		{
+			pm_lv_enter_time_out_clear();
 		}
 
 		s_pm_sleeped_modules |= 0x1ULL << module;
@@ -966,9 +980,30 @@ bk_err_t bk_pm_module_vote_sleep_ctrl(pm_sleep_module_name_e module, uint32_t sl
 	return BK_OK;
 
 }
-
+static bk_err_t pm_check_multimedia_pwr_state()
+{
+	uint16_t audio_pwr_state = sys_drv_module_power_state_get(PM_POWER_MODULE_NAME_AUDP);
+	uint16_t video_pwr_state = sys_drv_module_power_state_get(PM_POWER_MODULE_NAME_VIDP);
+	if(audio_pwr_state == 0x0)
+	{
+		BK_LOGD(NULL,"Audio not power off,enter sleep fail\r\n");
+	}
+	if( video_pwr_state == 0x0)
+	{
+		BK_LOGD(NULL,"Video not power off,enter sleep fail\r\n");
+	}
+	if((audio_pwr_state== 0x0)|| (video_pwr_state == 0x0))
+	{
+		return BK_FAIL;
+	}
+	return BK_OK;
+}
 bk_err_t bk_pm_sleep_mode_set(pm_sleep_mode_e sleep_mode)
 {
+	if(pm_check_multimedia_pwr_state() == BK_FAIL)
+	{
+		return BK_FAIL;
+	}
 	s_pm_sleep_mode = sleep_mode;
 
 	if (s_pm_sleep_mode == PM_MODE_DEEP_SLEEP)
@@ -1326,6 +1361,54 @@ bk_err_t bk_pm_mem_auto_power_down_state_set(pm_mem_auto_ctrl_e value)
 	s_pm_mem_auto_power_down_flag = value;
 	return BK_OK;
 }
+bk_err_t bk_pm_enter_lv_time_out_register_callback(pm_enter_lv_timeout_cb_t* lv_timeout_cb)
+{
+	bk_err_t ret = BK_OK;
+	if(lv_timeout_cb == NULL)
+	{
+		return BK_FAIL;
+	}
+	if(lv_timeout_cb->module >= PM_ENTER_LV_TIME_OUT_MODULE_MAX)
+	{
+		return BK_FAIL;
+	}
+	s_pm_lv_timeout_cb_arr[lv_timeout_cb->module].module = lv_timeout_cb->module;
+	s_pm_lv_timeout_cb_arr[lv_timeout_cb->module].cfg.cb = lv_timeout_cb->cfg.cb;
+	s_pm_lv_timeout_cb_arr[lv_timeout_cb->module].cfg.args = lv_timeout_cb->cfg.args;
+	return ret;
+}
+bk_err_t bk_pm_check_enter_lv_time_out()
+{
+	bk_err_t ret = BK_OK;
+	uint64_t cur_tick = 0;
+	if(s_pm_sleeped_modules & (0x1 << PM_SLEEP_MODULE_NAME_APP))
+	{
+		cur_tick = bk_aon_rtc_get_current_tick(AON_RTC_ID_1);
+		if(s_pm_check_lv_enter_time_out == 0)
+		{
+			s_pm_check_lv_enter_time_out = cur_tick;
+		}
+		else
+		{
+			if((cur_tick - s_pm_check_lv_enter_time_out) > CONFIG_PM_ENTER_LV_TIME_OUT_PERIOD_MS*AON_RTC_MS_TICK_CNT)
+			{
+				for(int index = 0; index < PM_ENTER_LV_TIME_OUT_MODULE_MAX; index++)
+				{
+					if(s_pm_lv_timeout_cb_arr[index].cfg.cb != NULL)
+					{
+						s_pm_lv_timeout_cb_arr[index].cfg.cb(s_pm_lv_timeout_cb_arr[index].cfg.args);
+					}
+				}
+			}
+		}
+	}
+	return ret;
+}
+static bk_err_t pm_lv_enter_time_out_clear()
+{
+	s_pm_check_lv_enter_time_out = 0;
+	return BK_OK;
+}
 #endif
 /*=========================MODULES POWER CTRL END========================*/
 
@@ -1489,6 +1572,15 @@ static void pm_low_voltage_resource_set()
 	pm_dev_id_e dev_id = 0;
 	#if 1
 	pm_psram_malloc_state_and_power_ctrl();
+	pm_lv_enter_time_out_clear();
+	#if CONFIG_PM_LV_WDT_PROTECTION
+		#if CONFIG_AON_WDT
+		if(bk_pm_wifi_event_state() == EVENT_WIFI_STA_CONNECTED)
+		{
+			bk_aon_wdt_feed();
+		}
+		#endif
+	#endif
 	#endif
 
 	bk_pm_exit_low_vol_wakeup_source_clear();
@@ -1539,7 +1631,11 @@ void pm_low_voltage_bsp_restore(void)
 #if CONFIG_INT_WDT
 	wdt_init();
 #endif
-
+#if CONFIG_PM_LV_WDT_PROTECTION
+	#if CONFIG_AON_WDT
+		bk_aon_wdt_stop();
+	#endif
+#endif
 	bk_pm_exit_low_vol_wakeup_source_set();
 
 }
@@ -1549,6 +1645,11 @@ static void pm_low_voltage_resource_restore()
 	pm_dev_id_e dev_id = 0;
 	#if CONFIG_PM_LV_TIME_COST_DEBUG
 	pm_lv_rtc_tick_set(PM_LV_WAKEUP_STEP_1,pm_rtc_cur_tick_get());
+	#endif
+	#if CONFIG_PM_LV_WDT_PROTECTION
+	#if CONFIG_AON_WDT
+		bk_aon_wdt_stop();
+	#endif
 	#endif
 #if CONFIG_BAKP_POWER_DOMAIN_PM_CONTROL
 	bk_pm_module_vote_power_ctrl(POWER_SUB_MODULE_NAME_BAKP_PM, PM_POWER_MODULE_STATE_ON);
@@ -1587,12 +1688,15 @@ static void pm_low_voltage_resource_restore()
 	pm_lv_rtc_tick_set(PM_LV_WAKEUP_STEP_2,pm_rtc_cur_tick_get());
 	#endif
 
-	bk_pm_cp_wakeup_ap_from_wfi(0);
+	//bk_pm_cp_wakeup_ap_from_wfi(0);
+
+#if CONFIG_PSRAM
 	/*When psram power down, it need init psram heap*/
 	if(bk_pm_get_psram_ctrl_state() == 0)
 	{
 		bk_psram_heap_init_flag_set(false);
 	}
+#endif
 }
 
 static uint32_t pm_low_voltage_process()

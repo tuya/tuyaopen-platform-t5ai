@@ -24,7 +24,9 @@
 #if CONFIG_BLUETOOTH_SUPPORT_IPC
 #include "bt_ipc_core.h"
 #endif
-
+#if CONFIG_BTDM_CONTROLLER_ONLY
+#include "hal_hci_core.h"
+#endif
 #define TAG       "bluetooth"
 #define LOGV(...) BK_LOGV(TAG, ##__VA_ARGS__)
 #define LOGI(...) BK_LOGI(TAG, ##__VA_ARGS__)
@@ -57,7 +59,9 @@ static int bluetooth_deepsleep_enter_cb(uint64_t expected_time_ms, void *args)
 #if !CONFIG_BTDM_CONTROLLER_ONLY
         bluetooth_host_deinit();
 #endif
+
         bluetooth_controller_deinit();
+
         bluetooth_already_init = 0;
     }
     return 0;
@@ -76,20 +80,24 @@ bt_err_t bk_bluetooth_init(void)
     ret = bk_bt_os_adapter_init();
     if (ret)
     {
-        LOGE("%s initialize bt os adapter failed\r\n", __func__);
+        LOGW("%s initialize bt os adapter failed\r\n", __func__);
         return ret;
     }
 
     if ((ret = bk_bt_feature_init()) != 0)
     {
-        LOGE("%s initialize bt feature failed\r\n", __func__);
+        LOGW("%s initialize bt feature failed\r\n", __func__);
         return ret;
     }
+
+#if CONFIG_BLUETOOTH_SUPPORT_IPC
+    bt_ipc_init();
+#endif
 
     ret = bluetooth_controller_init();
     if (ret)
     {
-        LOGE("%s initialize controller failed\r\n", __func__);
+        LOGW("%s initialize controller failed\r\n", __func__);
         return ret;
     }
 
@@ -97,9 +105,11 @@ bt_err_t bk_bluetooth_init(void)
     ret = bluetooth_host_init();
     if (ret)
     {
-        LOGE("%s init host failed\r\n", __func__);
+        LOGW("%s init host failed\r\n", __func__);
         return ret;
     }
+#else
+    hal_hci_driver_open();
 #endif
 
     pm_cb_conf_t enter_conf_bt = {NULL, NULL};
@@ -117,10 +127,6 @@ bt_err_t bk_bluetooth_init(void)
         rtos_init_mutex(&bluetooth_mutex);
     }
 	
-#if CONFIG_BLUETOOTH_SUPPORT_IPC
-    bt_ipc_init();
-#endif
-
     bluetooth_already_init = 1;
     LOGD("%s ok\r\n", __func__);
     return ret;
@@ -141,16 +147,18 @@ bt_err_t bk_bluetooth_deinit(void)
     ret = bluetooth_host_deinit();
     if (ret)
     {
-        LOGE("%s deinit host failed\r\n", __func__);
+        LOGW("%s deinit host failed\r\n", __func__);
         rtos_unlock_mutex(&bluetooth_mutex);
         return ret;
     }
+#else
+    hal_hci_driver_close();
 #endif
 
     ret = bluetooth_controller_deinit();
     if (ret)
     {
-        LOGE("%s deinit controller failed\r\n", __func__);
+        LOGW("%s deinit controller failed\r\n", __func__);
         rtos_unlock_mutex(&bluetooth_mutex);
         return ret;
     }
@@ -177,6 +185,7 @@ bt_err_t bk_bluetooth_get_address(uint8_t *addr)
     }
 
     ret = bluetooth_get_mac(addr);
+
     return ret;
 }
 

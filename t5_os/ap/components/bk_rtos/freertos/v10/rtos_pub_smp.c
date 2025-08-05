@@ -141,7 +141,7 @@ bk_err_t rtos_create_thread_with_affinity( beken_thread_t *thread, uint32_t affi
 bk_err_t rtos_create_thread( beken_thread_t* thread, uint8_t priority, const char* name,
                         beken_thread_function_t function, uint32_t stack_size, beken_thread_arg_t arg )
 {
-	return rtos_create_thread_with_affinity(thread, 0, priority, name, function, stack_size, arg);
+	return rtos_create_thread_with_affinity(thread, tskNO_AFFINITY, priority, name, function, stack_size, arg);
 }
 
 bk_err_t rtos_create_thread_static(beken_thread_t* thread, 
@@ -267,12 +267,12 @@ bk_err_t rtos_delete_thread( beken_thread_t* thread )
 	extern void pthread_internal_local_storage_destructor_callback(TaskHandle_t handle);
     if ( thread == NULL )
     {
-		pthread_internal_local_storage_destructor_callback(NULL);
+		//pthread_internal_local_storage_destructor_callback(NULL);
         vTaskDelete( NULL );
     }
     else if ( xTaskIsTaskFinished( *thread ) != pdTRUE )
     {
-		pthread_internal_local_storage_destructor_callback(*thread);
+		//pthread_internal_local_storage_destructor_callback(*thread);
         vTaskDelete( *thread );
     }
 

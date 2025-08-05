@@ -697,6 +697,7 @@ int usbh_enumerate(struct usbh_hubport *hport)
 
     usbh_device_mount_done_callback(hport);
 	usbh_hub_event_unlock_mutex();
+	return ret;	//if success and not return, it will run to errout and calls usbh_hub_event_unlock_mutex again.
 errout:
     if (ret < 0) {
         usbh_hport_deactivate_ep0(hport);

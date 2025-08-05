@@ -19,7 +19,13 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-#include "modules/pm.h"
+
+#include <modules/pm.h>
+#if CONFIG_PM_LV_WDT_PROTECTION
+#include <components/event.h>
+#include "modules/wifi_types.h"
+#endif
+
 typedef enum
 {
 	PM_LV_WAKEUP_STEP_0 = 0,
@@ -44,7 +50,7 @@ typedef enum
 	PM_LV_MODE_MAX
 }pm_lv_mode_e;
 
-#define PM_DEBUG_CTRL_STATE                  (8)
+#define PM_DEBUG_CTRL_STATE                    (8)
 
 void pm_hardware_init();
 
@@ -84,6 +90,12 @@ __attribute__((section(".iram")))  bk_err_t pm_enter_lv_rtc_tick_clear();
 __attribute__((section(".iram")))  bk_err_t pm_wakeup_lv_rtc_tick_clear();
 __attribute__((section(".iram")))  uint64_t pm_rtc_cur_tick_get();
 #endif
+
+#if CONFIG_PM_LV_WDT_PROTECTION
+bk_err_t pm_wifi_event_init();
+wifi_event_t bk_pm_wifi_event_state();
+#endif
+
 #ifdef __cplusplus
 }
 #endif

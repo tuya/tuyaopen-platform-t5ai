@@ -314,6 +314,7 @@ void wpas_notify_connected(struct wpa_supplicant *wpa_s)
 		BK_LOG_ON_ERR(bk_event_post(EVENT_MOD_WIFI, EVENT_WIFI_STA_CONNECTED,
 					&sta_connected, sizeof(sta_connected), BEKEN_NEVER_TIMEOUT));
 #if BK_SUPPLICANT
+		wlan_sta_bss_flush(0);
 		/* parse mac rates in the beacon frame and set 11b flags */
 		wpa_parse_mac_rates_ie(wpa_s);
 #endif

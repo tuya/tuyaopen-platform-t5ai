@@ -195,11 +195,25 @@ static bk_err_t low_pwr_core_message_handle(void)
 					bk_low_pwr_misc_rtc_enter_deepsleep(msg.param2,NULL);
                 }
 				break;
-				case LOW_PWR_CORE_STARTUP_TIME:
+				case LOW_PWR_CORE_GET_CP_DATA:
 				{
-					uint32_t time_interval = 0;
-					bk_low_pwr_misc_get_time_interval_from_startup(&time_interval);
-					bk_pm_cp0_response_cp1(PM_STARTUP_TIME_CMD, time_interval,0,0);
+					uint32_t cp_pm_data = 0;
+					pm_ap_get_cp_data_type_e data_type = msg.param1;
+					switch(data_type)
+					{
+						case PM_CP_DATE_TYPE_TIME_INTERVAL_FROM_STARTUP:
+							bk_low_pwr_misc_get_time_interval_from_startup(&cp_pm_data);
+						break;
+						case PM_CP_DATE_TYPE_DEEP_SLEEP_WAKEUP_SOURCE:
+							cp_pm_data = bk_pm_deep_sleep_wakeup_source_get();
+						break;
+						case PM_CP_DATE_TYPE_EXIT_LOW_VOL_WAKEUP_SOURCE:
+							cp_pm_data =  bk_pm_exit_low_vol_wakeup_source_get();
+						break;
+						default:
+						break;
+					}
+					bk_pm_cp0_response_cp1(PM_GET_PM_DATA_CMD,data_type,cp_pm_data,0);
 				}
 				break;
 				case LOW_PWR_CORE_PSRAM_POWER:

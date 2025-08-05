@@ -250,7 +250,7 @@ static void iperf_report_avg_bandwidth(uint64_t pkt_len)
 	{
 		double total_f;
 		total_f = (double)pkt_len * 8;
-		total_f /= (double)(IPERF_MILLION_UNIT * s_tick_delta);
+		total_f /= (double)(IPERF_MEGA_UNIT * s_tick_delta);
 		BK_LOGD(NULL, "[%d-%d] sec bandwidth: %.2f  Mbits/sec.\r\n",
 				0, s_tick_delta , total_f);
 	}
@@ -349,7 +349,7 @@ static void iperf_report_task_handler(void *arg)
 static err_t iperf_report_task_start(void)
 {
 	int ret;
-	ret = rtos_core1_create_thread(NULL, iperf_report_priority, IPERF_REPORT_TASK_NAME,
+	ret = rtos_create_thread(NULL, iperf_report_priority, IPERF_REPORT_TASK_NAME,
 						iperf_report_task_handler, IPERF_REPORT_TASK_STACK,
 						(beken_thread_arg_t) 0);
 	

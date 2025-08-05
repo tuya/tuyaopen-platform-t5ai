@@ -20,3 +20,7 @@
 #include "soc/bk7258/mapping.h"
 #endif
 
+#if CONFIG_SOC_BK7257
+#include "soc/bk7257/mapping.h"
+#endif
+

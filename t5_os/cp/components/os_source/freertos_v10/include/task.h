@@ -113,6 +113,13 @@ typedef enum
     eSetValueWithoutOverwrite /* Set the task's notification value if the previous value has been read by the task. */
 } eNotifyAction;
 
+typedef enum
+{
+	eGetOneSec = 0,
+	eGetFiveSec,
+	eGetTenSec,
+} eCpuLoadTime;
+
 /*
  * Used internally only.
  */
@@ -160,6 +167,9 @@ typedef struct xTASK_STATUS
     UBaseType_t uxCurrentPriority;                /* The priority at which the task was running (may be inherited) when the structure was populated. */
     UBaseType_t uxBasePriority;                   /* The priority to which the task will return if the task's current priority has been inherited to avoid unbounded priority inversion when obtaining a mutex.  Only valid if configUSE_MUTEXES is defined as 1 in FreeRTOSConfig.h. */
     configRUN_TIME_COUNTER_TYPE ulRunTimeCounter; /* The total run time allocated to the task so far, as defined by the run time stats clock.  See https://www.FreeRTOS.org/rtos-run-time-stats.html.  Only valid when configGENERATE_RUN_TIME_STATS is defined as 1 in FreeRTOSConfig.h. */
+    #if configRECENT_RUN_TIME_CPUP
+    configRUN_TIME_COUNTER_TYPE ulHistoryRunTimeCounter[configHISTORY_RUNTIME_RECORD_LEN];
+    #endif
     StackType_t * pxStackBase;                    /* Points to the lowest address of the task's stack area. */
     #if ( ( portSTACK_GROWTH > 0 ) && ( configRECORD_STACK_HIGH_ADDRESS == 1 ) )
         StackType_t * pxTopOfStack;               /* Points to the top address of the task's stack area. */
@@ -1919,6 +1929,7 @@ void vTaskList( char * pcWriteBuffer ) PRIVILEGED_FUNCTION; /*lint !e971 Unquali
  * \ingroup TaskUtils
  */
 void vTaskGetRunTimeStats( char * pcWriteBuffer ) PRIVILEGED_FUNCTION; /*lint !e971 Unqualified char types are allowed for strings and single characters only. */
+void vTaskGetHistoryRunTimeStats( char * pcWriteBuffer, eCpuLoadTime eTime ) PRIVILEGED_FUNCTION; /*lint !e971 Unqualified char types are allowed for strings and single characters only. */
 
 /**
  * task. h

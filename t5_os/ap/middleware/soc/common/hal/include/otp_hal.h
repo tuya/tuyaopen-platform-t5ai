@@ -26,6 +26,8 @@ typedef struct {
 	otp2_hw_t *hw2;
 } otp_hal_t;
 
+#define otp_hal_power_on(hal)                                        otp_ll_power_on((hal)->hw)
+#define otp_hal_power_off(hal)                                       otp_ll_power_off((hal)->hw)
 #define otp_hal_read_tmlck(hal)                                      otp_ll_read_tmlck((hal)->hw)
 #define otp_hal_read_puflck(hal)                                     otp_ll_read_puflck((hal)->hw)
 #define otp_hal_read_otplck(hal)                                     otp_ll_read_otplck((hal)->hw)
@@ -82,8 +84,6 @@ typedef struct {
 #define otp_hal_enable_pdstb(hal)                                    otp_ll_enable_pdstb((hal)->hw)
 #define otp_hal_enable_clkosc_en(hal)                                otp_ll_enable_clkosc_en((hal)->hw)
 #define otp_hal_set_fre_cont(hal, value)                             otp_ll_set_fre_cont((hal)->hw, value)
-#define otp_hal_sleep(hal)                                           otp_ll_sleep((hal)->hw)
-#define otp_hal_active(hal)                                          otp_ll_active((hal)->hw)
 #define otp_hal_write_test_row(hal, location, value)                 otp_ll_write_test_row((hal)->hw, location, value)
 #define otp_hal_read_test_row(hal, location)                         otp_ll_read_test_row((hal)->hw, location)
 #define otp_hal_write_test_column(hal, location, value)              otp_ll_write_test_column((hal)->hw, location, value)
@@ -91,9 +91,6 @@ typedef struct {
 #define otp_hal_set_ptc_page(hal, value)                             otp_ll_set_ptc_page((hal)->hw, value)
 #define otp2_hal_read_otp(hal, value)                                otp2_ll_read_otp((hal)->hw2, value)
 #define otp2_hal_write_otp(hal, location, value)                     otp2_ll_write_otp((hal)->hw2, location, value)
-
-bk_err_t otp_hal_init(otp_hal_t *hal);
-bk_err_t otp_hal_deinit(otp_hal_t *hal);
 
 #ifdef __cplusplus
 }

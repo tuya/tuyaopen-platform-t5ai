@@ -115,7 +115,7 @@
 #define configNUMBER_OF_CORES                      CONFIG_CPU_CNT
 #define configUSE_MINIMAL_IDLE_HOOK                1
 #define configUSE_TICKLESS_IDLE                    CONFIG_FREERTOS_USE_TICKLESS_IDLE
-#define configEXPECTED_IDLE_TIME_BEFORE_SLEEP      5
+#define configEXPECTED_IDLE_TIME_BEFORE_SLEEP      2
 #define portCRITICAL_NESTING_IN_TCB                1
 #define configUSE_CORE_AFFINITY                    1
 #define configRUN_MULTIPLE_PRIORITIES              1
@@ -197,6 +197,12 @@
 #if (configGENERATE_RUN_TIME_STATS == 1)
 #define portCONFIGURE_TIMER_FOR_RUN_TIME_STATS()
 #define portGET_RUN_TIME_COUNTER_VALUE()            bk_get_tick()
+#endif
+
+#if (CONFIG_FREERTOS_HISTORY_CPU_PERCENT && configGENERATE_RUN_TIME_STATS)
+#define configGENERATE_HISTORY_RUN_TIME_STATS       1
+#else
+#define configGENERATE_HISTORY_RUN_TIME_STATS       0
 #endif
 
 #if CONFIG_FREERTOS_POSIX

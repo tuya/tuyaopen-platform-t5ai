@@ -36,9 +36,6 @@
 #include "lcd_display_service.h"
 #include "bk_draw_blend.h"
 #include "media_utils.h"
-// Modified by TUYA Start
-#include "tuya_cloud_types.h"
-// Modified by TUYA End
 
 #if CONFIG_CACHE_ENABLE
 #include "cache.h"
@@ -91,8 +88,8 @@
 #define IMG_ROTATE_START()                  bk_gpio_set_output_high(GPIO_3)
 #define IMG_ROTATE_END()                    bk_gpio_set_output_low(GPIO_3)
 
-#define IMG_RESIZE_END()                    bk_gpio_set_output_high(GPIO_8)
-#define IMG_RESIZE_START()                  bk_gpio_set_output_high(GPIO_8)
+#define IMG_RESIZE_START()                  bk_gpio_set_output_high(GPIO_4)
+#define IMG_RESIZE_END()                    bk_gpio_set_output_low(GPIO_4)
 #else
 #define IMG_DIAG_DEBUG_INIT()
 
@@ -116,13 +113,6 @@ beken_semaphore_t jpeg_decoder_sem;
 bool jpeg_decoder_task_running = false;
 static beken_thread_t jpeg_decoder_task = NULL;
 frame_list_node_t *jpeg_frame_node;
-// Modified by TUYA Start
-static void *g_lcd_handle = NULL;
-static img_display_cb g_img_display_cb = NULL;
-
-// static  ty_frame_buffer_t g_ty_frame[2] = {0};
-static unsigned int g_cnt = 0;
-// Modified by TUYA End
 
 /**< image service */
 bool img_service_task_running = false;// img_service_task_running = false;
@@ -137,6 +127,7 @@ bk_err_t bk_img_msg_send(img_msg_t *msg)
     if (img_info.queue && img_service_task_running)
     {
         ret = rtos_push_to_queue(&img_info.queue, msg, BEKEN_NO_WAIT);
+
         if (ret != BK_OK)
         {
             LOGE("%s push failed\n", __func__);
@@ -151,41 +142,114 @@ static void img_service_task_entry(beken_thread_arg_t data)
     img_service_task_running = true;
     rtos_set_semaphore(&img_info.sem);
 
-    // g_ty_frame[0].frame = psram_malloc(480 * 480 * 2);
-    // g_ty_frame[1].frame = psram_malloc(480 * 480 * 2);
     while (img_service_task_running)
     {
         img_msg_t msg;
-        ret = rtos_pop_from_queue(&img_info.queue, &msg, BEKEN_WAIT_FOREVER);
-        if (ret == BK_OK)
+        if (rtos_pop_from_queue(&img_info.queue, &msg, BEKEN_WAIT_FOREVER) != BK_OK)
         {
-            switch (msg.event)
+            continue;
+        }
+
+        switch (msg.event)
+        {
+            case IMG_DISPLAY_REQUEST:
             {
-                case IMG_DISPLAY_REQUEST:
+                frame_buffer_t *frame = msg.ptr;
+                frame_buffer_t *processed_frame = NULL;
+                if (frame->fmt != PIXEL_FMT_YUYV  && frame->fmt != PIXEL_FMT_RGB565 && frame->fmt != PIXEL_FMT_RGB565_LE)
                 {
-                    frame_buffer_t *frame = msg.ptr;
-                    if (frame->fmt == PIXEL_FMT_YUYV || frame->fmt == PIXEL_FMT_RGB565 || frame->fmt == PIXEL_FMT_RGB565_LE)
+                    LOGE("%s display format %d\n", __func__, frame->fmt);
+                    img_info.fb_free(frame);
+                    continue;
+                }
+                switch (img_info.proc_order)
+                {
+                    case IMG_PROC_ROTATE_FIRST:
                     {
-                        frame = rotate_frame_handler(frame, img_info.rotate);
-                        if (frame != NULL) {
-                            if(g_img_display_cb) {
-                                g_img_display_cb(frame);
+                        frame_buffer_t *rotated = NULL;
+                        if (img_info.rotate_en) 
+                        {
+                            rotated = rotate_frame_handler(frame, img_info.rotate);
+                            if (rotated == NULL)
+                            {
+                                LOGE("%s  rotate failed\n", __func__);
+                                continue;
                             }
-                            img_info.fb_free(frame);
                         }
+                        else
+                        {
+                            rotated = frame;
+                        }
+                        if (img_info.scale_en)
+                        {
+                            processed_frame = scale_frame_handler(rotated, img_info.scale_ppi);
+                            if (processed_frame == NULL)
+                            {
+                                LOGE("%s  scale_frame_handler failed\n", __func__);
+                                continue;
+                            }
+                        }
+                        else
+                        {
+                            processed_frame = rotated;
+                        }
+                        break;
+                    }
+                    case IMG_PROC_SCALE_FIRST:
+                    {
+                        frame_buffer_t *scaled = NULL;
+                        if (img_info.scale_en)
+                        {
+                            scaled = scale_frame_handler(frame, img_info.scale_ppi);
+                            if (scaled == NULL)
+                            {
+                                LOGE("%s  scale_frame_handler failed\n", __func__);
+                                continue;
+                            }
+                        }
+                        else
+                        {
+                            scaled = frame;
+                        }
+                        if (img_info.rotate_en)
+                        {
+                            processed_frame = rotate_frame_handler(scaled, img_info.rotate);
+                            if (processed_frame == NULL)
+                            {
+                                LOGE("%s  scale_frame_handler failed\n", __func__);
+                                continue;
+                            }
+                        }
+                        else
+                        {
+                            processed_frame = scaled;
+                        }
+                        break;
+                    }
+                }
+                if (processed_frame)
+                {
+                    #if CONFIG_LVGL
+                    if (lvgl_disp_enable) {
+                        img_info.fb_free(processed_frame);
                     }
                     else
+                    #endif
                     {
-                        LOGE("%s display format %d\n", __func__, frame->fmt);
-                        img_info.fb_free(frame);
+                        ret = lcd_display_frame_request(processed_frame);  //may be not rotate
+                        if (ret != BK_OK)
+                        {
+                            LOGE("%s lcd_display_frame_request push failed\n", __func__);
+                            img_info.fb_free(processed_frame);
+                        }
                     }
-                    break;
                 }
-                case IMG_DISPLAY_EXIT:
-                {
-                    goto exit;
-                    break;
-                }
+                break;
+            }
+            case IMG_DISPLAY_EXIT:
+            {
+                goto exit;
+                break;
             }
         }
     }
@@ -461,7 +525,7 @@ frame_buffer_t *decoder_frame_handler(frame_buffer_t *frame)
     bk_err_t ret = BK_FAIL;
     frame_buffer_t *dec_frame = NULL;
     uint64_t before, after;
-    
+
     if (img_info.enable == false)
     {
         return dec_frame;
@@ -596,7 +660,7 @@ frame_buffer_t *scale_frame_handler(frame_buffer_t *frame, media_ppi_t ppi)
 
     if (img_info.enable == false)
     {
-        LOGE("%s img_info.enable == false\r\n", __func__);
+        LOGD("%s img_info.enable == false\r\n", __func__);
         img_info.fb_free(frame);
         return scale_frame;
     }
@@ -674,6 +738,7 @@ frame_buffer_t *rotate_frame_handler(frame_buffer_t *frame, media_rotate_t rotat
         img_info.fb_free(frame);
         return rot_frame;
     }
+
     rtos_lock_mutex(&img_info.rot_lock);
 
     if (img_info.rotate_en == false)
@@ -681,7 +746,6 @@ frame_buffer_t *rotate_frame_handler(frame_buffer_t *frame, media_rotate_t rotat
         rtos_unlock_mutex(&img_info.rot_lock);
         return frame;
     }
-
     before = get_current_timestamp();
 
     if (img_info.rotate_frame == NULL)
@@ -693,6 +757,7 @@ frame_buffer_t *rotate_frame_handler(frame_buffer_t *frame, media_rotate_t rotat
         LOGE("%s, malloc rotate_frame NULL\n", __func__);
         goto out;
     }
+
     if (rotate == ROTATE_180)
     {
         img_info.rotate_frame->height = frame->height;
@@ -740,6 +805,7 @@ out:
     }
     img_info.fb_free(frame);
     rtos_unlock_mutex(&img_info.rot_lock);
+
     return rot_frame;
 }
 
@@ -749,6 +815,28 @@ bk_err_t image_rotate_set(media_rotate_t rotate)
     img_info.rotate_en = true;
     img_info.rotate = rotate;
     LOGV("%s rotate angle = %d \n", __func__, img_info.rotate);
+    return ret;
+}
+
+bk_err_t image_scale_set(media_ppi_t ppi)
+{
+    int ret = BK_OK;
+    img_info.scale_en = true;
+    img_info.scale_ppi = ppi;
+    LOGV("%s scale_ppi = %d %d \n", __func__, img_info.scale_ppi >> 16, img_info.scale_ppi & 0xFFFF);
+    return ret;
+}
+
+
+bk_err_t image_service_set_order(img_proc_order_t proc_order)
+{
+    int ret = BK_OK;
+    if (proc_order > IMG_PROC_SCALE_FIRST)
+    {
+        return BK_FAIL;
+    }
+    img_info.proc_order = proc_order;
+    LOGI("%s %d (0:rotate_first, 1:scale_first)\n", __func__, proc_order);
     return ret;
 }
 
@@ -779,8 +867,6 @@ bk_err_t img_service_open(void)
         {
             LOGE("%s, bk_hw_scale_driver_init fail\r\n", __func__);
         }
-        img_info.scale_ppi = img_info.lcd_device->ppi;
-        LOGD("%s, scale ppi: %dX%d %s\n", __func__, img_info.scale_ppi >> 16, img_info.scale_ppi & 0xFFFF, img_info.lcd_device->name);
     }
 #endif
 
@@ -801,8 +887,8 @@ bk_err_t img_service_open(void)
     {
         LOGE("%s img_service_task_start failed: %d\n", __func__, ret);
     }
-
     img_info.enable = true;
+    IMG_DIAG_DEBUG_INIT();
 
     LOGD("%s complete\n", __func__);
     return ret;
@@ -871,16 +957,3 @@ bk_err_t img_service_close(void)
 out:
     return ret;
 }
-
-// Modified by TUYA Start
-void im_lcd_handle(void *handle)
-{
-    g_lcd_handle = handle;  
-}
-
-void img_register_display_cb(img_display_cb *disp_cb)
-{
-    g_img_display_cb = disp_cb;
-}
-
-// Modified by TUYA End

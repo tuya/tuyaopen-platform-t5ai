@@ -252,7 +252,10 @@ do_memp_malloc_pool_fn(const struct memp_desc *desc, const char *file, const int
 
 #if MEMP_MEM_MALLOC
   #if MEM_TRX_DYNAMIC_EN
-  memp = (struct memp *)mem_malloc_trx(MEMP_SIZE + MEMP_ALIGN_SIZE(desc->size), MEM_TYPE_POOL);
+  if (desc == memp_pools[MEMP_PBUF_POOL])
+    memp = (struct memp *)mem_malloc_trx(MEMP_SIZE + MEMP_ALIGN_SIZE(desc->size), MEM_TYPE_TX);
+  else
+    memp = (struct memp *)mem_malloc_trx(MEMP_SIZE + MEMP_ALIGN_SIZE(desc->size), MEM_TYPE_POOL);
   #else
   memp = (struct memp *)mem_malloc(MEMP_SIZE + MEMP_ALIGN_SIZE(desc->size));
   #endif

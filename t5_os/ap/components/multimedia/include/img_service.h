@@ -15,6 +15,7 @@
 #pragma once
 
 #include <driver/lcd_types.h>
+//#include <driver/media_types.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -48,6 +49,7 @@ typedef struct
 	media_rotate_mode_t rotate_mode;
 	media_rotate_t rotate;
 	media_ppi_t scale_ppi;
+    img_proc_order_t proc_order;
 
 	frame_buffer_t *decoder_frame;
 	frame_buffer_t *rotate_frame;
@@ -72,20 +74,20 @@ typedef struct
     void *args;
 } img_msg_t;
 
-typedef void (*img_display_cb)(frame_buffer_t *frame);
 
 bk_err_t bk_img_msg_send(img_msg_t *msg);
 bk_err_t img_service_open(void);
-void img_register_display_cb(img_display_cb *disp_cb);
 //void img_event_handle(media_mailbox_msg_t *msg);
 
 frame_buffer_t *rotate_frame_handler(frame_buffer_t *frame, media_rotate_t rotate);
 frame_buffer_t *decoder_frame_handler(frame_buffer_t *frame);
 frame_buffer_t *scale_frame_handler(frame_buffer_t *frame, media_ppi_t ppi);
 bk_err_t image_rotate_set(media_rotate_t rotate);
+bk_err_t image_scale_set(media_ppi_t ppi);
+bk_err_t image_service_set_order(img_proc_order_t proc_order);
 
 bk_err_t img_service_close(void);
-void im_lcd_handle(void *handle);
+
 #ifdef __cplusplus
 }
 #endif

@@ -271,6 +271,7 @@ typedef enum {
 **/
 typedef void (*bt_cmd_cb_t)(bt_cmd_t cmd, bt_cmd_param_t *param);
 
+typedef bt_err_t (*dual_hci_to_cp_cb)(uint8_t type, uint8_t *buf, uint16_t len);
 #ifdef __cplusplus
 }
 #endif

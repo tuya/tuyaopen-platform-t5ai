@@ -79,6 +79,10 @@ void cli_voice_test_cmd(char *pcWriteBuffer, int xWriteBufferLen, int argc, char
         {
             mic_type = MIC_TYPE_UAC;
         }
+        else if (os_strcmp(argv[2], "onboard_dual_dmic_mic") == 0)
+        {
+            mic_type = MIC_TYPE_ONBOARD_DUAL_DMIC_MIC;
+        }
         else
         {
             LOGE("%s, %d, mic_type: %s not right\n", __func__, __LINE__, argv[2]);
@@ -93,7 +97,7 @@ void cli_voice_test_cmd(char *pcWriteBuffer, int xWriteBufferLen, int argc, char
         }
 
         aec_en = os_strtoul(argv[4], NULL, 10);
-        if (aec_en != 0 && aec_en != 1)
+        if (aec_en != 0 && aec_en != 1 && aec_en != 3)
         {
             LOGE("%s, %d, aec_en: %s not right\n", __func__, __LINE__, aec_en);
             return;
@@ -190,7 +194,7 @@ void cli_voice_test_cmd(char *pcWriteBuffer, int xWriteBufferLen, int argc, char
             }
             voice_cfg.mic_cfg.onboard_mic_cfg = onboard_mic_cfg;
         }
-        else
+        else if(mic_type == MIC_TYPE_UAC)
         {
             voice_cfg.mic_type = MIC_TYPE_UAC;
             uac_mic_stream_cfg_t uac_mic_cfg = UAC_MIC_STREAM_CFG_DEFAULT();
@@ -209,14 +213,68 @@ void cli_voice_test_cmd(char *pcWriteBuffer, int xWriteBufferLen, int argc, char
             uac_mic_cfg.out_block_num = 1;
             voice_cfg.mic_cfg.uac_mic_cfg = uac_mic_cfg;
         }
+        else if(mic_type == MIC_TYPE_ONBOARD_DUAL_DMIC_MIC)
+        {
+            voice_cfg.mic_type = MIC_TYPE_ONBOARD_DUAL_DMIC_MIC;
+            onboard_dual_dmic_mic_stream_cfg_t onboard_dual_dmic_mic_cfg = DEFAULT_ONBOARD_DUAL_DMIC_STREAM_CONFIG();
+            onboard_dual_dmic_mic_cfg.adc_cfg.sample_rate = mic_samp_rate;
+            /* one farme size, 20ms */
+            if (mic_samp_rate == 16000)
+            {
+                onboard_dual_dmic_mic_cfg.frame_size = 640;
+                onboard_dual_dmic_mic_cfg.out_block_size = 640;
+            }
+            else
+            {
+                LOGE("%s, %d,mic samp rate:%d,dual_dmic only support 16000 sample rate!\n", __func__, __LINE__,mic_samp_rate, mic_samp_rate);
+                goto fail;
+            }
+            
+            if(!aec_en)
+            {
+                onboard_dual_dmic_mic_cfg.dual_dmic_sgl_out = 1;
+                LOGD("%s, %d, dual_dmic_mic:no aec,dual_dmic_sgl_out set to 1!\n", __func__, __LINE__);
+            }
+            voice_cfg.mic_cfg.onboard_dual_dmic_mic_cfg = onboard_dual_dmic_mic_cfg;
+        }
+        else
+        {
+            LOGE("%s, %d, mic_type:%d is invalid!\n", __func__, __LINE__,mic_type);
+            goto fail;
+        }
 
         if (aec_en)
         {
-            voice_cfg.aec_en = aec_en;
-            aec_algorithm_cfg_t aec_alg_cfg = DEFAULT_AEC_ALGORITHM_CONFIG();
-            aec_alg_cfg.out_block_num = 1;
-            aec_alg_cfg.aec_cfg.fs = mic_samp_rate;
-            voice_cfg.aec_cfg.aec_alg_cfg = aec_alg_cfg;
+            voice_cfg.aec_en = true;
+            voice_cfg.aec_ver = aec_en;
+            if(1 == aec_en)//aec v1
+            {
+                aec_algorithm_cfg_t aec_alg_cfg = DEFAULT_AEC_ALGORITHM_CONFIG();
+                aec_alg_cfg.out_block_num = 1;
+                aec_alg_cfg.aec_cfg.fs = mic_samp_rate;
+                voice_cfg.aec_cfg.aec_alg_cfg = aec_alg_cfg;
+            }
+            else if (3 == aec_en)//aec v3
+            {
+                aec_v3_algorithm_cfg_t aec_v3_alg_cfg = DEFAULT_AEC_V3_ALGORITHM_CONFIG();
+                aec_v3_alg_cfg.out_block_num = 1;
+                aec_v3_alg_cfg.aec_cfg.fs = mic_samp_rate;
+                if(mic_type == MIC_TYPE_ONBOARD_DUAL_DMIC_MIC)
+                {
+                    aec_v3_alg_cfg.dual_ch = 1;
+                }
+                if(aec_v3_alg_cfg.vad_cfg.vad_enable)
+                {
+                    voice_cfg.enc_common.frame_in_ms = 20;
+                    voice_cfg.enc_common.frame_in_size = mic_samp_rate*20/1000*2;
+                }
+                voice_cfg.aec_cfg.aec_v3_alg_cfg = aec_v3_alg_cfg;
+            }
+            else
+            {
+                LOGE("%s, %d, aec ver:%d is invalid!\n", __func__, __LINE__,aec_en);
+                goto fail;
+            }
         }
         else
         {
@@ -333,6 +391,10 @@ void cli_voice_test_cmd(char *pcWriteBuffer, int xWriteBufferLen, int argc, char
         {
             onboard_speaker_stream_cfg_t onboard_spk_cfg = ONBOARD_SPEAKER_STREAM_CFG_DEFAULT();
             onboard_spk_cfg.sample_rate = spk_samp_rate;
+            if(MIC_TYPE_ONBOARD_DUAL_DMIC_MIC == mic_type)
+            {
+                onboard_spk_cfg.clk_src = AUD_CLK_APLL;
+            }
             /* one farme size, 20ms */
             if (spk_samp_rate == 8000)
             {
@@ -499,16 +561,16 @@ static const struct cli_command s_voice_commands[] =
     /* voice {cmd mic_type mic_samp_rate aec_en enc_type dec_type spk_type}
      *
      * [cmd]            start/stop
-     * [mic_type]       onboard/uac
+     * [mic_type]       onboard/uac/onboard_dual_dmic_mic
      * [mic_samp_rate]  8000/16000
-     * [aec_en]         0/1
+     * [aec_en]         0/1/3
      * [enc_type]       pcm/g711a/g711u/aac
      * [dec_type]       pcm/g711a/g711u/aac
      * [spk_type]       onboard/uac
      * [spk_samp_rate]  8000/16000
      */
 
-    {"voice", "voice {start|stop onboard|uac 8000|16000 0|1 pcm|g711a|g711u|aac pcm|g711a|g711u|aac onboard|uac 8000|16000}", cli_voice_test_cmd},
+    {"voice", "voice {start|stop onboard|uac|onboard_dual_dmic_mic 8000|16000 0|1|3 pcm|g711a|g711u|aac pcm|g711a|g711u|aac onboard|uac 8000|16000}", cli_voice_test_cmd},
 };
 
 int cli_voice_init(void)

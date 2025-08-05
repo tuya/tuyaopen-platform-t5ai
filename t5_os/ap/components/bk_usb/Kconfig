@@ -137,8 +137,8 @@ menu "Bk_usb"
         default 1 if !STANDARD_DUALSTREAM
         default 2 if STANDARD_DUALSTREAM
 
-    config USB_CDC_ACM_DEMO
-        bool "Enable device usb cdc demo"
+    config USB_CDC_MODEM
+        bool "Enable device usb cdc for 4G module"
         help
             This macro needs to be opened on cp0 and cp1 when USB in cp1.
         default n

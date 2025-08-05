@@ -1,6 +1,4 @@
 #include "tkl_uart.h"
-#include "tkl_gpio.h"
-#include "tkl_system.h"
 
 #include "drv_model_pub.h"
 #include "uart_pub.h"
@@ -33,8 +31,6 @@ OPERATE_RET tkl_uart_init(TUYA_UART_NUM_E port_id, TUYA_UART_BASE_CFG_T *cfg)
     int port_num = TUYA_UART_GET_PORT_NUMBER(port_id);
     uart_id_t port;
     uart_config_t bkcfg;
-
-    bk_printf("tkl_uart_init: port%d init, %lld.\n", port_id, tkl_system_get_tick_count());
 
     memset(&bkcfg, 0, sizeof(uart_config_t));
 
@@ -96,8 +92,6 @@ OPERATE_RET tkl_uart_init(TUYA_UART_NUM_E port_id, TUYA_UART_BASE_CFG_T *cfg)
 
     bk_uart_init(port, &bkcfg);
 
-    bk_printf("tkl_uart_init, port: %d, baudrate %d, tick: %lld\r\n", port_num, cfg->baudrate, tkl_system_get_tick_count());
-
     return OPRT_OK;
 }
 
@@ -117,8 +111,6 @@ OPERATE_RET tkl_uart_deinit(TUYA_UART_NUM_E port_id)
     int port_num = TUYA_UART_GET_PORT_NUMBER(port_id);
     uart_id_t port;
 
-    bk_printf("tkl_uart_deinit: port%d deinit.\n", port_id);
-
     if( CONFIG_UART_PRINT_PORT == port_num) {
         // bk_printf("tkl_uart_init: print port already inuse.\n");
         return OPRT_INVALID_PARM;
@@ -133,6 +125,9 @@ OPERATE_RET tkl_uart_deinit(TUYA_UART_NUM_E port_id)
     }
     bk_uart_deinit(port);
 
+    tkl_gpio_deinit(uart_hal_get_tx_pin(port));
+    tkl_gpio_deinit(uart_hal_get_rx_pin(port));
+
     TUYA_GPIO_BASE_CFG_T gpio_cfg;
     gpio_cfg.direct = TUYA_GPIO_INPUT;
     gpio_cfg.level = TUYA_GPIO_LEVEL_HIGH;
@@ -140,8 +135,6 @@ OPERATE_RET tkl_uart_deinit(TUYA_UART_NUM_E port_id)
     tkl_gpio_init(uart_hal_get_tx_pin(port), &gpio_cfg);
     gpio_cfg.mode = TUYA_GPIO_FLOATING;
     tkl_gpio_init(uart_hal_get_rx_pin(port), &gpio_cfg);
-
-    bk_printf("tkl_uart_deinit, port%d\r\n", port_num);
 
     return OPRT_OK;
 }
@@ -175,7 +168,6 @@ INT_T tkl_uart_write(TUYA_UART_NUM_E port_id, VOID_T *buff, UINT16_T len)
     }
 
     bk_uart_write_bytes(port, buff, len);
-
     return len;
 }
 
@@ -251,7 +243,6 @@ static void uart_isr_t_cb(uart_id_t id, void  *param) {
         tkl_rx_cb((UINT_T)id);
     }
 }
-
 /**
  * @brief enable uart rx interrupt and regist interrupt callback
  *

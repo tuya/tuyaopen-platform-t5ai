@@ -198,6 +198,20 @@ DSTATUS disk_initialize (
 #if CONFIG_SDCARD_POWER_GPIO_CTRL_AUTO_POWERDOWN_WHEN_IDLE
 		sdcard_operation_timing_initialize_start();
 #endif
+		if(result != BK_OK) {
+			FATFS_LOGI("func %s line %d,  bk_sd_card_init result:%d, do reset\r\n", __func__, __LINE__, result);
+			for(uint32_t i = 0; i < SDCARD_READ_FAIL_RETRY_CNT; i++) {
+				FATFS_LOGI("%s retry count:%d\r\n", __func__, i);
+				bk_sd_card_deinit();
+				sdcard_ldo_power_enable(1);
+				result = bk_sd_card_init();
+				if(result != RES_OK) {
+					FATFS_LOGI("%s ERROR result:%d\r\n", __func__, result);
+				}
+				else
+					break;
+			}
+		}
 		if(result == BK_OK)
 			stat = 0;
 #endif

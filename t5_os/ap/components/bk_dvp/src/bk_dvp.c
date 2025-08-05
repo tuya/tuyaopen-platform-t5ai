@@ -32,7 +32,7 @@
 #include <driver/video_common_driver.h>
 #include "avdk_crc.h"
 #include "media_utils.h"
-
+#include <driver/flash.h>
 #define TAG "dvp_drv"
 
 #define LOGI(...) BK_LOGW(TAG, ##__VA_ARGS__)
@@ -52,94 +52,68 @@ extern uint8_t *media_bt_share_buffer;
 
 #define DVP_DIAG_DEBUG_INIT()                   \
     do {                                        \
-        gpio_dev_unmap(GPIO_2);                 \
-        bk_gpio_disable_pull(GPIO_2);           \
-        bk_gpio_enable_output(GPIO_2);          \
-        bk_gpio_set_output_low(GPIO_2);         \
-        \
-        gpio_dev_unmap(GPIO_3);                 \
-        bk_gpio_disable_pull(GPIO_3);           \
-        bk_gpio_enable_output(GPIO_3);          \
-        bk_gpio_set_output_low(GPIO_3);         \
-        \
-        gpio_dev_unmap(GPIO_4);                 \
-        bk_gpio_disable_pull(GPIO_4);           \
-        bk_gpio_enable_output(GPIO_4);          \
-        bk_gpio_set_output_low(GPIO_4);         \
-        \
-        gpio_dev_unmap(GPIO_5);                 \
-        bk_gpio_disable_pull(GPIO_5);           \
-        bk_gpio_enable_output(GPIO_5);          \
-        bk_gpio_set_output_low(GPIO_5);         \
-        \
-        gpio_dev_unmap(GPIO_12);                \
-        bk_gpio_disable_pull(GPIO_12);          \
-        bk_gpio_enable_output(GPIO_12);         \
-        bk_gpio_set_output_low(GPIO_12);        \
-        \
-        gpio_dev_unmap(GPIO_13);                \
-        bk_gpio_disable_pull(GPIO_13);          \
-        bk_gpio_enable_output(GPIO_13);         \
-        bk_gpio_set_output_low(GPIO_13);        \
-        \
+        GPIO_DOWN(2);                           \
+        GPIO_DOWN(3);                           \
+        GPIO_DOWN(4);                           \
+        GPIO_DOWN(5);                           \
+        GPIO_DOWN(44);                          \
+        GPIO_DOWN(45);                          \
+        GPIO_DOWN(46);                          \
     } while (0)
 
-#define DVP_JPEG_VSYNC_ENTRY()          bk_gpio_set_output_high(GPIO_2)
-#define DVP_JPEG_VSYNC_OUT()            bk_gpio_set_output_low(GPIO_2)
+#define DVP_VSYNC_ENTRY()          GPIO_UP(2)
+#define DVP_VSYNC_OUT()            GPIO_DOWN(2)
 
-#define DVP_JPEG_EOF_ENTRY()            bk_gpio_set_output_high(GPIO_3)
-#define DVP_JPEG_EOF_OUT()              bk_gpio_set_output_low(GPIO_3)
+#define DVP_JPEG_EOF_ENTRY()       GPIO_UP(3)
+#define DVP_JPEG_EOF_OUT()         GPIO_DOWN(3)
 
-#define DVP_YUV_EOF_ENTRY()             bk_gpio_set_output_high(GPIO_4)
-#define DVP_YUV_EOF_OUT()               bk_gpio_set_output_low(GPIO_4)
+#define DVP_H264_EOF_ENTRY()       GPIO_UP(3)
+#define DVP_H264_EOF_OUT()         GPIO_DOWN(3)
 
-#define DVP_JPEG_START_ENTRY()          bk_gpio_set_output_high(GPIO_5)
-#define DVP_JPEG_START_OUT()            bk_gpio_set_output_low(GPIO_5)
+#define DVP_YUV_EOF_ENTRY()        GPIO_UP(4)
+#define DVP_YUV_EOF_OUT()          GPIO_DOWN(4)
 
-#define DVP_JPEG_HEAD_ENTRY()           bk_gpio_set_output_high(GPIO_12)
-#define DVP_JPEG_HEAD_OUT()             bk_gpio_set_output_low(GPIO_12)
+#define DVP_PPI_ERROR_ENTRY()       GPIO_UP(5)
+#define DVP_PPI_ERROR_OUT()         GPIO_DOWN(5)
 
-#define DVP_PPI_ERROR_ENTRY()           DVP_YUV_EOF_ENTRY()
-#define DVP_PPI_ERROR_OUT()             DVP_YUV_EOF_OUT()
+#define DVP_SIZE_ERROR_ENTRY()      GPIO_UP(44)
+#define DVP_SIZE_ERROR_OUT()        GPIO_DOWN(44)
 
-#define DVP_H264_EOF_ENTRY()            DVP_JPEG_EOF_ENTRY()
-#define DVP_H264_EOF_OUT()              DVP_JPEG_EOF_OUT()
+#define DVP_RESET_ENTRY()           GPIO_UP(45)
+#define DVP_RESET_OUT()             GPIO_DOWN(45)
 
-#define DVP_JPEG_SDMA_ENTRY()           bk_gpio_set_output_high(GPIO_13)
-#define DVP_JPEG_SDMA_OUT()             bk_gpio_set_output_low(GPIO_13)
-
-#define DVP_DEBUG_IO()                      \
-    do {                                    \
-        bk_gpio_set_output_high(GPIO_6);    \
-        bk_gpio_set_output_low(GPIO_6);     \
-    } while (0)
+#define DVP_DMA_ENTRY()             GPIO_UP(46)
+#define DVP_DMA_OUT()               GPIO_DOWN(46)
 
 #else
 #define DVP_DIAG_DEBUG_INIT()
 
+#define DVP_VSYNC_ENTRY()
+#define DVP_VSYNC_OUT()
+
 #define DVP_JPEG_EOF_ENTRY()
 #define DVP_JPEG_EOF_OUT()
-
-#define DVP_YUV_EOF_ENTRY()
-#define DVP_YUV_EOF_OUT()
-
-#define DVP_JPEG_START_ENTRY()
-#define DVP_JPEG_START_OUT()
-
-#define DVP_JPEG_HEAD_ENTRY()
-#define DVP_JPEG_HEAD_OUT()
-
-#define DVP_PPI_ERROR_ENTRY()
-#define DVP_PPI_ERROR_OUT()
 
 #define DVP_H264_EOF_ENTRY()
 #define DVP_H264_EOF_OUT()
 
-#define DVP_JPEG_SDMA_ENTRY()
-#define DVP_JPEG_SDMA_OUT()
+#define DVP_YUV_EOF_ENTRY()
+#define DVP_YUV_EOF_OUT()
 
-#define DVP_JPEG_VSYNC_ENTRY()
-#define DVP_JPEG_VSYNC_OUT()
+#define DVP_SIZE_ERROR_ENTRY()
+#define DVP_SIZE_ERROR_OUT()
+
+#define DVP_RESET_ENTRY()
+#define DVP_RESET_OUT()
+
+#define DVP_PPI_ERROR_ENTRY()
+#define DVP_PPI_ERROR_OUT()
+
+#define DVP_DMA_ENTRY()
+#define DVP_DMA_OUT()
+
+#define DVP_VSYNC_ENTRY()
+#define DVP_VSYNC_OUT()
 
 #endif
 
@@ -286,9 +260,9 @@ static bk_err_t dvp_camera_init_device(dvp_driver_handle_t *handle)
 
 static void dvp_camera_dma_finish_callback(dma_id_t id)
 {
-    DVP_JPEG_SDMA_ENTRY();
+    DVP_DMA_ENTRY();
     s_dvp_camera_handle->dma_length += FRAME_BUFFER_CACHE;
-    DVP_JPEG_SDMA_OUT();
+    DVP_DMA_OUT();
 }
 
 static bk_err_t dvp_camera_dma_config(dvp_driver_handle_t *handle)
@@ -556,15 +530,21 @@ static void dvp_camera_reset_hardware_modules_handler(dvp_driver_handle_t *handl
     if (config->img_format & IMAGE_MJPEG)
     {
         bk_jpeg_enc_soft_reset();
+        bk_yuv_buf_start(JPEG_MODE);
     }
 
     if (config->img_format & IMAGE_H264)
     {
         bk_h264_config_reset();
+        bk_yuv_buf_start(H264_MODE);
         bk_h264_encode_enable();
     }
 
     bk_yuv_buf_soft_reset();
+    if (handle->yuv_config)
+    {
+        handle->yuv_config->yuv_data_offset = 0;
+    }
 
     if (handle->dma_channel < DMA_ID_MAX)
     {
@@ -592,7 +572,7 @@ static void dvp_camera_sensor_ppi_err_handler(yuv_buf_unit_t id, void *param)
 
     if (!handle->error)
     {
-        LOGW("%s, %d\n", __func__, __LINE__);
+        LOGV("%s, %d\n", __func__, __LINE__);
         handle->error = true;
     }
 
@@ -612,6 +592,7 @@ static void yuv_sm0_line_done(yuv_buf_unit_t id, void *param)
     if ((yuv_config->yuv_data_offset + yuv_config->yuv_pingpong_length) > handle->yuv_frame->length)
     {
         yuv_config->yuv_data_offset = 0;
+        handle->error = true;
     }
 
     BK_WHILE(bk_dma_get_enable_status(yuv_config->dma_collect_yuv));
@@ -637,6 +618,7 @@ static void yuv_sm1_line_done(yuv_buf_unit_t id, void *param)
     if ((yuv_config->yuv_data_offset + yuv_config->yuv_pingpong_length) > handle->yuv_frame->length)
     {
         yuv_config->yuv_data_offset = 0;
+        handle->error = true;
     }
 
     BK_WHILE(bk_dma_get_enable_status(yuv_config->dma_collect_yuv));
@@ -651,7 +633,7 @@ static void yuv_sm1_line_done(yuv_buf_unit_t id, void *param)
 
 static void dvp_camera_vsync_negedge_handler(yuv_buf_unit_t id, void *param)
 {
-    DVP_JPEG_VSYNC_ENTRY();
+    DVP_VSYNC_ENTRY();
 
     dvp_driver_handle_t *handle = (dvp_driver_handle_t *)param;
 
@@ -665,18 +647,18 @@ static void dvp_camera_vsync_negedge_handler(yuv_buf_unit_t id, void *param)
         {
             rtos_set_semaphore(&handle->sem);
         }
-        DVP_JPEG_VSYNC_OUT();
+        DVP_VSYNC_OUT();
         return;
     }
 
     if (handle->error)
     {
+        DVP_RESET_ENTRY();
         handle->error = false;
         handle->sequence = 0;
         dvp_camera_reset_hardware_modules_handler(handle);
-        LOGD("reset OK \r\n");
-        DVP_JPEG_VSYNC_OUT();
-        return;
+        LOGV("reset OK \r\n");
+        DVP_RESET_OUT();
     }
 
     if (handle->regenerate_idr)
@@ -686,7 +668,7 @@ static void dvp_camera_vsync_negedge_handler(yuv_buf_unit_t id, void *param)
         handle->regenerate_idr = false;
     }
 
-    DVP_JPEG_VSYNC_OUT();
+    DVP_VSYNC_OUT();
 }
 
 static void dvp_camera_yuv_eof_handler(yuv_buf_unit_t id, void *param)
@@ -748,15 +730,6 @@ static void dvp_camera_jpeg_eof_handler(jpeg_unit_t id, void *param)
         return;
     }
 
-    if (handle->error)
-    {
-        handle->encode_frame->length = 0;
-        handle->dma_length = 0;
-        bk_dma_stop(handle->dma_channel);
-        bk_dma_start(handle->dma_channel);
-        DVP_JPEG_EOF_OUT();
-        return;
-    }
 
     if (handle->encode_frame == NULL
         || handle->encode_frame->frame == NULL)
@@ -765,20 +738,32 @@ static void dvp_camera_jpeg_eof_handler(jpeg_unit_t id, void *param)
         goto error;
     }
 
-
     bk_dma_flush_src_buffer(handle->dma_channel);
-
     real_length = bk_jpeg_enc_get_frame_size();
-
     recv_length = FRAME_BUFFER_CACHE - bk_dma_get_remain_len(handle->dma_channel);
-
     bk_dma_stop(handle->dma_channel);
 
     handle->dma_length = handle->dma_length + recv_length - JPEG_CRC_SIZE;
 
     if (handle->dma_length != real_length)
     {
-        LOGW("%s size no match:%d-%d=%d\r\n", __func__, real_length, handle->dma_length, real_length - handle->dma_length);
+        uint32_t left_length = real_length - handle->dma_length;
+        LOGW("%s size no match:%d-%d=%d\n", __func__, real_length, handle->dma_length, left_length);
+        if (left_length != FRAME_BUFFER_CACHE)
+        {
+            DVP_SIZE_ERROR_ENTRY();
+            handle->error = true;
+            DVP_SIZE_ERROR_OUT();
+        }
+    }
+    if (handle->error)
+    {
+        handle->encode_frame->length = 0;
+        handle->dma_length = 0;
+        bk_dma_stop(handle->dma_channel);
+        bk_dma_start(handle->dma_channel);
+        DVP_JPEG_EOF_OUT();
+        return;
     }
 
     handle->dma_length = 0;
@@ -910,7 +895,6 @@ static void dvp_camera_h264_eof_handler(h264_unit_t id, void *param)
         handle->sequence = 1;
     }
 
-
     if (handle->sequence == 1)
     {
         handle->i_frame = 1;
@@ -945,10 +929,12 @@ static void dvp_camera_h264_eof_handler(h264_unit_t id, void *param)
     if (handle->dma_length != real_length)
     {
         uint32_t left_length = real_length - handle->dma_length;
-        LOGW("%s size no match:%d-%d=%d\r\n", __func__, real_length, handle->dma_length, left_length);
+        LOGW("%s size no match:%d-%d=%d\n", __func__, real_length, handle->dma_length, left_length);
         if (left_length != FRAME_BUFFER_CACHE)
         {
+            DVP_SIZE_ERROR_ENTRY();
             handle->error = true;
+            DVP_SIZE_ERROR_OUT();
         }
     }
 
@@ -1464,6 +1450,20 @@ const dvp_sensor_config_t *bk_dvp_detect(void)
 
     return sensor;
 }
+#if CONFIG_FLASH
+bk_err_t bk_dvp_flash_ops_cb(bool suspend)
+{
+    dvp_driver_handle_t *handle = s_dvp_camera_handle;
+    if (handle == NULL)
+    {
+        LOGW("%s, not open...\n", __func__);
+        return BK_FAIL;
+    }
+    handle->error = true;
+
+    return BK_OK;
+}
+#endif
 
 bk_err_t bk_dvp_init(camera_handle_t *handle, dvp_config_t *cfg, bk_dvp_callback_t *cb)
 {
@@ -1543,6 +1543,9 @@ bk_err_t bk_dvp_init(camera_handle_t *handle, dvp_config_t *cfg, bk_dvp_callback
         goto error;
     }
 
+#if CONFIG_FLASH
+    mb_flash_register_op_dvp_notify(bk_dvp_flash_ops_cb);
+#endif
     // step 2: init stream list
     if (cfg->img_format & IMAGE_MJPEG)
     {

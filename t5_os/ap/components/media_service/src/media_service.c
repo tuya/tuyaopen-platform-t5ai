@@ -114,8 +114,8 @@ int media_service_init(void)
 #endif
 
 #if (CONFIG_USB_CDC)
-	extern bk_err_t bk_cdc_acm_demo(void);
-	bk_cdc_acm_demo();
+	//extern bk_err_t bk_cdc_acm_demo(void);
+	//bk_cdc_acm_demo();
 #endif
 	//frame_buffer_list_init();
 
@@ -127,7 +127,6 @@ int media_service_init(void)
 
     power_state_cb.psram_on_cb_fn = media_frame_buffer_list_init;
 
-    bk_printf("media_service_init----%x\n", media_frame_buffer_list_init);
     power_state_cb.param1 = 0;
 
     power_state_cb.param2 = 0;

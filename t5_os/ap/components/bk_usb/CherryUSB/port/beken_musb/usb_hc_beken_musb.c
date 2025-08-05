@@ -36,6 +36,15 @@ static inline void usb_exit_critical(uint32_t flags)
     rtos_enable_int(flags);
 }
 
+uint32_t usb_hc_enter_critical()
+{
+    return usb_enter_critical();
+}
+
+void usb_hc_exit_critical(uint32_t flags)
+{
+    usb_exit_critical(flags);
+}
 
 #define HWREG(x) \
     (*((volatile uint32_t *)(x)))

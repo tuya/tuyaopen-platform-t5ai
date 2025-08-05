@@ -21,11 +21,7 @@
 #include <driver/flash.h>
 #include <driver/flash_partition.h>
 
-#if (CONFIG_FATFS)
-#include "ff.h"
-#include "diskio.h"
-#endif
-
+#include "bk_posix.h"
 #include "storage_act.h"
 
 #define TAG "storage"
@@ -40,83 +36,90 @@
 
 storage_flash_t storge_flash;
 
+
+#if (CONFIG_VFS)
+static int bk_vfs_mount_sd0_fatfs(void) {
+	int ret = BK_OK;
+	static bool is_mounted = false;
+
+	if(!is_mounted) {
+		struct bk_fatfs_partition partition;
+		char *fs_name = NULL;
+		fs_name = "fatfs";
+		partition.part_type = FATFS_DEVICE;
+		partition.part_dev.device_name = FATFS_DEV_SDCARD;
+		partition.mount_path = VFS_SD_0_PATITION_0;
+		ret = mount("SOURCE_NONE", partition.mount_path, fs_name, 0, &partition);
+		is_mounted = true;
+	}
+	return ret;
+}
+#endif
+
 bk_err_t bk_sdcard_read_to_mem(char *filename, uint32_t* paddr, uint32_t *total_len)
 {
-	bk_err_t ret = BK_FAIL;
-#if (CONFIG_FATFS)
-	char cFileName[FF_MAX_LFN];
-	FIL file;
-	FRESULT fr;
-	FSIZE_t size_64bit = 0;
-	unsigned int uiTemp = 0;
+	bk_err_t ret = BK_OK;
+#if (CONFIG_VFS)
+	int fd = 0;
+	int bytes_read = 0;
 	uint32_t once_read_len = 1024 * 2;
+	char cFileName[VFS_FILE_MAX_LEN] = {0};
+	sprintf(cFileName, "%s/%s", VFS_SD_0_PATITION_0, filename);
 
-	// step 1: read picture from sd to psram
-	sprintf(cFileName, "%d:/%s", DISK_NUMBER_SDIO_SD, filename);
-
-	fr = f_open(&file, cFileName, FA_OPEN_EXISTING | FA_READ);
-	if (fr != FR_OK)
-	{
-		LOGE("open %s fail.\r\n", filename);
-		return ret;
+	bk_vfs_mount_sd0_fatfs();
+	fd = open(cFileName, O_RDONLY);
+	if (fd < 0) {
+		LOGE("can't open %s\n", cFileName);
+		return BK_FAIL;
 	}
 
 	uint8_t * sram_addr = os_malloc(once_read_len);
 	if (sram_addr == NULL)
 	{
 		LOGE("sd buffer malloc failed\r\n");
-		return ret;
+		return BK_FAIL;
+	}
+	char *ucRdTemp = (char *)sram_addr;
+	struct stat statbuf;
+	ret = stat(cFileName, &statbuf);
+	if (ret < 0) {
+		LOGE("stat file %s fail\n", cFileName);
+		close(fd);
+		return BK_FAIL;
 	}
 
-	char *ucRdTemp = (char *)sram_addr;
-	size_64bit = f_size(&file);
-	uint32_t total_size = (uint32_t)size_64bit;// total byte
+	LOGD("statbuf->st_size =%d, statbuf->st_mode = %d.\r\n", statbuf.st_size, statbuf.st_mode);
+	uint32_t total_size = (uint32_t)statbuf.st_size;// total byte
 	LOGD("read file total_size = %d.\r\n", total_size);
 	*total_len = total_size;
 
-	while(1)
-	{
-		fr = f_read(&file, ucRdTemp, once_read_len, &uiTemp);
-		if (fr != FR_OK) {
-			LOGE("read file fail.\r\n");
-			goto out;
-		}
-		if (uiTemp == 0)
-		{
-			LOGD("read file complete.\r\n");
-			ret = BK_OK;
-			break;
-		}
-		if(once_read_len != uiTemp)
-		{
-			if (uiTemp % 4)
-			{
-				uiTemp = (uiTemp / 4 + 1) * 4;
-			}
-			bk_psram_word_memcpy(paddr, sram_addr, uiTemp);
-		}
-		else
-		{
-			bk_psram_word_memcpy(paddr, sram_addr, once_read_len);
-			paddr += (once_read_len / 4);
-		}
-	}
+    do {
+        bytes_read = read(fd, ucRdTemp, once_read_len);
+		LOGV("read from %s, bytes_read=%d\n", cFileName, bytes_read);
+        if (bytes_read > 0) {
+            if(once_read_len != bytes_read) {
+                if (bytes_read % 4) {
+                    bytes_read = (bytes_read / 4 + 1) * 4;
+                }
+                bk_psram_word_memcpy(paddr, sram_addr, bytes_read);
+            } else {
+                bk_psram_word_memcpy(paddr, sram_addr, once_read_len);
+                paddr += (once_read_len / 4);
+            }
+        } else if (bytes_read < 0) {
+            LOGE("Read %s error", cFileName);
+			ret = BK_FAIL;
+            break;
+        }
+    } while (bytes_read != 0);  // 0表示EOF
 
-out:
-
-	if (sram_addr)
-	{
+	if (sram_addr) {
 		os_free(sram_addr);
 		sram_addr == NULL;
 	}
-
-	fr = f_close(&file);
-	if (fr != FR_OK)
-	{
-		LOGE("close %s fail!\r\n", filename);
-	}
+	close(fd);
 #else
-	LOGW("Not support\r\n");
+	LOGW("VFS Not support\r\n");
 #endif
 
 	return ret;
@@ -125,37 +128,32 @@ out:
 bk_err_t bk_mem_save_to_sdcard(char *filename, uint8_t *paddr, uint32_t total_len)
 {
 	bk_err_t ret = BK_FAIL;
-#if (CONFIG_FATFS)
-	FIL fp1;
-	unsigned int uiTemp = 0;
-	char file_name[50] = {0};
+#if  (CONFIG_VFS)
+	int fd = 0;
+	int bytes_write = 0;
+	char cFileName[VFS_FILE_MAX_LEN] = {0};
 
-	sprintf(file_name, "%d:/%s", DISK_NUMBER_SDIO_SD, filename);
 
-	FRESULT fr = f_open(&fp1, file_name, FA_CREATE_ALWAYS | FA_WRITE);
-	if (fr != FR_OK)
-	{
-		LOGE("can not open file: %s, error: %d\n", file_name, fr);
-		return ret;
+	bk_vfs_mount_sd0_fatfs();
+
+	sprintf(cFileName, "%s/%s", VFS_SD_0_PATITION_0, filename);
+
+	fd = open(cFileName, O_RDWR | O_CREAT | O_TRUNC);
+	if (fd < 0) {
+		LOGE("can't open %s\n", cFileName);
+		return -1;
 	}
 
-	LOGV("open file:%s!\n", file_name);
+	bytes_write = write(fd, (char *)paddr, total_len);
+	LOGV("write to %s, bytes_write=%d\n", cFileName, bytes_write);
+	close(fd);
 
-	fr = f_write(&fp1, (char *)paddr, total_len, &uiTemp);
-	if (fr != FR_OK)
-	{
-		LOGE("f_write failed 1 fr = %d\r\n", fr);
-		ret = BK_FAIL;
-	}
-	else
-	{
+	if(bytes_write == total_len) {
 		ret = BK_OK;
 	}
-
-	f_close(&fp1);
-
+#else
+	LOGW("Not support\r\n");
 #endif
-
 	return ret;
 }
 
@@ -193,32 +191,29 @@ bk_err_t bk_mem_append_save_to_sdcard(char *filename, uint8_t *paddr, uint32_t t
 {
 	bk_err_t ret = BK_FAIL;
 
-#if (CONFIG_FATFS)
-	FIL fp1;
-	unsigned int uiTemp = 0;
-	char file_name[50] = {0};
+#if  (CONFIG_VFS)
+	int fd = 0;
+	int bytes_write = 0;
+	char cFileName[VFS_FILE_MAX_LEN] = {0};
 
-	sprintf(file_name, "%d:/%s", DISK_NUMBER_SDIO_SD, filename);
+	bk_vfs_mount_sd0_fatfs();
 
-	FRESULT fr = f_open(&fp1, file_name, FA_OPEN_APPEND | FA_WRITE);
-	if (fr != FR_OK)
-	{
-		LOGE("can not open file: %s, error: %d\n", file_name, fr);
-		return ret;
+	sprintf(cFileName, "%s/%s", VFS_SD_0_PATITION_0, filename);
+	fd = open(cFileName, O_RDWR | O_CREAT | O_APPEND);
+	if (fd < 0) {
+		LOGE("can't open %s\n", cFileName);
+		return -1;
 	}
 
-	fr = f_write(&fp1, (char *)paddr, total_len, &uiTemp);
-	if (fr != FR_OK)
-	{
-		LOGE("f_write failed 1 fr = %d\r\n", fr);
-		ret = BK_FAIL;
-	}
-	else
-	{
+	bytes_write = write(fd, (char *)paddr, total_len);
+	LOGV("write to %s, bytes_write=%d\n", cFileName, bytes_write);
+	close(fd);
+
+	if(bytes_write == total_len) {
 		ret = BK_OK;
 	}
-
-	f_close(&fp1);
+#else
+	LOGW("Not support\r\n");
 #endif
 
 	return ret;
@@ -228,35 +223,20 @@ bk_err_t bk_read_sdcard_file_length(char *filename)
 {
 	int ret = BK_FAIL;
 
-#if (CONFIG_FATFS)
-	char cFileName[FF_MAX_LFN];
-	FIL file;
-	FRESULT fr;
+#if (CONFIG_VFS)
+	char cFileName[VFS_FILE_MAX_LEN] = {0};
+	struct stat statbuf;
 
-	do{
-		if(!filename)
-		{
-			LOGE("%s param is null\r\n", __FUNCTION__);
-			ret = BK_ERR_PARAM;
-			break;
-		}
+	bk_vfs_mount_sd0_fatfs();
+	sprintf(cFileName, "%s/%s", VFS_SD_0_PATITION_0, filename);
+	ret = stat(cFileName, &statbuf);
+	if (ret < 0) {
+		LOGE("stat file %s fail\n", cFileName);
+		return BK_FAIL;
+	}
 
-		// step 1: read picture from sd to psram
-		sprintf(cFileName, "%d:/%s", DISK_NUMBER_SDIO_SD, filename);
-
-		fr = f_open(&file, cFileName, FA_OPEN_EXISTING | FA_READ);
-		if (fr != FR_OK)
-		{
-			LOGE("open %s fail.\r\n", filename);
-			ret = BK_ERR_OPEN;
-			break;
-		}
-
-		ret = f_size(&file);
-
-		f_close(&file);
-
-	} while(0);
+	LOGD("statbuf->st_size =%d, statbuf->st_mode = %d.\r\n", statbuf.st_size , statbuf.st_mode);
+	ret = (uint32_t)statbuf.st_size;// total byte
 #else
 	LOGW("Not support\r\n");
 	ret = BK_ERR_NOT_SUPPORT;

@@ -317,15 +317,11 @@ void ping_start(char* target_name, uint32_t times, size_t size)
 			p_param.ip = os_strdup(target_name);
 			p_param.time = times;
 			p_param.size = size;
-#ifdef CONFIG_FREERTOS_SMP
-			rtos_core0_create_thread(NULL, ping_priority, "ping",
-							   ping_thread, THREAD_SIZE,
-							   (beken_thread_arg_t) 0);
-#else
+
 			rtos_create_thread(NULL, ping_priority, "ping",
 							   ping_thread, THREAD_SIZE,
 							   (beken_thread_arg_t) 0);	
-#endif
+
 		}
 		else
 			LWIP_DEBUGF( PING_DEBUG, ("Please input: ping <host address>\n"));
@@ -420,24 +416,24 @@ int ping(char* target_name, uint32_t times, size_t size)
             if ((recv_len = ping_mid_recv(s, &ttl,af)) >= 0)
             {
                 recv_cnt++;
-                LWIP_DEBUGF( PING_DEBUG, ("%d bytes from %s icmp_seq=%d ttl=%d time=%d ticks\n", recv_len, ipaddr_ntoa(&target_addr), send_times,
-                        ttl, sys_now() - recv_start_tick));
+                LWIP_LOGI("%d bytes from %s icmp_seq=%d ttl=%d time=%d ticks\n", recv_len, ipaddr_ntoa(&target_addr), send_times,
+                        ttl, sys_now() - recv_start_tick);
             }
             else
             {
-				LWIP_DEBUGF( PING_DEBUG, ("From %s icmp_seq=%d timeout\n", ipaddr_ntoa(&target_addr), send_times));
+				LWIP_LOGI("From %s icmp_seq=%d timeout\n", ipaddr_ntoa(&target_addr), send_times);
             }
         }
         else
         {
-			LWIP_DEBUGF( PING_DEBUG, ("Send %s - error\n", ipaddr_ntoa(&target_addr)));
+			LWIP_LOGI("Send %s - error\n", ipaddr_ntoa(&target_addr));
         }
 
         send_times++;
         if (send_times >= times)
         {
-			LWIP_DEBUGF( PING_DEBUG, ("ping end, sent cnt: %d, recv cnt: %d, drop cnt: %d(%.1f%%)\n", 
-				sent_cnt, recv_cnt, (times-recv_cnt), (float)(((times-recv_cnt)*100)/times)));
+			LWIP_LOGI("ping end, sent cnt: %d, recv cnt: %d, drop cnt: %d(%.1f%%)\n", 
+				sent_cnt, recv_cnt, (times-recv_cnt), (float)(((times-recv_cnt)*100)/times));
             /* send ping times reached, stop */
             break;
         }

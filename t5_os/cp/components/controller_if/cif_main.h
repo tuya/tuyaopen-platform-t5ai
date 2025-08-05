@@ -196,33 +196,27 @@ struct cif_msg {
 
 struct cif_stats
 {
-    //TX buffer numbers in ctrlif data
-    int16_t buf_in_ctrlif_data;
-    //TX buffer numbers in ctrlif cmd
-    int16_t buf_in_ctrlif_cmd;
     //TX buffer numbers in data path
     int16_t buf_in_txdata;
-    //TX buffer numbers in cmd path
-    int16_t buf_in_txcmd;
-    //CIF TX Window, used to adjust buffer number in TX CIF
-    int16_t tx_win;
     //RX buffer numbers in ctrlif data
-    int16_t cif_rx_data;
-    //RX buffer numbers in ctrlif cmd
-    int16_t cif_rx_cmd;
-    //RX buffer numbers in ctrlif cmd
-    int16_t buf_in_rx_data;
-
+    int16_t cif_rx_data;//CONFIG_CONTROLLER_RX_DIRECT_PSH=0
     //If rx malloc fail, will increase
-    uint16_t rx_drop_cnt;
+    uint16_t rx_drop_cnt;//CONFIG_CONTROLLER_RX_DIRECT_PSH=0
 
-    uint32_t total_in_cif;
-    uint32_t total_attach_cif;
-    uint32_t total_recv_cnt;
+    uint32_t cif_tx_dnld_cnt;
+    uint32_t cif_tx_cnt;
+    uint32_t cif_txc_cnt;
+
+    uint32_t cif_rxc_cnt;
+    uint32_t cif_rx_cnt;
+
 
     uint32_t ipc_tx_cnt;
     uint32_t ipc_txc_cnt;
     uint32_t ipc_tx_fail_cnt;
+
+    uint32_t cif_msg_snder_fail;
+    uint32_t cif_tx_buf_leak;
 };
 struct cif_rx_filter_t
 {

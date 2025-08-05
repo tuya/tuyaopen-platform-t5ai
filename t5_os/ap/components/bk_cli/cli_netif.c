@@ -301,39 +301,67 @@ error:
 
 #ifdef CONFIG_WEBSOCKET
 #include <bk_websocket_client.h>
+extern bk_err_t websocket_send_ping_pong(websocket_client_input_t *websocket_cfg);
+extern bk_err_t websocket_stop(void);
+void ws_event_handler(void* event_handler_arg, char *event_base, int32_t event_id, void* event_data)
+{
+	bk_websocket_event_data_t *data = (bk_websocket_event_data_t *)event_data;
+	transport client = (transport)event_handler_arg;
+	if (!client)
+	{
+	  CLI_LOGE("websocket handle null\r\n");
+	}
+
+	switch (event_id) {
+		case WEBSOCKET_EVENT_CONNECTED:
+			CLI_LOGI("WEBSOCKET_EVENT_CONNECTED\r\n");
+			break;
+		case WEBSOCKET_EVENT_CLOSED:
+			CLI_LOGI("WEBSOCKET_EVENT_CLOSED\r\n");
+        case WEBSOCKET_EVENT_DISCONNECTED:
+			CLI_LOGI("WEBSOCKET_EVENT_DISCONNECTED\r\n");
+			break;
+        case WEBSOCKET_EVENT_DATA:
+			CLI_LOGI("data from WebSocket server, len:%d op:%d\r\n", data->data_len, data->op_code);
+			break;
+		default:
+			break;
+	}
+}
+
 void cli_websocket_cmd(char *pcWriteBuffer, int xWriteBufferLen, int argc, char **argv)
 {
+	int ret = 0;
+	char *msg = NULL;
+
 	if (argc == 2) {
 		if (os_strcmp("--stop", argv[1]) == 0) {
 			websocket_stop();
-			return;
 		}
 		else {
-			//CLI_LOGD("%s, uri:%s\r\n", __func__, argv[1]);
+			CLI_LOGI("%s, uri:%s\r\n", __func__, argv[1]);
 			websocket_client_input_t websocket_cfg = {0};
 			websocket_cfg.uri = argv[1];
+			websocket_cfg.ws_event_handler = ws_event_handler;
 			websocket_send_ping_pong(&websocket_cfg);
 		}
 	} else if (argc <2) {
 		CLI_LOGE("usage: websocket url\n");
-	} else if (argc == 3) {
-		websocket_client_input_t websocket_cfg = {0};
-		if (os_strcmp("connect", argv[1]) == 0) {
-			//CLI_LOGD("%s, connect uri:%s\r\n", __func__, argv[2]);
-			websocket_cfg.uri = argv[2];
-			websocket_start(&websocket_cfg);
-		}
-		if (os_strcmp("text", argv[1]) == 0) {
-			CLI_LOGD("%s, text:%s\r\n", __func__, argv[2]);
-			websocket_cfg.user_context = argv[2];
-			websocket_send_text(&websocket_cfg);
-		}
-		if (os_strcmp("ping", argv[1]) == 0 && os_strcmp("one", argv[2]) == 0 ) {
-			websocket_send_ping();
-		}
+		goto error;
 	} else {
 		CLI_LOGE("usage: websocket.\n");
+		goto error;
 	}
+	if (!ret) {
+		msg = WIFI_CMD_RSP_SUCCEED;
+		os_memcpy(pcWriteBuffer, msg, os_strlen(msg));
+		return;
+	}
+
+error:
+	msg = WIFI_CMD_RSP_ERROR;
+	os_memcpy(pcWriteBuffer, msg, os_strlen(msg));
+	return;
 }
 #endif
 
@@ -494,7 +522,7 @@ static const struct cli_command s_netif_commands[] = {
 	{"webclient", "webclient [ota|get|post] [url] [postdata]", cli_webclient_cmd},
 #endif
 #if CONFIG_WEBSOCKET
-	{"websocket", "websocket [connect|text|ping] [url]", cli_websocket_cmd},
+	{"websocket", "websocket [url]", cli_websocket_cmd},
 #endif
 };
 

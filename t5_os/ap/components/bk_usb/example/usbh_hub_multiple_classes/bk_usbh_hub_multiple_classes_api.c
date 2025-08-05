@@ -275,6 +275,8 @@ static void bk_usbh_hub_uac_parse_param(struct usbh_hubport *hport, uint8_t inte
 	bk_uac_device_brief_info_t *uac_spk_device_info = NULL;
 	bk_uac_spk_config_t *spk_config = NULL;
 
+	bk_uac_device_brief_info_t uac_device_info;
+
 	do{
 		uac_mic_device_info = os_malloc(sizeof(bk_uac_device_brief_info_t));
 		if(!uac_mic_device_info) {
@@ -353,9 +355,8 @@ static void bk_usbh_hub_uac_parse_param(struct usbh_hubport *hport, uint8_t inte
 	usbh_hub_port_mic_info->interface_num = interface_num;
 	usbh_hub_port_spk_info->interface_num = interface_num;
 
-	uac_mic_device_info->vendor_id = hport->device_desc.idVendor;
-	uac_mic_device_info->product_id = hport->device_desc.idProduct;
-
+	uac_device_info.vendor_id = hport->device_desc.idVendor;
+	uac_device_info.product_id = hport->device_desc.idProduct;
 
 	const char *mic_name = "mic";
 	const char *spk_name = "speaker";
@@ -366,30 +367,30 @@ static void bk_usbh_hub_uac_parse_param(struct usbh_hubport *hport, uint8_t inte
     for (size_t i = 0; i < uac_device->module_num; i++) {
 		if (strcmp(mic_name, uac_device->module[i].name) == 0) {
 			intf = uac_device->module[i].data_intf;
-			uac_mic_device_info->mic_format_tag = uac_device->module[i].altsetting[0].format_type;
-			uac_mic_device_info->mic_samples_frequence_num = uac_device->module[i].altsetting[0].sampfreq_num;
-			uac_mic_device_info->mic_samples_frequence = &(uac_device->module[i].altsetting[0].sampfreq[0]);
+			uac_device_info.mic_format_tag = uac_device->module[i].altsetting[0].format_type;
+			uac_device_info.mic_samples_frequence_num = uac_device->module[i].altsetting[0].sampfreq_num;
+			uac_device_info.mic_samples_frequence = &(uac_device->module[i].altsetting[0].sampfreq[0]);
 			audio_ep_desc = (struct audio_ep_descriptor *)&uac_device->hport->config.intf[intf].altsetting[1].ep[0].ep_desc;
 			if(audio_ep_desc->bEndpointAddress & 0x80) {
-				uac_mic_device_info->mic_ep_desc = (struct audio_ep_descriptor *)audio_ep_desc;
+				uac_device_info.mic_ep_desc = (struct audio_ep_descriptor *)audio_ep_desc;
 				mic_intf = intf;
 			} else {
-				uac_mic_device_info->spk_ep_desc = (struct audio_ep_descriptor *)audio_ep_desc;
+				uac_device_info.spk_ep_desc = (struct audio_ep_descriptor *)audio_ep_desc;
 				spk_intf = intf;
 			}
 			usb_hub_class_dev->usbh_hub_connect_class_device_flag[hport->port] |= (0x1 << USB_UAC_MIC_DEVICE);
 		}
 		if (strcmp(spk_name, uac_device->module[i].name) == 0) {
 			intf = uac_device->module[i].data_intf;
-			uac_mic_device_info->spk_format_tag = uac_device->module[i].altsetting[0].format_type;
-			uac_mic_device_info->spk_samples_frequence_num = uac_device->module[i].altsetting[0].sampfreq_num;
-			uac_mic_device_info->spk_samples_frequence = &(uac_device->module[i].altsetting[0].sampfreq[0]);
+			uac_device_info.spk_format_tag = uac_device->module[i].altsetting[0].format_type;
+			uac_device_info.spk_samples_frequence_num = uac_device->module[i].altsetting[0].sampfreq_num;
+			uac_device_info.spk_samples_frequence = &(uac_device->module[i].altsetting[0].sampfreq[0]);
 			audio_ep_desc = (struct audio_ep_descriptor *)&uac_device->hport->config.intf[intf].altsetting[1].ep[0].ep_desc;
 			if(audio_ep_desc->bEndpointAddress & 0x80) {
-				uac_mic_device_info->mic_ep_desc = (struct audio_ep_descriptor *)audio_ep_desc;
+				uac_device_info.mic_ep_desc = (struct audio_ep_descriptor *)audio_ep_desc;
 				mic_intf = intf;
 			} else {
-				uac_mic_device_info->spk_ep_desc = (struct audio_ep_descriptor *)audio_ep_desc;
+				uac_device_info.spk_ep_desc = (struct audio_ep_descriptor *)audio_ep_desc;
 				spk_intf = intf;
 			}
 			usb_hub_class_dev->usbh_hub_connect_class_device_flag[hport->port] |= (0x1 << USB_UAC_SPEAKER_DEVICE);
@@ -398,24 +399,23 @@ static void bk_usbh_hub_uac_parse_param(struct usbh_hubport *hport, uint8_t inte
 	for (size_t i = 0; i < uac_device->module_num; i++) {
         if (strcmp(mic_name, uac_device->module[i].name) == 0) {
 			uac_device->module[i].data_intf = mic_intf;
+			mic_config->mic_format_tag = uac_device_info.mic_format_tag;
+			mic_config->mic_samples_frequence = uac_device_info.mic_samples_frequence[0];
+			mic_config->mic_ep_desc = uac_device_info.mic_ep_desc;
 		}
 		if (strcmp(spk_name, uac_device->module[i].name) == 0) {
 			uac_device->module[i].data_intf = spk_intf;
+			spk_config->spk_format_tag = uac_device_info.spk_format_tag;
+			spk_config->spk_samples_frequence = uac_device_info.spk_samples_frequence[0];
+			spk_config->spk_ep_desc = uac_device_info.spk_ep_desc;
 		}
 	}
 
-	mic_config->mic_format_tag = uac_mic_device_info->mic_format_tag;
-	mic_config->mic_samples_frequence = uac_mic_device_info->mic_samples_frequence[0];
-	mic_config->mic_ep_desc = uac_mic_device_info->mic_ep_desc;
-
-	spk_config->spk_format_tag = uac_mic_device_info->spk_format_tag;
-	spk_config->spk_samples_frequence = uac_mic_device_info->spk_samples_frequence[0];
-	spk_config->spk_ep_desc = uac_mic_device_info->spk_ep_desc;
-
+	os_memcpy((void *)uac_mic_device_info, (void *)&uac_device_info, sizeof(bk_uac_device_brief_info_t));
 	usbh_hub_port_mic_info->usb_device_param = (void *)uac_mic_device_info;
 	usbh_hub_port_mic_info->usb_device_param_config = (void *)mic_config;
 
-	os_memcpy((void *)uac_spk_device_info, (void *)uac_mic_device_info, sizeof(bk_uac_device_brief_info_t));
+	os_memcpy((void *)uac_spk_device_info, (void *)&uac_device_info, sizeof(bk_uac_device_brief_info_t));
 	usbh_hub_port_spk_info->usb_device_param = (void *)uac_spk_device_info;
 	usbh_hub_port_spk_info->usb_device_param_config = (void *)spk_config;
 

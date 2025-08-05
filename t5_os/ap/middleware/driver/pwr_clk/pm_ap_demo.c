@@ -64,7 +64,7 @@ static bk_err_t pm_demo_init()
     bk_pm_ap_close_ap_register_callback(&cb_info);
     bk_pm_cp1_recovery_response(PM_CP1_RECOVERY_CMD, PM_CP1_PREPARE_CLOSE_MODULE_NAME_APP,PM_CP1_MODULE_RECOVERY_STATE_INIT);
 
-    //pm_ap_system_wakeup_cb_info_t cb_info_sleep_wakeup = {PM_AP_CLOSE_AP_MODULE_APP,pm_demo_sleep_wakeup_callback,&param,param};
+    //pm_ap_system_wakeup_cb_info_t cb_info_sleep_wakeup = {PM_AP_CLOSE_AP_MODULE_APP,PM_MODE_LOW_VOLTAGE,PM_WAKEUP_SOURCE_INT_GPIO,pm_demo_sleep_wakeup_callback};
     //bk_pm_ap_system_wakeup_register_callback(&cb_info_sleep_wakeup);
 
     /*aov,wifi vote cp1 power*/

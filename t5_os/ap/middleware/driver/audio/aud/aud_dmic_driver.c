@@ -69,7 +69,7 @@ bk_err_t bk_aud_dmic_init(aud_dmic_config_t *dmic_config)
 
 	//reserved channel config
 
-	bk_aud_clk_config(AUD_CLK_APLL);
+	bk_aud_clk_config(dmic_config->clk_src);
 
 	if (BK_OK != bk_aud_dmic_set_samp_rate(dmic_config->samp_rate))
 		goto fail;

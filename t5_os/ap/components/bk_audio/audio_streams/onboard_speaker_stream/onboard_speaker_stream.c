@@ -457,9 +457,10 @@ static int _onboard_speaker_process(audio_element_handle_t self, char *in_buffer
     bool read_data_valid_flag = true;
 
     AUD_ONBOARD_SPK_PROCESS_START();
-    if (pdTRUE != rtos_get_semaphore(&onboard_spk->can_process, 2000 / portTICK_RATE_MS)) //portMAX_DELAY, 25 / portTICK_RATE_MS
+    if (BK_OK != rtos_get_semaphore(&onboard_spk->can_process, 2000 / portTICK_RATE_MS)) //portMAX_DELAY, 25 / portTICK_RATE_MS
     {
         //return -1;
+        BK_LOGE(TAG, "[%s] semaphore get timeout 2000ms\n", audio_element_get_tag(self));
     }
 
     BK_LOGV(TAG, "[%s] _onboard_speaker_process \n", audio_element_get_tag(self));

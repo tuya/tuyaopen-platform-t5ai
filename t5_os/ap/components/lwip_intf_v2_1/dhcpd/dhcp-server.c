@@ -235,7 +235,10 @@ static unsigned int make_response(char *msg, enum dhcp_message_type type)
 #if !IP_NAPT
 		write_u32(opt->value, dhcps.router_ip);
 #else
-		write_u32(opt->value, ip4_addr_get_u32(ip_2_ip4(sta_dns)));
+		if (sta_dns)
+			write_u32(opt->value, ip4_addr_get_u32(ip_2_ip4(sta_dns)));
+		else
+			write_u32(opt->value, dhcps.router_ip);
 #endif
 	}
 	else

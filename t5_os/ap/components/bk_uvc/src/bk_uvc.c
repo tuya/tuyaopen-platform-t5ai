@@ -355,7 +355,7 @@ void uvc_camera_stream_connect_callback(bk_usb_hub_port_info *port_info, void *a
 
     uvc_handle->connect_camera_count++;
     LOGD("%s, port:%d\n", __func__, port_info->port_index);
-    xEventGroupSetBits(uvc_handle->handle, UVC_CONNECT_BIT);
+    rtos_set_event_flags(&uvc_handle->handle, UVC_CONNECT_BIT);
 
     if (camera_param)
     {
@@ -389,7 +389,7 @@ void uvc_camera_stream_disconnect_callback(bk_usb_hub_port_info *port_info, void
 
     uvc_handle->connect_camera_count--;
 
-    xEventGroupClearBits(uvc_handle->handle, UVC_CONNECT_BIT);
+    rtos_clear_event_flags(&uvc_handle->handle, UVC_CONNECT_BIT);
 
     if (uvc_connect_state_cb)
     {
@@ -879,7 +879,7 @@ void uvc_camera_stream_stop_handle(uint32_t param)
 
     LOGD("%s, %d, %d\r\n", __func__, __LINE__, uvc_param->camera_state);
 
-    xEventGroupSetBits(uvc_handle->handle, UVC_CLOSE_BIT);
+    rtos_set_event_flags(&uvc_handle->handle, UVC_CLOSE_BIT);
 }
 
 bk_err_t uvc_camera_stream_start_handle(uint32_t param)
@@ -911,7 +911,7 @@ bk_err_t uvc_camera_stream_start_handle(uint32_t param)
         UVC_INIT_END();
     }
 
-    xEventGroupSetBits(uvc_handle->handle, UVC_STREAM_START_BIT);
+    rtos_set_event_flags(&uvc_handle->handle, UVC_STREAM_START_BIT);
 
     return ret;
 }
@@ -1303,7 +1303,7 @@ static void uvc_camera_process_task_main(beken_thread_arg_t data)
     uvc_pro_config_t *pro_config = uvc_handle->pro_config;
 
     uvc_handle->pro_enable = true;
-    xEventGroupSetBits(uvc_handle->handle, UVC_PROCESS_TASK_ENABLE_BIT);
+    rtos_set_event_flags(&uvc_handle->handle, UVC_PROCESS_TASK_ENABLE_BIT);
 
     while (uvc_handle->pro_enable)
     {
@@ -1371,7 +1371,7 @@ static void uvc_camera_process_task_main(beken_thread_arg_t data)
 
     LOGD("%s, %d\r\n", __func__, __LINE__);
     uvc_handle->pro_thread = NULL;
-    xEventGroupSetBits(uvc_handle->handle, UVC_PROCESS_TASK_DISABLE_BIT);
+    rtos_set_event_flags(&uvc_handle->handle, UVC_PROCESS_TASK_DISABLE_BIT);
     rtos_delete_thread(NULL);
 }
 
@@ -1382,7 +1382,7 @@ static void uvc_camera_process_task_deinit(uvc_stream_handle_t *handle)
     {
         handle->pro_enable = false;
 
-        xEventGroupWaitBits(handle->handle, UVC_PROCESS_TASK_DISABLE_BIT, true, true, BEKEN_WAIT_FOREVER);
+        rtos_wait_for_event_flags(&handle->handle, UVC_PROCESS_TASK_DISABLE_BIT, true, true, BEKEN_WAIT_FOREVER);
 
 #if (MEDIA_DEBUG_TIMER_ENABLE)
         if (pro_config->timer.handle)
@@ -1415,7 +1415,7 @@ bk_err_t uvc_camera_process_task_init(uvc_stream_handle_t *handle, bk_uvc_callba
         os_memset(handle->pro_config, 0, sizeof(uvc_pro_config_t));
         os_memcpy(&handle->callback, cb, sizeof(bk_uvc_callback_t));
 
-        xEventGroupClearBits(handle->handle, UVC_PROCESS_TASK_ENABLE_BIT);
+        rtos_clear_event_flags(&handle->handle, UVC_PROCESS_TASK_ENABLE_BIT);
 
         ret = rtos_smp_create_thread(&handle->pro_thread,
                                        BEKEN_DEFAULT_WORKER_PRIORITY - 3,
@@ -1432,7 +1432,7 @@ bk_err_t uvc_camera_process_task_init(uvc_stream_handle_t *handle, bk_uvc_callba
             goto error;
         }
 
-        xEventGroupWaitBits(handle->handle, UVC_PROCESS_TASK_ENABLE_BIT, true, true, BEKEN_WAIT_FOREVER);
+        rtos_wait_for_event_flags(&handle->handle, UVC_PROCESS_TASK_ENABLE_BIT, true, true, BEKEN_WAIT_FOREVER);
 
 #if (MEDIA_DEBUG_TIMER_ENABLE)
         ret = rtos_init_timer(&handle->pro_config->timer, UVC_TIME_INTERVAL * 1000,
@@ -1461,7 +1461,7 @@ void uvc_camera_stream_task_main(beken_thread_arg_t data)
 {
     int ret = BK_OK;
     uvc_stream_handle_t *uvc_handle = (uvc_stream_handle_t *)data;
-    xEventGroupSetBits(uvc_handle->handle, UVC_STREAM_TASK_ENABLE_BIT);
+    rtos_set_event_flags(&uvc_handle->handle, UVC_STREAM_TASK_ENABLE_BIT);
 
     while (1)
     {
@@ -1507,7 +1507,7 @@ out:
     rtos_deinit_queue(&uvc_handle->stream_queue);
     uvc_handle->stream_queue = NULL;
     uvc_handle->stream_thread = NULL;
-    xEventGroupSetBits(uvc_handle->handle, UVC_STREAM_TASK_DISABLE_BIT);
+    rtos_set_event_flags(&uvc_handle->handle, UVC_STREAM_TASK_DISABLE_BIT);
     rtos_delete_thread(NULL);
 }
 
@@ -1517,13 +1517,13 @@ bk_err_t uvc_camera_stream_task_deinit(uvc_stream_handle_t *handle)
     {
         if (handle->stream_thread)
         {
-            xEventGroupClearBits(handle->handle, UVC_STREAM_TASK_DISABLE_BIT);
+            rtos_clear_event_flags(&handle->handle, UVC_STREAM_TASK_DISABLE_BIT);
             if (uvc_stream_task_send_msg(UVC_EXIT_IND, 0) != BK_OK)
             {
                 LOGE("%s, %d\r\n", __func__, __LINE__);
             }
 
-            xEventGroupWaitBits(handle->handle, UVC_STREAM_TASK_DISABLE_BIT, true, true, BEKEN_WAIT_FOREVER);
+            rtos_wait_for_event_flags(&handle->handle, UVC_STREAM_TASK_DISABLE_BIT, true, true, BEKEN_WAIT_FOREVER);
         }
 
         if (handle->stream_queue)
@@ -1534,7 +1534,7 @@ bk_err_t uvc_camera_stream_task_deinit(uvc_stream_handle_t *handle)
 
         if (handle->handle)
         {
-            vEventGroupDelete(handle->handle);
+            rtos_deinit_event_flags(&handle->handle);
         }
 
         if (handle->mutex)
@@ -1579,7 +1579,7 @@ bk_err_t uvc_camera_stream_task_init(uvc_stream_handle_t **handle)
 
         bk_pm_module_vote_cpu_freq(PM_DEV_ID_USB_1, PM_CPU_FRQ_480M);
 
-        stream_handle->handle = xEventGroupCreate();
+        ret = rtos_init_event_flags(&stream_handle->handle);
 
         rtos_init_mutex(&stream_handle->mutex);
 
@@ -1593,7 +1593,7 @@ bk_err_t uvc_camera_stream_task_init(uvc_stream_handle_t **handle)
             goto error;
         }
 
-        xEventGroupClearBits(stream_handle->handle, UVC_STREAM_TASK_ENABLE_BIT);
+        rtos_clear_event_flags(&stream_handle->handle, UVC_STREAM_TASK_ENABLE_BIT);
 
         ret = rtos_create_thread(&stream_handle->stream_thread,
                                        BEKEN_DEFAULT_WORKER_PRIORITY - 2,
@@ -1608,7 +1608,7 @@ bk_err_t uvc_camera_stream_task_init(uvc_stream_handle_t **handle)
             goto error;
         }
 
-        xEventGroupWaitBits(stream_handle->handle, UVC_STREAM_TASK_ENABLE_BIT, true, true, BEKEN_WAIT_FOREVER);
+        rtos_wait_for_event_flags(&stream_handle->handle, UVC_STREAM_TASK_ENABLE_BIT, true, true, BEKEN_WAIT_FOREVER);
 
         *handle = stream_handle;
         LOGD("%s, %d, %p\n", __func__, __LINE__, *handle);
@@ -1621,7 +1621,7 @@ bk_err_t uvc_camera_stream_task_init(uvc_stream_handle_t **handle)
         return ret;
     }
 
-    xEventGroupClearBits(stream_handle->handle, UVC_CONNECT_BIT);
+    rtos_clear_event_flags(&stream_handle->handle, UVC_CONNECT_BIT);
 
     return ret;
 
@@ -1683,7 +1683,7 @@ bk_err_t uvc_camera_device_power_on(uvc_stream_handle_t *handle, E_USB_DEVICE_T 
 
     if (ret != BK_OK) // need wait connect callback
     {
-        ret = xEventGroupWaitBits(handle->handle, UVC_CONNECT_BIT, true, true, timeout);
+        ret = rtos_wait_for_event_flags(&handle->handle, UVC_CONNECT_BIT, true, true, timeout);
         if (ret != UVC_CONNECT_BIT)
         {
             LOGE("%s, %d, %x:ret, connect timeout\r\n", __func__, __LINE__, ret);
@@ -1829,14 +1829,14 @@ bk_err_t bk_uvc_init(camera_handle_t *handle, uvc_config_t *config, bk_uvc_callb
 
         os_memset(output_handle, 0, sizeof(camera_config_t));
         os_memcpy(param->info, config, sizeof(uvc_config_t));
-        xEventGroupClearBits(uvc_handle->handle, UVC_STREAM_START_BIT);
+        rtos_clear_event_flags(&uvc_handle->handle, UVC_STREAM_START_BIT);
         ret = uvc_stream_task_send_msg(UVC_START_IND, (uint32_t)param);
         if (ret != BK_OK)
         {
             goto out;
         }
 
-        xEventGroupWaitBits(uvc_handle->handle, UVC_STREAM_START_BIT, true, true, BEKEN_WAIT_FOREVER);
+        rtos_wait_for_event_flags(&uvc_handle->handle, UVC_STREAM_START_BIT, true, true, BEKEN_WAIT_FOREVER);
 
         if (param->camera_state != UVC_STREAMING_STATE)
         {
@@ -2092,7 +2092,7 @@ bk_err_t bk_uvc_set_start(camera_handle_t *handle, uvc_config_t *config)
     }
 
     os_memcpy(uvc_param->info, config, sizeof(uvc_config_t));
-    xEventGroupClearBits(uvc_handle->handle, UVC_STREAM_START_BIT);
+    rtos_clear_event_flags(&uvc_handle->handle, UVC_STREAM_START_BIT);
     ret = uvc_stream_task_send_msg(UVC_START_IND, (uint32_t)uvc_param);
     if (ret != BK_OK)
     {
@@ -2100,7 +2100,7 @@ bk_err_t bk_uvc_set_start(camera_handle_t *handle, uvc_config_t *config)
         return ret;
     }
 
-    xEventGroupWaitBits(uvc_handle->handle, UVC_STREAM_START_BIT, true, true, BEKEN_WAIT_FOREVER);
+    rtos_wait_for_event_flags(&uvc_handle->handle, UVC_STREAM_START_BIT, true, true, BEKEN_WAIT_FOREVER);
 
     return ret;
 }
@@ -2137,7 +2137,7 @@ bk_err_t bk_uvc_set_stop(camera_handle_t *handle)
             uvc_param->camera_state = UVC_CLOSING_STATE;
         }
 
-        xEventGroupClearBits(uvc_handle->handle, UVC_CLOSE_BIT);
+        rtos_clear_event_flags(&uvc_handle->handle, UVC_CLOSE_BIT);
 
         if (uvc_stream_task_send_msg(UVC_STOP_IND, (uint32_t)uvc_param) != BK_OK)
         {
@@ -2145,7 +2145,7 @@ bk_err_t bk_uvc_set_stop(camera_handle_t *handle)
         }
         else
         {
-            xEventGroupWaitBits(uvc_handle->handle, UVC_CLOSE_BIT, true, true, BEKEN_NEVER_TIMEOUT);
+            rtos_wait_for_event_flags(&uvc_handle->handle, UVC_CLOSE_BIT, true, true, BEKEN_NEVER_TIMEOUT);
             uvc_param->camera_state = UVC_CONNECT_STATE;
         }
     }

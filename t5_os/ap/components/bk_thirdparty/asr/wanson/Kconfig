@@ -1,0 +1,20 @@
+menu "Bk_thirdparty::Wanson"
+
+	config WANSON_ASR
+		bool "Enable Wanson ASR"
+		default n
+		help
+			Enable Wanson Automatic Speech Recognition
+
+    config WANSON_NEW_LIB_SEG
+        depends on WANSON_ASR
+        bool "WANSON_NEW_LIB_SEG"
+        default y
+    
+    config WANSON_SIMD
+        #depends on SYS_CPU2
+        bool "WANSON_SIMD"
+        default n
+        
+
+endmenu

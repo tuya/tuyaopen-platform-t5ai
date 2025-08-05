@@ -45,7 +45,7 @@ extern "C" {
 
 #define MAX_QP					51
 #define MIN_QP					0
-#define MAX_PFRAME				5
+#define MAX_PFRAME				1023
 #define MIN_PFRAME				0
 #define MAX_IFRAME_BITS			3412
 #define MAX_PFRAME_BITS			4095

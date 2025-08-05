@@ -289,15 +289,17 @@ bk_err_t bk_sw_decode_init(media_decode_mode_t sw_dec_mode)
     if (ret != BK_OK)
     {
         LOGE("%s sw dec_sem init failed: %d\n", __func__, ret);
-        return ret;
+        goto error;
     }
 #if CONFIG_MEDIA_PIPELINE
+#if CONFIG_JPEG_SW_DECODE_SUPPORT_BY_FRAME
     ret = software_decode_task_open();
     if (ret != BK_OK)
     {
         LOGE("%s, software_decode_task_open failed\r\n", __func__);
         goto error;
     }
+#endif
 #else
     ret = bk_jpeg_dec_sw_init_by_handle(&jpeg_dec_handle, NULL, 0);
     if (ret != BK_OK)
@@ -314,10 +316,12 @@ error:
         rtos_deinit_semaphore(&s_decode.sw_dec_sem);
     }
 #if CONFIG_MEDIA_PIPELINE
+#if CONFIG_JPEG_SW_DECODE_SUPPORT_BY_FRAME
     if (check_software_decode_task_is_open())
     {
         software_decode_task_close();
     }
+#endif
 #endif
     s_decode.sw_state = false;
 
@@ -336,10 +340,12 @@ bk_err_t bk_sw_decode_deinit(media_decode_mode_t sw_dec_mode)
     LOGD("%s sw_dec_mode = %d\n", __func__, sw_dec_mode);
 
 #if CONFIG_MEDIA_PIPELINE
+#if CONFIG_JPEG_SW_DECODE_SUPPORT_BY_FRAME
     if (check_software_decode_task_is_open())
     {
         software_decode_task_close();
     }
+#endif
 #else
     ret = bk_jpeg_dec_sw_deinit_by_handle(jpeg_dec_handle);
     if (ret != BK_OK)
