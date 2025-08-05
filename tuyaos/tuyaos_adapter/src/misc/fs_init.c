@@ -1,7 +1,6 @@
 #include "os/os.h"
 #include "bk_posix.h"
 #include "driver/flash_partition.h"
-#include "driver/sd_card.h"
 #include "sdkconfig.h"
 #include <driver/qspi_flash_common.h>
 #include "tkl_system.h"

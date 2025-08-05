@@ -1,0 +1,9 @@
+menu "TUYA APP CONFIG"
+
+    config ENTRY_TUYA_APP
+        bool "for test, default call tuya_app_main or tuya_upgrade_main"
+        default y
+
+endmenu
+
+source "${ARMINO_PATH}/../../tuyaos/tuyaos_adapter/Kconfig"

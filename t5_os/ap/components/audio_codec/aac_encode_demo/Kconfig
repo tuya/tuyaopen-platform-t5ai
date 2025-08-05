@@ -1,0 +1,6 @@
+menu "Audio_codec::AAC_encode_demo"
+	config AAC_ENCODE_TEST
+		depends on FATFS
+		bool "Enable AAC Encode Test"
+		default n
+endmenu

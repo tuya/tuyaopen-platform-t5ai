@@ -1,0 +1,6 @@
+#Name,                   Type,     Offset,     Size
+AP_SPINLOCK,             SRAM, 0x28000000, 0x010000
+AP_RAM,                  SRAM,           , 0x054000
+CP_RAM,                  SRAM,           , 0x03b800
+SWAP,                    SRAM,           , 0x000800
+

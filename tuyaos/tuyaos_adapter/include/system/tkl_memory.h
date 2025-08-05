@@ -25,7 +25,7 @@ extern "C" {
 *
 * @return the memory address malloced
 */
-void *tkl_system_malloc(size_t size);
+VOID_T *tkl_system_malloc(SIZE_T size);
 
 /**
 * @brief Free memory of system
@@ -34,9 +34,9 @@ void *tkl_system_malloc(size_t size);
 *
 * @note This API is used to free memory of system.
 *
-* @return void
+* @return VOID_T
 */
-void tkl_system_free(void* ptr);
+VOID_T tkl_system_free(VOID_T* ptr);
 
 /**
 * @brief set memory
@@ -47,7 +47,7 @@ void tkl_system_free(void* ptr);
 *
 * @return the memory address malloced
 */
-void *tkl_system_memset(void* src, int ch, const size_t n);
+VOID_T *tkl_system_memset(VOID_T* src, INT_T ch, CONST SIZE_T n);
 
 /**
 * @brief Alloc memory of system
@@ -58,27 +58,27 @@ void *tkl_system_memset(void* src, int ch, const size_t n);
 *
 * @return the memory address malloced
 */
-void *tkl_system_memcpy(void* src, const void* dst, const size_t n);
+VOID_T *tkl_system_memcpy(VOID_T* src, CONST VOID_T* dst, CONST SIZE_T n);
 
 /**
  * @brief Allocate and clear the memory
- * 
+ *
  * @param[in]       nitems      the numbers of memory block
  * @param[in]       size        the size of the memory block
  *
  * @return the memory address calloced
  */
-void *tkl_system_calloc(size_t nitems, size_t size);
+VOID_T *tkl_system_calloc(size_t nitems, size_t size);
 
 /**
  * @brief Re-allocate the memory
- * 
+ *
  * @param[in]       nitems      source memory address
  * @param[in]       size        the size after re-allocate
  *
- * @return void
+ * @return VOID_T
  */
-void *tkl_system_realloc(void* ptr, size_t size);
+VOID_T *tkl_system_realloc(VOID_T* ptr, size_t size);
 
 /**
 * @brief Get system free heap size
@@ -87,14 +87,16 @@ void *tkl_system_realloc(void* ptr, size_t size);
 *
 * @return heap size
 */
-int tkl_system_get_free_heap_size(void);
+INT_T tkl_system_get_free_heap_size(VOID_T);
 
-int tkl_system_memcmp(const void *str1, const void *str2, size_t n);
+INT_T tkl_system_get_minimum_heap_size(VOID_T);
+
+INT_T tkl_system_memcmp(CONST VOID_T *str1, CONST VOID_T *str2, SIZE_T n);
 
 
 #if defined(ENABLE_EXT_RAM) && (ENABLE_EXT_RAM==1)
 /**
-* @brief Alloc psram memory of system
+* @brief Alloc psram memory of system in psram
 *
 * @param[in] size: memory size
 *
@@ -102,31 +104,63 @@ int tkl_system_memcmp(const void *str1, const void *str2, size_t n);
 *
 * @return the memory address malloced
 */
-void *tkl_system_psram_malloc(size_t size);
+VOID_T *tkl_system_psram_malloc(SIZE_T size);
 
 /**
-* @brief Free psram memory of system
+* @brief Free psram memory of system in psram
 *
 * @param[in] ptr: memory point
 *
 * @note ENABLE_EXT_RAM neeed define in tuyaos_kernel.config.
 *
-* @return void
+* @return VOID_T
 */
-void tkl_system_psram_free(void* ptr);
+VOID_T tkl_system_psram_free(VOID_T* ptr);
 
 /**
- * @brief Re-allocate the memory
+ * @brief Allocate and clear the memory in psram
+ *
+ * @param[in]       nitems      the numbers of memory block
+ * @param[in]       size        the size of the memory block
+ *
+ * @return the memory address calloced
+ */
+VOID_T *tkl_system_psram_calloc(size_t nitems, size_t size);
+
+/**
+ * @brief Re-allocate the memory in psram
  *
  * @param[in]       nitems      source memory address
  * @param[in]       size        the size after re-allocate
+ *
+ * @return VOID_T
  */
-void *tkl_system_psram_realloc(void* ptr, size_t size);
+VOID_T *tkl_system_psram_realloc(VOID_T* ptr, size_t size);
+
+/**
+* @brief Get system free heap size in psram
+*
+* @param none
+*
+* @return heap size
+*/
+INT_T tkl_system_get_free_heap_size(VOID_T);
+
+/**
+* @brief Get free heap size in psram
+*
+* @param VOID
+*
+* @note This API is used for getting free heap size.
+*
+* @return size of free heap
+*/
+INT_T tkl_system_psram_get_free_heap_size(VOID_T);
 #endif
 
 #ifdef __cplusplus
 }
 #endif /* __cplusplus */
 
-#endif 
+#endif
 

@@ -29,7 +29,7 @@ typedef struct {
     OPERATE_RET (*get_ip)                   (NW_IP_S *ip);
     OPERATE_RET (*get_ipv6)                 (NW_IP_TYPE type, NW_IP_S *ip);
     OPERATE_RET (*get_mac)                  (NW_MAC_S *mac);
-    OPERATE_RET (*set_mac)                  (const NW_MAC_S *mac);
+    OPERATE_RET (*set_mac)                  (CONST NW_MAC_S *mac);
 } TKL_WIRED_DESC_T;
 
 /**
@@ -37,7 +37,7 @@ typedef struct {
  *
  * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
  */
-TKL_WIRED_DESC_T* tkl_wired_desc_get(void);
+TKL_WIRED_DESC_T* tkl_wired_desc_get(VOID_T);
 
 
 #ifdef __cplusplus

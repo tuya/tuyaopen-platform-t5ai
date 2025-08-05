@@ -1,0 +1,12 @@
+#TODO optimize it
+menu "WiFi Driver"
+	config WIFI_VNET_CONTROLLER
+		bool "Enable Wifi WIFI_VNET_CONTROLLER"
+		default n
+	config CONTROLLER_RX_DIRECT_PSH
+		bool "Controller RX Buf Directly push to AP"
+		default y
+	config CONTROLLER_DEBUG
+		bool "Controller Debug"
+		default n
+endmenu

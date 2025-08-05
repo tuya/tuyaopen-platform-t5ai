@@ -1,0 +1,52 @@
+menu "FATFS"
+	config FATFS
+		bool "Support FATFS"
+		depends on FATFS_SDCARD || FATFS_SPI_0_FLASH || FATFS_SPI_1_FLASH || FATFS_QSPI_0_FLASH || FATFS_QSPI_1_FLASH
+		default n
+
+	config FATFS_SDCARD
+		bool "Support FATFS with SDCARD"
+		depends on SDCARD
+		default n
+		help
+			BEKEN Chip sets SDIO as a master device, the slave device is a SDCARD/SD-NAND.
+			The SDCARD/SD-NAND memory device is mounted with FATFS.
+			The application can read/writes data to SDCARD/SD-NAND by FATFS file system API, or the upper layer of VFS posix API.
+
+	config FATFS_SPI_0_FLASH
+		bool "Support FATFS with SPI-0 FLASH"
+		depends on SPI_MST_FLASH
+		default n
+		help
+			BEKEN Chip sets SPI-0 as master device, the slave device is a flash.
+			The flash device is mounted with FATFS.
+			The application can read/writes data to flash by FATFS file system API, or the upper layer of VFS posix API.
+
+	config FATFS_SPI_1_FLASH
+		bool "Support FATFS with SPI-1 FLASH"
+		depends on SPI_MST_FLASH
+		default n
+		help
+			BEKEN Chip sets SPI-1 as master device, the slave device is a flash.
+			The flash memory device is mounted with FATFS.
+			The application can read/writes data to flash by FATFS file system API, or the upper layer of VFS posix API.
+
+	config FATFS_QSPI_0_FLASH
+		bool "Support FATFS with QSPI-0 FLASH"
+		depends on QSPI_MST_FLASH
+		default n
+		help
+			BEKEN Chip sets QSPI-0 as master device, the slave device is a flash.
+			The flash device is mounted with FATFS.
+			The application can read/writes data to flash by FATFS file system API, or the upper layer of VFS posix API.
+
+	config FATFS_QSPI_1_FLASH
+		bool "Support FATFS with QSPI-1 FLASH"
+		depends on QSPI_MST_FLASH
+		default n
+		help
+			BEKEN Chip sets QSPI-1 as master device, the slave device is a flash.
+			The flash device is mounted with FATFS.
+			The application can read/writes data to flash by FATFS file system API, or the upper layer of VFS posix API.
+endmenu
+

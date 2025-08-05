@@ -13,6 +13,7 @@
 
 #include "tkl_pinmux.h"
 #include "driver/hal/hal_adc_types.h"
+#include <driver/gpio_types.h>
 
 /****************************************************************************
  * Pre-processor Definitions
@@ -21,10 +22,21 @@
 /****************************************************************************
  * Private Type Declarations
  ****************************************************************************/
-
+typedef struct{
+    TUYA_PIN_NAME_E pin;
+    TUYA_PIN_FUNC_E func;
+    gpio_dev_t      dev;
+}TUYA_PIN_FUNC_MAP_T;
 /****************************************************************************
  * Private Data Declarations
  ****************************************************************************/
+
+static TUYA_PIN_FUNC_MAP_T pin_func_map[] = {
+    {TUYA_IO_PIN_17, TUYA_SPI0_MISO, GPIO_DEV_SPI0_MISO},
+    {TUYA_IO_PIN_16, TUYA_SPI0_MOSI, GPIO_DEV_SPI0_MOSI},
+    {TUYA_IO_PIN_14, TUYA_SPI0_CLK,  GPIO_DEV_SPI0_SCK},
+    {TUYA_IO_PIN_15, TUYA_SPI0_CS, GPIO_DEV_SPI0_CSN},
+};
 
 /****************************************************************************
  * Private Functions
@@ -33,8 +45,21 @@
 /****************************************************************************
  * Public Function Prototypes
  ****************************************************************************/
-extern void __tkl_i2c_set_scl_pin(TUYA_I2C_NUM_E port, const TUYA_PIN_NAME_E scl_pin);
-extern void __tkl_i2c_set_sda_pin(TUYA_I2C_NUM_E port, const TUYA_PIN_NAME_E sda_pin);
+extern VOID_T __tkl_i2c_set_scl_pin(TUYA_I2C_NUM_E port, const TUYA_PIN_NAME_E scl_pin);
+extern VOID_T __tkl_i2c_set_sda_pin(TUYA_I2C_NUM_E port, const TUYA_PIN_NAME_E sda_pin);
+extern gpio_id_t tkl_gpio_get_bk_gpio_id(TUYA_GPIO_NUM_E pin_id);
+
+TUYA_PIN_FUNC_MAP_T *tkl_pinmux_get_func_map(TUYA_PIN_FUNC_E pin_func)
+{
+    for (int i = 0; i < sizeof(pin_func_map) / sizeof(TUYA_PIN_FUNC_MAP_T); i++) {
+        if (pin_func_map[i].func == pin_func) {
+            return &pin_func_map[i];
+        }
+    }
+
+    return NULL;
+}
+
 
 /**
  * @brief tuya io pinmux func
@@ -85,16 +110,31 @@ OPERATE_RET tkl_io_pinmux_config(TUYA_PIN_NAME_E pin, TUYA_PIN_FUNC_E pin_func)
             __tkl_i2c_set_sda_pin(TUYA_I2C_NUM_5, pin);
             break;
 #endif
+
+        case TUYA_SPI0_MISO:
+        case TUYA_SPI0_MOSI:
+        case TUYA_SPI0_CLK: 
+        case TUYA_SPI0_CS:{
+            TUYA_PIN_FUNC_MAP_T *map = tkl_pinmux_get_func_map(pin_func);
+            if(map == NULL) {
+                bk_printf("pin_func %d not found\r\n", pin_func);
+                return OPRT_INVALID_PARM;
+            }
+
+            map->pin = pin;
+        }
+            break;
+
         default:
             break;
-    
+
     }
     return OPRT_OK;
 }
-int tkl_io_pin_to_func(uint32_t pin, TUYA_PIN_TYPE_E pin_type)
+INT32_T tkl_io_pin_to_func(UINT32_T pin, TUYA_PIN_TYPE_E pin_type)
 {
-	int port_channel = OPRT_NOT_SUPPORTED;
-    
+	INT32_T port_channel = OPRT_NOT_SUPPORTED;
+
     switch (pin_type) {
         case TUYA_IO_TYPE_PWM:                  // all pwm channels belong to one port
             if (TUYA_IO_PIN_18 == pin) {
@@ -124,6 +164,8 @@ int tkl_io_pin_to_func(uint32_t pin, TUYA_PIN_TYPE_E pin_type)
                 port_channel = ADC_13;
             } else if (TUYA_IO_PIN_0 == pin) {
                 port_channel = ADC_12;
+            } else if (TUYA_IO_PIN_23 == pin) {
+                port_channel = ADC_3;
             }
             break;
         case TUYA_IO_TYPE_DAC:
@@ -145,4 +187,15 @@ int tkl_io_pin_to_func(uint32_t pin, TUYA_PIN_TYPE_E pin_type)
     return port_channel;
 }
 
+gpio_id_t ty_get_dev_io(gpio_dev_t dev)
+{
+    TUYA_PIN_FUNC_MAP_T *map;
 
+    for (int i = 0; i < sizeof(pin_func_map) / sizeof(TUYA_PIN_FUNC_MAP_T); i++) {
+        if (pin_func_map[i].dev == dev) {
+            return tkl_gpio_get_bk_gpio_id(pin_func_map[i].pin);
+        }
+    }
+
+    return GPIO_NUM;
+}

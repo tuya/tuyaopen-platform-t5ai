@@ -1,0 +1,14 @@
+menu "Adk::Audio_streams::Uac_speaker_stream"
+	config ADK_UAC_SPEAKER_STREAM
+		depends on ADK
+		depends on USBH_UAC
+		bool "Enable uac speaker stream"
+		default n
+
+	config ADK_UAC_SPEAKER_STREAM_TEST
+		depends on ADK_UAC_SPEAKER_STREAM
+		depends on ADK_RAW_STREAM
+		bool "Enable uac speaker stream test"
+		default n
+
+endmenu

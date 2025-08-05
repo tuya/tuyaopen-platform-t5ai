@@ -1,0 +1,17 @@
+menu "Bk_vfs"
+	config VFS
+		bool "Enable Vfs"
+		depends on LITTLEFS || FATFS
+		default n
+		help
+			Virtual file system, it provides posix file system API for applications to access files.
+			The lower layer file system can be littlefs, fatfs.
+			The memory devices can be internal flash, spi-flash, qspi-flash, sd-card, udisk...
+			of cause, the hardware(board) should have relate memory devices.
+
+	config VFS_MAX_FD_NUM
+			int "bk vfs max file fd num"
+			default 20
+			help
+				bk vfs max file fd num
+endmenu

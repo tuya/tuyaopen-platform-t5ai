@@ -1,0 +1,12 @@
+menu "Adk::Audio_encoders::AAC_encoder"
+	config ADK_AAC_ENCODER
+		depends on ADK
+		bool "Enable Audio AAC encoder"
+		default n
+
+	config ADK_AAC_ENCODER_TEST
+		depends on ADK_AAC_ENCODER && ADK_ONBOARD_MIC_STREAM && ADK_UART_STREAM
+		bool "Enable Audio AAC encoder test"
+		default n
+
+endmenu

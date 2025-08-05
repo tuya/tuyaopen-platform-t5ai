@@ -1,3 +1,0 @@
-SUPPORT_DUAL_CORE := false
-SUPPORT_BOOTLOADER := false
-export CFG_ECDSA_P384 :=1

@@ -17,13 +17,10 @@
 extern "C" {
 #endif
 
-#define TKL_IPC_DEBUG   0
-
 enum {
-    TKL_IPC_TYPE_WIFI = 0x00,
     TKL_IPC_TYPE_HCI,
-    TKL_IPC_TYPE_LWIP,
     TKL_IPC_TYPE_SYS,
+    TKL_IPC_TYPE_WIRED,
     TKL_IPC_TYPE_TEST,
 };
 
@@ -90,11 +87,23 @@ enum {
     TKL_IPC_TYPE_LWIP_PBUF_REF,
 };
 
+// (CPU0 and CPU1) ipc cmd  subtype for wired
 enum {
-    TKL_IPC_TYPE_SYS_REBOOT,
+    TKL_IPC_TYPE_WIRED_INIT = 0x00,
+    TKL_IPC_TYPE_WIRED_SET_MAC,
+    TKL_IPC_TYPE_WIRED_GET_MAC,
+    TKL_IPC_TYPE_WIRED_STATUS_CHANGED,
+    TKL_IPC_TYPE_WIRED_SET_GPIO,
 };
 
 enum {
+    TKL_IPC_TYPE_SYS_REBOOT,
+    TKL_IPC_TYPE_SYS_CPU_INFO,
+    TKL_IPC_TYPE_SYS_CPU_INFO_RSP,
+};
+
+enum {
+    TKL_IPC_TYPE_TEST_CMD,
     TKL_IPC_TYPE_TEST_SYSTEM_INFO,
     TKL_IPC_TYPE_TEST_MEDIA,
     TKL_IPC_TYPE_TEST_MP3,
@@ -111,15 +120,15 @@ struct ipc_msg_s {
 };
 
 struct ipc_msg_param_s {
-    void  *p1;
-    void  *p2;
-    void  *p3;
-    void  *p4;
+    VOID_T  *p1;
+    VOID_T  *p2;
+    VOID_T  *p3;
+    VOID_T  *p4;
 };
 
-typedef void* TKL_IPC_HANDLE;
+typedef VOID_T* TKL_IPC_HANDLE;
 
-typedef OPERATE_RET (*TKL_IPC_FUNC_CB)(uint8_t *buf, uint32_t buf_len);
+typedef OPERATE_RET (*TKL_IPC_FUNC_CB)(UINT8_T *buf, UINT32_T buf_len);
 
 typedef struct {
     TKL_IPC_FUNC_CB  cb;
@@ -141,45 +150,10 @@ OPERATE_RET tkl_ipc_init(TKL_IPC_CONF_T *config);
  *
  * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
  */
-OPERATE_RET tkl_ipc_send(const uint8_t *buf, uint32_t buf_len);
+OPERATE_RET tkl_ipc_send(CONST UINT8_T *buf, UINT32_T buf_len);
 
-
-#if TKL_IPC_DEBUG
-extern const char *ipc_event_str[4];
-extern const char *ipc_subevent_str[4][32];
-enum ipc_type_e {
-    IPC_RECV,
-    IPC_SEND_SYNC_START,
-    IPC_SEND_SYNC_COMPLETE,
-    IPC_SEND_SYNC_TIMEOUT,
-    IPC_SEND_NO_SYNC_START,
-    IPC_SEND_NO_SYNC_COMPLETE,
-};
-static inline tkl_ipc_debug(enum ipc_type_e type, int e, int sube)
-{
-    char *ipc_type = "?";
-    if (type == IPC_RECV)
-        ipc_type = "recv";
-    else if (type == IPC_SEND_SYNC_START)
-        ipc_type = "sync send start";
-    else if (type == IPC_SEND_SYNC_COMPLETE)
-        ipc_type = "sync send complete";
-    else if (type == IPC_SEND_SYNC_TIMEOUT)
-        ipc_type = "sync send_timeout";
-    else if (type == IPC_SEND_NO_SYNC_START)
-        ipc_type = "no sync send start";
-    else if (type == IPC_SEND_NO_SYNC_COMPLETE)
-        ipc_type = "no sync send complete";
-
-    if (e > 3 || sube > 31)
-        return;
-
-    if (e == TKL_IPC_TYPE_HCI)
-        return;
-
-    bk_printf("cpu%d %s, %s, %02d %02d\r\n", CONFIG_CPU_INDEX, ipc_type, ipc_subevent_str[e][sube], e, sube);
-}
-#endif
+OPERATE_RET tuya_ipc_send_sync(struct ipc_msg_s *msg);
+OPERATE_RET tuya_ipc_send_no_sync(struct ipc_msg_s *msg);
 
 #ifdef __cplusplus
 }

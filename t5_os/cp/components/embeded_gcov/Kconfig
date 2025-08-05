@@ -1,0 +1,7 @@
+menu "GCov"
+
+	config GCOV
+		bool "Enable GCOV"
+		default n
+
+endmenu

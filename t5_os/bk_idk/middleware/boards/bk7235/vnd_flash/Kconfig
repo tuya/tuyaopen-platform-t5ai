@@ -1,5 +1,0 @@
-menu "VENDOR FLASH CONFIG"
-	config OVERRIDE_FLASH_PARTITION
-		bool "Override flash partition"
-		default n
-endmenu

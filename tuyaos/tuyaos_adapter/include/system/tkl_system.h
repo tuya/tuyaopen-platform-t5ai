@@ -22,7 +22,7 @@ extern "C" {
  * @param[in]   none
  * @return  irq mask
  */
-uint32_t tkl_system_enter_critical(void);
+UINT_T tkl_system_enter_critical(VOID_T);
 
 /**
  * @brief system exit critical
@@ -30,13 +30,13 @@ uint32_t tkl_system_enter_critical(void);
  * @param[in]   irq_mask: irq mask 
  * @return  none
  */
-void tkl_system_exit_critical(uint32_t irq_mask);
+VOID_T tkl_system_exit_critical(UINT_T irq_mask);
 
 /**
  * @brief enter critical macro
  */
 #define TKL_ENTER_CRITICAL()        \
-    uint32_t __irq_mask;              \
+    UINT_T __irq_mask;              \
     __irq_mask = tkl_system_enter_critical()
 
 /**
@@ -54,7 +54,7 @@ void tkl_system_exit_critical(uint32_t irq_mask);
 *
 * @return none
 */
-void tkl_system_reset(void);
+VOID_T tkl_system_reset(VOID_T);
 
 /**
 * @brief Get system tick count
@@ -63,7 +63,7 @@ void tkl_system_reset(void);
 *
 * @return system tick count
 */
-SYS_TICK_T tkl_system_get_tick_count(void);
+SYS_TICK_T tkl_system_get_tick_count(VOID_T);
 
 /**
 * @brief Get system millisecond
@@ -72,7 +72,7 @@ SYS_TICK_T tkl_system_get_tick_count(void);
 *
 * @return system millisecond
 */
-SYS_TIME_T tkl_system_get_millisecond(void);
+SYS_TIME_T tkl_system_get_millisecond(VOID_T);
 
 /**
 * @brief Get system random data
@@ -81,7 +81,7 @@ SYS_TIME_T tkl_system_get_millisecond(void);
 *
 * @return random value
 */
-int tkl_system_get_random(uint32_t range);
+INT_T tkl_system_get_random(UINT_T range);
 
 /**
 * @brief Get system reset reason
@@ -90,7 +90,7 @@ int tkl_system_get_random(uint32_t range);
 *
 * @return reset reason
 */
-TUYA_RESET_REASON_E tkl_system_get_reset_reason(char** describe);
+TUYA_RESET_REASON_E tkl_system_get_reset_reason(CHAR_T** describe);
 
 /**
 * @brief  system sleep
@@ -99,8 +99,16 @@ TUYA_RESET_REASON_E tkl_system_get_reset_reason(char** describe);
 *
 * @return none
 */
-void tkl_system_sleep(uint32_t num_ms);
+VOID_T tkl_system_sleep(UINT_T num_ms);
 
+/**
+* @brief  system sleep 
+*
+* @param[in] describe: num us
+*
+* @return none
+*/
+VOID_T tkl_system_sleep_us(UINT_T num_us);
 
 /**
 * @brief system delay
@@ -109,9 +117,9 @@ void tkl_system_sleep(uint32_t num_ms);
 *
 * @note This API is used for system sleep.
 *
-* @return void
+* @return VOID
 */
-void tkl_system_delay(uint32_t num_ms);
+VOID_T tkl_system_delay(UINT_T num_ms);
 
 /**
 * @brief get system cpu info
@@ -123,8 +131,16 @@ void tkl_system_delay(uint32_t num_ms);
 * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
 */
 
-OPERATE_RET tkl_system_get_cpu_info(TUYA_CPU_INFO_T **cpu_ary, int *cpu_cnt);
+OPERATE_RET tkl_system_get_cpu_info(TUYA_CPU_INFO_T **cpu_ary, INT_T *cpu_cnt);
 
+#if (CONFIG_FREERTOS_SMP)
+/**
+ * @brief system exit critical
+ *
+ * @return  core ID
+ */
+UINT_T tkl_system_get_coreid(VOID_T);
+#endif
 #ifdef __cplusplus
 }
 #endif /* __cplusplus */

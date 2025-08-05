@@ -1,0 +1,10 @@
+if (CONFIG_CS2_P2P_SERVER)
+	set(LIB_CS2_FILE_NAME "libPPCS_API_4.5.3_BK7258_bk_avdk_smp-release-v3.0.1-LNS-IoTWIFI-20250608.a")
+if (CONFIG_CS2_DEBUG_LIB)
+	set(LIB_CS2_FILE_NAME "libPPCS_API_4.5.3_BK7258-Listen-armino-Dev2.0.1-LNS-IoTWIFI-cs2pMallocThread_3ch-20240111-debug.a")
+endif()
+endif()
+
+if (CONFIG_CS2_P2P_CLIENT)
+	set(LIB_CS2_FILE_NAME "libPPCS_API_4.5.3_BK7258-Connect-armino-Dev2.0.1-LNS-IoTWIFI-cs2malloc-20230625.a")
+endif()

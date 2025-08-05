@@ -49,11 +49,11 @@ static void calendar_event_cb(lv_event_t * e);
 static void slider_event_cb(lv_event_t * e);
 static void chart_event_cb(lv_event_t * e);
 static void shop_chart_event_cb(lv_event_t * e);
-static void meter1_indic1_anim_cb(void * var, int v);
-static void meter1_indic2_anim_cb(void * var, int v);
-static void meter1_indic3_anim_cb(void * var, int v);
+static void meter1_indic1_anim_cb(void * var, int32_t v);
+static void meter1_indic2_anim_cb(void * var, int32_t v);
+static void meter1_indic3_anim_cb(void * var, int32_t v);
 static void meter2_timer_cb(lv_timer_t * timer);
-static void meter3_anim_cb(void * var, int v);
+static void meter3_anim_cb(void * var, int32_t v);
 
 /**********************
  *  STATIC VARIABLES
@@ -1014,7 +1014,7 @@ static void color_changer_create(lv_obj_t * parent)
     }
 }
 
-static void color_changer_anim_cb(void * var, int v)
+static void color_changer_anim_cb(void * var, int32_t v)
 {
     lv_obj_t * obj = var;
     lv_coord_t max_w = lv_obj_get_width(lv_obj_get_parent(obj)) - LV_DPX(20);
@@ -1501,7 +1501,7 @@ static void shop_chart_event_cb(lv_event_t * e)
 }
 
 
-static void meter1_indic1_anim_cb(void * var, int v)
+static void meter1_indic1_anim_cb(void * var, int32_t v)
 {
     lv_meter_set_indicator_end_value(meter1, var, v);
 
@@ -1510,7 +1510,7 @@ static void meter1_indic1_anim_cb(void * var, int v)
     lv_label_set_text_fmt(label, "Revenue: %"LV_PRId32" %%", v);
 }
 
-static void meter1_indic2_anim_cb(void * var, int v)
+static void meter1_indic2_anim_cb(void * var, int32_t v)
 {
     lv_meter_set_indicator_end_value(meter1, var, v);
 
@@ -1520,7 +1520,7 @@ static void meter1_indic2_anim_cb(void * var, int v)
 
 }
 
-static void meter1_indic3_anim_cb(void * var, int v)
+static void meter1_indic3_anim_cb(void * var, int32_t v)
 {
     lv_meter_set_indicator_end_value(meter1, var, v);
 
@@ -1591,7 +1591,7 @@ static void meter2_timer_cb(lv_timer_t * timer)
     lv_label_set_text_fmt(label, "Mobile: %"LV_PRIu32, session_mobile);
 }
 
-static void meter3_anim_cb(void * var, int v)
+static void meter3_anim_cb(void * var, int32_t v)
 {
     lv_meter_set_indicator_value(meter3, var, v);
 

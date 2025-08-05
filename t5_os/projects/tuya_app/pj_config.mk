@@ -1,13 +1,8 @@
-PRE_BUILD_TARGET :=
-ifeq ($(SUPPORT_DUAL_CORE),true)
-	PRE_BUILD_TARGET += $(ARMINO_SOC)_cp1
-endif
+COMPILER_TOOLCHAIN_PATH := $(CURDIR)/../../../tools/gcc-arm-none-eabi-10.3-2021.10/bin
 
-ifeq ($(SUPPORT_TRIPLE_CORE),true)
-	PRE_BUILD_TARGET += $(ARMINO_SOC)_cp1
-#	PRE_BUILD_TARGET += $(ARMINO_SOC)_cp2
-endif
+PRE_BUILD_TARGET :=
 
 ifeq ($(SUPPORT_BOOTLOADER),true)
 	PRE_BUILD_TARGET += bootloader
 endif
+

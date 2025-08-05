@@ -29,7 +29,7 @@ extern "C" {
  * @brief any_t is a pointer.  This allows you to put arbitrary structures in
  * the hashmap.
  */
-typedef void *ANY_T;
+typedef VOID_T *ANY_T;
 
 /**
  * @brief map_t is a pointer to an internally maintained data structure.
@@ -50,7 +50,7 @@ typedef ANY_T *ANY_T_ITER;
  * @param[in] table_size the hash table size
  * @return a new empty hashmap 
  */
-MAP_T tuya_hashmap_new(uint32_t table_size);
+MAP_T tuya_hashmap_new(UINT_T table_size);
 
 
 /**
@@ -63,7 +63,7 @@ MAP_T tuya_hashmap_new(uint32_t table_size);
  * 
  * @note For same key, it does not replace it. it is inserted in the head of the list
  */
-int tuya_hashmap_put(MAP_T in, const char* key ,const ANY_T data);
+INT_T tuya_hashmap_put(MAP_T in, CONST CHAR_T* key ,CONST ANY_T data);
 
 /**
  * @brief get an element from the hashmap
@@ -73,7 +73,7 @@ int tuya_hashmap_put(MAP_T in, const char* key ,const ANY_T data);
  * @param[out] arg the first value that the key matches
  * @return MAP_OK on success, others on failed, please refer to the define of hashmap error code  
  */
-int tuya_hashmap_get(MAP_T in, const char* key, ANY_T *arg);
+INT_T tuya_hashmap_get(MAP_T in, CONST CHAR_T* key, ANY_T *arg);
 
 /**
  * @brief traverse all data with same key
@@ -85,7 +85,7 @@ int tuya_hashmap_get(MAP_T in, const char* key, ANY_T *arg);
  * 
  * @note if arg_iterator is NULL, fetch the first element, otherwise, fetch the next element
  */
-int tuya_hashmap_data_traversal(MAP_T in, const char* key, ANY_T_ITER *arg_iterator);
+INT_T tuya_hashmap_data_traversal(MAP_T in, CONST CHAR_T* key, ANY_T_ITER *arg_iterator);
 
 /**
  * @brief traverse all data with same key
@@ -105,7 +105,7 @@ int tuya_hashmap_data_traversal(MAP_T in, const char* key, ANY_T_ITER *arg_itera
  * 
  * @note if data is NULL,then delete the first note match key.if data is not null, then delete the node match key and data.
  */
-int tuya_hashmap_remove(MAP_T in, char* key, ANY_T data);
+INT_T tuya_hashmap_remove(MAP_T in, CHAR_T* key, ANY_T data);
 
 /**
  * @brief free the hashmap
@@ -114,7 +114,7 @@ int tuya_hashmap_remove(MAP_T in, char* key, ANY_T data);
  * 
  * @warning must remove all element first, otherwise, it will cause element leak
  */
-void tuya_hashmap_free(MAP_T in);
+VOID_T tuya_hashmap_free(MAP_T in);
 
 /**
  * @brief get current size of the hashmap
@@ -122,7 +122,7 @@ void tuya_hashmap_free(MAP_T in);
  * @param[in] in the hashmap
  * @return the current size
  */
-int tuya_hashmap_length(MAP_T in);
+INT_T tuya_hashmap_length(MAP_T in);
 
 #ifdef __cplusplus
 }

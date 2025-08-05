@@ -1,0 +1,5 @@
+menu "json"
+	config CJSON_USE
+		bool "Enable CJSON"
+		default n
+endmenu

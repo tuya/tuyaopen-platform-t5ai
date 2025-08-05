@@ -1,39 +1,45 @@
-menu "TUYA_SDK"
-    config TUYA_OS_ADAPTER
-        bool "Add tuya os adapter"
+menu "TKL_CONFIG"
+    config TUYA_DEBUG_FIRMWARE
+        bool "Generate debug firmware"
         default n
-
-    config TUYA_APP_SOURCES
-        bool "Add tuya app"
-        default n
-
-    config TUYA_COMPONENTS
-        bool "Add tuya component"
-        default n
-
-    config APP_CLI_STATION
-        depends on TUYA_OS_ADAPTER
-        bool "Add tuya app cli station component"
-        default n
-
-    config APP_DEMO_QUICKSTAT
-        depends on TUYA_OS_ADAPTER
-        bool "Add tuya app demo quickstart component"
-        default n
+        select SWD_DEBUG_MODE
 
     config CPU_INDEX
         int "cpu index"
         default 255
 
-    config TUYA_LOG_OPTIMIZATION
-        bool "enable log OPTIMIZATION"
+    config TUYA_LCD
+        bool "tuya lcd"
         default y
-        help
-        this config should be enable, or log maybe lost
 
-    config TUYA_LOGIC_MODIFY
-        bool "tuya modify"
-        default y
+    menu "TUYA LCD Driver"
+        depends on TUYA_LCD
+
+        config TUYA_ST7701S
+            bool "lcd st7701s"
+            default y
+
+        config TUYA_ST7701SN
+            bool "lcd st7701sn"
+            default y
+
+        config LCD_SPI_GC9A01
+            bool "lcd gc9a01"
+            default y
+    endmenu
+
+    menu "TUYA LCD Type"
+        choice LCD_TYPE
+            depends on TUYA_LCD
+            prompt "lcd type select"
+            default TUYA_LCD_RGB565
+
+            config TUYA_LCD_RGB565
+                bool "rgb565"
+            config TUYA_LCD_RGB888
+                bool "rgb888"
+        endchoice
+    endmenu
 
     config TUYA_PAGE_TILEVIEW
         bool "Config Tuya GUI Gesture"
@@ -60,5 +66,31 @@ menu "TUYA_SDK"
     config TUYA_QSPI_FLASH_TYPE
         string "qspi flash type"
         default "gd25q127c"
+
+    config USE_PRIVATE_HELIX
+        bool "use private helix"
+        default n
+
+    choice AUDIO_TYPE
+        prompt "audio type select"
+        default STREAM
+
+        config RAW
+            bool "raw"
+            select AUDIO_RECORD
+            select AUDIO_PLAY
+    
+        config STREAM
+            bool "stream"
+            select ADK_AEC_ALGORITHM
+            select ADK_G711_ENCODER
+            select ADK_G711_DECODER
+            select VOICE_READ_SERVICE
+            select VOICE_WRITE_SERVICE
+            select VOICE_SERVICE
+            select VOICE_SERVICE_USE_PSRAM
+            select ADK_ONBOARD_MIC_STREAM
+            select ADK_ONBOARD_SPEAKER_STREAM
+    endchoice
 
 endmenu

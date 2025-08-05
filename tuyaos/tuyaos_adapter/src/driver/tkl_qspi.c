@@ -18,12 +18,21 @@ struct qspi_irq_config {
     uint8_t irq_enable;
     TUYA_QSPI_IRQ_CB cb;
 };
-
+static qspi_driver_t s_tkl_qspi[SOC_QSPI_UNIT_NUM] = {
+	{
+		.hal.hw = (qspi_hw_t *)(SOC_QSPI0_REG_BASE),
+	},
+#if (SOC_QSPI_UNIT_NUM > 1)
+	{
+		.hal.hw = (qspi_hw_t *)(SOC_QSPI1_REG_BASE),
+	}
+#endif
+};
 static struct qspi_irq_config qspi_irq[TUYA_QSPI_NUM_MAX] = {0};
 static TUYA_QSPI_BASE_CFG_T qspi_base_config[TUYA_QSPI_NUM_MAX] = {0};
 
 // rx isr callback
-static void qspi_tx_callback_dispatch(qspi_id_t id, void *param)
+static void qspi_tx_callback_dispatch(TUYA_QSPI_NUM_E id, void *param)
 {
     if (qspi_irq[id].cb) {
         qspi_irq[id].cb((TUYA_QSPI_NUM_E)id, TUYA_QSPI_EVENT_TX);
@@ -31,7 +40,7 @@ static void qspi_tx_callback_dispatch(qspi_id_t id, void *param)
 }
 
 // tx isr callback
-static void qspi_rx_callback_dispatch(qspi_id_t id, void *param)
+static void qspi_rx_callback_dispatch(TUYA_QSPI_NUM_E id, void *param)
 {
     if (qspi_irq[id].cb) {
         qspi_irq[id].cb((TUYA_QSPI_NUM_E)id, TUYA_QSPI_EVENT_RX);
@@ -54,10 +63,10 @@ OPERATE_RET tkl_qspi_init(TUYA_QSPI_NUM_E port, const TUYA_QSPI_BASE_CFG_T *cfg)
         return OPRT_INVALID_PARM;
     }
 
-    if (cfg->is_dma) {
-       bk_printf("QSPI DMA mode is not supported yet!\n");
+    if (cfg->is_dma)
+    {
+        return OPRT_NOT_SUPPORTED;
     }
-    
     if(bk_qspi_driver_init() != BK_OK)
         return OPRT_COM_ERROR;
 
@@ -102,7 +111,7 @@ OPERATE_RET tkl_qspi_deinit(TUYA_QSPI_NUM_E port)
  *
  * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
  */
-OPERATE_RET tkl_qspi_send(TUYA_QSPI_NUM_E port, void *data, uint16_t size)
+OPERATE_RET tkl_qspi_send(TUYA_QSPI_NUM_E port, VOID_T *data, UINT16_T size)
 {
     bk_err_t ret = BK_OK;
 
@@ -140,7 +149,7 @@ OPERATE_RET tkl_qspi_send_data_indirect_mode(TUYA_QSPI_NUM_E port, uint8_t *data
  *
  * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
  */
-OPERATE_RET tkl_qspi_recv(TUYA_QSPI_NUM_E port, void *data, uint16_t size)
+OPERATE_RET tkl_qspi_recv(TUYA_QSPI_NUM_E port, VOID_T *data, uint16_t size)
 {
     bk_err_t ret = BK_OK;
 
@@ -183,6 +192,52 @@ OPERATE_RET tkl_qspi_comand(TUYA_QSPI_NUM_E port, TUYA_QSPI_CMD_T *command)
     ret = bk_qspi_command(port, &cmd);
     if (ret != BK_OK)
         return OPRT_COM_ERROR;
+    return OPRT_OK;
+}
+
+/**
+ * @brief qspi bus mode set
+ * NOTE: only write lines & non mapping set
+ *
+ * @param[in] port: qspi port, id index starts at 0
+ * @param[in] mode:  1¡¢2¡¢4 line 
+ *
+ * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
+ */
+OPERATE_RET tkl_qspi_set_busmode(TUYA_QSPI_NUM_E port, TUYA_QSPI_WIRE_MODE_E mode)
+{
+    bk_err_t ret = BK_OK;
+    UINT32_T cfg1 = 0;
+    UINT32_T cfg2 = 0;
+    if ((port > TUYA_QSPI_NUM_MAX)) {
+        return OPRT_INVALID_PARM;
+    }
+    switch (mode)
+    {
+    case TUYA_QSPI_1WIRE:
+        cfg1 = 0xeaaa;
+        cfg2 = 0x80000000;
+        break;
+    
+    case TUYA_QSPI_2WIRE:
+        cfg1 = 0xd555;
+        cfg2 = 0x80004000;
+        break;
+
+    case TUYA_QSPI_4WIRE:
+        cfg1 = 0xc000;
+        cfg2 = 0x80008000;
+        break;
+
+    default:
+        cfg1 = 0xeaaa;
+        cfg2 = 0x80000000;
+        break;
+    }
+
+    qspi_hal_set_cmd_a_cfg1(&s_tkl_qspi[port].hal, cfg1);
+    qspi_hal_set_cmd_a_cfg2(&s_tkl_qspi[port].hal, cfg2);
+    
     return OPRT_OK;
 }
 

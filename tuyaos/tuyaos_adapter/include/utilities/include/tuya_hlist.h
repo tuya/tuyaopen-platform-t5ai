@@ -105,9 +105,9 @@ typedef struct  hlist_head{
  * @brief hash list initialization
  * 
  * @param[in] h the hash list head
- * @return void 
+ * @return VOID 
  */
-static inline void tuya_init_hlist_node(HLIST_NODE *h) 
+STATIC INLINE VOID tuya_init_hlist_node(INOUT HLIST_NODE *h) 
 {
     h->next = NULL;
     h->pprev = NULL;
@@ -119,7 +119,7 @@ static inline void tuya_init_hlist_node(HLIST_NODE *h)
  * @param[in] h the hash list head
  * @return 1 means empty,  0 means not empty
  */
-static inline int tuya_hlist_empty(const HLIST_HEAD *h) 
+STATIC INLINE INT_T tuya_hlist_empty(IN CONST HLIST_HEAD *h) 
 {
     return !h->first;
 }
@@ -130,7 +130,7 @@ static inline int tuya_hlist_empty(const HLIST_HEAD *h)
  * @param[in] h the hash list head
  * @return 1 means unhashed,  0 means not hashed 
  */
-static inline int tuya_hlist_unhashed(const HLIST_NODE *h) 
+STATIC INLINE INT_T tuya_hlist_unhashed(IN CONST HLIST_NODE *h) 
 {
     return !h->pprev;
 }
@@ -139,11 +139,11 @@ static inline int tuya_hlist_unhashed(const HLIST_NODE *h)
  * @brief a internal function used to delete member from hash list
  * 
  * @param[in] n the hash node need to delete
- * @return void
+ * @return VOID
  * 
  * @note call in  tuya_hlist_del
  */
-static inline void __tuya_hlist_del(HLIST_NODE *n) 
+STATIC INLINE VOID __tuya_hlist_del(INOUT HLIST_NODE *n) 
 {
     HLIST_NODE *next =  n->next;  
     HLIST_NODE **pprev = n->pprev;
@@ -156,9 +156,9 @@ static inline void __tuya_hlist_del(HLIST_NODE *n)
  * @brief delete a hash node from hash list
  * 
  * @param[in] n the hash node need to delete
- * @return void 
+ * @return VOID 
  */
-static inline void tuya_hlist_del(HLIST_NODE *n) 
+STATIC INLINE VOID tuya_hlist_del(INOUT HLIST_NODE *n) 
 {
     __tuya_hlist_del(n);
     // n->next = NULL;
@@ -169,9 +169,9 @@ static inline void tuya_hlist_del(HLIST_NODE *n)
  * @brief delete a hash node from hash list and initialize it if the hash is is hashed
  * 
  * @param[in] n the hash node need to delete
- * @return void
+ * @return VOID
  */
-static inline void tuya_hlist_del_init(HLIST_NODE *n) 
+STATIC INLINE VOID tuya_hlist_del_init(INOUT HLIST_NODE *n) 
 {
     if (!tuya_hlist_unhashed(n)) {
         __tuya_hlist_del(n);
@@ -184,9 +184,9 @@ static inline void tuya_hlist_del_init(HLIST_NODE *n)
  * 
  * @param[in] n the hash node need to add to head
  * @param[in] h the hash list head
- * @return void
+ * @return VOID
  */
-static inline void tuya_hlist_add_head(HLIST_NODE *n, HLIST_HEAD *h) 
+STATIC INLINE VOID tuya_hlist_add_head(INOUT HLIST_NODE *n, INOUT HLIST_HEAD *h) 
 {
     struct hlist_node *first = h->first;
     n->next = first;
@@ -201,11 +201,11 @@ static inline void tuya_hlist_add_head(HLIST_NODE *n, HLIST_HEAD *h)
  * 
  * @param[in] n the hash node need to add
  * @param[in] next the special hash node
- * @return void
+ * @return VOID
  * 
  * @note the next must not NULL 
  */
-static inline void tuya_hlist_add_before(HLIST_NODE *n, HLIST_NODE *next) 
+STATIC INLINE VOID tuya_hlist_add_before(INOUT HLIST_NODE *n, INOUT HLIST_NODE *next) 
 {
     n->pprev = next->pprev;
     n->next = next;
@@ -218,11 +218,11 @@ static inline void tuya_hlist_add_before(HLIST_NODE *n, HLIST_NODE *next)
  * 
  * @param[in] n the hash node need to add 
  * @param[in] next the spcial hash node
- * @return void
+ * @return VOID
  * 
  * @note the next must not NULL 
  */
-static inline void tuya_hlist_add_after(HLIST_NODE *n, HLIST_NODE *next) 
+STATIC INLINE VOID tuya_hlist_add_after(INOUT HLIST_NODE *n, INOUT HLIST_NODE *next) 
 {
     next->next = n->next;
     n->next = next;

@@ -1,0 +1,35 @@
+
+set(incs)
+set(srcs)
+
+list(APPEND incs
+    $ENV{TUYA_PROJECT_DIR}/include/base/include
+    $ENV{TUYA_PROJECT_DIR}/include/components/tal_system/include
+    $ENV{TUYA_PROJECT_DIR}/include/components/tal_lwip/include
+    $ENV{TUYA_PROJECT_DIR}/include/components/tal_lwip/include/lwip
+    $ENV{TUYA_PROJECT_DIR}/include/components/tal_lwip/include/netif
+    $ENV{TUYA_PROJECT_DIR}/include/components/tal_lwip/include/compat
+    $ENV{TUYA_PROJECT_DIR}/vendor/T5/tuyaos/tuyaos_adapter/include/lwip
+    $ENV{TUYA_PROJECT_DIR}/vendor/T5/tuyaos/tuyaos_adapter/bk_extension/include
+    $ENV{TUYA_PROJECT_DIR}/vendor/T5/tuyaos/tuyaos_adapter/include/utilities/include
+    dhcpd
+    lwip-2.1.2/port
+)
+
+list(APPEND srcs
+    lwip-2.1.2/port/wlanif.c
+    lwip-2.1.2/port/tuya_net.c
+    lwip-2.1.2/port/tuya_sys_arch.c
+    lwip-2.1.2/src/apps/ping/ping.c
+    dhcpd/dhcp-server.c
+    dhcpd/dhcp-server-main.c
+    lwip-2.1.2/src/core/disable_wifi.c
+)
+
+armino_component_register(
+    SRCS "${srcs}"
+    INCLUDE_DIRS "${incs}"
+    REQUIRES driver
+    PRIV_REQUIRES bk_common bk_wifi bk_rtos os_source bk_wifi_driver tuyaos_adapter
+)
+

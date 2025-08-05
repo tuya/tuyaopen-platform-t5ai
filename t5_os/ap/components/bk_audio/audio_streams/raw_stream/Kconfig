@@ -1,0 +1,12 @@
+menu "Adk::Audio_streams::raw_stream"
+	config ADK_RAW_STREAM
+		depends on ADK
+		bool "Enable raw stream"
+		default n
+
+	config ADK_RAW_STREAM_TEST
+		depends on ADK_RAW_STREAM
+		bool "Enable raw stream test"
+		default n
+
+endmenu

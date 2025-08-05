@@ -1,0 +1,13 @@
+menu "Adk::Audio_algorithm::Rsp_algorithm"
+	config ADK_RSP_ALGORITHM
+		depends on ADK
+		bool "Enable Audio RSP algorithm"
+		default n
+
+	#config ADK_RSP_ALGORITHM_TEST
+	#	depends on ADK_RSP_ALGORITHM
+	#	depends on ADK_FATFS_STREAM
+	#	bool "Enable Audio RSP algorithm test"
+	#	default n
+
+endmenu

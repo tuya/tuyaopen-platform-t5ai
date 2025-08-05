@@ -1,0 +1,13 @@
+menu "Adk::Audio_streams::Onboard_mic_stream"
+	config ADK_ONBOARD_MIC_STREAM
+		depends on ADK
+		depends on AUDIO_ADC
+		bool "Enable onboard mic stream"
+		default n
+
+	config ADK_ONBOARD_MIC_STREAM_TEST
+		depends on ADK_ONBOARD_MIC_STREAM && ADK_UART_STREAM
+		bool "Enable onboard mic stream test"
+		default n
+
+endmenu

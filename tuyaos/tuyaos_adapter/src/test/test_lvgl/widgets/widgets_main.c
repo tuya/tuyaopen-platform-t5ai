@@ -5,7 +5,6 @@
 
 #include "cli.h"
 
-#include "lcd_act.h"
 #include "media_app.h"
 #if CONFIG_LVGL
 #include "lv_vendor.h"

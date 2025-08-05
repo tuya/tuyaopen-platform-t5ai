@@ -1,5 +1,0 @@
-menu "Freetype"
-	config FREETYPE
-		bool "Enable Freetype"
-		default n		
-endmenu

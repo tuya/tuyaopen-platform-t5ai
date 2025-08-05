@@ -1,1 +1,0 @@
-encrypt.exe beken7231.bin 00000000

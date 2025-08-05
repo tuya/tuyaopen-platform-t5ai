@@ -1,0 +1,41 @@
+menu "SOC_CONFIG"
+
+	choice SOC
+		prompt "ARMINO SoC"
+		default SOC_BK7258 if "$ARMINO_SOC" = "bk7258"
+		default SOC_BK7257 if "$ARMINO_SOC" = "bk7257"
+
+		config SOC_BK7258
+			select SOC_BK7236XX
+			bool "BK7258"
+
+		config SOC_BK7257
+			select SOC_BK7236XX
+			bool "BK7257"
+
+	endchoice
+
+	config CPU_CNT
+			int "System CPU count: 1: single core, 2: dual core, etc."
+			default 1
+
+	config SOC_STR
+		string "SoC string"
+		default "bk7258_cp"  if SOC_BK7258
+		default "bk7257_cp"  if SOC_BK7257
+		default "$ARMINO_SOC"
+
+	config SOC_ARCH
+		string "Soc arch"
+		default "unknown"
+
+	config SOC_BK7236XX
+		bool "For bk7236 series chipset"
+		default n
+
+	config SOC_SMP
+		bool "For soc smp feature"
+		default n
+
+
+endmenu

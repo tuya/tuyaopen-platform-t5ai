@@ -11,11 +11,11 @@
 #include <driver/hal/hal_lcd_types.h>
 #include <driver/int_types.h>
 #include <driver/lcd_types.h>
-#include <lcd_act.h>
 
 #include "tuya_cloud_types.h"
 #include "cli_tuya_test.h"
 
+#if 0
 static uint32_t color_value = 0;
 static beken_timer_t lcd_rgb_timer;
 #define pdata_addr	0x60700000
@@ -154,9 +154,12 @@ static void lcd_rgb_change_color(const char *str)
     }
     return;
 }
+#endif
 
 void cli_xlcd_cmd(char *pcWriteBuffer, int xWriteBufferLen, int argc, char **argv)
 {
+    bk_printf("TODO ...\r\n");
+#if 0
     static uint8_t lcd_rgb_timer_stat = 0;
 
     if (argc < 3) {
@@ -217,6 +220,7 @@ void cli_xlcd_cmd(char *pcWriteBuffer, int xWriteBufferLen, int argc, char **arg
     } else {
         color_test_usage();
     }
+#endif
     return;
 }
 

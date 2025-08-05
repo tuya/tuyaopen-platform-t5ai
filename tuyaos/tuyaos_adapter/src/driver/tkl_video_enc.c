@@ -7,18 +7,18 @@
 
 #include "media_app.h"
 #include "media_evt.h"
-#include "transfer_act.h"
 #include "tkl_video_enc.h"
+#include "modules/wifi_types.h"
+#include "driver/media_types.h"
 
 extern void tuya_multimedia_power_on(void);
-extern bk_err_t media_send_msg_sync(uint32_t event, uint32_t param);
 static TKL_VENC_PUT_CB upper_trans_cb = NULL;
 
 static void __frame_test_cb(frame_buffer_t *frame)
 {
     if (upper_trans_cb != NULL) {
         TKL_VENC_FRAME_T out_frame;
-        out_frame.pbuf      = (char *)frame->frame;
+        out_frame.pbuf      = frame->frame;
         out_frame.buf_size  = frame->length;
         out_frame.width     = frame->width;
         out_frame.height    = frame->height;
@@ -46,23 +46,21 @@ static void __frame_test_cb(frame_buffer_t *frame)
 *
 * @return OPRT_OK on success. Others on error, please refer to tkl_error_code.h
 */
-OPERATE_RET tkl_venc_init(int vi_chn, TKL_VENC_CONFIG_T *pconfig, int count)
+OPERATE_RET tkl_venc_init(INT32_T vi_chn, TKL_VENC_CONFIG_T *pconfig, INT32_T count)
 {
     // TODO
-    // bk_wifi_set_wifi_media_mode(true);
-    // bk_wifi_set_video_quality(0);
-
-    // tuya_multimedia_power_on();
-    if (pconfig->enable_h264_pipeline) {
-        media_app_h264_pipeline_open();
-    }
-
     if ((pconfig != NULL) && (pconfig->put_cb != NULL)) {
         upper_trans_cb = pconfig->put_cb;
     }
 
-    transfer_app_task_init(__frame_test_cb);
-    media_send_msg_sync(EVENT_TRANSFER_OPEN_IND, PIXEL_FMT_H264);
+    if (pconfig->enable_h264_pipeline) {
+        h264_jdec_pipeline_open();
+    }
+
+    bk_wifi_set_wifi_media_mode(true);
+    bk_wifi_set_video_quality(WIFI_VIDEO_QUALITY_SD);
+
+    transfer_app_task_init(__frame_test_cb, IMAGE_H264);
 
     return OPRT_OK;
 }
@@ -236,11 +234,11 @@ OPERATE_RET tkl_venc_stop( TKL_VI_CHN_E vi_chn, TKL_VENC_CHN_E venc_chn)
 */
 OPERATE_RET tkl_venc_uninit(TKL_VI_CHN_E vi_chn, TKL_VENC_CONFIG_T *pconfig)
 {
-    // TODO
-    // bk_wifi_set_video_quality(2);
-    // bk_wifi_set_wifi_media_mode(false);
+    transfer_app_task_deinit();
+    bk_wifi_set_wifi_media_mode(false);
+    bk_wifi_set_video_quality(WIFI_VIDEO_QUALITY_HD);
     if (pconfig->enable_h264_pipeline) {
-        media_app_h264_pipeline_close();
+        h264_jdec_pipeline_close();
     }
     return OPRT_OK;
 }

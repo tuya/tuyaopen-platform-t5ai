@@ -1,0 +1,17 @@
+menu "CAN"
+	config CAN
+		bool "Enable CAN"
+		default n
+	config CAN_PM_CB_SUPPORT
+		bool "CAN pm callback support"
+		depends on CAN
+		default n
+	config CAN_TEST
+		depends on CAN
+		bool "Enable can test"
+		default n
+	config CAN_DEMO
+		depends on CAN
+		bool "Enable can demo"
+		default n
+endmenu

@@ -1,0 +1,10 @@
+menu "Bk_websocket"
+
+	config WEBSOCKET
+		bool "Enable Websocket"
+		default n
+	config WEBSOCKET_TLS
+		depends on PSA_MBEDTLS
+		bool "Enable Websocket"
+		default n
+endmenu

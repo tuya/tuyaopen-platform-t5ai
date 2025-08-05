@@ -30,8 +30,8 @@ extern "C" {
  * 
  **/
 typedef struct {
-    uint32_t dev_addr;
-    uint32_t reg_addr_width;
+    UINT32_T dev_addr;
+    UINT32_T reg_addr_width;
 } REGADDR_WIDTH_T;
 
 /**
@@ -42,7 +42,7 @@ typedef struct {
  * 
  * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
  */
-OPERATE_RET tkl_i2c_init(TUYA_I2C_NUM_E port, const TUYA_IIC_BASE_CFG_T *cfg);
+OPERATE_RET tkl_i2c_init(TUYA_I2C_NUM_E port, CONST TUYA_IIC_BASE_CFG_T *cfg);
 
 /**
  * @brief i2c deinit
@@ -92,7 +92,7 @@ OPERATE_RET tkl_i2c_irq_disable(TUYA_I2C_NUM_E port);
  * @param[in] xfer_pending: xfer_pending: TRUE : not send stop condition, FALSE : send stop condition.
  * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
  */
-OPERATE_RET tkl_i2c_master_send(TUYA_I2C_NUM_E port, uint16_t dev_addr, const void *data, uint32_t size, BOOL_T xfer_pending);
+OPERATE_RET tkl_i2c_master_send(TUYA_I2C_NUM_E port, UINT16_T dev_addr, CONST VOID_T *data, UINT32_T size, BOOL_T xfer_pending);
 
 /**
  * @brief i2c master recv
@@ -104,7 +104,7 @@ OPERATE_RET tkl_i2c_master_send(TUYA_I2C_NUM_E port, uint16_t dev_addr, const vo
  * @param[in] xfer_pending: TRUE : not send stop condition, FALSE : send stop condition.
  * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
  */
-OPERATE_RET tkl_i2c_master_receive(TUYA_I2C_NUM_E port, uint16_t dev_addr, void *data, uint32_t size, BOOL_T xfer_pending);
+OPERATE_RET tkl_i2c_master_receive(TUYA_I2C_NUM_E port, UINT16_T dev_addr, VOID *data, UINT32_T size, BOOL_T xfer_pending);
 
 /**
  * @brief i2c slave
@@ -114,7 +114,7 @@ OPERATE_RET tkl_i2c_master_receive(TUYA_I2C_NUM_E port, uint16_t dev_addr, void 
  *
  * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
  */
-OPERATE_RET tkl_i2c_set_slave_addr(TUYA_I2C_NUM_E port, uint16_t dev_addr);
+OPERATE_RET tkl_i2c_set_slave_addr(TUYA_I2C_NUM_E port, UINT16_T dev_addr);
 
 /**
  * @brief i2c slave send
@@ -125,7 +125,7 @@ OPERATE_RET tkl_i2c_set_slave_addr(TUYA_I2C_NUM_E port, uint16_t dev_addr);
  * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
  */
 
-OPERATE_RET tkl_i2c_slave_send(TUYA_I2C_NUM_E port, const void *data, uint32_t size);
+OPERATE_RET tkl_i2c_slave_send(TUYA_I2C_NUM_E port, CONST VOID *data, UINT32_T size);
 
 /**
  * @brief IIC slave receive, Start receiving data as IIC Slave.
@@ -136,7 +136,7 @@ OPERATE_RET tkl_i2c_slave_send(TUYA_I2C_NUM_E port, const void *data, uint32_t s
  * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
  */
 
-OPERATE_RET tkl_i2c_slave_receive(TUYA_I2C_NUM_E port, void *data, uint32_t size);
+OPERATE_RET tkl_i2c_slave_receive(TUYA_I2C_NUM_E port, VOID *data, UINT32_T size);
 
 /**
  * @brief IIC get status.
@@ -167,7 +167,7 @@ OPERATE_RET  tkl_i2c_reset(TUYA_I2C_NUM_E port);
  * tkl_i2c_slave_send:number of data bytes transmitted
  * tkl_i2c_slave_receive:number of data bytes received and acknowledged
  */
-int32_t tkl_i2c_get_data_count(TUYA_I2C_NUM_E port);
+INT32_T tkl_i2c_get_data_count(TUYA_I2C_NUM_E port);
 
 /**
  * @brief i2c ioctl
@@ -176,7 +176,7 @@ int32_t tkl_i2c_get_data_count(TUYA_I2C_NUM_E port);
  * @param[in]       args    args associated with the command
  * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
  */
-OPERATE_RET tkl_i2c_ioctl(TUYA_I2C_NUM_E port, uint32_t cmd,  void *args);
+OPERATE_RET tkl_i2c_ioctl(TUYA_I2C_NUM_E port, UINT32_T cmd,  VOID *args);
 
 
 #ifdef __cplusplus

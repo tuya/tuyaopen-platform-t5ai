@@ -1,0 +1,23 @@
+comment "===Main Tip: On the AP side, the WDT related configuration should not be set to Y. If you want to configure WDT, please go to the CP side to configure it. Please refer to the documentation for the reason..==="
+menu "Watchdog"
+	config INT_WDT
+		bool "Enable Interrupt Watchdog"
+		default n
+
+	config INT_WDT_PERIOD_MS
+		int "Interrupt Watchdog Period(ms)"
+		default 1000
+
+	config TASK_WDT
+		bool "Enable Task Watchdog"
+		default n
+
+	config TASK_WDT_PERIOD_MS
+		int "Task Watchdog Period(ms)"
+		default 60000
+
+	config NMI_WDT_EN
+		bool "Enable NMI Watchdog"
+		default n
+endmenu
+

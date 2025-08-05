@@ -1,6 +1,0 @@
-menu "LVLG Music Configuration"
-
-    config LV_USE_DEMO_MUSIC
-        bool "LVLG Music"
-        default n
-endmenu

@@ -1,0 +1,11 @@
+menu "Bk_netif"
+
+	config BK_NETIF
+		bool "Enable Bk Netif" 
+		default y
+
+	config NETIF_LWIP
+		depends on BK_NETIF
+		bool "Netif use LWIP"
+		default y
+endmenu

@@ -9,7 +9,7 @@ wakeup 用于设置芯片唤醒源，唤醒源可以是GPIO,定时器等。
 ### tkl_wakeup_source_set
 
 ```c
-OPERATE_RET tkl_wakeup_source_set(const TUYA_WAKEUP_SOURCE_BASE_CFG_T  *param);
+OPERATE_RET tkl_wakeup_source_set(CONST TUYA_WAKEUP_SOURCE_BASE_CFG_T  *param);
 ```
 
 - 功能描述：
@@ -24,7 +24,7 @@ OPERATE_RET tkl_wakeup_source_set(const TUYA_WAKEUP_SOURCE_BASE_CFG_T  *param);
 ### tkl_wakeup_source_clear
 
 ```c
-OPERATE_RET tkl_wakeup_source_clear(const TUYA_WAKEUP_SOURCE_BASE_CFG_T *param);
+OPERATE_RET tkl_wakeup_source_clear(CONST TUYA_WAKEUP_SOURCE_BASE_CFG_T *param);
 ```
 
 - 功能描述：

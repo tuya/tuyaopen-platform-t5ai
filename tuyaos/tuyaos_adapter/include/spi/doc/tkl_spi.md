@@ -34,7 +34,7 @@ CPOL是用来决定SCLK时钟信号空闲时的电平，CPOL=0，空闲电平为
 ### tkl_spi_init
 
 ```
-OPERATE_RET tkl_spi_init(TUYA_SPI_NUM_E port, const TUYA_SPI_BASE_CFG_T *cfg);
+OPERATE_RET tkl_spi_init(TUYA_SPI_NUM_E port, CONST TUYA_SPI_BASE_CFG_T *cfg);
 ```
 
 - 功能描述:
@@ -53,8 +53,8 @@ OPERATE_RET tkl_spi_init(TUYA_SPI_NUM_E port, const TUYA_SPI_BASE_CFG_T *cfg);
       TUYA_SPI_TYPE_E      type;
       TUYA_SPI_DATABITS_E  databits;
       TUYA_SPI_BIT_ORDER_E bitorder;
-      uint32_t               freq_hz;
-      uint32_t               spi_dma_flags; /*!< SPI dma format , 1 use dma */
+      UINT_T               freq_hz;
+      UINT_T               spi_dma_flags; /*!< SPI dma format , 1 use dma */
   } TUYA_SPI_BASE_CFG_T;
   ```
 
@@ -119,7 +119,7 @@ OPERATE_RET tkl_spi_deinit(TUYA_SPI_NUM_E port);
 ### tkl_spi_send
 
 ```
-OPERATE_RET tkl_spi_send(TUYA_SPI_NUM_E port, void *data, UINT16_T size);
+OPERATE_RET tkl_spi_send(TUYA_SPI_NUM_E port, VOID_T *data, UINT16_T size);
 ```
 
 - 功能描述:
@@ -134,7 +134,7 @@ OPERATE_RET tkl_spi_send(TUYA_SPI_NUM_E port, void *data, UINT16_T size);
 ### tkl_spi_recv
 
 ```
-OPERATE_RET tkl_spi_recv(TUYA_SPI_NUM_E port, void *data, UINT16_T size);
+OPERATE_RET tkl_spi_recv(TUYA_SPI_NUM_E port, VOID_T *data, UINT16_T size);
 ```
 
 - 功能描述:
@@ -149,7 +149,7 @@ OPERATE_RET tkl_spi_recv(TUYA_SPI_NUM_E port, void *data, UINT16_T size);
 ### tkl_spi_transfer
 
 ```
-OPERATE_RET tkl_spi_transfer(TUYA_SPI_NUM_E port, void* send_buf, void* receive_buf, uint32_t length);
+OPERATE_RET tkl_spi_transfer(TUYA_SPI_NUM_E port, VOID_T* send_buf, VOID_T* receive_buf, UINT32_T length);
 ```
 
 - 功能描述:
@@ -239,7 +239,7 @@ OPERATE_RET tkl_spi_irq_disable(TUYA_SPI_NUM_E port);
 ### tkl_spi_get_data_count
 
 ```
-int tkl_spi_get_data_count(TUYA_SPI_NUM_E port);
+INT32_T tkl_spi_get_data_count(TUYA_SPI_NUM_E port);
 ```
 
 - 功能描述:

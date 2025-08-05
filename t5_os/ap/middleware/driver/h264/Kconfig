@@ -1,0 +1,28 @@
+menu "H264_CONFIG"
+	config H264
+		depends on YUV_BUF
+		bool "Enable h264"
+		default n
+
+	config H264_QUALITY_LEVEL
+		depends on H264
+		int "set h264 compress quality level"
+		range 0 3
+		default 2
+
+	config H264_GOP_START_IDR_FRAME
+		depends on H264
+		bool "Enable add pps and sps before i frame"
+		default y
+
+	config H264_ADD_SELF_DEFINE_SEI
+		depends on H264
+		bool "Enable function add sei nalu for self define, contain frame information"
+		default y
+
+	config H264_P_FRAME_CNT
+		depends on H264
+		int "config h264 encode one I frame then output H264_P_FRAME_CNT p frame"
+		range 0 1023
+		default 29
+endmenu

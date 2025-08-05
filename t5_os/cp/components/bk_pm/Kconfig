@@ -1,0 +1,20 @@
+menu "PM"
+	config PM_ENABLE
+		bool "pm enable"
+		default n
+
+	config PM_SUPER_DEEP_SLEEP
+		bool "Enable super deep sleep"
+		default n
+	config PM_LV_TIME_COST_DEBUG
+		bool "Enable low voltage sleep time cost debug"
+	config PM_ENTER_LV_TIME_OUT_PERIOD_MS
+		int "Enter LV time out"
+		default 30000
+		help
+			enter LV time out time(unit:ms)
+	config PM_LV_WDT_PROTECTION
+		bool "add protection for hardware enter low voltage fail when application abnormal operate, using wdt to reboot"
+		default n
+endmenu
+
