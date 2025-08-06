@@ -48,7 +48,7 @@ set(incs
     "include/wired"
     "include/ipc"
     "include/asr"
-    "include/asr/wanson_asr"
+    "include/asr/libtutuClear"
     "include/rgb"
     "include/mcu8080"
 )
@@ -203,7 +203,7 @@ if ("${CONFIG_CPU_INDEX}" STREQUAL "1")
 # platform/t5ai/tuyaos/tuyaos_adapter/include/vad/lib/libvad.a
 target_link_libraries(${COMPONENT_LIB} INTERFACE "$ENV{ARMINO_PATH}/../../tuyaos/tuyaos_adapter/include/vad/lib/libvad.a")
 # platform/t5ai/tuyaos/tuyaos_adapter/include/asr/wanson_asr/libasrfst.a
-target_link_libraries(${COMPONENT_LIB} INTERFACE "$ENV{ARMINO_PATH}/../../tuyaos/tuyaos_adapter/include/asr/wanson_asr/libasrfst.a")
+target_link_libraries(${COMPONENT_LIB} INTERFACE "$ENV{ARMINO_PATH}/../../tuyaos/tuyaos_adapter/include/asr/libtutuClear/libtutuClear.a")
 
 set(tuya_libs "$ENV{TUYA_LIBS}")
 string(REPLACE " " ";" tuya_libs "${tuya_libs}")
