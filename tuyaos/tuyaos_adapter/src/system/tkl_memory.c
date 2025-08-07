@@ -47,7 +47,7 @@ VOID_T* tkl_system_malloc(CONST SIZE_T size)
         }
 
     if (size > 4096) {
-        bk_printf("tkl_system_malloc big memory, size(%d), caller %p\r\n", size, __builtin_return_address(0));
+        // bk_printf("tkl_system_malloc big memory, size(%d), caller %p\r\n", size, __builtin_return_address(0));
     }
 
         return ptr;

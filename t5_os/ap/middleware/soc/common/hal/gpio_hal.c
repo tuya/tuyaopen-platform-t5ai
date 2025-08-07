@@ -219,7 +219,7 @@ bk_err_t gpio_hal_func_unmap(gpio_hal_t *hal, gpio_id_t gpio_id)
 	the risk,but the operation will continue to execute,without interrupting 
 	the process*/
 	if(gpio_hal_map_check(hal, gpio_id)) {
-		HAL_LOGW("gpio: %d is used.Please confirm unmap isn't impact is working module.!\r\n", gpio_id);
+		// HAL_LOGW("gpio: %d is used.Please confirm unmap isn't impact is working module.!\r\n", gpio_id);
 	}
 
 	gpio_hal_sencond_function_enable(hal, gpio_id, 0);
