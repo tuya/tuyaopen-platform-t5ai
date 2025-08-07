@@ -67,7 +67,7 @@ gpio_id_t tkl_adc_to_pin_func(adc_chan_t adc)
         default:
             break;
     }
-    bk_printf("tkl_adc_to_pin_func adc:%d,%d\r\n",adc,gpio_pin);
+    // bk_printf("tkl_adc_to_pin_func adc:%d,%d\r\n",adc,gpio_pin);
     return gpio_pin;
 }
 
