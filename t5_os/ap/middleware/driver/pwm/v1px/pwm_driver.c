@@ -65,6 +65,8 @@ typedef struct {
 	//Concurrently operation is NOT allowed!!!s_pwm_pin_id_map
 	uint32_t chan_init_bits;
 	uint32_t chan_init_signal_level;
+	uint32_t chan_gpio_mode_bits;
+	uint32_t chan_gpio_level_bits;
 	volatile uint32_t phase_shift_chan_init_level;
 #if CONFIG_PWM_PM_CB_SUPPORT
 	uint32_t pm_backup[PWM_PM_BACKUP_REG_NUM];
@@ -629,33 +631,25 @@ bk_err_t bk_pwm_init(pwm_chan_t sw_ch, const pwm_init_config_t *config)
 	pwm_hal_set_init_signal_low(&s_pwm[id].hal, hw_ch);
 	pwm_hal_set_new_config_way(&s_pwm[id].hal, hw_ch, 1);
 
+	/*duty ratio is 0% and 100* use gpio output*/
 	/* duty ratio is 0% */
 	if (config->duty_cycle == 0) {
-		s_pwm[id].chan_init_signal_level &= ~BIT(hw_ch);
-		pwm_hal_set_flip_mode(&s_pwm[id].hal, hw_ch, 4);
-		pwm_config.period_cycle = config->period_cycle;
-		pwm_config.duty_cycle = 0;
-		pwm_config.duty2_cycle = 0;
-		pwm_config.duty3_cycle = 0;
-		pwm_config.psc = config->psc;
-		pwm_set_channel_config(sw_ch, &pwm_config);
+		s_pwm[id].chan_gpio_mode_bits |= BIT(hw_ch);
+		s_pwm[id].chan_gpio_level_bits &= ~BIT(hw_ch);
+		bk_gpio_set_value(s_pwm_pin_id_map[id][hw_ch].gpio_id, 0x8);
 		return BK_OK;
 	}
 
 	/* duty ratio is 100% */
 	if (config->duty_cycle ==  config->period_cycle) {
-		s_pwm[id].chan_init_signal_level |= BIT(hw_ch);
-		pwm_hal_set_flip_mode(&s_pwm[id].hal, hw_ch, 2);
-		pwm_config.period_cycle = config->period_cycle;
-		pwm_config.duty_cycle = 0;
-		pwm_config.duty2_cycle = 0;
-		pwm_config.duty3_cycle = 0;
-		pwm_config.psc = config->psc;
-		pwm_set_channel_config(sw_ch, &pwm_config);
+		s_pwm[id].chan_gpio_mode_bits |= BIT(hw_ch);
+		s_pwm[id].chan_gpio_level_bits |= BIT(hw_ch);
+		bk_gpio_set_value(s_pwm_pin_id_map[id][hw_ch].gpio_id, 0x8);
 		return BK_OK;
 	}
 
-	s_pwm[id].chan_init_signal_level &= ~BIT(hw_ch);
+	s_pwm[id].chan_gpio_mode_bits &= ~BIT(hw_ch);
+
 	pwm_hal_set_flip_mode(&s_pwm[id].hal, hw_ch, 1);
 	pwm_config.period_cycle = config->period_cycle;
 	pwm_config.duty_cycle = config->period_cycle - config->duty_cycle;
@@ -697,6 +691,8 @@ bk_err_t bk_pwm_deinit(pwm_chan_t sw_ch)
 	bk_pwm_stop(sw_ch);
 	pwm_hal_set_single_chan_tim_enable(&s_pwm[id].hal, hw_ch, false);
 	s_pwm[id].chan_init_bits &= ~BIT(hw_ch);
+	s_pwm[id].chan_gpio_mode_bits &= ~BIT(hw_ch);
+	s_pwm[id].chan_gpio_level_bits &= ~BIT(hw_ch);
 
 	return BK_OK;
 }
@@ -710,8 +706,19 @@ bk_err_t bk_pwm_start(pwm_chan_t sw_ch)
 	PWM_RETURN_ON_INVALID_PWM_UNIT(id);
 	PWM_RETURN_ON_CHAN_NOT_INIT(id, hw_ch);
 	PWM_PM_CHECK_RESTORE(id);
-	pwm_hal_set_chan_enable(&s_pwm[id].hal, hw_ch, true);
 	pwm_hal_set_single_chan_tim_enable(&s_pwm[id].hal, hw_ch, true);
+	
+	if (s_pwm[id].chan_gpio_mode_bits & BIT(hw_ch)) {
+		bk_gpio_enable_output(s_pwm_pin_id_map[id][hw_ch].gpio_id);
+		if (s_pwm[id].chan_gpio_level_bits & BIT(hw_ch)){
+			bk_gpio_set_output_high(s_pwm_pin_id_map[id][hw_ch].gpio_id);
+		} else {
+			bk_gpio_set_output_low(s_pwm_pin_id_map[id][hw_ch].gpio_id);
+		}
+		
+	} else {
+		pwm_hal_set_chan_enable(&s_pwm[id].hal, hw_ch, true);
+	}
 
 	return BK_OK;
 }
@@ -726,8 +733,11 @@ bk_err_t bk_pwm_stop(pwm_chan_t sw_ch)
 
 	PWM_RETURN_ON_CHAN_NOT_INIT(unit_id, hw_ch);
 	PWM_PM_CHECK_RESTORE(unit_id);
-	pwm_hal_set_chan_enable(&s_pwm[unit_id].hal, hw_ch, false);
-
+	if (s_pwm[unit_id].chan_gpio_mode_bits & BIT(hw_ch)){
+		bk_gpio_disable_output(s_pwm_pin_id_map[unit_id][hw_ch].gpio_id);
+	} else{
+		pwm_hal_set_chan_enable(&s_pwm[unit_id].hal, hw_ch, false);
+	}
 	return BK_OK;
 }
 
@@ -802,37 +812,47 @@ bk_err_t bk_pwm_set_period_duty(pwm_chan_t sw_ch, pwm_period_duty_config_t *conf
 
 	PWM_PM_CHECK_RESTORE(id);
 	pwm_hal_set_new_config_way(&s_pwm[id].hal, hw_ch, 1);
-
+	
+	/*duty ratio is 0% and 100* use gpio output*/
 	/* duty ratio is 0% */
 	if (config->duty_cycle == 0) {
-		s_pwm[id].chan_init_signal_level &= ~BIT(hw_ch);
-		pwm_hal_set_flip_mode(&s_pwm[id].hal, hw_ch, 4);
-		config->duty_cycle = 0;
-		config->duty2_cycle = 0;
-		config->duty3_cycle = 0;
-		pwm_set_channel_config(sw_ch, config);
+		s_pwm[id].chan_gpio_mode_bits |= BIT(hw_ch);
+		s_pwm[id].chan_gpio_level_bits &= ~BIT(hw_ch);
+		// stop pwm chxe,use gpio output
+		pwm_hal_set_chan_enable(&s_pwm[id].hal, hw_ch, false);
+		bk_gpio_set_value(s_pwm_pin_id_map[id][hw_ch].gpio_id, 0x8);
+		bk_gpio_enable_output(s_pwm_pin_id_map[id][hw_ch].gpio_id);
+		bk_gpio_set_output_low(s_pwm_pin_id_map[id][hw_ch].gpio_id);
 		return BK_OK;
 	}
 
 	/* duty ratio is 100% */
 	if (config->duty_cycle ==  config->period_cycle) {
-		s_pwm[id].chan_init_signal_level |= BIT(hw_ch);
-		pwm_hal_set_flip_mode(&s_pwm[id].hal, hw_ch, 2);
-		config->duty_cycle = 0;
-		config->duty2_cycle = 0;
-		config->duty3_cycle = 0;
-		pwm_set_channel_config(sw_ch, config);
+		s_pwm[id].chan_gpio_mode_bits |= BIT(hw_ch);
+		s_pwm[id].chan_gpio_level_bits |= BIT(hw_ch);
+		//stop pwm chxe,use gpio output
+		pwm_hal_set_chan_enable(&s_pwm[id].hal, hw_ch, false);
+		bk_gpio_set_value(s_pwm_pin_id_map[id][hw_ch].gpio_id, 0x8);
+		bk_gpio_enable_output(s_pwm_pin_id_map[id][hw_ch].gpio_id);
+		bk_gpio_set_output_high(s_pwm_pin_id_map[id][hw_ch].gpio_id);
 		return BK_OK;
 	}
 
-	if (s_pwm[id].chan_init_signal_level & BIT(hw_ch)) {
-		config->duty2_cycle = config->period_cycle;
-		config->duty3_cycle = 0;
-	} else {
+	if (s_pwm[id].chan_gpio_mode_bits & BIT(hw_ch)){
+		gpio_dev_map(s_pwm_pin_id_map[id][hw_ch].gpio_id, s_pwm_pin_id_map[id][hw_ch].gpio_dev);
+	}
+
+	s_pwm[id].chan_gpio_mode_bits &= ~BIT(hw_ch);
+
+	if (pwm_hal_get_ccmr_chan_polarity(&s_pwm[id].hal, hw_ch) == 0){
 		config->duty_cycle = config->period_cycle - config->duty_cycle;
 		config->duty2_cycle = config->period_cycle;
 		config->duty3_cycle = 0;
+	} else{
+		config->duty2_cycle = config->period_cycle;
+		config->duty3_cycle = 0;
 	}
+	
 
 	/* CCR cannot be set to 1 */
 	if (config->duty_cycle == 1) {

@@ -231,8 +231,10 @@ OPERATE_RET tkl_adc_read_data(TUYA_ADC_NUM_E unit_num, INT32_T *buff, UINT16_T l
 
 OPERATE_RET tkl_adc_read_single_channel(TUYA_ADC_NUM_E unit_num, UINT8_T ch_id, INT32_T *data)
 {
+    OPERATE_RET rt = OPRT_OK;
+    bk_err_t ret = BK_OK;
     int curr_ch_index =  0;
-    int time_out = BEKEN_WAIT_FOREVER;
+    int time_out = 500;
     if(adc[unit_num] != unit_num && unit_num > ADC_DEV_NUM-1) {
         bk_printf("error port num: %d:%d\r\n", unit_num, __LINE__);
         return OPRT_INVALID_PARM;
@@ -254,13 +256,17 @@ OPERATE_RET tkl_adc_read_single_channel(TUYA_ADC_NUM_E unit_num, UINT8_T ch_id, 
         BK_LOG_ON_ERR(bk_adc_enable_bypass_clalibration());
         BK_LOG_ON_ERR(bk_adc_start());
         bk_adc_set_channel(g_config[curr_ch_index].chan);
-        bk_adc_read_raw(g_config[curr_ch_index].output_buf, g_adc_read_size[unit_num], time_out);
+
+        ret = bk_adc_read_raw(g_config[curr_ch_index].output_buf, g_adc_read_size[unit_num], time_out);
+        if(ret != BK_OK) {
+            rt = OPRT_COM_ERROR;
+        }
 
         for (int i = 0; i < g_adc_read_size[unit_num]; i++) {
             data[i] = (INT32_T)g_config[curr_ch_index].output_buf[i];
             // bk_printf("%d ", g_config[curr_ch_index].output_buf[i]);
         }
-        // bk_printf("\r\n");
+
         bk_adc_stop();
         bk_adc_deinit(g_config[curr_ch_index].chan);
     }
@@ -268,7 +274,7 @@ OPERATE_RET tkl_adc_read_single_channel(TUYA_ADC_NUM_E unit_num, UINT8_T ch_id, 
     sys_drv_set_ana_pwd_gadc_buf(0);
     bk_adc_release();
 
-    return 0;
+    return rt;
 }
 
 
