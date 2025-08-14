@@ -763,8 +763,6 @@ OPERATE_RET tkl_wifi_get_mac(CONST WF_IF_E wf, NW_MAC_S *mac)
         bk_wifi_ap_get_mac(mac->mac);
     }
 
-    bk_printf("get mac: %02x:%02x:%02x:%02x:%02x:%02x\r\n",
-            mac->mac[0], mac->mac[1], mac->mac[2], mac->mac[3], mac->mac[4], mac->mac[5]);
     return OPRT_OK;
 }
 

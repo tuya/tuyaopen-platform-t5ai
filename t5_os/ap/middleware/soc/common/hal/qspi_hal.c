@@ -114,6 +114,19 @@ bk_err_t qspi_hal_get_cmd_c_h(qspi_hal_t *hal)
 	return qspi_ll_get_cmd_c_h(hal->hw);
 }
 
+bk_err_t qspi_hal_set_cmd_c_dummy_clock(qspi_hal_t *hal, uint32_t cmd_value)
+{
+	qspi_ll_set_cmd_c_dummy_clock(hal->hw, cmd_value);
+
+	return BK_OK;
+}
+
+bk_err_t qspi_hal_set_cmd_c_dummy_mode(qspi_hal_t *hal, uint32_t cmd_value)
+{
+    hal->hw->cmd_c_cfg2.dummy_mode = cmd_value & 0x7;
+	return BK_OK;
+}
+
 bk_err_t qspi_hal_set_cmd_c_cfg1(qspi_hal_t *hal, uint32_t cmd_value)
 {
 	qspi_ll_set_cmd_c_cfg1(hal->hw, cmd_value);

@@ -215,8 +215,8 @@ bk_err_t gpio_hal_func_map(gpio_hal_t *hal, gpio_id_t gpio_id, gpio_dev_t dev)
 bk_err_t gpio_hal_func_unmap(gpio_hal_t *hal, gpio_id_t gpio_id)
 {
 	/*If detected that gpio_2_func_en is set,it indicates that the GPIO
-	is being used by other peripheral,will print a warning log to indicate 
-	the risk,but the operation will continue to execute,without interrupting 
+	is being used by other peripheral,will print a warning log to indicate
+	the risk,but the operation will continue to execute,without interrupting
 	the process*/
 	if(gpio_hal_map_check(hal, gpio_id)) {
 		// HAL_LOGW("gpio: %d is used.Please confirm unmap isn't impact is working module.!\r\n", gpio_id);
@@ -423,7 +423,7 @@ bk_err_t gpio_hal_default_map_init(gpio_hal_t *hal)
 			gpio_hal_enable_interrupt(hal, default_map[i].gpio_id);
 		} else
 			gpio_hal_disable_interrupt(hal, default_map[i].gpio_id);
-			
+
 /*BK7258 and BK7256 are different, macros are used to isolate them.*/
 #if CONFIG_SOC_BK7236XX
 		gpio_hal_clear_chan_interrupt_status(hal,default_map[i].gpio_id);
@@ -432,7 +432,7 @@ bk_err_t gpio_hal_default_map_init(gpio_hal_t *hal)
 		gpio_hal_set_capacity(hal, default_map[i].gpio_id, default_map[i].driver_capacity);
 	}
 
-	return BK_OK;	
+	return BK_OK;
 }
 
 #endif

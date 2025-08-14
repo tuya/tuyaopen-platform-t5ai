@@ -1070,11 +1070,13 @@ typedef enum {
 
 typedef struct {
     TUYA_QSPI_OP_E op;        /**< QSPI operation */
-	UINT8_T cmd;               /**< QSPI command */
-	UINT8_T addr_size;               /**< QSPI address len */
-	UINT_T addr;              /**< QSPI address */
+	UCHAR_T cmd[4];               /**< QSPI command */
+    UINT_T  cmd_size;          /**< QSPI data length */
+	UCHAR_T addr[8];              /**< QSPI address */
+    UINT8_T addr_size;               /**< QSPI address len */
 	UINT_T dummy_cycle;       /**< QSPI dummy cycle */
-	UINT_T data_len;          /**< QSPI data length */
+    UCHAR_T *data;
+	UINT_T data_size;          /**< QSPI data length */
 	TUYA_QSPI_WIRE_MODE_E cmd_lines;               /**< QSPI command lines */
 	TUYA_QSPI_WIRE_MODE_E addr_lines;               /**< QSPI address lines */
 	TUYA_QSPI_WIRE_MODE_E data_lines;               /**< QSPI data lines */
@@ -1092,6 +1094,19 @@ typedef enum {
     TUYA_QSPI_ROLE_SLAVE,              ///< SPI Slave  (Output on MISO, Input on MOSI)
 } TUYA_QSPI_ROLE_E;
 
+/****** QSPI LCD Refresh enum *****/
+typedef enum {
+    TUYA_QSPI_LCD_REFRESH_BY_LINE = 0,   
+    TUYA_QSPI_LCD_REFRESH_BY_FRAME,
+}TUYA_QSPI_LCD_REFRESH_METHOD_E;
+
+/****** QSPI LCD Refresh enum *****/
+typedef enum {
+    TUYA_QSPI_TYPE_FLASH = 0,   
+    TUYA_QSPI_TYPE_PSRAM,
+    TUYA_QSPI_TYPE_LCD
+}TUYA_QSPI_MODULE_TYPE_E;
+
 /**
  * @brief qspi config
  *
@@ -1100,7 +1115,9 @@ typedef struct {
     TUYA_QSPI_ROLE_E      role; /** QSPI Master / Slave */
     TUYA_QSPI_MODE_E      mode;
 	UINT_T baudrate;       /**< QSPI controller clock divide number */
-	UINT_T is_dma;       /**< QSPI dma mode*/
+	BOOL_T is_dma;       /**< QSPI dma mode*/
+    TUYA_QSPI_MODULE_TYPE_E type;
+    TUYA_QSPI_LCD_REFRESH_METHOD_E refresh_method;  /**< QSPI lcd mode*/
 } TUYA_QSPI_BASE_CFG_T;
 
 /****** QSPI Event *****/

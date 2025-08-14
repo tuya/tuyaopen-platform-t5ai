@@ -46,7 +46,7 @@ OPERATE_RET tkl_qspi_deinit(TUYA_QSPI_NUM_E port);
  *
  * @return  OPRT_OK on success. Others on error, please refer to tuya_error_code.h
  */
-OPERATE_RET tkl_qspi_send(TUYA_QSPI_NUM_E port, VOID_T *data, UINT16_T size);
+OPERATE_RET tkl_qspi_send(TUYA_QSPI_NUM_E port, TUYA_QSPI_WIRE_MODE_E mode, VOID_T *data, UINT32_T size);
 
 OPERATE_RET tkl_qspi_send_cmd(TUYA_QSPI_NUM_E port, uint8_t cmd);
 
@@ -62,7 +62,7 @@ OPERATE_RET tkl_qspi_send_data_indirect_mode(TUYA_QSPI_NUM_E port, uint8_t *data
  *
  * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
  */
-OPERATE_RET tkl_qspi_recv(TUYA_QSPI_NUM_E port, VOID_T *data, UINT16_T size);
+OPERATE_RET tkl_qspi_recv(TUYA_QSPI_NUM_E port, VOID_T *data, UINT32_T size);
 
 /**
  * @brief qspi command send
@@ -124,6 +124,15 @@ OPERATE_RET tkl_qspi_irq_enable(TUYA_QSPI_NUM_E port);
  * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
  */
 OPERATE_RET tkl_qspi_irq_disable(TUYA_QSPI_NUM_E port);
+
+/**
+ * @brief force cs enable / disable
+ *
+ * @param[in] port: qspi port id, id index starts at 0
+ * @param[in] enable: TRUE : enable , FALSE : disable
+ * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
+ */
+OPERATE_RET tkl_qspi_force_cs_pin(TUYA_QSPI_NUM_E port, BOOL_T enable);
 
 #ifdef __cplusplus
 }
