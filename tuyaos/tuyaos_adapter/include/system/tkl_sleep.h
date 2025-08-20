@@ -16,11 +16,25 @@
 extern "C" {
 #endif
 
+#define DS_INVALID_VALUE                0xffffffff
+#define DEEPSLEEP_MAGIC                 0x74796473
+#define DS_ENTRY_FLAG                   0x55aa55aa
+
+#define DEEPSLEEP_PARAMETER_ADDRESS     0x7dc000
+#define DS_MAX_CFG_ITEM                 6
+
+typedef struct {
+    uint32_t magic;             // TYDS: 0x74796473
+    uint32_t entry_flag;        // 如果是默认0xffffffff，则保存参数，写入0x55aa55aa,然后重启
+                                // 如果是0x55aa55aa，则设置唤醒源，进入深度休眠
+    TUYA_WAKEUP_SOURCE_BASE_CFG_T cfg[DS_MAX_CFG_ITEM];
+    uint32_t sum;
+}TKL_DS_PARAM_T;
 
 
 /**
  * @brief sleep callback register
- * 
+ *
  * @param[in] sleep_cb:  sleep callback
  *
  * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
@@ -29,7 +43,7 @@ OPERATE_RET tkl_cpu_sleep_callback_register(TUYA_SLEEP_CB_T *sleep_cb);
 
 /**
  * @brief allow to sleep
- * 
+ *
  * @param[in] none
  *
  * @return none
@@ -38,7 +52,7 @@ VOID_T tkl_cpu_allow_sleep(VOID_T);
 
 /**
  * @brief force wakeup
- * 
+ *
  * @param[in] none
  *
  * @return none

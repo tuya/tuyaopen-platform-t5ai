@@ -756,15 +756,7 @@ OPERATE_RET tkl_net_gethostbyname(CONST CHAR_T *domain, TUYA_IP_ADDR_T *addr)
     }
 
     struct hostent *h = NULL;
-    for (int i = 0; i < 5; i++) {
-        h = gethostbyname(domain);
-        if (h != NULL) {
-            break;
-        }
-        tkl_system_sleep(20 * (i+1));
-    }
-
-    if (h == NULL) {
+    if ((h = gethostbyname(domain)) == NULL) {
         return OPRT_COM_ERROR;
     }
 
@@ -789,7 +781,15 @@ CHAR_T* tkl_net_addr2str(CONST TUYA_IP_ADDR_T ipaddr)
     unsigned int addr = lwip_htonl(ipaddr);
     return ip_ntoa((ip_addr_t *) &addr);
 #else
-    return inet_ntoa(ipaddr);
+    if(ipaddr == 0) {
+        return 0xFFFFFFFF;
+    }
+
+    struct in_addr ip_addr;
+    ip_addr.s_addr = htonl(ipaddr);
+    CHAR_T* addr1 = inet_ntoa(ip_addr);
+    return addr1;
+
 #endif
 
 }
@@ -899,7 +899,7 @@ OPERATE_RET tkl_net_sethostname(CONST CHAR_T *hostname)
     extern int net_dhcp_hostname_set(char *hostname);
     snprintf(g_tkl_station_hostname, sizeof(g_tkl_station_hostname), "%s", hostname);
     net_dhcp_hostname_set(g_tkl_station_hostname);
-
+    
     return 0;
 }
 

@@ -206,7 +206,7 @@ static inline void qspi_ll_set_cmd_d_data_line(qspi_hw_t *hw, qspi_wire_mode_t d
 	hw->cmd_d_cfg2.data_line = data_line;
 }
 
-static inline void qspi_ll_set_cmd_d_data_length(qspi_hw_t *hw, qspi_wire_mode_t data_len)
+static inline void qspi_ll_set_cmd_d_data_length(qspi_hw_t *hw, uint32_t data_len)
 {
 	hw->cmd_d_cfg2.data_len = data_len;
 }
@@ -366,7 +366,7 @@ static inline void qspi_ll_set_lcd_head_interval(qspi_hw_t *hw, uint32_t intv_cn
 
 /* End for qspi lcd with no ram and refresh by line */
 
-
+//Modify by Tuya
 static inline void qspi_ll_direct_write(qspi_id_t id, uint32_t base_addr, const void *data, uint32_t size)
 {
 	for (int i = 0; i < size; i++) {
@@ -493,7 +493,7 @@ if(QSPI_FLASH == cmd->device) {
 			} else {
 				hw->cmd_c_cfg2.dummy_mode = 0;
 			}
-
+            // bk_printf("write c_l:%x, c_h:%x, cfg1:%x, cfg2:%x \r\n", hw->cmd_c_l.v, hw->cmd_c_h.v, hw->cmd_c_cfg1.v, hw->cmd_c_cfg2.v);
 			hw->cmd_c_cfg2.cmd_start = 1;
 			qspi_ll_wait_cmd_done(hw);
 
@@ -592,7 +592,7 @@ if(QSPI_FLASH == cmd->device) {
 			hw->cmd_d_cfg2.data_line = cmd->wire_mode;
 			hw->cmd_d_cfg2.dummy_clock = cmd->dummy_cycle;
 
-
+            // bk_printf("read d_l:%x, d_h:%x, cfg1:%x, cfg2:%x \r\n", hw->cmd_d_l.v, hw->cmd_d_h.v, hw->cmd_d_cfg1.v, hw->cmd_d_cfg2.v);
 			hw->cmd_d_cfg2.cmd_start = 1;
 			qspi_ll_wait_cmd_done(hw);
 			return;

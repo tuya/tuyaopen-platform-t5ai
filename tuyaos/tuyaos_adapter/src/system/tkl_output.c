@@ -30,10 +30,11 @@ VOID_T tkl_log_output(IN CONST CHAR_T *str, ...)
     if (str == NULL) {
         return;
     }
-//    extern void bk_printf(const char *fmt, ...);
-//    bk_printf(str);
+    extern void bk_printf(const char *fmt, ...);
+    bk_printf(str);
 
-    shell_log_raw_data((const uint8_t *)str, strlen(str));
+//    shell_log_raw_data((const uint8_t *)str, strlen(str));
+
 //    va_list args;
 //    va_start(args, str);
 //    shell_log_raw_data(str, strlen(str));

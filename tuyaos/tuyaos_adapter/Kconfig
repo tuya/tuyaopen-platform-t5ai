@@ -70,27 +70,4 @@ menu "TKL_CONFIG"
     config USE_PRIVATE_HELIX
         bool "use private helix"
         default n
-
-    choice AUDIO_TYPE
-        prompt "audio type select"
-        default STREAM
-
-        config RAW
-            bool "raw"
-            select AUDIO_RECORD
-            select AUDIO_PLAY
-    
-        config STREAM
-            bool "stream"
-            select ADK_AEC_ALGORITHM
-            select ADK_G711_ENCODER
-            select ADK_G711_DECODER
-            select VOICE_READ_SERVICE
-            select VOICE_WRITE_SERVICE
-            select VOICE_SERVICE
-            select VOICE_SERVICE_USE_PSRAM
-            select ADK_ONBOARD_MIC_STREAM
-            select ADK_ONBOARD_SPEAKER_STREAM
-    endchoice
-
 endmenu

@@ -158,6 +158,7 @@ OPERATE_RET tkl_wifi_init(WIFI_EVENT_CB cb)
 {
     bk_printf("%s\r\n", __func__);
     wifi_event_cb = cb;
+    bk_pm_lpo_src_set(PM_LPO_SRC_DIVD);
 
     return OPRT_OK;
 }
@@ -729,16 +730,9 @@ OPERATE_RET tkl_wifi_set_ip(CONST WF_IF_E wf, NW_IP_S *ip)
  * @param[in]       mac         the mac info
  * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
  */
-extern bk_err_t bk_set_base_mac(const uint8_t *mac);
 OPERATE_RET tkl_wifi_set_mac(CONST WF_IF_E wf, CONST NW_MAC_S *mac)
 {
-    bk_printf("set mac: %02x:%02x:%02x:%02x:%02x:%02x\r\n",
-            mac->mac[0], mac->mac[1], mac->mac[2], mac->mac[3], mac->mac[4], mac->mac[5]);
-
     if (bk_wifi_set_mac_address((char *)mac->mac) == BK_OK) {
-        // 4183问题单，设置mac接口需要修改为同步接口
-        // 此处延时临时处理，保证mac写入成功，否则get mac时候会获取到旧mac地址
-        // tkl_system_sleep(100);
         return OPRT_OK;
     } else {
         return OPRT_OS_ADAPTER_MAC_SET_FAILED;
@@ -785,7 +779,7 @@ static OPERATE_RET _wf_wk_mode_exit(WF_WK_MD_E last_mode, WF_WK_MD_E curr_mode)
                     _bk_rtc_wakeup_register(1000);  //由于默认设置cpu是处于sleep模式， 当资源释放后进入idle线程，cpu就会进入睡眠。需要先设置rtc唤醒，否则再不能唤醒cpu，导致程序异常
                     // TODO
                     // if(!ble_init_flag) {  //当 tuyaos 没有初始化使用蓝牙时候，进低功耗前需要先把 ble ctrl 资源释放掉
-                    //     bk_bluetooth_deinit();
+                    //     tkl_hci_deinit();
                     // }
                     //针对保活低功耗， 进低功耗前需要释放wifi资源。所以在连接路由器失败后释放 wifi 资源
                     bk_wifi_sta_stop();
@@ -1074,43 +1068,23 @@ OPERATE_RET tkl_wifi_set_lp_mode(CONST BOOL_T enable, CONST UCHAR_T dtim)
     static int lp_enable = 0xff;
 
     if(dtim == 10 || dtim == 20 || dtim == 30) {
+        bk_pm_lpo_src_set(PM_LPO_SRC_ROSC);
         wifi_lp_flag = TRUE;
     }
 
-    if(tkl_get_lp_flag()) {
-        WF_WK_MD_E work_mode;
-        tkl_wifi_get_work_mode(&work_mode);
-        if(work_mode == WWM_POWERDOWN) {
-            // powerdown mode, don't set lp mode
-            return OPRT_OK;
+    bk_wifi_send_listen_interval_req(dtim);
+    if(TRUE == enable) {
+        if(!lp_enable) {
+            lp_enable = TRUE;
+            tkl_wifi_powersave_enable();
         }
-
-        if(TRUE == enable) {
-            bk_wifi_send_listen_interval_req(dtim);
-            if(!lp_enable && dtim != 0) {
-                lp_enable = TRUE;
-                tkl_wifi_powersave_enable();
-            }
-        }else {
-            if(lp_enable && dtim == 0) {
-                lp_enable = FALSE;
-                //tkl_wifi_powersave_disable();
-            }
-        }
-    } else {
-        bk_wifi_send_listen_interval_req(dtim);
-        if (TRUE == enable) {
-            if(!lp_enable || lp_enable == 0xff) {
-                lp_enable = TRUE;
-                tkl_wifi_powersave_enable();
-            }
-        } else {
-            if(lp_enable || lp_enable == 0xff) {
-                lp_enable = FALSE;
-                tkl_wifi_powersave_disable();
-            }
+    }else {
+        if(lp_enable  && dtim == 0) {
+            lp_enable = FALSE;
+            tkl_wifi_powersave_disable();
         }
     }
+
     return OPRT_OK;
 }
 
@@ -1125,8 +1099,7 @@ int _wifi_event_cb(void *arg, event_module_t event_module,
 	switch (event_id) {
 	case EVENT_WIFI_STA_CONNECTED:
 		bk_printf("EVENT_WIFI_STA_CONNECTED %d\r\n", event_id);
-        // TODO
-        // bk_wifi_send_arp_set_rate_req(60); //set arp keepalive to 6Mbps
+        bk_wifi_send_arp_set_rate_req(60); //set arp keepalive to 6Mbps
 		break;
 	case EVENT_WIFI_STA_DISCONNECTED:
 		sta_disconnected = (wifi_event_sta_disconnected_t *)event_data;
@@ -1137,10 +1110,9 @@ int _wifi_event_cb(void *arg, event_module_t event_module,
 
         if(tkl_get_lp_flag()) {
             _bk_rtc_wakeup_register(1000);  //由于默认设置cpu是处于sleep模式， 当资源释放后进入idle线程，cpu就会进入睡眠。需要先设置rtc唤醒，否则再不能唤醒cpu，导致程序异常
-            // TODO
-            // if(!ble_init_flag) {  //当 tuyaos 没有初始化使用蓝牙时候，进低功耗前需要先把 ble ctrl 资源释放掉
-            //     bk_bluetooth_deinit();
-            // }
+            if(!ble_init_flag) {  //当 tuyaos 没有初始化使用蓝牙时候，进低功耗前需要先把 ble ctrl 资源释放掉
+                tkl_hci_deinit();
+            }
             bk_wifi_sta_stop(); //针对保活低功耗， 进低功耗前需要释放wifi资源。所以在连接路由器失败后释放 wifi 资源
         }
         switch(sta_disconnected->disconnect_reason) {
@@ -1188,8 +1160,8 @@ int _netif_event_cb(void *arg, event_module_t event_module,
         bk_printf("WFE_CONNECTED %d\r\n", event_id);
         __notify_wifi_event(WFE_CONNECTED, NULL);
         if(tkl_get_lp_flag()) {
-            if(fast_connect_flag) {
-                bk_bluetooth_deinit();
+            if(!ble_init_flag) {
+                tkl_hci_deinit();
             }
         }
 		break;

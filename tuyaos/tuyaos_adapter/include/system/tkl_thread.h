@@ -40,7 +40,6 @@ OPERATE_RET tkl_thread_create(TKL_THREAD_HANDLE* thread,
                               CONST THREAD_FUNC_T func,
                               VOID_T* CONST arg);
 
-#if (CONFIG_FREERTOS_SMP)
 /**
 * @brief Create thread with affinity
 *
@@ -63,7 +62,7 @@ OPERATE_RET tkl_thread_smp_create(TKL_THREAD_HANDLE* thread,
                            UINT_T priority,
                            THREAD_FUNC_T func,
                            VOID_T* CONST arg);
-#endif
+                           
 /**
 * @brief Terminal thread and release thread resources
 *

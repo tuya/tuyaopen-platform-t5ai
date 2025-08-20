@@ -133,14 +133,14 @@ VOID_T tkl_system_delay(UINT_T num_ms);
 
 OPERATE_RET tkl_system_get_cpu_info(TUYA_CPU_INFO_T **cpu_ary, INT_T *cpu_cnt);
 
-#if (CONFIG_FREERTOS_SMP)
 /**
  * @brief system exit critical
  *
  * @return  core ID
  */
 UINT_T tkl_system_get_coreid(VOID_T);
-#endif
+
+
 #ifdef __cplusplus
 }
 #endif /* __cplusplus */

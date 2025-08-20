@@ -26,9 +26,9 @@ void user_app_main(void)
 
         tuya_ipc_init();
 
-#if (CONFIG_TUYA_TEST_CLI)
-        extern int cp_cli_tuya_test_init(void);
-        cp_cli_tuya_test_init();
+#if 1 //(CONFIG_TUYA_TEST_CLI)
+        // extern int cp_cli_tuya_test_init(void);
+        // cp_cli_tuya_test_init();
 #endif
 
     } else {

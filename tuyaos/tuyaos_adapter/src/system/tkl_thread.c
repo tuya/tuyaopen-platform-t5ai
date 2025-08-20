@@ -127,7 +127,7 @@ OPERATE_RET tkl_thread_release(TKL_THREAD_HANDLE thread)
 OPERATE_RET tkl_thread_get_watermark(TKL_THREAD_HANDLE thread, UINT_T* watermark)
 {
     // TODO
-    // *watermark = uxTaskGetStackHighWaterMark(thread) * sizeof( StackType_t );
+    *watermark = uxTaskGetStackHighWaterMark(thread) * sizeof( StackType_t );
     return OPRT_OK;
 }
 
@@ -191,7 +191,10 @@ OPERATE_RET tkl_thread_is_self(TKL_THREAD_HANDLE thread, BOOL_T* is_self)
 */
 OPERATE_RET tkl_thread_diagnose(TKL_THREAD_HANDLE thread)
 {
-    return OPRT_NOT_SUPPORTED;
+    extern void tkl_system_task_info_dump(void);
+    tkl_system_task_info_dump();
+
+    return OPRT_OK;
 }
 
 #if defined(ENABLE_EXT_RAM) && (ENABLE_EXT_RAM==1)

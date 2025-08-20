@@ -1,6 +1,7 @@
 #include "tkl_adc.h"
 #include "tkl_memory.h"
 #include "tuya_error_code.h"
+#include "tkl_system.h"
 
 // #include "gpio_pub.h"
 // #include "saradc_pub.h"

@@ -21,7 +21,6 @@ extern VOID tkl_data_dump(CONST int level,
 
 // static TKL_HCI_FUNC_CB s_evt_cb = NULL;
 // static TKL_HCI_FUNC_CB s_acl_cb = NULL;
-BOOL_T ble_init_flag = FALSE;
 
 void tkl_hci_ipc_func(struct ipc_msg_s *msg)
 {
@@ -77,7 +76,6 @@ OPERATE_RET tkl_hci_init(VOID)
 
 //    bk_printf("%s\n", __func__);
     //bk_bluetooth_init();
-    ble_init_flag = TRUE;
     return OPRT_OK;
 }
 
