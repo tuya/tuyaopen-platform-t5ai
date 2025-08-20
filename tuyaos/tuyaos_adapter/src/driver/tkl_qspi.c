@@ -23,21 +23,25 @@
 #define LCD_QSPI_RESET_PIN      GPIO_40
 #endif
 
-static dma_id_t lcd_qspi_dma_id = DMA_ID_MAX;
-static TUYA_QSPI_LCD_REFRESH_METHOD_E lcd_refresh_type = TUYA_QSPI_LCD_REFRESH_BY_FRAME;
-static uint32_t dma_repeat_once_len = 0;
 extern media_debug_t *media_debug;
-static beken_semaphore_t lcd_qspi_semaphore = NULL;
-static BOOL_T is_send_use_dma = FALSE;
+// up report
+
+bk_err_t bk_lcd_qspi_quad_write_stops(qspi_id_t qspi_id);
 extern void bk_delay_us(UINT32 us);
 
 
 #define TUYA_QSPI_CLK_DIV   (0x2)
 #define QSPI_INIT_CLK_480M (480000000)
-struct qspi_irq_config {
-    uint8_t irq_enable;
+struct qspi_init_config {
     TUYA_QSPI_IRQ_CB cb;
+    uint8_t irq_enable;
+    dma_id_t lcd_qspi_dma_id;
+    uint32_t dma_repeat_once_len;
+    BOOL_T is_send_use_dma;
+    uint8_t qspi_enable;
 };
+
+
 static qspi_driver_t s_tkl_qspi[SOC_QSPI_UNIT_NUM] = {
 	{
 		.hal.hw = (qspi_hw_t *)(SOC_QSPI0_REG_BASE),
@@ -48,24 +52,65 @@ static qspi_driver_t s_tkl_qspi[SOC_QSPI_UNIT_NUM] = {
 	}
 #endif
 };
-static struct qspi_irq_config qspi_irq[TUYA_QSPI_NUM_MAX] = {0};
-// static TUYA_QSPI_BASE_CFG_T qspi_base_config[TUYA_QSPI_NUM_MAX] = {0};
+static struct qspi_init_config qspi_infos[TUYA_QSPI_NUM_MAX] = {0};
 
-static void lcd_qspi_dma_finish_isr(void)
+#define QSPI_SET_PIN(id) do {\
+	gpio_dev_unmap(QSPI##id##_LL_CSN_PIN);\
+	gpio_dev_unmap(QSPI##id##_LL_CLK_PIN);\
+	gpio_dev_unmap(QSPI##id##_LL_IO0_PIN);\
+	gpio_dev_unmap(QSPI##id##_LL_IO1_PIN);\
+	gpio_dev_unmap(QSPI##id##_LL_IO2_PIN);\
+	gpio_dev_unmap(QSPI##id##_LL_IO3_PIN);\
+	gpio_dev_map(QSPI##id##_LL_CSN_PIN, GPIO_DEV_QSPI##id##_CSN);\
+	gpio_dev_map(QSPI##id##_LL_CLK_PIN, GPIO_DEV_QSPI##id##_CLK);\
+	gpio_dev_map(QSPI##id##_LL_IO0_PIN, GPIO_DEV_QSPI##id##_IO0);\
+	gpio_dev_map(QSPI##id##_LL_IO1_PIN, GPIO_DEV_QSPI##id##_IO1);\
+	gpio_dev_map(QSPI##id##_LL_IO2_PIN, GPIO_DEV_QSPI##id##_IO2);\
+	gpio_dev_map(QSPI##id##_LL_IO3_PIN, GPIO_DEV_QSPI##id##_IO3);\
+	bk_gpio_pull_up(QSPI##id##_LL_CSN_PIN);\
+	bk_gpio_pull_up(QSPI##id##_LL_IO0_PIN);\
+	bk_gpio_pull_up(QSPI##id##_LL_IO1_PIN);\
+	bk_gpio_pull_up(QSPI##id##_LL_IO2_PIN);\
+	bk_gpio_pull_up(QSPI##id##_LL_IO3_PIN);\
+	bk_gpio_set_capacity(QSPI##id##_LL_CSN_PIN, 3);\
+	bk_gpio_set_capacity(QSPI##id##_LL_CLK_PIN, 3);\
+	bk_gpio_set_capacity(QSPI##id##_LL_IO0_PIN, 3);\
+	bk_gpio_set_capacity(QSPI##id##_LL_IO1_PIN, 3);\
+	bk_gpio_set_capacity(QSPI##id##_LL_IO2_PIN, 3);\
+	bk_gpio_set_capacity(QSPI##id##_LL_IO3_PIN, 3);\
+} while(0)
+
+static uint8_t dma_id_to_port(dma_id_t dma_id)
 {
-    bk_err_t ret = BK_OK;
+    int i = 0;
+    for (i = 0; i < TUYA_QSPI_NUM_MAX; i ++) {
+        if(dma_id == qspi_infos[i].lcd_qspi_dma_id) {
+            if(qspi_infos[i].qspi_enable == 1) {
+                return i;
+            }
+        }
+    }
+    return 0xFF;
+}
+
+static void lcd_qspi_dma_finish_isr(dma_id_t dma_id)
+{
     uint32_t value = 0;
 
-    value = bk_dma_get_repeat_wr_pause(lcd_qspi_dma_id);
+    uint8_t port = dma_id_to_port(dma_id);
+    if(port == 0xFF) {
+        bk_printf("qspi irq port not right\r\n");
+        return;
+    }
+
+    value = bk_dma_get_repeat_wr_pause(qspi_infos[port].lcd_qspi_dma_id);
     if (value) {
         media_debug->isr_lcd++;
-        bk_dma_stop(lcd_qspi_dma_id);
-        //bk_lcd_qspi_quad_write_stop();
-
-        ret = rtos_set_semaphore(&lcd_qspi_semaphore);
-        if (ret != BK_OK) {
-            bk_printf("lcd qspi semaphore set failed\r\n");
-            return;
+        bk_dma_stop(qspi_infos[port].lcd_qspi_dma_id);
+        bk_lcd_qspi_quad_write_stops(port);
+        // up report
+        if (qspi_infos[port].cb) {
+            qspi_infos[port].cb(port, TUYA_QSPI_EVENT_TX);
         }
     }
 }
@@ -74,16 +119,16 @@ static void lcd_qspi_dma_finish_isr(void)
 // rx isr callback
 static void qspi_tx_callback_dispatch(TUYA_QSPI_NUM_E id, void *param)
 {
-    if (qspi_irq[id].cb) {
-        qspi_irq[id].cb((TUYA_QSPI_NUM_E)id, TUYA_QSPI_EVENT_TX);
+    if (qspi_infos[id].cb) {
+        qspi_infos[id].cb((TUYA_QSPI_NUM_E)id, TUYA_QSPI_EVENT_TX);
     }
 }
 
 // tx isr callback
 static void qspi_rx_callback_dispatch(TUYA_QSPI_NUM_E id, void *param)
 {
-    if (qspi_irq[id].cb) {
-        qspi_irq[id].cb((TUYA_QSPI_NUM_E)id, TUYA_QSPI_EVENT_RX);
+    if (qspi_infos[id].cb) {
+        qspi_infos[id].cb((TUYA_QSPI_NUM_E)id, TUYA_QSPI_EVENT_RX);
     }
 }
 
@@ -103,16 +148,18 @@ static bk_err_t qspi_pin_hardware_reset(void)
     return BK_OK;
 }
 
-static bk_err_t lcd_qspi_dma_common_init(void)
+static bk_err_t lcd_qspi_dma_common_init(uint8_t port)
 {
     bk_err_t ret = BK_OK;
 
-
-    ret = rtos_init_semaphore(&lcd_qspi_semaphore, 1);
-    if (ret != kNoErr) {
-        bk_printf("lcd qspi semaphore init failed.\r\n");
-        return BK_FAIL;
-    }
+// up report
+    // if (lcd_qspi_semaphore == NULL) {
+    //     ret = rtos_init_semaphore(&lcd_qspi_semaphore, 1);
+    //     if (ret != kNoErr) {
+    //         bk_printf("lcd qspi semaphore init failed.\r\n");
+    //         return BK_FAIL;
+    //     }
+    // }
 
     ret = bk_dma_driver_init();
     if (ret != BK_OK) {
@@ -120,17 +167,17 @@ static bk_err_t lcd_qspi_dma_common_init(void)
         return BK_FAIL;
     }
 
-    lcd_qspi_dma_id = bk_dma_alloc(DMA_DEV_DTCM);
-    if ((lcd_qspi_dma_id < DMA_ID_0) || (lcd_qspi_dma_id >= DMA_ID_MAX)) {
+    qspi_infos[port].lcd_qspi_dma_id = bk_dma_alloc(DMA_DEV_DTCM);
+    if ((qspi_infos[port].lcd_qspi_dma_id < DMA_ID_0) || (qspi_infos[port].lcd_qspi_dma_id >= DMA_ID_MAX)) {
         bk_printf("lcd qspi dma malloc failed!\r\n");
         return BK_FAIL;
     }
 
 #if (CONFIG_SPE)
-    bk_dma_set_src_sec_attr(lcd_qspi_dma_id, DMA_ATTR_SEC);
-    bk_dma_set_dest_sec_attr(lcd_qspi_dma_id, DMA_ATTR_SEC);
-    bk_dma_set_dest_burst_len(lcd_qspi_dma_id, BURST_LEN_INC16);
-    bk_dma_set_src_burst_len(lcd_qspi_dma_id, BURST_LEN_INC16);
+    bk_dma_set_src_sec_attr(qspi_infos[port].lcd_qspi_dma_id, DMA_ATTR_SEC);
+    bk_dma_set_dest_sec_attr(qspi_infos[port].lcd_qspi_dma_id, DMA_ATTR_SEC);
+    bk_dma_set_dest_burst_len(qspi_infos[port].lcd_qspi_dma_id, BURST_LEN_INC16);
+    bk_dma_set_src_burst_len(qspi_infos[port].lcd_qspi_dma_id, BURST_LEN_INC16);
 #endif
 
     return BK_OK;
@@ -138,20 +185,25 @@ static bk_err_t lcd_qspi_dma_common_init(void)
 
 
 
-static bk_err_t lcd_qspi_common_deinit(void)
+static bk_err_t lcd_qspi_common_deinit(uint8_t port)
 {
     bk_err_t ret = BK_OK;
+    // up report
+    // if (lcd_qspi_semaphore)
+    // {
+    //     ret = rtos_deinit_semaphore(&lcd_qspi_semaphore);
+    //     if (ret != kNoErr) {
+    //         bk_printf("lcd qspi semaphore deinit failed.\r\n");
+    //         return BK_FAIL;
+    //     }
+    //     lcd_qspi_semaphore = NULL;
+    // }
 
-    ret = rtos_deinit_semaphore(&lcd_qspi_semaphore);
-    if (ret != kNoErr) {
-        bk_printf("lcd qspi semaphore deinit failed.\r\n");
-        return BK_FAIL;
-    }
 
 #if (CONFIG_SOC_BK7256XX)
     bk_dma2d_driver_deinit();
 #elif CONFIG_SOC_BK7236XX
-    bk_dma_free(DMA_DEV_DTCM, lcd_qspi_dma_id);
+    bk_dma_free(DMA_DEV_DTCM, qspi_infos[port].lcd_qspi_dma_id);
     BK_LOG_ON_ERR(bk_dma_driver_deinit());
 #endif
 
@@ -164,41 +216,12 @@ static bk_err_t lcd_qspi_quad_write_enable(qspi_id_t qspi_id)
     qspi_hal_set_cmd_a_h(&s_tkl_qspi[qspi_id].hal, 0x10000100);
     qspi_hal_set_cmd_a_cfg1(&s_tkl_qspi[qspi_id].hal, 0xEAAA);
     qspi_hal_set_cmd_a_cfg2(&s_tkl_qspi[qspi_id].hal, 0x80008000);
-
+    // qspi_hal_set_cmd_a_l(&s_tkl_qspi[qspi_id].hal, 0);
+    // qspi_hal_set_cmd_a_h(&s_tkl_qspi[qspi_id].hal, 0);
+    // qspi_hal_set_cmd_a_cfg1(&s_tkl_qspi[qspi_id].hal, 0x3);
+    // qspi_hal_set_cmd_a_cfg2(&s_tkl_qspi[qspi_id].hal, 0x00008000);
     return BK_OK;
 }
-
-/**
- * @brief qspi command send
- * NOTE: 
- *
- * @param[in] port: qspi port, id index starts at 0
- * @param[in] command:  qspi command configure
- *
- * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
- */
-// OPERATE_RET tkl_qspi_comand(TUYA_QSPI_NUM_E port, TUYA_QSPI_CMD_T *command)
-// {
-//     bk_err_t ret = BK_OK;
-//     qspi_cmd_t cmd = {0};
-//     if ((command == NULL) || (port > TUYA_QSPI_NUM_MAX)) {
-//         return OPRT_INVALID_PARM;
-//     }
-//     cmd.op = command->op;
-//     cmd.cmd = command->cmd;
-//     cmd.addr = command->addr;
-//     cmd.addr_valid_bit = command->addr_size;
-//     cmd.data_len = command->data_len;
-//     cmd.dummy_cycle = command->dummy_cycle;
-//     cmd.wire_mode = command->data_lines;
-//     cmd.work_mode = INDIRECT_MODE;
-//     cmd.device = QSPI_FLASH;
-//     // ret = tuya_qspi_hal_command(port, &cmd);
-//     ret = bk_qspi_command(port, &cmd);
-//     if (ret != BK_OK)
-//         return OPRT_COM_ERROR;
-//     return OPRT_OK;
-// }
 
 #if CONFIG_SOC_BK7236XX
 static bk_err_t lcd_qspi_refresh_by_line_lcd_head_config(qspi_id_t qspi_id, const lcd_device_t *device)
@@ -263,6 +286,95 @@ static bk_err_t lcd_qspi_get_dma_repeat_once_len(uint32_t frame_len)
 #endif
 
 
+static void qspi_interrupt_enable(qspi_id_t id)
+{
+	switch(id)
+	{
+		case QSPI_ID_0:
+			sys_drv_int_enable(QSPI0_INTERRUPT_CTRL_BIT);
+			break;
+#if (SOC_QSPI_UNIT_NUM > 1)
+		case QSPI_ID_1:
+			sys_drv_int_group2_enable(QSPI1_INTERRUPT_CTRL_BIT);
+			break;
+#endif
+		default:
+			break;
+	}
+}
+
+static void qspi_interrupt_disable(qspi_id_t id)
+{
+	switch(id)
+	{
+		case QSPI_ID_0:
+			sys_drv_int_disable(QSPI0_INTERRUPT_CTRL_BIT);
+			break;
+#if (SOC_QSPI_UNIT_NUM > 1)
+		case QSPI_ID_1:
+			sys_drv_int_group2_disable(QSPI1_INTERRUPT_CTRL_BIT);
+			break;
+#endif
+		default:
+			break;
+	}
+}
+
+static void qspi_clock_disable(qspi_id_t id)
+{
+	switch(id)
+	{
+		case QSPI_ID_0:
+			sys_drv_dev_clk_pwr_up(CLK_PWR_ID_QSPI_1, CLK_PWR_CTRL_PWR_DOWN);
+			break;
+#if (SOC_QSPI_UNIT_NUM > 1)
+		case QSPI_ID_1:
+			sys_drv_dev_clk_pwr_up(CLK_PWR_ID_QSPI_2, CLK_PWR_CTRL_PWR_DOWN);
+			break;
+#endif
+		default:
+			break;
+	}
+}
+
+static void qspi_init_gpio(qspi_id_t id)
+{
+	switch (id) {
+	case QSPI_ID_0:
+		QSPI_SET_PIN(0);
+		break;
+#if (SOC_QSPI_UNIT_NUM > 1)
+	case QSPI_ID_1:
+		QSPI_SET_PIN(1);
+		break;
+#endif
+#if (SOC_QSPI_UNIT_NUM > 2)
+	case QSPI_ID_2:
+		QSPI_SET_PIN(2);
+		break;
+#endif
+	default:
+		break;
+	}
+}
+
+static void qspi_clock_enable(qspi_id_t id)
+{
+	switch(id)
+	{
+		case QSPI_ID_0:
+			sys_drv_dev_clk_pwr_up(CLK_PWR_ID_QSPI_1, CLK_PWR_CTRL_PWR_UP);
+			break;
+#if (SOC_QSPI_UNIT_NUM > 1)
+		case QSPI_ID_1:
+			sys_drv_dev_clk_pwr_up(CLK_PWR_ID_QSPI_2, CLK_PWR_CTRL_PWR_UP);
+			break;
+#endif
+		default:
+			break;
+	}
+}
+
  /**
   * @brief Init the QSPI
   * NOTE: 
@@ -274,74 +386,96 @@ static bk_err_t lcd_qspi_get_dma_repeat_once_len(uint32_t frame_len)
   */
  OPERATE_RET tkl_qspi_init(TUYA_QSPI_NUM_E port, const TUYA_QSPI_BASE_CFG_T *cfg)
  {
-#if 1
     qspi_config_t config = {0};
     if ((port > TUYA_QSPI_NUM_MAX) || (cfg == NULL)) {
         return OPRT_INVALID_PARM;
     }
 
+    if (qspi_infos[port].qspi_enable == 1) {
+        bk_printf("qspi :%d already init \r\n", port);
+        return OPRT_INVALID_PARM;
+    }
     // if(bk_qspi_driver_init() != BK_OK)
     //     return OPRT_COM_ERROR;
  
     os_memset(&config, 0, sizeof(config));
-    os_memset(&s_tkl_qspi, 0, sizeof(s_tkl_qspi));
+    os_memset(&s_tkl_qspi[port], 0, sizeof(s_tkl_qspi));
     s_tkl_qspi[port].hal.id = port;
     qspi_hal_init(&s_tkl_qspi[port].hal);
-     
-    switch (cfg->baudrate) {
+    
+    switch (cfg->freq_hz) {
         case 80000000:
             config.src_clk = QSPI_SCLK_480M;
             config.src_clk_div = 5;
-            BK_LOG_ON_ERR(bk_qspi_init(port, &config));
             break;
         case 64000000:
             config.src_clk = QSPI_SCLK_320M;
             config.src_clk_div = 4;
-            BK_LOG_ON_ERR(bk_qspi_init(port, &config));
             break;
         case 60000000:
             config.src_clk = QSPI_SCLK_480M;
             config.src_clk_div = 7;
-            BK_LOG_ON_ERR(bk_qspi_init(port, &config));
             break;
         case 53000000:
             config.src_clk = QSPI_SCLK_480M;
             config.src_clk_div = 8;
-            BK_LOG_ON_ERR(bk_qspi_init(port, &config));
             break;
         case 48000000:
             config.src_clk = QSPI_SCLK_480M;
             config.src_clk_div = 9;
-            BK_LOG_ON_ERR(bk_qspi_init(port, &config));
             break;
         case 40000000:
             config.src_clk = QSPI_SCLK_480M;
             config.src_clk_div = 11;
-            BK_LOG_ON_ERR(bk_qspi_init(port, &config));
             break;
         case 32000000:
             config.src_clk = QSPI_SCLK_320M;
             config.src_clk_div = 9;
-            BK_LOG_ON_ERR(bk_qspi_init(port, &config));
             break;
         case 30000000:
             config.src_clk = QSPI_SCLK_480M;
             config.src_clk_div = 15;
-            BK_LOG_ON_ERR(bk_qspi_init(port, &config));
             break;
         default:
             // for lcd config
             //  config.src_clk = QSPI_SCLK_480M;
             //  config.src_clk_div = 11;
-            //  BK_LOG_ON_ERR(bk_qspi_init(qspi_id, &config));
             config.src_clk = QSPI_SCLK_480M;
             config.src_clk_div = TUYA_QSPI_CLK_DIV;
-            config.clk_div = (QSPI_INIT_CLK_480M / TUYA_QSPI_CLK_DIV / cfg->baudrate);
-            BK_LOG_ON_ERR(bk_qspi_init(port, &config));
+            config.clk_div = (QSPI_INIT_CLK_480M / TUYA_QSPI_CLK_DIV / cfg->freq_hz);
             break;
     }
-    // // need call in app
-    // qspi_pin_hardware_reset();
+
+    if (port == QSPI_ID_0) {
+		bk_pm_module_vote_power_ctrl(PM_POWER_SUB_MODULE_NAME_AHBP_QSPI, PM_POWER_MODULE_STATE_ON);
+#if (SOC_QSPI_UNIT_NUM > 1)
+	} else if (port == QSPI_ID_1) {
+		bk_pm_module_vote_power_ctrl(PM_POWER_SUB_MODULE_NAME_AHBP_QSPI1, PM_POWER_MODULE_STATE_ON);
+#endif
+	}
+
+    qspi_clock_enable(port);
+    qspi_init_gpio(port);
+    qspi_interrupt_enable(port);
+    qspi_hal_init_common(&s_tkl_qspi[port].hal);
+
+    switch (config.src_clk) {
+    case QSPI_SCLK_320M:
+        sys_drv_qspi_clk_sel(port, QSPI_CLK_320M);
+        break;
+    case QSPI_SCLK_480M:
+        sys_drv_qspi_clk_sel(port, QSPI_CLK_480M);
+        break;
+    default:
+        sys_drv_qspi_clk_sel(port, QSPI_CLK_480M);
+        break;
+    }
+    sys_drv_qspi_set_src_clk_div(port, config.src_clk_div);
+    qspi_hal_set_clk_div(&s_tkl_qspi[port].hal, config.clk_div);
+
+    memset(&qspi_infos[port], 0, sizeof(struct qspi_init_config));
+    qspi_infos[port].qspi_enable = 1;
+    qspi_infos[port].lcd_qspi_dma_id = DMA_ID_MAX;
 
     if (cfg->type == TUYA_QSPI_TYPE_LCD) {
         lcd_qspi_quad_write_enable(port);
@@ -353,24 +487,21 @@ static bk_err_t lcd_qspi_get_dma_repeat_once_len(uint32_t frame_len)
         // lcd_refresh_type = TUYA_QSPI_LCD_REFRESH_BY_LINE;
     // }
     if (cfg->is_dma) {
-        lcd_qspi_dma_common_init();
-        is_send_use_dma = TRUE;
+        lcd_qspi_dma_common_init(port);
+        qspi_infos[port].is_send_use_dma = TRUE;
         // dma config
     // delay
 #if CONFIG_LCD_QSPI_SPD2010
-        GPIO_UP(GPIO_5);
-        rtos_delay_milliseconds(20); // 20ms
-        GPIO_DOWN(GPIO_5);
-        rtos_delay_milliseconds(200); // 200ms
-        GPIO_UP(GPIO_5);
-        rtos_delay_milliseconds(120); // 120ms
+        // GPIO_UP(GPIO_5);
+        // rtos_delay_milliseconds(20); // 20ms
+        // GPIO_DOWN(GPIO_5);
+        // rtos_delay_milliseconds(200); // 200ms
+        // GPIO_UP(GPIO_5);
+        // rtos_delay_milliseconds(120); // 120ms
 #endif
     }
-
-    // memcpy(&qspi_base_config[port], cfg, sizeof(TUYA_QSPI_BASE_CFG_T));
-#endif
-
-    dma_repeat_once_len = 0;
+    //config cpol cpha
+    qspi_hal_set_cpol_and_cpha(&s_tkl_qspi[port].hal, cfg->mode);
 
     return OPRT_OK;
  }
@@ -389,15 +520,29 @@ static bk_err_t lcd_qspi_get_dma_repeat_once_len(uint32_t frame_len)
          return OPRT_INVALID_PARM;
      }
 
-     if (bk_qspi_driver_deinit() != BK_OK)
-        return OPRT_COM_ERROR;
+    //  if (bk_qspi_driver_deinit() != BK_OK)
+    //     return OPRT_COM_ERROR;
+    // lcd_qspi_common_deinit(port);
 
-     if(bk_qspi_deinit(port) != BK_OK)
-        return OPRT_COM_ERROR;
+    bk_dma_free(DMA_DEV_DTCM, qspi_infos[port].lcd_qspi_dma_id);
+    //  if(bk_qspi_deinit(port) != BK_OK)
+    //     return OPRT_COM_ERROR;
+
+    qspi_hal_deinit_common(&s_tkl_qspi[port].hal);
+    qspi_interrupt_disable(port);
+    qspi_clock_disable(port);
+
+    if (port == QSPI_ID_0) {
+        bk_pm_module_vote_power_ctrl(PM_POWER_SUB_MODULE_NAME_AHBP_QSPI, PM_POWER_MODULE_STATE_OFF);
+#if (SOC_QSPI_UNIT_NUM > 1)
+    } else if (port == QSPI_ID_1) {
+        bk_pm_module_vote_power_ctrl(PM_POWER_SUB_MODULE_NAME_AHBP_QSPI1, PM_POWER_MODULE_STATE_OFF);
+#endif
+    }
     
-     is_send_use_dma = FALSE;
-     dma_repeat_once_len = 0;
-    //  memset(&qspi_base_config[port], 0, sizeof(TUYA_QSPI_BASE_CFG_T));
+    memset(&qspi_infos[port], 0, sizeof(struct qspi_init_config));
+    qspi_infos[port].qspi_enable = 0;
+
      return OPRT_OK;
  }
  
@@ -427,7 +572,7 @@ static bk_err_t bk_lcd_qspi_quad_write_starts(qspi_id_t qspi_id)
     }
 
     if (addr_is_4wire) {
-        qspi_hal_set_cmd_c_cfg1(&s_tkl_qspi[qspi_id].hal, 0x3A8); //cmd0: 1, cmd1: 4£¬cmd2: 4, cmd3:4
+        qspi_hal_set_cmd_c_cfg1(&s_tkl_qspi[qspi_id].hal, 0x3A8); //cmd0: 1, cmd1: 4ï¼Œcmd2: 4, cmd3:4
     } else {
         qspi_hal_set_cmd_c_cfg1(&s_tkl_qspi[qspi_id].hal, 0x300);
     }
@@ -457,7 +602,7 @@ bk_err_t bk_lcd_qspi_quad_write_stops(qspi_id_t qspi_id)
     return BK_OK;
 }
 
- OPERATE_RET tkl_qspi_send(TUYA_QSPI_NUM_E port, TUYA_QSPI_WIRE_MODE_E mode, VOID_T *data, UINT32_T size)
+ OPERATE_RET tkl_qspi_send(TUYA_QSPI_NUM_E port, VOID_T *data, UINT32_T size)
  {
     bk_err_t ret = BK_OK;
 
@@ -466,41 +611,41 @@ bk_err_t bk_lcd_qspi_quad_write_stops(qspi_id_t qspi_id)
     }
  
     if (size <= 256) {
-        ret = bk_qspi_write(port, data, size);
+        qspi_hal_io_write(&s_tkl_qspi[port].hal, data, size);
         if (ret != BK_OK)
             return OPRT_COM_ERROR;
         return  OPRT_OK;
     }
 
 
-    bk_printf("tkl_qspi_send size:%d,  dma_repeat_once_len:%d, is_send_use_dma:%d \r\n", size, dma_repeat_once_len, is_send_use_dma);
-    if ((size > 256) && (dma_repeat_once_len == 0) && (is_send_use_dma == TRUE)) {
-        dma_repeat_once_len = lcd_qspi_get_dma_repeat_once_len(size);
-        bk_printf("tkl dma_repeat_once_len = %d\r\n", dma_repeat_once_len);
-        bk_dma_set_transfer_len(lcd_qspi_dma_id, dma_repeat_once_len);
+    bk_printf("tkl_qspi_send size:%d,  dma_repeat_once_len:%d, is_send_use_dma:%d \r\n", size, qspi_infos[port].dma_repeat_once_len, qspi_infos[port].is_send_use_dma);
+    if ((size > 256) && (qspi_infos[port].dma_repeat_once_len == 0) && (qspi_infos[port].is_send_use_dma == TRUE)) {
+        qspi_infos[port].dma_repeat_once_len = lcd_qspi_get_dma_repeat_once_len(size);
+        bk_printf("tkl dma_repeat_once_len = %d\r\n", qspi_infos[port].dma_repeat_once_len);
+        bk_dma_set_transfer_len(qspi_infos[port].lcd_qspi_dma_id, qspi_infos[port].dma_repeat_once_len);
         if (port == TUYA_QSPI_NUM_0) {
-            dma_set_dst_pause_addr(lcd_qspi_dma_id, LCD_QSPI0_DATA_ADDR + size);
+            dma_set_dst_pause_addr(qspi_infos[port].lcd_qspi_dma_id, LCD_QSPI0_DATA_ADDR + size);
         } else if (port == TUYA_QSPI_NUM_1) {
-            dma_set_dst_pause_addr(lcd_qspi_dma_id, LCD_QSPI1_DATA_ADDR + size);
+            dma_set_dst_pause_addr(qspi_infos[port].lcd_qspi_dma_id, LCD_QSPI1_DATA_ADDR + size);
         } else {
             bk_printf("unsupported lcd qspi id\r\n");
             return BK_FAIL;
         }
     }
 
-    if ((size > 256) && (is_send_use_dma == TRUE) && (dma_repeat_once_len > 0)) {
+    if ((size > 256) && (qspi_infos[port].is_send_use_dma == TRUE) && (qspi_infos[port].dma_repeat_once_len > 0)) {
         if (port == TUYA_QSPI_NUM_0) {
-            bk_dma_stateless_judgment_configuration((void *)LCD_QSPI0_DATA_ADDR, (void *)data, size, lcd_qspi_dma_id, (void *)lcd_qspi_dma_finish_isr);
+            bk_dma_stateless_judgment_configuration((void *)LCD_QSPI0_DATA_ADDR, (void *)data, size, qspi_infos[port].lcd_qspi_dma_id, (void *)lcd_qspi_dma_finish_isr);
         } else if (port == TUYA_QSPI_NUM_1) {
-            bk_dma_stateless_judgment_configuration((void *)LCD_QSPI1_DATA_ADDR, (void *)data, size, lcd_qspi_dma_id, (void *)lcd_qspi_dma_finish_isr);
+            bk_dma_stateless_judgment_configuration((void *)LCD_QSPI1_DATA_ADDR, (void *)data, size, qspi_infos[port].lcd_qspi_dma_id, (void *)lcd_qspi_dma_finish_isr);
         } else {
             bk_printf("unsupported lcd qspi id\r\n");
             return BK_FAIL;
         }
 
-        dma_set_src_pause_addr(lcd_qspi_dma_id, (uint32_t)data + size);
+        dma_set_src_pause_addr(qspi_infos[port].lcd_qspi_dma_id, (uint32_t)data + size);
 
-        // if (device->qspi->refresh_method == LCD_QSPI_REFRESH_BY_LINE) {
+        // if (device->qspi->refresh_method == TUYA_QSPI_LCD_REFRESH_BY_LINE) {
         //     for (uint16_t i = 0; i < device->qspi->refresh_config.vsw; i++) {
         //         bk_lcd_qspi_send_cmd(port, device->qspi->reg_write_cmd, device->qspi->refresh_config.vsync_cmd, NULL, 0);
         //         bk_delay_us(40);
@@ -530,16 +675,16 @@ bk_err_t bk_lcd_qspi_quad_write_stops(qspi_id_t qspi_id)
         //     }
         // } else if (device->qspi->refresh_method == LCD_QSPI_REFRESH_BY_FRAME) {
             bk_lcd_qspi_quad_write_starts(port);
-            bk_dma_start(lcd_qspi_dma_id);
+            bk_dma_start(qspi_infos[port].lcd_qspi_dma_id);
 
-            ret = rtos_get_semaphore(&lcd_qspi_semaphore, 3000);
-            if (ret != kNoErr) {
-                bk_printf("ret = %d, lcd qspi get semaphore failed!\r\n", ret);
-                return BK_FAIL;
-            }
+            // up report
+            // ret = rtos_get_semaphore(&lcd_qspi_semaphore, 3000);
+            // if (ret != kNoErr) {
+            //     bk_printf("ret = %d, lcd qspi get semaphore failed!\r\n", ret);
+            //     return BK_FAIL;
+            // }
             bk_delay_us(5);
-            bk_lcd_qspi_quad_write_stops(port);
-
+            // bk_lcd_qspi_quad_write_stops(port);
         // } else {
         //     bk_printf("invalid lcd qspi refresh method\r\n");
         //     return BK_FAIL;
@@ -575,14 +720,19 @@ OPERATE_RET tkl_qspi_send_data_indirect_mode(TUYA_QSPI_NUM_E port, uint8_t *data
  OPERATE_RET tkl_qspi_recv(TUYA_QSPI_NUM_E port, VOID_T *data, UINT32_T size)
  {
      bk_err_t ret = BK_OK;
- 
+
      if ((data == NULL) || (port > TUYA_QSPI_NUM_MAX) || (size > MAX_QSPI_FIFO_SIZE)) {
          return OPRT_INVALID_PARM;
      }
  
-     ret = bk_qspi_read(port, data, size);
-     if (ret != BK_OK)
-         return OPRT_COM_ERROR;
+     if (size <= 256) {
+        ret = qspi_hal_io_read(&s_tkl_qspi[port].hal, data, size);
+        if (ret != BK_OK)
+            return OPRT_COM_ERROR;
+     }else {
+        return OPRT_NOT_SUPPORTED;
+     }
+
      return OPRT_OK;
  }
  
@@ -596,8 +746,8 @@ OPERATE_RET tkl_qspi_send_data_indirect_mode(TUYA_QSPI_NUM_E port, uint8_t *data
   * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
   */
 typedef union {
-    UINT64_T data;
-    CHAR_T ponit[8];
+    UINT32_T data;
+    CHAR_T ponit[4];
 }data_union_s;
 
 uint32_t swap_endian_24(uint32_t value) {
@@ -610,7 +760,7 @@ uint16_t swap_endian_16(uint16_t value) {
     return ((value & 0xFF00) >> 8) | ((value & 0x00FF) << 8);
 }
 
-// 32Î»´óÐ¡¶Ë×ª»»
+// 32ä½å¤§å°ç«¯è½¬æ¢
 uint32_t swap_endian_32(uint32_t value) {
     return ((value & 0xFF000000) >> 24) | 
            ((value & 0x00FF0000) >> 8)  |
@@ -636,7 +786,7 @@ uint32_t swap_endian_32(uint32_t value) {
      cmd.wire_mode = command->data_lines;
      cmd.work_mode = INDIRECT_MODE;
      cmd.device = QSPI_FLASH;
-     // ret = tuya_qspi_hal_command(port, &cmd);
+
      ret = bk_qspi_command(port, &cmd);
      if (ret != BK_OK)
          return OPRT_COM_ERROR;
@@ -650,8 +800,8 @@ uint32_t swap_endian_32(uint32_t value) {
         memcpy(union_data.ponit, command->cmd, command->cmd_size);
         ucmd = (UINT32_T)union_data.data;
     }else {
-        bk_printf("cmd size not right\r\n");
-        return -1;
+        bk_printf("cmd size is 0\r\n");
+        // return -1;
     }
     // get addr
     union_data.data = 0;
@@ -666,10 +816,19 @@ uint32_t swap_endian_32(uint32_t value) {
         qspi_hal_set_cmd_c_cfg1(&s_tkl_qspi[port].hal, 0);
         qspi_hal_set_cmd_c_cfg2(&s_tkl_qspi[port].hal, 0);
 
+        if((command->cmd_size == 0) && (command->addr_size == 0) && (command->data_size != 0)){
+            qspi_hal_set_cmd_c_cfg1(&s_tkl_qspi[port].hal, 0x3);
+            qspi_hal_set_cmd_c_cfg2(&s_tkl_qspi[port].hal, command->data_size << 2);
+            qspi_hal_io_write(&s_tkl_qspi[port].hal, command->data, command->data_size);
+            qspi_hal_cmd_c_start(&s_tkl_qspi[port].hal);
+            qspi_hal_wait_cmd_done(&s_tkl_qspi[port].hal);
+            return OPRT_OK;
+        }
+        // bk_printf("write addr:%x, ucmd:%x, addr_size:%d, cmd_size:%d, data_size:%d \r\n", uaddr, ucmd, command->addr_size, command->cmd_size, command->data_size);
         if (command->data_size == 0) {                                             //1.cmd, 3.addr
             if ((command->cmd_size == 1) && (command->addr_size == 3)) {  //all len = 4, DE, 00 60 00
                 qspi_hal_set_cmd_c_h(&s_tkl_qspi[port].hal, (swap_endian_24(uaddr) << 8 | ucmd)); // & 0xFF00FF
-                qspi_hal_set_cmd_c_cfg1(&s_tkl_qspi[port].hal,  (0x3 << ((command->data_size + 4) * 2)));  // 4×Ö½Ú
+                qspi_hal_set_cmd_c_cfg1(&s_tkl_qspi[port].hal,  (0x3 << ((command->data_size + 4) * 2)));  // 4å­—èŠ‚
             }else if ((command->cmd_size <= 4) && (command->addr_size == 0)){
                 qspi_hal_set_cmd_c_h(&s_tkl_qspi[port].hal, ucmd);
                 qspi_hal_set_cmd_c_cfg1(&s_tkl_qspi[port].hal,  0x3 << (command->cmd_size * 2));
@@ -679,7 +838,9 @@ uint32_t swap_endian_32(uint32_t value) {
             }else {
                 bk_printf("data 0 not adapt\r\n");
             }
-        }else if (command->data_size > 0 && command->data_size <= 4) {
+        }
+#if 0
+        else if (command->data_size > 0 && command->data_size <= 4) {
             uint32_t value = 0;
             for (uint8_t i = 0; i < command->data_size; i++) {
                 value = value | (command->data[i] << (i * 8));
@@ -688,30 +849,31 @@ uint32_t swap_endian_32(uint32_t value) {
             qspi_hal_set_cmd_c_h(&s_tkl_qspi[port].hal, (uaddr << 8 | ucmd));  // & 0xFF00FF
             qspi_hal_set_cmd_c_cfg1(&s_tkl_qspi[port].hal, 0x3 << ((command->data_size + 4) * 2));
             if (command->data_lines == TUYA_QSPI_1WIRE) {
-                qspi_ll_set_cmd_c_data_line(&s_tkl_qspi[port].hal, QSPI_1WIRE);
+                qspi_hal_set_cmd_c_data_line(&s_tkl_qspi[port].hal, QSPI_1WIRE);
             }else if (command->data_lines == TUYA_QSPI_2WIRE) {
-                qspi_ll_set_cmd_c_data_line(&s_tkl_qspi[port].hal, QSPI_2WIRE);
+                qspi_hal_set_cmd_c_data_line(&s_tkl_qspi[port].hal, QSPI_2WIRE);
             }else {
-                qspi_ll_set_cmd_c_data_line(&s_tkl_qspi[port].hal, QSPI_4WIRE);
+                qspi_hal_set_cmd_c_data_line(&s_tkl_qspi[port].hal, QSPI_4WIRE);
             }
-
-        }else if (command->data_size > 4 && command->data_size <= 0xFF) {
+        }
+#endif
+        else if (command->data_size > 0 && command->data_size <= 0x100) {
             qspi_hal_set_cmd_c_h(&s_tkl_qspi[port].hal, (uaddr << 8 | ucmd));   //  & 0xFF00FF
             qspi_hal_set_cmd_c_cfg1(&s_tkl_qspi[port].hal, 0x300);
             qspi_hal_set_cmd_c_cfg2(&s_tkl_qspi[port].hal, command->data_size << 2);
-            bk_qspi_write(port, command->data, command->data_size);
+            qspi_hal_io_write(&s_tkl_qspi[port].hal, command->data, command->data_size);
             if (command->data_lines == TUYA_QSPI_1WIRE) {
-                qspi_ll_set_cmd_c_data_line(&s_tkl_qspi[port].hal, QSPI_1WIRE);
+                qspi_hal_set_cmd_c_data_line(&s_tkl_qspi[port].hal, QSPI_1WIRE);
             }else if (command->data_lines == TUYA_QSPI_2WIRE) {
-                qspi_ll_set_cmd_c_data_line(&s_tkl_qspi[port].hal, QSPI_2WIRE);
+                qspi_hal_set_cmd_c_data_line(&s_tkl_qspi[port].hal, QSPI_2WIRE);
             }else {
-                qspi_ll_set_cmd_c_data_line(&s_tkl_qspi[port].hal, QSPI_4WIRE);
+                qspi_hal_set_cmd_c_data_line(&s_tkl_qspi[port].hal, QSPI_4WIRE);
             }
-            qspi_hal_cmd_c_start(&s_tkl_qspi[port].hal);
-            qspi_hal_wait_cmd_done(&s_tkl_qspi[port].hal);
-            qspi_hal_set_cmd_c_cfg1(&s_tkl_qspi[port].hal, 0);
-            qspi_hal_set_cmd_c_cfg2(&s_tkl_qspi[port].hal, 0);
-            return BK_OK;
+            // qspi_hal_cmd_c_start(&s_tkl_qspi[port].hal);
+            // qspi_hal_wait_cmd_done(&s_tkl_qspi[port].hal);
+            // qspi_hal_set_cmd_c_cfg1(&s_tkl_qspi[port].hal, 0);
+            // qspi_hal_set_cmd_c_cfg2(&s_tkl_qspi[port].hal, 0);
+            // return BK_OK;
         }
         // down
         // hw->cmd_c_cfg2.data_line = cmd->wire_mode;
@@ -721,10 +883,30 @@ uint32_t swap_endian_32(uint32_t value) {
         } else {
             qspi_hal_set_cmd_c_dummy_mode(&s_tkl_qspi[port].hal, 0);
         }
+        // bk_printf("tuya write c_l:%x, c_h:%x, cfg1:%x, cfg2:%x \r\n", qspi_hal_get_cmd_c_l(&s_tkl_qspi[port].hal), qspi_hal_get_cmd_c_h(&s_tkl_qspi[port].hal), qspi_hal_get_cmd_c_cfg1(&s_tkl_qspi[port].hal), qspi_hal_get_cmd_c_cfg2(&s_tkl_qspi[port].hal));
         //up
         qspi_hal_cmd_c_start(&s_tkl_qspi[port].hal);
         qspi_hal_wait_cmd_done(&s_tkl_qspi[port].hal);
+        qspi_hal_set_cmd_c_cfg1(&s_tkl_qspi[port].hal, 0);
+        qspi_hal_set_cmd_c_cfg2(&s_tkl_qspi[port].hal, 0);
     }else {  // read
+        qspi_hal_set_cmd_d_l(&s_tkl_qspi[port].hal, 0);
+        qspi_hal_set_cmd_d_h(&s_tkl_qspi[port].hal, 0);
+        qspi_hal_set_cmd_d_cfg1(&s_tkl_qspi[port].hal, 0);
+        qspi_hal_set_cmd_d_cfg2(&s_tkl_qspi[port].hal, 0);
+
+        if((command->cmd_size == 0) && (command->addr_size == 0) && (command->data_size != 0)){
+            qspi_hal_set_cmd_d_cfg1(&s_tkl_qspi[port].hal, 0x3);
+            qspi_hal_set_cmd_d_data_length(&s_tkl_qspi[port].hal, command->data_size);
+            qspi_hal_cmd_d_start(&s_tkl_qspi[port].hal);
+            qspi_hal_wait_cmd_done(&s_tkl_qspi[port].hal);
+            ret = qspi_hal_io_read(&s_tkl_qspi[port].hal, command->data, command->data_size);
+            if (ret != BK_OK)
+                return OPRT_COM_ERROR;
+            return OPRT_OK;
+        }
+
+        // bk_printf("read addr:%x, ucmd:%x, addr_size:%d, cmd_size:%d, data_size:%d \r\n", uaddr, ucmd, command->addr_size, command->cmd_size, command->data_size);
         if ((command->addr_size == 0) && (command->cmd_size == 1)) {
             qspi_hal_set_cmd_d_l(&s_tkl_qspi[port].hal, 0);
             qspi_hal_set_cmd_d_h(&s_tkl_qspi[port].hal, ucmd);
@@ -742,6 +924,7 @@ uint32_t swap_endian_32(uint32_t value) {
             } else {
                 qspi_hal_set_cmd_d_dummy_mode(&s_tkl_qspi[port].hal, 0);
             }
+            // bk_printf("cmdl:%x, cmdh:%x \r\n", qspi_hal_get_cmd_d_l(&s_tkl_qspi[port].hal), qspi_hal_get_cmd_d_h(&s_tkl_qspi[port].hal));
         }else if ((command->addr_size == 2) && (command->cmd_size == 1)) {
             qspi_hal_set_cmd_d_h(&s_tkl_qspi[port].hal, (swap_endian_16(uaddr) << 8 | ucmd));
             if(TUYA_QSPI_4WIRE == command->addr_lines) {
@@ -756,7 +939,7 @@ uint32_t swap_endian_32(uint32_t value) {
             }
         }else if ((command->addr_size == 3) && (command->cmd_size == 1)) {
             qspi_hal_set_cmd_d_h(&s_tkl_qspi[port].hal, (swap_endian_24(uaddr) << 8 | ucmd));
-            // qspi_hal_set_cmd_d_cfg1(&s_tkl_qspi[port].hal,  (0x3 << ((command->data_size + 4) * 2)));  // 4×Ö½Ú
+            // qspi_hal_set_cmd_d_cfg1(&s_tkl_qspi[port].hal,  (0x3 << ((command->data_size + 4) * 2)));  // 4å­—èŠ‚
             if(TUYA_QSPI_4WIRE == command->addr_lines) {
                 qspi_hal_set_cmd_d_cfg1(&s_tkl_qspi[port].hal, 0x300);
             } else {
@@ -773,36 +956,28 @@ uint32_t swap_endian_32(uint32_t value) {
             return OPRT_COM_ERROR;
         }
         // data len
-        qspi_ll_set_cmd_d_data_length(&s_tkl_qspi[port].hal, command->data_size);
-        // data line
+        qspi_hal_set_cmd_d_data_length(&s_tkl_qspi[port].hal, command->data_size);
+
         if (command->data_lines == TUYA_QSPI_1WIRE) {
-            qspi_ll_set_cmd_d_data_line(&s_tkl_qspi[port].hal, QSPI_1WIRE);
+            qspi_hal_set_cmd_d_data_line(&s_tkl_qspi[port].hal, QSPI_1WIRE);
         }else if (command->data_lines == TUYA_QSPI_2WIRE) {
-            qspi_ll_set_cmd_d_data_line(&s_tkl_qspi[port].hal, QSPI_2WIRE);
+            qspi_hal_set_cmd_d_data_line(&s_tkl_qspi[port].hal, QSPI_2WIRE);
         }else {
-            qspi_ll_set_cmd_d_data_line(&s_tkl_qspi[port].hal, QSPI_4WIRE);
+            qspi_hal_set_cmd_d_data_line(&s_tkl_qspi[port].hal, QSPI_4WIRE);
         }
         // dummy cycle
         qspi_hal_set_cmd_d_dummy_clock(&s_tkl_qspi[port].hal, command->dummy_cycle);
 
+        bk_printf("tuya read d_l:%x, d_h:%x, cfg1:%x, cfg2:%x \r\n", qspi_hal_get_cmd_d_l(&s_tkl_qspi[port].hal), qspi_hal_get_cmd_d_h(&s_tkl_qspi[port].hal), qspi_hal_get_cmd_d_cfg1(&s_tkl_qspi[port].hal), qspi_hal_get_cmd_d_cfg2(&s_tkl_qspi[port].hal));
+
         qspi_hal_cmd_d_start(&s_tkl_qspi[port].hal);
         qspi_hal_wait_cmd_done(&s_tkl_qspi[port].hal);
-        ret = bk_qspi_read(port, command->data, command->data_size);
+
+        ret = qspi_hal_io_read(&s_tkl_qspi[port].hal, command->data, command->data_size);
         if (ret != BK_OK)
             return OPRT_COM_ERROR;
     }
     return OPRT_OK;
- }
- 
- OPERATE_RET tkl_qspi_abort_transfer(TUYA_QSPI_NUM_E port)
- {
-     if (port > TUYA_QSPI_NUM_MAX) {
-         return OPRT_INVALID_PARM;
-     }
- 
-     if (bk_qspi_deinit((spi_id_t)port) != BK_OK)
-         return OPRT_COM_ERROR;
-     return OPRT_OK;
  }
  
  /**
@@ -820,8 +995,8 @@ uint32_t swap_endian_32(uint32_t value) {
          return OPRT_INVALID_PARM;
      }
  
-     qspi_irq[port].cb = cb;
-     qspi_irq[port].irq_enable = 0;
+     qspi_infos[port].cb = cb;
+     qspi_infos[port].irq_enable = 0;
  
      return OPRT_OK;
  }
@@ -841,7 +1016,7 @@ uint32_t swap_endian_32(uint32_t value) {
      bk_qspi_register_tx_isr(qspi_tx_callback_dispatch, NULL);
      bk_qspi_register_rx_isr(qspi_rx_callback_dispatch, NULL);
  
-     qspi_irq[port].irq_enable = 1;
+     qspi_infos[port].irq_enable = 1;
  
      return OPRT_OK;
  }
@@ -861,15 +1036,15 @@ uint32_t swap_endian_32(uint32_t value) {
      bk_qspi_register_tx_isr(NULL, NULL);
      bk_qspi_register_rx_isr(NULL, NULL);
  
-     qspi_irq[port].irq_enable = 0;
+     qspi_infos[port].irq_enable = 0;
  
      return OPRT_OK;
  }
 
 
-OPERATE_RET tkl_qspi_force_lcd_cs_pin(TUYA_QSPI_NUM_E port, BOOL_T enable)
+OPERATE_RET tkl_qspi_force_cs_pin(TUYA_QSPI_NUM_E port, TUYA_GPIO_LEVEL_E level)
 {
-    if (enable)
+    if (level == TUYA_GPIO_LEVEL_LOW)
         qspi_hal_force_spi_cs_low_enable(&s_tkl_qspi[port].hal);
     else 
         qspi_hal_force_spi_cs_low_disable(&s_tkl_qspi[port].hal);

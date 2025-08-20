@@ -413,9 +413,7 @@ OPERATE_RET tkl_ai_start(INT32_T card, TKL_AI_CHN_E chn)
         bk_printf("tkl_ai_start fail, not init\n");
         return OPRT_COM_ERROR;
     }
-    if (BK_OK != bk_voice_start(g_voice_handle)) {
-        bk_printf("%s, %d, voice read start fail\n", __func__, __LINE__);
-    }
+
     if (g_voice_read_handle)
     {
         if (BK_OK != bk_voice_read_start(g_voice_read_handle)) {
@@ -528,11 +526,6 @@ OPERATE_RET tkl_ai_stop(INT32_T card, TKL_AI_CHN_E chn)
         }
     }
 
-    ret = bk_voice_stop(g_voice_handle);
-    if (ret != BK_OK) {
-        bk_printf("bk_voice_read_stop fail, ret:%d\n", ret);
-        return OPRT_COM_ERROR;
-    }
     level = tkl_system_enter_critical();
     s_audio_init.audio_start = false;
     tkl_system_exit_critical(level);
@@ -760,7 +753,6 @@ OPERATE_RET tkl_ao_uninit(VOID *handle)
     }
     int ret = OPRT_OK;
     if (s_audio_mic.card == TKL_AUDIO_TYPE_BOARD) {
-        // ret = bk_aud_intf_mic_deinit();
         ret = bk_voice_deinit(g_voice_handle);
         if (ret != BK_OK) {
             os_printf("bk_aud_intf_spk_deinit fail, ret:%d \r\n", ret);

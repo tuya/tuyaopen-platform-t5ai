@@ -51,7 +51,9 @@ set(incs
     "include/asr/libtutuClear"
     "include/rgb"
     "include/mcu8080"
-    "include/image_codec"
+    "include/dvp"
+    "include/dma2d"
+    "include/jpeg_codec"
 )
 
 string(REPLACE " " ";" TUYA_HEADER_DIR_LIST $ENV{TUYA_HEADER_DIR})
@@ -116,7 +118,9 @@ if ("${CONFIG_CPU_INDEX}" STREQUAL "1")
         src/driver/tkl_timer.c
         # src/driver/tkl_wired.c
         src/driver/tkl_i2s.c
-        src/driver/tkl_image_codec.c
+        src/driver/tkl_dma2d.c
+        src/driver/tkl_dvp.c
+        src/driver/tkl_jpeg_codec.c
 
         src/misc/encrypt.c
         src/misc/fs_init.c

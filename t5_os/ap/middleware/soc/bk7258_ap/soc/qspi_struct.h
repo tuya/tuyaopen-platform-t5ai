@@ -390,8 +390,8 @@ typedef volatile struct {
 	/* REG_0x25 ~ REG_0x3F */
 	uint32_t reserved2[27];
 
-	/* REG_0x40 ~ REG_0x7C */
-	uint32_t fifo_data[61];
+	/* REG_0x40 ~ REG_0x7C */ //Modify by Tuya
+	uint32_t fifo_data[64];
 } qspi_hw_t;
 
 #ifdef __cplusplus

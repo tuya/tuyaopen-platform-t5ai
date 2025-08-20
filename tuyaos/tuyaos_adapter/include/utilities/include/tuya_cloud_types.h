@@ -1072,14 +1072,14 @@ typedef struct {
     TUYA_QSPI_OP_E op;        /**< QSPI operation */
 	UCHAR_T cmd[4];               /**< QSPI command */
     UINT_T  cmd_size;          /**< QSPI data length */
+    TUYA_QSPI_WIRE_MODE_E cmd_lines;               /**< QSPI command lines */
 	UCHAR_T addr[8];              /**< QSPI address */
     UINT8_T addr_size;               /**< QSPI address len */
-	UINT_T dummy_cycle;       /**< QSPI dummy cycle */
+    TUYA_QSPI_WIRE_MODE_E addr_lines;               /**< QSPI address lines */
     UCHAR_T *data;
 	UINT_T data_size;          /**< QSPI data length */
-	TUYA_QSPI_WIRE_MODE_E cmd_lines;               /**< QSPI command lines */
-	TUYA_QSPI_WIRE_MODE_E addr_lines;               /**< QSPI address lines */
 	TUYA_QSPI_WIRE_MODE_E data_lines;               /**< QSPI data lines */
+    UINT_T dummy_cycle;       /**< QSPI dummy cycle */
 } TUYA_QSPI_CMD_T;
 
 typedef enum {
@@ -1114,10 +1114,10 @@ typedef enum {
 typedef struct {
     TUYA_QSPI_ROLE_E      role; /** QSPI Master / Slave */
     TUYA_QSPI_MODE_E      mode;
-	UINT_T baudrate;       /**< QSPI controller clock divide number */
+	UINT_T freq_hz;       /**< QSPI controller clock divide number */
 	BOOL_T is_dma;       /**< QSPI dma mode*/
     TUYA_QSPI_MODULE_TYPE_E type;
-    TUYA_QSPI_LCD_REFRESH_METHOD_E refresh_method;  /**< QSPI lcd mode*/
+    // TUYA_QSPI_LCD_REFRESH_METHOD_E refresh_method;  /**< QSPI lcd mode*/
 } TUYA_QSPI_BASE_CFG_T;
 
 /****** QSPI Event *****/
@@ -1496,6 +1496,42 @@ typedef enum {
 
 typedef void (*TUYA_MCU8080_ISR_CB)(TUYA_MCU8080_EVENT_E event);
 
+typedef enum {
+    TUYA_FRAME_FMT_UNKNOWN = 0,
+    TUYA_FRAME_FMT_YUV422,
+    TUYA_FRAME_FMT_YUV420,
+    TUYA_FRAME_FMT_RGB565,
+    TUYA_FRAME_FMT_RGB888,
+    TUYA_FRAME_FMT_JPEG,
+    TUYA_FRAME_FMT_H264,
+} TUYA_FRAME_FMT_E;
+
+typedef enum {
+    TUYA_DVP_OUTPUT_YUV422,
+    TUYA_DVP_OUTPUT_JPEG,
+    TUYA_DVP_OUTPUT_H264,
+    TUYA_DVP_OUTPUT_JPEG_YUV422_BOTH,
+    TUYA_DVP_OUTPUT_H264_YUV422_BOTH,
+} TUYA_DVP_OUTPUT_MODE;
+
+typedef struct
+{
+    UINT16_T frame_id;
+    UINT8_T is_frame_complete;
+    TUYA_FRAME_FMT_E frame_fmt;
+    UINT16_T width;
+	UINT16_T height;
+    UINT32_T data_len;
+    UINT8_T *data;
+    UINT32_T total_frame_len;
+} TUYA_DVP_FRAME_MANAGE_T;
+
+typedef struct {
+    UINT16_T fps;
+    UINT16_T width;
+    UINT16_T height;
+    TUYA_DVP_OUTPUT_MODE output_mode;
+} TUYA_DVP_BASE_CFG_T;
 /**
  * @brief timer num
  * 

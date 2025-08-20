@@ -218,8 +218,8 @@ bk_err_t gpio_hal_func_unmap(gpio_hal_t *hal, gpio_id_t gpio_id)
 	is being used by other peripheral,will print a warning log to indicate
 	the risk,but the operation will continue to execute,without interrupting
 	the process*/
-	if(gpio_hal_map_check(hal, gpio_id)) {
-		// HAL_LOGW("gpio: %d is used.Please confirm unmap isn't impact is working module.!\r\n", gpio_id);
+	if(gpio_hal_map_check(hal, gpio_id) && ((gpio_id != GPIO_10) && (gpio_id != GPIO_11))) {    // Modified by TUYA
+		//HAL_LOGW("gpio: %d is used.Please confirm unmap isn't impact is working module.!\r\n", gpio_id);
 	}
 
 	gpio_hal_sencond_function_enable(hal, gpio_id, 0);
@@ -359,7 +359,7 @@ bk_err_t gpio_hal_default_map_init(gpio_hal_t *hal)
 
 		HAL_LOGV("int_en: %d, int_type:%d \r\n",
 				default_map[i].int_en, default_map[i].int_type);
-		
+
 		//function mode
 		if(default_map[i].second_func_en) {
 			gpio_hal_func_unmap(hal, default_map[i].gpio_id);

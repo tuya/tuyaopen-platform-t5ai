@@ -243,7 +243,7 @@ int32_t lcd_driver_get_spi_gpio(LCD_SPI_GPIO_TYPE_E gpio_type)
 bk_err_t lcd_mcu_gpio_init(void)
 {
 	LOGV("%s\n", __func__);
-#if 1
+#if 0
 	IO_FUNCTION_ENABLE_I8080(LCD_MCU_D0_PIN, LCD_MCU_D0_FUNC);
 	IO_FUNCTION_ENABLE_I8080(LCD_MCU_D1_PIN, LCD_MCU_D1_FUNC);
 	IO_FUNCTION_ENABLE_I8080(LCD_MCU_D2_PIN, LCD_MCU_D2_FUNC);
@@ -252,79 +252,65 @@ bk_err_t lcd_mcu_gpio_init(void)
 	IO_FUNCTION_ENABLE_I8080(LCD_MCU_D5_PIN, LCD_MCU_D5_FUNC);
 	IO_FUNCTION_ENABLE_I8080(LCD_MCU_D6_PIN, LCD_MCU_D6_FUNC);
 	IO_FUNCTION_ENABLE_I8080(LCD_MCU_D7_PIN, LCD_MCU_D7_FUNC);
-
-// #if CONFIG_SOC_BK7236XX
-// 	IO_FUNCTION_ENABLE_I8080(LCD_MCU_D8_PIN , LCD_MCU_D8_FUNC );
-// 	IO_FUNCTION_ENABLE_I8080(LCD_MCU_D9_PIN , LCD_MCU_D9_FUNC );
-// 	IO_FUNCTION_ENABLE_I8080(LCD_MCU_D10_PIN, LCD_MCU_D10_FUNC);
-// 	IO_FUNCTION_ENABLE_I8080(LCD_MCU_D11_PIN, LCD_MCU_D11_FUNC);
-// 	IO_FUNCTION_ENABLE_I8080(LCD_MCU_D12_PIN, LCD_MCU_D12_FUNC);
-// 	IO_FUNCTION_ENABLE_I8080(LCD_MCU_D13_PIN, LCD_MCU_D13_FUNC);
-// 	IO_FUNCTION_ENABLE_I8080(LCD_MCU_D14_PIN, LCD_MCU_D14_FUNC);
-// 	IO_FUNCTION_ENABLE_I8080(LCD_MCU_D15_PIN, LCD_MCU_D15_FUNC);
-// 	IO_FUNCTION_ENABLE_I8080(LCD_MCU_D16_PIN, LCD_MCU_D16_FUNC);
-// 	IO_FUNCTION_ENABLE_I8080(LCD_MCU_D17_PIN, LCD_MCU_D17_FUNC);
-// #endif
-
+#if CONFIG_SOC_BK7236XX
+	IO_FUNCTION_ENABLE_I8080(LCD_MCU_D8_PIN , LCD_MCU_D8_FUNC );
+	IO_FUNCTION_ENABLE_I8080(LCD_MCU_D9_PIN , LCD_MCU_D9_FUNC );
+	IO_FUNCTION_ENABLE_I8080(LCD_MCU_D10_PIN, LCD_MCU_D10_FUNC);
+	IO_FUNCTION_ENABLE_I8080(LCD_MCU_D11_PIN, LCD_MCU_D11_FUNC);
+	IO_FUNCTION_ENABLE_I8080(LCD_MCU_D12_PIN, LCD_MCU_D12_FUNC);
+	IO_FUNCTION_ENABLE_I8080(LCD_MCU_D13_PIN, LCD_MCU_D13_FUNC);
+	IO_FUNCTION_ENABLE_I8080(LCD_MCU_D14_PIN, LCD_MCU_D14_FUNC);
+	IO_FUNCTION_ENABLE_I8080(LCD_MCU_D15_PIN, LCD_MCU_D15_FUNC);
+	IO_FUNCTION_ENABLE_I8080(LCD_MCU_D16_PIN, LCD_MCU_D16_FUNC);
+	IO_FUNCTION_ENABLE_I8080(LCD_MCU_D17_PIN, LCD_MCU_D17_FUNC);
+#endif
 	IO_FUNCTION_ENABLE_I8080(LCD_MCU_RDX_PIN, LCD_MCU_RDX_FUNC);
 	IO_FUNCTION_ENABLE_I8080(LCD_MCU_WRX_PIN, LCD_MCU_WRX_FUNC);
 	IO_FUNCTION_ENABLE_I8080(LCD_MCU_RSX_PIN, LCD_MCU_RSX_FUNC);
 	IO_FUNCTION_ENABLE_I8080(LCD_MCU_RESET_PIN, LCD_MCU_RESET_FUNC);
 	IO_FUNCTION_ENABLE_I8080(LCD_MCU_CSX_PIN, LCD_MCU_CSX_FUNC);
-#else 
+#endif
     bk_gpio_set_capacity(LCD_MCU_RDX_PIN,GPIO_DRIVER_CAPACITY_3);
     bk_gpio_set_capacity(LCD_MCU_WRX_PIN,GPIO_DRIVER_CAPACITY_3);
     bk_gpio_set_capacity(LCD_MCU_RESET_PIN,GPIO_DRIVER_CAPACITY_3);
     bk_gpio_set_capacity(LCD_MCU_RSX_PIN,GPIO_DRIVER_CAPACITY_3);
     bk_gpio_set_capacity(LCD_MCU_CSX_PIN,GPIO_DRIVER_CAPACITY_3);
-#endif
 	return BK_OK;
 }
 
 
-static bk_err_t lcd_rgb_gpio_init(pixel_format_t out_fmt)
+static bk_err_t lcd_rgb_gpio_init(void)
 {
 	LOGV("%s\n", __func__);
-#if 1
-	if(PIXEL_FMT_RGB666 == out_fmt) {
-		IO_FUNCTION_ENABLE(LCD_RGB_R2_PIN, LCD_RGB_R2_FUNC);
-	}else if(PIXEL_FMT_RGB888 == out_fmt) {
-        IO_FUNCTION_ENABLE(LCD_RGB_R0_PIN, LCD_RGB_R0_FUNC);
-        IO_FUNCTION_ENABLE(LCD_RGB_R1_PIN, LCD_RGB_R1_FUNC);
-        IO_FUNCTION_ENABLE(LCD_RGB_R2_PIN, LCD_RGB_R2_FUNC);
-	}
-
+#if 0
+#if CONFIG_SOC_BK7236XX
 	IO_FUNCTION_ENABLE(LCD_RGB_R0_PIN, LCD_RGB_R0_FUNC);
 	IO_FUNCTION_ENABLE(LCD_RGB_R1_PIN, LCD_RGB_R1_FUNC);
 	IO_FUNCTION_ENABLE(LCD_RGB_R2_PIN, LCD_RGB_R2_FUNC);
-
+#endif
 	IO_FUNCTION_ENABLE(LCD_RGB_R3_PIN, LCD_RGB_R3_FUNC);
 	IO_FUNCTION_ENABLE(LCD_RGB_R4_PIN, LCD_RGB_R4_FUNC);
 	IO_FUNCTION_ENABLE(LCD_RGB_R5_PIN, LCD_RGB_R5_FUNC);
 	IO_FUNCTION_ENABLE(LCD_RGB_R6_PIN, LCD_RGB_R6_FUNC);
 	IO_FUNCTION_ENABLE(LCD_RGB_R7_PIN, LCD_RGB_R7_FUNC);
 	
-	if(PIXEL_FMT_RGB888 == out_fmt) {
-		IO_FUNCTION_ENABLE(LCD_RGB_G0_PIN, LCD_RGB_G0_FUNC);
-		IO_FUNCTION_ENABLE(LCD_RGB_G1_PIN, LCD_RGB_G1_FUNC);	
-	}
+#if CONFIG_SOC_BK7236XX
+	IO_FUNCTION_ENABLE(LCD_RGB_G0_PIN, LCD_RGB_G0_FUNC);
+	IO_FUNCTION_ENABLE(LCD_RGB_G1_PIN, LCD_RGB_G1_FUNC);
 	IO_FUNCTION_ENABLE(LCD_RGB_G2_PIN, LCD_RGB_G2_FUNC);
-
+#endif
 	IO_FUNCTION_ENABLE(LCD_RGB_G3_PIN, LCD_RGB_G3_FUNC);
 	IO_FUNCTION_ENABLE(LCD_RGB_G4_PIN, LCD_RGB_G4_FUNC);
 	IO_FUNCTION_ENABLE(LCD_RGB_G5_PIN, LCD_RGB_G5_FUNC);
 	IO_FUNCTION_ENABLE(LCD_RGB_G6_PIN, LCD_RGB_G6_FUNC);
 	IO_FUNCTION_ENABLE(LCD_RGB_G7_PIN, LCD_RGB_G7_FUNC);
 
-
-	if(PIXEL_FMT_RGB666 == out_fmt) {
-		IO_FUNCTION_ENABLE(LCD_RGB_B2_PIN, LCD_RGB_B2_FUNC);
-	}else if(PIXEL_FMT_RGB888 == out_fmt) {
-		IO_FUNCTION_ENABLE(LCD_RGB_B0_PIN, LCD_RGB_B0_FUNC);
-		IO_FUNCTION_ENABLE(LCD_RGB_B1_PIN, LCD_RGB_B1_FUNC);
-		IO_FUNCTION_ENABLE(LCD_RGB_B2_PIN, LCD_RGB_B2_FUNC);
-	}
+#if CONFIG_SOC_BK7236XX
+	IO_FUNCTION_ENABLE(LCD_RGB_B0_PIN, LCD_RGB_B0_FUNC);
+	IO_FUNCTION_ENABLE(LCD_RGB_B1_PIN, LCD_RGB_B1_FUNC);
+	IO_FUNCTION_ENABLE(LCD_RGB_B2_PIN, LCD_RGB_B2_FUNC);
 	
+#endif
 	IO_FUNCTION_ENABLE(LCD_RGB_B3_PIN, LCD_RGB_B3_FUNC);
 	IO_FUNCTION_ENABLE(LCD_RGB_B4_PIN, LCD_RGB_B4_FUNC);
 	IO_FUNCTION_ENABLE(LCD_RGB_B5_PIN, LCD_RGB_B5_FUNC);
@@ -925,12 +911,15 @@ void lcd_driver_ppi_set(uint16_t width, uint16_t height)
     {
         bk_lcd_set_partical_display(0, 0, 0, 0, 0);
     }
-    if (s_lcd.device.type == LCD_TYPE_MCU8080)
+//Modified by Tuya Start
+		bk_printf("%s, offset %d, %d\n", __func__, s_lcd.device.type, s_lcd.device.mcu->set_display_area);
+    if ((s_lcd.device.type == LCD_TYPE_MCU8080) && (s_lcd.device.mcu->set_display_area))
     {
         width = (x > width) ? width : x;
         height = (y > height) ? height : y;
         s_lcd.device.mcu->set_display_area(0, width, 0, height);
     }
+//Modified by Tuya End
 }
 
 bk_err_t lcd_ldo_power_enable(uint8_t enable)
@@ -978,7 +967,7 @@ bk_err_t lcd_driver_init(const lcd_device_t *device)
 	if ((device->type == LCD_TYPE_RGB565) || (device->type == LCD_TYPE_RGB))
 	{
 		bk_lcd_driver_init(device->rgb->clk);
-		lcd_rgb_gpio_init(device->out_fmt);
+		// lcd_rgb_gpio_init();
 		bk_lcd_rgb_init(device);
 		lcd_hal_rgb_set_in_out_format(device->src_fmt, device->out_fmt);
 //		lcd_hal_int_enable(DE_INT);
@@ -989,7 +978,9 @@ bk_err_t lcd_driver_init(const lcd_device_t *device)
 	else if (device->type == LCD_TYPE_MCU8080)
 	{
 		bk_lcd_driver_init(device->mcu->clk);
-		lcd_mcu_gpio_init();
+//Modified by Tuya Start
+		// lcd_mcu_gpio_init();
+//Modified by Tuya End
 		bk_lcd_8080_init(device);
 		lcd_hal_mcu_set_in_out_format(device->src_fmt, device->out_fmt);
 	}

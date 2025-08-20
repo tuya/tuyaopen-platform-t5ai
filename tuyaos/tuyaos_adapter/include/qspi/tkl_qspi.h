@@ -46,7 +46,7 @@ OPERATE_RET tkl_qspi_deinit(TUYA_QSPI_NUM_E port);
  *
  * @return  OPRT_OK on success. Others on error, please refer to tuya_error_code.h
  */
-OPERATE_RET tkl_qspi_send(TUYA_QSPI_NUM_E port, TUYA_QSPI_WIRE_MODE_E mode, VOID_T *data, UINT32_T size);
+ OPERATE_RET tkl_qspi_send(TUYA_QSPI_NUM_E port, VOID_T *data, UINT32_T size);
 
 OPERATE_RET tkl_qspi_send_cmd(TUYA_QSPI_NUM_E port, uint8_t cmd);
 
@@ -74,27 +74,6 @@ OPERATE_RET tkl_qspi_recv(TUYA_QSPI_NUM_E port, VOID_T *data, UINT32_T size);
  * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
  */
 OPERATE_RET tkl_qspi_comand(TUYA_QSPI_NUM_E port, TUYA_QSPI_CMD_T *command);
-
-/**
- * @brief qspi bus mode set
- * NOTE: only write lines & non mapping set
- *
- * @param[in] port: qspi port, id index starts at 0
- * @param[in] mode:  1¡¢2¡¢4 line 
- *
- * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
- */
-OPERATE_RET tkl_qspi_set_busmode(TUYA_QSPI_NUM_E port, TUYA_QSPI_WIRE_MODE_E mode);
-
-/**
- * @brief adort qspi transfer,or qspi send, or qspi recv
- * 
- * @param[in] port: qspi port
- * 
- * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
- */
-
-OPERATE_RET tkl_qspi_abort_transfer(TUYA_QSPI_NUM_E port);
 
 /**
  * @brief qspi irq init
@@ -132,7 +111,7 @@ OPERATE_RET tkl_qspi_irq_disable(TUYA_QSPI_NUM_E port);
  * @param[in] enable: TRUE : enable , FALSE : disable
  * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
  */
-OPERATE_RET tkl_qspi_force_cs_pin(TUYA_QSPI_NUM_E port, BOOL_T enable);
+OPERATE_RET tkl_qspi_force_cs_pin(TUYA_QSPI_NUM_E port, TUYA_GPIO_LEVEL_E level);
 
 #ifdef __cplusplus
 }

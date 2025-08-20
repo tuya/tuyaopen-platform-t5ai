@@ -55,6 +55,7 @@ void tkl_hci_ipc_func(struct ipc_msg_s *msg)
     return;
 }
 
+BOOL_T ble_init_flag = FALSE;
 
 OPERATE_RET tkl_hci_init(VOID)
 {
@@ -69,6 +70,7 @@ OPERATE_RET tkl_hci_init(VOID)
     if(ret)
         return ret;
 
+    ble_init_flag = TRUE;
     return hci_msg.ret_value;
 }
 
@@ -85,6 +87,7 @@ OPERATE_RET tkl_hci_deinit(VOID)
     if(ret)
         return ret;
 
+    ble_init_flag = FALSE;
     return hci_msg.ret_value;
 }
 
