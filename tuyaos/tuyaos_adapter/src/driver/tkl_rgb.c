@@ -34,23 +34,14 @@ static OPERATE_RET __rgb_ty_clk_to_bk_clk(UINT32_T clk, lcd_clk_t *outclk)
         case clk_m(80):
             bk_clk = LCD_80M;
             break;
-        case clk_m(64):
-            bk_clk = LCD_64M;
-            break;
         case clk_m(60):
             bk_clk = LCD_60M;
             break;
         case clk_m(54):
             bk_clk = LCD_54M;
             break;
-        case (457*100000):
-            bk_clk = LCD_45M;
-            break;
         case clk_m(40):
             bk_clk = LCD_40M;
-            break;
-        case (355*100000):
-            bk_clk = LCD_35M;
             break;
         case clk_m(32):
             bk_clk = LCD_32M;
@@ -58,19 +49,16 @@ static OPERATE_RET __rgb_ty_clk_to_bk_clk(UINT32_T clk, lcd_clk_t *outclk)
         case clk_m(30):
             bk_clk = LCD_30M;
             break;
-        case (266*100000):
+        case clk_m(26):
             bk_clk = LCD_26M;
             break;
-        case (246*100000):
-            bk_clk = LCD_24M;
-            break;
-        case (2285*10000):
+        case clk_m(22):
             bk_clk = LCD_22M;
             break;
         case clk_m(20):
             bk_clk = LCD_20M;
             break;
-        case (171*100000):
+        case clk_m(17):
             bk_clk = LCD_17M;
             break;
         case clk_m(15):
@@ -79,17 +67,11 @@ static OPERATE_RET __rgb_ty_clk_to_bk_clk(UINT32_T clk, lcd_clk_t *outclk)
         case clk_m(12):
             bk_clk = LCD_12M;
             break;
-           case clk_m(10):
+        case clk_m(10):
             bk_clk = LCD_10M;
-            break;
-        case (92*100000):
-            bk_clk = LCD_9M;
             break;
         case clk_m(8):
             bk_clk = LCD_8M;
-            break;
-        case (75*100000):
-            bk_clk = LCD_7M;
             break;
         default:
             return -1;

@@ -30,7 +30,7 @@
 
 #define LOCAL_TRACE    (1)
 
-#define FLASH_OPERATE_TIMEOUT         600
+#define FLASH_OPERATE_TIMEOUT         5000 //600
 
 static bool s_flash_client_init = false;
 
