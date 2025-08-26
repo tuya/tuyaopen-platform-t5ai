@@ -131,6 +131,7 @@ if ("${CONFIG_CPU_INDEX}" STREQUAL "1")
 
         src/system/tkl_fs.c
         src/system/tkl_ota.c
+        src/system/ota_head.c
 
         src/driver/tkl_wakeup.c
     )
