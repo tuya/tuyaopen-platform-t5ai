@@ -88,7 +88,12 @@ saradc_calibrate_val saradc_val = {
 static volatile spinlock_t adc_spin_lock = SPIN_LOCK_INIT;
 #endif // CONFIG_FREERTOS_SMP
 
-__attribute__((section(".dtcm_sec_data "))) adc_config_t g_adc_cfg = {0};
+
+adc_config_t g_adc_cfg = {0};
+
+extern bk_err_t mb_saradc_ipc_init(void);
+extern bk_err_t mb_saradc_op_prepare(void);
+extern bk_err_t mb_saradc_op_finish(void);
 
 
 //TODO - by Frank
@@ -270,9 +275,24 @@ bk_err_t bk_adc_driver_init(void)
 	if (s_adc_driver_is_init) {
 		return BK_OK;
 	}
+	extern bk_err_t mb_saradc_ipc_init(void);
+	ret = mb_saradc_ipc_init();
+	if(ret != BK_OK)
+	{
+		BK_LOGE("adc_driver", "mb_saradc_ipc_init failed %d.\r\n", ret);
+		return ret;
+	}
 
+#if (CONFIG_CPU_CNT > 1)
+	extern bk_err_t bk_saradc_server_init(void);
+	ret = bk_saradc_server_init();
+	if(ret != BK_OK)
+	{
+		BK_LOGE("adc_driver", "saradc svr create failed %d.\r\n", ret);
+	}
+#endif
 	os_memset(&s_adc, 0, sizeof(s_adc));
-    os_memset(&g_adc_cfg, 0, sizeof(g_adc_cfg));
+	os_memset(&g_adc_cfg, 0, sizeof(g_adc_cfg));
 
 	if (s_adc_buf.buf) {
 		os_free(s_adc_buf.buf);
@@ -325,18 +345,27 @@ bk_err_t bk_adc_driver_init(void)
 
 bk_err_t bk_adc_acquire(void)
 {
+	int ret = 0;
     if(!s_adc_driver_is_init)
     {
         return BK_FAIL;
     }
-	ADC_LOGV("acquire\n");
-	return rtos_lock_mutex(&s_adc_dev.adc_mutex);
+    ADC_LOGV("acquire\n");
+    ret = rtos_lock_mutex(&s_adc_dev.adc_mutex);
+    mb_saradc_op_prepare();
+
+    return ret;
 }
 
 bk_err_t bk_adc_release(void)
 {
-	ADC_LOGV("release\n");
-	return rtos_unlock_mutex(&s_adc_dev.adc_mutex);
+    int ret = 0;
+
+    ADC_LOGV("release\n");
+    mb_saradc_op_finish();
+    ret = rtos_unlock_mutex(&s_adc_dev.adc_mutex);
+
+    return ret;
 }
 
 bk_err_t bk_adc_driver_deinit(void)
@@ -359,7 +388,6 @@ bk_err_t bk_adc_driver_deinit(void)
 	s_adc_buf.size = 0;
 
     os_memset(&g_adc_cfg, 0, sizeof(g_adc_cfg));
-
 	s_adc_driver_is_init = false;
 
 	return BK_OK;
@@ -589,6 +617,23 @@ bk_err_t bk_adc_set_config(adc_config_t *config)
 	if (&g_adc_cfg != config) {
 		os_memcpy(&g_adc_cfg, config, sizeof(g_adc_cfg));
 	}
+	if (config->vol_div == ADC_VOL_DIV_NONE)
+	{
+		if (config->chan == ADC_0)
+		{
+			config->vol_div = ADC_VOL_DIV_5;
+			adc_hal_set_vol_div(config->chan, ADC_VOL_DIV_5);
+		}
+		else
+		{
+			config->vol_div = ADC_VOL_DIV_3;
+			adc_hal_set_vol_div(config->chan, ADC_VOL_DIV_3);
+		}
+	}
+	else
+	{
+		adc_hal_set_vol_div(config->chan, config->vol_div);
+	}
 
 	adc_hal_set_clk(&s_adc.hal, config->src_clk, config->clk);
 	adc_hal_set_mode(&s_adc.hal, config->adc_mode);
@@ -793,35 +838,12 @@ float saradc_calculate(UINT16 adc_val)
 {
     float practic_voltage;
 
-#if (CONFIG_SOC_BK7256XX)
-    adc_val = adc_val * 2;
-    /* (adc_val - low) / (practic_voltage - 1Volt) = (high - low) / 1Volt */
-    /* practic_voltage = (adc_val - low) / (high - low) + 1Volt */
-    if(g_saradc_flag == 0x1)
-    {
-        practic_voltage = (float)(adc_val - saradc_val.low);
-        practic_voltage = (practic_voltage / (float)(saradc_val.high - saradc_val.low)) + 1;
-        if(practic_voltage < 0)
-            practic_voltage = practic_voltage *(-1.0);
-    }
-    else
-    {
-        /* saradc 1.2V = 4096 */
-        practic_voltage = ((float)(adc_val * 2) / 4096) * 1.2 * 1000;
-    }
-#elif (CONFIG_SOC_BK7236XX)
+
     /* (adc_val - low) / (practic_voltage - 1Volt) = (high - low) / 1Volt */
     /* practic_voltage = (adc_val - low) / (high - low) + 1Volt */
     practic_voltage = (float)(adc_val - saradc_val.low);
     practic_voltage = (practic_voltage / (float)(saradc_val.high - saradc_val.low)) + 1;
-#elif ( (CFG_SOC_NAME != SOC_BK7271) && (CFG_SOC_NAME != SOC_BK7221U))
-    practic_voltage = ((adc_val - saradc_val.low) * 1.8);
-    practic_voltage = (practic_voltage / (saradc_val.high - saradc_val.low)) + 0.2;
-#else
-	 practic_voltage = (adc_val -(saradc_val.low-4096));
-	 practic_voltage = practic_voltage/(saradc_val.high  - (saradc_val.low-4096));
-	 practic_voltage = 2*practic_voltage;
-#endif
+
 
 	if (practic_voltage < 0) {
 		practic_voltage = 0.0f;
@@ -834,20 +856,46 @@ float bk_adc_data_calculate(UINT16 adc_val, UINT8 adc_chan)
 {
     float cali_value = 0;
 
-    if(adc_chan == 0)
+    // CHx: 0:1/4 1:1/3 2:1/2 3:1/1
+    // CH0: 0:1/7 1:1/5 2:1/3 3:1/2
+    if (adc_chan == ADC_0)
     {
-#if (CONFIG_SOC_BK7256XX)
-        cali_value = saradc_calculate(adc_val);
-        cali_value = cali_value*5/2;
-#elif(CONFIG_SOC_BK7236XX)
-        adc_val = adc_val*5/3;
-        cali_value = saradc_calculate(adc_val);
-#else
-        adc_val = adc_val*5/3;
-        cali_value = saradc_calculate(adc_val);
-#endif
+       switch (g_adc_cfg.vol_div)
+        {
+            case ADC_VOL_DIV_7:
+                adc_val = adc_val * 7 / 3;
+                break;
+            case ADC_VOL_DIV_3:
+                break;
+            case ADC_VOL_DIV_2:
+                adc_val = adc_val * 2 / 3;
+                break;
+            case ADC_VOL_DIV_5:
+            default:
+                adc_val = adc_val * 5 / 3;
+                break;
+        }
     }
-    else if(adc_chan == 7 || adc_chan == 8 || adc_chan == 9 || adc_chan == 11)
+    else
+    {
+        switch (g_adc_cfg.vol_div)
+        {
+            case ADC_VOL_DIV_4:
+                adc_val = adc_val * 4 / 3;
+                break;
+            case ADC_VOL_DIV_2:
+                adc_val = adc_val * 2 / 3;
+                break;
+            case ADC_VOL_DIV_1:
+                adc_val = adc_val * 1 / 3;
+                break;
+            case ADC_VOL_DIV_3:
+            default:
+                break;
+        }
+    }
+
+    if(adc_chan == 7 || adc_chan == 8 || adc_chan == 9 || adc_chan == 11)
     {
         ADC_LOGD("adc_chan %d has been used\r\n", adc_chan);
     }

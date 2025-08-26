@@ -1071,9 +1071,9 @@ typedef enum {
 typedef struct {
     TUYA_QSPI_OP_E op;        /**< QSPI operation */
 	UCHAR_T cmd[4];               /**< QSPI command */
-    UINT_T  cmd_size;          /**< QSPI data length */
+    UINT8_T  cmd_size;          /**< QSPI data length */
     TUYA_QSPI_WIRE_MODE_E cmd_lines;               /**< QSPI command lines */
-	UCHAR_T addr[8];              /**< QSPI address */
+	UCHAR_T addr[4];              /**< QSPI address */
     UINT8_T addr_size;               /**< QSPI address len */
     TUYA_QSPI_WIRE_MODE_E addr_lines;               /**< QSPI address lines */
     UCHAR_T *data;
@@ -1115,7 +1115,7 @@ typedef struct {
     TUYA_QSPI_ROLE_E      role; /** QSPI Master / Slave */
     TUYA_QSPI_MODE_E      mode;
 	UINT_T freq_hz;       /**< QSPI controller clock divide number */
-	BOOL_T is_dma;       /**< QSPI dma mode*/
+	BOOL_T use_dma;       /**< QSPI dma mode*/
     TUYA_QSPI_MODULE_TYPE_E type;
     // TUYA_QSPI_LCD_REFRESH_METHOD_E refresh_method;  /**< QSPI lcd mode*/
 } TUYA_QSPI_BASE_CFG_T;

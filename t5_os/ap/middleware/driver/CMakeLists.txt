@@ -65,8 +65,9 @@ set(srcs
 	uart/uart_driver.c
 	uart/uart_statis.c
 	uart/printf.c
-	saradc/adc_driver.c
-	saradc/adc_statis.c
+	saradc/saradc_client.c
+	saradc/saradc_example.c
+	saradc/saradc_notify.c
 	pwr_clk/pwr_clk.c
 	pwr_clk/pm_ap_misc.c
 	pwr_clk/pm_ap_core.c

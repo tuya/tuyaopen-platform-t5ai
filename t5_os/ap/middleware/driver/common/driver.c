@@ -355,7 +355,7 @@ int driver_init(void) {
 #endif
 
 #if CONFIG_SARADC
-	bk_adc_driver_init();
+	bk_saradc_driver_init();
 #endif
 
 #if CONFIG_SPI

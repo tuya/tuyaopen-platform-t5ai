@@ -187,7 +187,7 @@ static bk_err_t lcd_qspi_dma_common_init(uint8_t port)
 
 static bk_err_t lcd_qspi_common_deinit(uint8_t port)
 {
-    bk_err_t ret = BK_OK;
+    // bk_err_t ret = BK_OK;
     // up report
     // if (lcd_qspi_semaphore)
     // {
@@ -479,14 +479,18 @@ static void qspi_clock_enable(qspi_id_t id)
 
     if (cfg->type == TUYA_QSPI_TYPE_LCD) {
         lcd_qspi_quad_write_enable(port);
+    }else {
+        qspi_hal_set_cmd_a_l(&s_tkl_qspi[port].hal, 0);
+        qspi_hal_set_cmd_a_h(&s_tkl_qspi[port].hal, 0);
+        qspi_hal_set_cmd_a_cfg1(&s_tkl_qspi[port].hal, 0x3);
+        qspi_hal_set_cmd_a_cfg2(&s_tkl_qspi[port].hal, 0x00);
     }
-
     qspi_hal_enable_soft_reset(&s_tkl_qspi[port].hal);
     // if (cfg->refresh_method == TUYA_QSPI_LCD_REFRESH_BY_LINE) {
         // lcd_qspi_refresh_by_line_lcd_head_config(port, device);
         // lcd_refresh_type = TUYA_QSPI_LCD_REFRESH_BY_LINE;
     // }
-    if (cfg->is_dma) {
+    if (cfg->use_dma) {
         lcd_qspi_dma_common_init(port);
         qspi_infos[port].is_send_use_dma = TRUE;
         // dma config
@@ -609,7 +613,11 @@ bk_err_t bk_lcd_qspi_quad_write_stops(qspi_id_t qspi_id)
     if ((data == NULL) || (port > TUYA_QSPI_NUM_MAX)) {
         return OPRT_INVALID_PARM;
     }
- 
+    if (qspi_infos[port].qspi_enable != 1) {
+        bk_printf("qspi :%d not init \r\n", port);
+        return OPRT_COM_ERROR;
+    }
+
     if (size <= 256) {
         qspi_hal_io_write(&s_tkl_qspi[port].hal, data, size);
         if (ret != BK_OK)
@@ -693,20 +701,6 @@ bk_err_t bk_lcd_qspi_quad_write_stops(qspi_id_t qspi_id)
     return OPRT_OK;
  }
  
-OPERATE_RET tkl_qspi_send_cmd(TUYA_QSPI_NUM_E port, uint8_t cmd)
-{
-    bk_qspi_write_cmd(port, cmd);
-
-    return OPRT_OK;
-}
-
-OPERATE_RET tkl_qspi_send_data_indirect_mode(TUYA_QSPI_NUM_E port, uint8_t *data, uint32_t data_len)
-{
-    bk_qspi_write_data_indirect_mode(port, data, data_len);
-
-    return OPRT_OK;
-}
-
  /**
   * @brief qspi read from addr by mapping mode
   * NOTE: 
@@ -724,7 +718,11 @@ OPERATE_RET tkl_qspi_send_data_indirect_mode(TUYA_QSPI_NUM_E port, uint8_t *data
      if ((data == NULL) || (port > TUYA_QSPI_NUM_MAX) || (size > MAX_QSPI_FIFO_SIZE)) {
          return OPRT_INVALID_PARM;
      }
- 
+     if (qspi_infos[port].qspi_enable != 1) {
+        bk_printf("qspi :%d not init \r\n", port);
+        return OPRT_COM_ERROR;
+    }
+
      if (size <= 256) {
         ret = qspi_hal_io_read(&s_tkl_qspi[port].hal, data, size);
         if (ret != BK_OK)
@@ -750,32 +748,57 @@ typedef union {
     CHAR_T ponit[4];
 }data_union_s;
 
-uint32_t swap_endian_24(uint32_t value) {
-    return ((value & 0xFF0000) >> 16) | 
-           (value & 0x00FF00)         |
-           ((value & 0x0000FF) << 16);
+static uint32_t line_data_get(TUYA_QSPI_WIRE_MODE_E cmdlines, uint8_t cmd_len, TUYA_QSPI_WIRE_MODE_E addrlines, uint8_t addr_len)
+{
+    int i = 0;
+    uint32_t clines = 0;
+    uint32_t alines = 0;
+    uint32_t data_get = 0x3;
+
+    if (addrlines == TUYA_QSPI_4WIRE) {
+        alines = 0x2;
+    }else if(addrlines == TUYA_QSPI_2WIRE) {
+        alines = 0x1;
+    }
+    
+    for (i = 0; i < addr_len; i ++) {
+        data_get = data_get << 2;
+        data_get |= alines;
+    }
+
+    if (cmdlines == TUYA_QSPI_4WIRE) {
+        clines = 0x2;
+    }else if(cmdlines == TUYA_QSPI_2WIRE) {
+        clines = 0x1;
+    }
+    for (i = 0; i < cmd_len; i ++) {
+        data_get = data_get << 2;
+        data_get |= clines;
+    }
+
+    return data_get;
 }
 
-uint16_t swap_endian_16(uint16_t value) {
-    return ((value & 0xFF00) >> 8) | ((value & 0x00FF) << 8);
-}
-
-// 32位大小端转换
-uint32_t swap_endian_32(uint32_t value) {
-    return ((value & 0xFF000000) >> 24) | 
-           ((value & 0x00FF0000) >> 8)  |
-           ((value & 0x0000FF00) << 8)  |
-           ((value & 0x000000FF) << 24);
-}
 
  OPERATE_RET tkl_qspi_comand(TUYA_QSPI_NUM_E port, TUYA_QSPI_CMD_T *command)
  {
-     bk_err_t ret = BK_OK;
-     data_union_s union_data;
-     qspi_cmd_t cmd = {0};
-     if ((command == NULL) || (port > TUYA_QSPI_NUM_MAX)) {
-         return OPRT_INVALID_PARM;
-     }
+    bk_err_t ret = BK_OK;
+    data_union_s union_data;
+    UINT32_T c_l = 0;
+    UINT32_T c_h = 0;
+
+    qspi_cmd_t cmd = {0};
+    if ((command == NULL) || (port > TUYA_QSPI_NUM_MAX)) {
+        return OPRT_INVALID_PARM;
+    }
+    if (qspi_infos[port].qspi_enable != 1) {
+        bk_printf("qspi :%d not init \r\n", port);
+        return OPRT_COM_ERROR;
+    }
+    if((command->data_size > 0x100) || (command->cmd_size > 4) || (command->addr_size > 4)){
+        return OPRT_INVALID_PARM;
+    }
+
 #if 0
      cmd.op = command->op;
      cmd.cmd = command->cmd;
@@ -815,51 +838,26 @@ uint32_t swap_endian_32(uint32_t value) {
         qspi_hal_set_cmd_c_h(&s_tkl_qspi[port].hal, 0);
         qspi_hal_set_cmd_c_cfg1(&s_tkl_qspi[port].hal, 0);
         qspi_hal_set_cmd_c_cfg2(&s_tkl_qspi[port].hal, 0);
-
-        if((command->cmd_size == 0) && (command->addr_size == 0) && (command->data_size != 0)){
-            qspi_hal_set_cmd_c_cfg1(&s_tkl_qspi[port].hal, 0x3);
-            qspi_hal_set_cmd_c_cfg2(&s_tkl_qspi[port].hal, command->data_size << 2);
-            qspi_hal_io_write(&s_tkl_qspi[port].hal, command->data, command->data_size);
-            qspi_hal_cmd_c_start(&s_tkl_qspi[port].hal);
-            qspi_hal_wait_cmd_done(&s_tkl_qspi[port].hal);
-            return OPRT_OK;
-        }
         // bk_printf("write addr:%x, ucmd:%x, addr_size:%d, cmd_size:%d, data_size:%d \r\n", uaddr, ucmd, command->addr_size, command->cmd_size, command->data_size);
-        if (command->data_size == 0) {                                             //1.cmd, 3.addr
-            if ((command->cmd_size == 1) && (command->addr_size == 3)) {  //all len = 4, DE, 00 60 00
-                qspi_hal_set_cmd_c_h(&s_tkl_qspi[port].hal, (swap_endian_24(uaddr) << 8 | ucmd)); // & 0xFF00FF
-                qspi_hal_set_cmd_c_cfg1(&s_tkl_qspi[port].hal,  (0x3 << ((command->data_size + 4) * 2)));  // 4字节
-            }else if ((command->cmd_size <= 4) && (command->addr_size == 0)){
-                qspi_hal_set_cmd_c_h(&s_tkl_qspi[port].hal, ucmd);
-                qspi_hal_set_cmd_c_cfg1(&s_tkl_qspi[port].hal,  0x3 << (command->cmd_size * 2));
-            }else if ((command->cmd_size == 1) && ((command->addr_size == 1) || (command->addr_size == 2))) {
-                qspi_hal_set_cmd_c_h(&s_tkl_qspi[port].hal, (((command->addr_size == 2) ? swap_endian_16(uaddr) : uaddr) << 8) | ucmd);
-                qspi_hal_set_cmd_c_cfg1(&s_tkl_qspi[port].hal,  0x3 << ((command->cmd_size + command->addr_size) * 2));
-            }else {
-                bk_printf("data 0 not adapt\r\n");
-            }
+
+        c_h = ucmd;
+        INT8_T off = 4 - command->cmd_size;  //cmd : 0 1 2
+        if(off > 0) {
+            c_h = (UINT32_T) (ucmd | (uaddr << command->cmd_size * 8));
+        }else {//command->cmd_size >= 4
+            bk_printf("cmd size is out of 4 \r\n");
+            return OPRT_INVALID_PARM;
         }
-#if 0
-        else if (command->data_size > 0 && command->data_size <= 4) {
-            uint32_t value = 0;
-            for (uint8_t i = 0; i < command->data_size; i++) {
-                value = value | (command->data[i] << (i * 8));
-            }
-            qspi_hal_set_cmd_c_l(&s_tkl_qspi[port].hal, value);
-            qspi_hal_set_cmd_c_h(&s_tkl_qspi[port].hal, (uaddr << 8 | ucmd));  // & 0xFF00FF
-            qspi_hal_set_cmd_c_cfg1(&s_tkl_qspi[port].hal, 0x3 << ((command->data_size + 4) * 2));
-            if (command->data_lines == TUYA_QSPI_1WIRE) {
-                qspi_hal_set_cmd_c_data_line(&s_tkl_qspi[port].hal, QSPI_1WIRE);
-            }else if (command->data_lines == TUYA_QSPI_2WIRE) {
-                qspi_hal_set_cmd_c_data_line(&s_tkl_qspi[port].hal, QSPI_2WIRE);
-            }else {
-                qspi_hal_set_cmd_c_data_line(&s_tkl_qspi[port].hal, QSPI_4WIRE);
-            }
+        qspi_hal_set_cmd_c_h(&s_tkl_qspi[port].hal, c_h);
+        if(command->cmd_size + command->addr_size > 4) {
+            off = command->cmd_size + command->addr_size - 4;
+            c_l = uaddr >> ((4 - off) * 8);
+            qspi_hal_set_cmd_c_l(&s_tkl_qspi[port].hal, c_l);
         }
-#endif
-        else if (command->data_size > 0 && command->data_size <= 0x100) {
-            qspi_hal_set_cmd_c_h(&s_tkl_qspi[port].hal, (uaddr << 8 | ucmd));   //  & 0xFF00FF
-            qspi_hal_set_cmd_c_cfg1(&s_tkl_qspi[port].hal, 0x300);
+        uint32_t date_lines = line_data_get(command->cmd_lines, command->cmd_size, command->addr_lines, command->addr_size);
+        qspi_hal_set_cmd_c_cfg1(&s_tkl_qspi[port].hal, date_lines); // all 0 line
+
+        if (command->data_size > 0 && command->data_size <= 0x100) {
             qspi_hal_set_cmd_c_cfg2(&s_tkl_qspi[port].hal, command->data_size << 2);
             qspi_hal_io_write(&s_tkl_qspi[port].hal, command->data, command->data_size);
             if (command->data_lines == TUYA_QSPI_1WIRE) {
@@ -869,14 +867,8 @@ uint32_t swap_endian_32(uint32_t value) {
             }else {
                 qspi_hal_set_cmd_c_data_line(&s_tkl_qspi[port].hal, QSPI_4WIRE);
             }
-            // qspi_hal_cmd_c_start(&s_tkl_qspi[port].hal);
-            // qspi_hal_wait_cmd_done(&s_tkl_qspi[port].hal);
-            // qspi_hal_set_cmd_c_cfg1(&s_tkl_qspi[port].hal, 0);
-            // qspi_hal_set_cmd_c_cfg2(&s_tkl_qspi[port].hal, 0);
-            // return BK_OK;
-        }
+        } 
         // down
-        // hw->cmd_c_cfg2.data_line = cmd->wire_mode;
         if (command->dummy_cycle) {
             qspi_hal_set_cmd_c_dummy_clock(&s_tkl_qspi[port].hal, command->dummy_cycle);
             qspi_hal_set_cmd_c_dummy_mode(&s_tkl_qspi[port].hal, 4);
@@ -895,66 +887,23 @@ uint32_t swap_endian_32(uint32_t value) {
         qspi_hal_set_cmd_d_cfg1(&s_tkl_qspi[port].hal, 0);
         qspi_hal_set_cmd_d_cfg2(&s_tkl_qspi[port].hal, 0);
 
-        if((command->cmd_size == 0) && (command->addr_size == 0) && (command->data_size != 0)){
-            qspi_hal_set_cmd_d_cfg1(&s_tkl_qspi[port].hal, 0x3);
-            qspi_hal_set_cmd_d_data_length(&s_tkl_qspi[port].hal, command->data_size);
-            qspi_hal_cmd_d_start(&s_tkl_qspi[port].hal);
-            qspi_hal_wait_cmd_done(&s_tkl_qspi[port].hal);
-            ret = qspi_hal_io_read(&s_tkl_qspi[port].hal, command->data, command->data_size);
-            if (ret != BK_OK)
-                return OPRT_COM_ERROR;
-            return OPRT_OK;
-        }
-
         // bk_printf("read addr:%x, ucmd:%x, addr_size:%d, cmd_size:%d, data_size:%d \r\n", uaddr, ucmd, command->addr_size, command->cmd_size, command->data_size);
-        if ((command->addr_size == 0) && (command->cmd_size == 1)) {
-            qspi_hal_set_cmd_d_l(&s_tkl_qspi[port].hal, 0);
-            qspi_hal_set_cmd_d_h(&s_tkl_qspi[port].hal, ucmd);
-            qspi_hal_set_cmd_d_cfg1(&s_tkl_qspi[port].hal, 0xc);
-            if (command->dummy_cycle) {
-                qspi_hal_set_cmd_d_dummy_mode(&s_tkl_qspi[port].hal, 4);
-            } else {
-                qspi_hal_set_cmd_d_dummy_mode(&s_tkl_qspi[port].hal, 0);
-            }
-        }else if ((command->addr_size == 1) && (command->cmd_size == 1)) {
-            qspi_hal_set_cmd_d_h(&s_tkl_qspi[port].hal, ucmd | (uaddr << 8));
-            qspi_hal_set_cmd_d_cfg1(&s_tkl_qspi[port].hal,  0x30);
-            if (command->dummy_cycle) {
-                qspi_hal_set_cmd_d_dummy_mode(&s_tkl_qspi[port].hal, 4);
-            } else {
-                qspi_hal_set_cmd_d_dummy_mode(&s_tkl_qspi[port].hal, 0);
-            }
-            // bk_printf("cmdl:%x, cmdh:%x \r\n", qspi_hal_get_cmd_d_l(&s_tkl_qspi[port].hal), qspi_hal_get_cmd_d_h(&s_tkl_qspi[port].hal));
-        }else if ((command->addr_size == 2) && (command->cmd_size == 1)) {
-            qspi_hal_set_cmd_d_h(&s_tkl_qspi[port].hal, (swap_endian_16(uaddr) << 8 | ucmd));
-            if(TUYA_QSPI_4WIRE == command->addr_lines) {
-                qspi_hal_set_cmd_d_cfg1(&s_tkl_qspi[port].hal, 0xe8);
-            } else {
-                qspi_hal_set_cmd_d_cfg1(&s_tkl_qspi[port].hal, 0xc0);
-            }
-            if (command->dummy_cycle) {
-                qspi_hal_set_cmd_d_dummy_mode(&s_tkl_qspi[port].hal, 3);
-            } else {
-                qspi_hal_set_cmd_d_dummy_mode(&s_tkl_qspi[port].hal, 0);
-            }
-        }else if ((command->addr_size == 3) && (command->cmd_size == 1)) {
-            qspi_hal_set_cmd_d_h(&s_tkl_qspi[port].hal, (swap_endian_24(uaddr) << 8 | ucmd));
-            // qspi_hal_set_cmd_d_cfg1(&s_tkl_qspi[port].hal,  (0x3 << ((command->data_size + 4) * 2)));  // 4字节
-            if(TUYA_QSPI_4WIRE == command->addr_lines) {
-                qspi_hal_set_cmd_d_cfg1(&s_tkl_qspi[port].hal, 0x300);
-            } else {
-                qspi_hal_set_cmd_d_cfg1(&s_tkl_qspi[port].hal, 0x300);
-            }
-
-            if (command->dummy_cycle) {
-                qspi_hal_set_cmd_d_dummy_mode(&s_tkl_qspi[port].hal, 4);
-            } else {
-                qspi_hal_set_cmd_d_dummy_mode(&s_tkl_qspi[port].hal, 0);
-            }
-        }else {
-            bk_printf("not support read:%x ,%x\r\n", command->addr_size, command->cmd_size);
-            return OPRT_COM_ERROR;
+        c_h = ucmd;
+        INT8_T off = 4 - command->cmd_size;  //cmd : 0 1 2
+        if(off > 0) {
+            c_h = (UINT32_T) (ucmd | (uaddr << command->cmd_size * 8));
+        }else {//command->cmd_size >= 4
+            bk_printf("cmd size is out of 4 \r\n");
+            return OPRT_INVALID_PARM;
         }
+        qspi_hal_set_cmd_d_h(&s_tkl_qspi[port].hal, c_h);
+        if(command->cmd_size + command->addr_size > 4) {
+            off = command->cmd_size + command->addr_size - 4;
+            c_l = uaddr >> ((4 - off) * 8);
+            qspi_hal_set_cmd_d_l(&s_tkl_qspi[port].hal, c_l);
+        }
+        uint32_t date_lines = line_data_get(command->cmd_lines, command->cmd_size, command->addr_lines, command->addr_size);
+        qspi_hal_set_cmd_d_cfg1(&s_tkl_qspi[port].hal, date_lines); // all 0 line
         // data len
         qspi_hal_set_cmd_d_data_length(&s_tkl_qspi[port].hal, command->data_size);
 
@@ -994,7 +943,9 @@ uint32_t swap_endian_32(uint32_t value) {
      if (port > TUYA_QSPI_NUM_MAX) {
          return OPRT_INVALID_PARM;
      }
- 
+     if (qspi_infos[port].is_send_use_dma != TRUE){
+        return OPRT_NOT_SUPPORTED;
+     }
      qspi_infos[port].cb = cb;
      qspi_infos[port].irq_enable = 0;
  
@@ -1012,6 +963,9 @@ uint32_t swap_endian_32(uint32_t value) {
  {
      if (port > TUYA_QSPI_NUM_MAX) {
          return OPRT_INVALID_PARM;
+     }
+     if (qspi_infos[port].is_send_use_dma != TRUE){
+        return OPRT_NOT_SUPPORTED;
      }
      bk_qspi_register_tx_isr(qspi_tx_callback_dispatch, NULL);
      bk_qspi_register_rx_isr(qspi_rx_callback_dispatch, NULL);
@@ -1033,6 +987,9 @@ uint32_t swap_endian_32(uint32_t value) {
      if (port > TUYA_QSPI_NUM_MAX) {
          return OPRT_INVALID_PARM;
      }
+     if (qspi_infos[port].is_send_use_dma != TRUE){
+        return OPRT_NOT_SUPPORTED;
+     }
      bk_qspi_register_tx_isr(NULL, NULL);
      bk_qspi_register_rx_isr(NULL, NULL);
  
@@ -1044,6 +1001,11 @@ uint32_t swap_endian_32(uint32_t value) {
 
 OPERATE_RET tkl_qspi_force_cs_pin(TUYA_QSPI_NUM_E port, TUYA_GPIO_LEVEL_E level)
 {
+    if (qspi_infos[port].qspi_enable != 1) {
+        bk_printf("qspi :%d not init \r\n", port);
+        return OPRT_COM_ERROR;
+    }
+
     if (level == TUYA_GPIO_LEVEL_LOW)
         qspi_hal_force_spi_cs_low_enable(&s_tkl_qspi[port].hal);
     else 

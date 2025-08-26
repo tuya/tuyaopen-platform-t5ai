@@ -29,7 +29,7 @@ extern void tuya_multimedia_power_on(void);
 
 static voice_handle_t g_voice_handle = NULL;
 static voice_read_handle_t g_voice_read_handle = NULL;
-typedef struct 
+typedef struct
 {
     UINT32_T mic_gain;
     UINT32_T spk_gain;
@@ -73,10 +73,10 @@ int voice_read_callback(unsigned char *data, unsigned int len, void *args)
     return len;
 }
 
-int tkl_ai_status(void) 
+int tkl_ai_status(void)
 {
     int status = 0;
-    bk_voice_get_status(g_voice_handle, (voice_sta_t*)&status); 
+    bk_voice_get_status(g_voice_handle, (voice_sta_t*)&status);
     return status;
 }
 /**
@@ -135,9 +135,9 @@ OPERATE_RET tkl_ai_init(TKL_AUDIO_CONFIG_T *pconfig, INT32_T count)
         }
         else
         {
-            bk_printf("only support 16k samplerate\r\n"); 
+            bk_printf("only support 16k samplerate\r\n");
         }
-        
+
         /* one farme size, 20ms */
         onboard_dual_mic_cfg.frame_size =
             sample_rate * CHANNEL_NUM * TIME_SAMPLE_MS / MS_PER_SEC; // one frame size(20ms)
@@ -193,7 +193,7 @@ OPERATE_RET tkl_ai_init(TKL_AUDIO_CONFIG_T *pconfig, INT32_T count)
             voice_cfg.aec_ver = 1;
             voice_cfg.aec_cfg.aec_alg_cfg = aec_alg_cfg;
         }
-        
+
     } else {
         // 否则直接使用用户传入的采样率
         sample_rate = pconfig->spk_sample? pconfig->spk_sample : TKL_AUDIO_SAMPLE_8K;

@@ -26,16 +26,18 @@ extern "C" {
  * @ingroup bk_api_adc
  * @{
  */
-#define BK_ERR_ADC_NOT_INIT              (BK_ERR_ADC_BASE - 1) /**< ADC driver not init */
-#define BK_ERR_ADC_INVALID_CHAN          (BK_ERR_ADC_BASE - 2) /**< ADC chan number is invalid */
-#define BK_ERR_ADC_BUSY			 (BK_ERR_ADC_BASE - 3) /**< ADC channel is busy */
-#define BK_ERR_ADC_INVALID_MODE	         (BK_ERR_ADC_BASE - 4) /**< ADC invalid mode */
-#define BK_ERR_ADC_CHAN_NOT_INIT         (BK_ERR_ADC_BASE - 5) /**< ADC chan not init */
-#define BK_ERR_ADC_INVALID_SCLK_MODE     (BK_ERR_ADC_BASE - 6) /**< ADC no such source clock */
-#define BK_ERR_ADC_INIT_MUTEX            (BK_ERR_ADC_BASE - 7) /**< ADC mutex lock */
-#define BK_ERR_ADC_GET_READ_SEMA         (BK_ERR_ADC_BASE - 8) /**< ADC get semaphore error */
-#define BK_ERR_ADC_INIT_READ_SEMA        (BK_ERR_ADC_BASE - 9) /**< ADC read data error */
-#define BK_ERR_ADC_SIZE_TOO_BIG          (BK_ERR_ADC_BASE - 10) /**< ADC read size is bigger than adc driver buffer size */
+
+#define BK_ERR_ADC_NOT_INIT                      (BK_ERR_ADC_BASE - 1) /**< ADC driver not init */
+#define BK_ERR_ADC_INVALID_CHAN                  (BK_ERR_ADC_BASE - 2) /**< ADC chan number is invalid */
+#define BK_ERR_ADC_BUSY                          (BK_ERR_ADC_BASE - 3) /**< ADC channel is busy */
+#define BK_ERR_ADC_INVALID_MODE                  (BK_ERR_ADC_BASE - 4) /**< ADC invalid mode */
+#define BK_ERR_ADC_CHAN_NOT_INIT                 (BK_ERR_ADC_BASE - 5) /**< ADC chan not init */
+#define BK_ERR_ADC_INVALID_SCLK_MODE             (BK_ERR_ADC_BASE - 6) /**< ADC no such source clock */
+#define BK_ERR_ADC_INIT_MUTEX                    (BK_ERR_ADC_BASE - 7) /**< ADC mutex lock */
+#define BK_ERR_ADC_GET_READ_SEMA                 (BK_ERR_ADC_BASE - 8) /**< ADC get semaphore error */
+#define BK_ERR_ADC_INIT_READ_SEMA                (BK_ERR_ADC_BASE - 9) /**< ADC read data error */
+#define BK_ERR_ADC_SIZE_TOO_BIG                  (BK_ERR_ADC_BASE - 10) /**< ADC read size is bigger than adc driver buffer size */
+#define BK_ERR_SARADC_WAIT_CB_NOT_REGISTER       (BK_ERR_ADC_BASE - 11) /**< ADC wait cb is not registered but tried to unregister */
 
 #ifndef CONFIG_ADC_BUF_SIZE
 #define CONFIG_ADC_BUF_SIZE              32
