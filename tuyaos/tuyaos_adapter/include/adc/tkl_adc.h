@@ -17,6 +17,16 @@
 extern "C" {
 #endif
 
+typedef enum {
+    ADC_DIV_RESIS,   // divider resistance for adc
+} ADC_IOCTL_CMD_E;
+
+// ADC_DIV_RESIS struct define, ref
+typedef struct {
+    TUYA_ADC_NUM_E    port;
+    UINT8_T     channel;
+    UINT8_T     data;
+} ADC_IOCTL_DIV_RESIS_T;
 
 /**
  * @brief tuya kernel adc init

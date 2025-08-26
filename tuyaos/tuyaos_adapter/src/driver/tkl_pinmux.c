@@ -154,8 +154,16 @@ INT32_T tkl_io_pin_to_func(UINT32_T pin, TUYA_PIN_TYPE_E pin_type)
                 port_channel = ADC_1;
             } else if (TUYA_IO_PIN_24 == pin) {
                 port_channel = ADC_2;
+            } else if (TUYA_IO_PIN_23 == pin) {
+                port_channel = ADC_3;
             } else if (TUYA_IO_PIN_28 == pin) {
                 port_channel = ADC_4;
+            } else if (TUYA_IO_PIN_22 == pin) {
+                port_channel = ADC_5;
+            } else if (TUYA_IO_PIN_21 == pin) {
+                port_channel = ADC_6;
+            } else if (TUYA_IO_PIN_8 == pin) {
+                port_channel = ADC_10;
             } else if (TUYA_IO_PIN_13 == pin) {
                 port_channel = ADC_15;
             } else if (TUYA_IO_PIN_12 == pin) {

@@ -46,11 +46,7 @@ OPERATE_RET tkl_qspi_deinit(TUYA_QSPI_NUM_E port);
  *
  * @return  OPRT_OK on success. Others on error, please refer to tuya_error_code.h
  */
- OPERATE_RET tkl_qspi_send(TUYA_QSPI_NUM_E port, VOID_T *data, UINT32_T size);
-
-OPERATE_RET tkl_qspi_send_cmd(TUYA_QSPI_NUM_E port, uint8_t cmd);
-
-OPERATE_RET tkl_qspi_send_data_indirect_mode(TUYA_QSPI_NUM_E port, uint8_t *data, uint32_t data_len);
+OPERATE_RET tkl_qspi_send(TUYA_QSPI_NUM_E port, VOID_T *data, UINT32_T size);
 
 /**
  * @brief qspi read from addr by mapping mode

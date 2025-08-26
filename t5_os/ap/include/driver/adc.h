@@ -385,6 +385,17 @@ bk_err_t bk_adc_set_mode(adc_mode_t adc_mode);
 adc_mode_t bk_adc_get_mode(void);
 
 /**
+ * @brief     calculate adc data
+ *
+ * This API get  volt
+ *
+ *
+ * @return
+ *    - UINT16: volt
+ */
+UINT16 bk_adc_data_calculate(UINT16 adc_val, UINT8 adc_chan);
+
+/**
  * @brief     only use for saradc
  */
 #if SARADC_AUTOTEST

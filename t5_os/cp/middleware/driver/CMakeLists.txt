@@ -67,6 +67,8 @@ set(srcs
 	saradc/cli_adc_api.c
 	saradc/cli_sadc_api.c
 	saradc/adc_cmd_api.c
+	saradc/saradc_server.c
+	saradc/saradc_notify.c
 	pwr_clk/pwr_clk.c
 	pwr_clk/rosc_32k.c
 	pwr_clk/rosc_ppm.c

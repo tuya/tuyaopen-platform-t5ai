@@ -106,6 +106,15 @@ typedef enum {
 } adc_saturate_mode_t;
 #endif
 
+typedef enum {
+	ADC_VOL_DIV_NONE = 0,
+	ADC_VOL_DIV_1,
+	ADC_VOL_DIV_2,
+	ADC_VOL_DIV_3,
+	ADC_VOL_DIV_4,
+	ADC_VOL_DIV_5,
+	ADC_VOL_DIV_7,
+} adc_vol_div_t;
 /**
  * @}
  */
@@ -129,6 +138,8 @@ typedef struct {
     uint32_t is_open;       /**< ADC channel is open or not*/
     uint16_t *output_buf;   /**< ADC channel output buffer*/
     int32_t output_buf_len; /**< ADC channel output buffer length*/
+	uint16_t is_hw_using_cali_result;
+    adc_vol_div_t vol_div;  /**< ADC channel attenuation coefficient */
 } adc_config_t;
 
 
