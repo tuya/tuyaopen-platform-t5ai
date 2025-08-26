@@ -60,7 +60,9 @@ typedef struct {
     OTA_TYPE_E ota_type;//0-diff; 1-seg_A; 2-seg_B
 }UG_PROC_S;
 
-
+extern OPERATE_RET bk_ota_get_file_init(uint32_t image_size);
+extern OPERATE_RET bk_ota_get_file_header(TUYA_OTA_DATA_T *pack);
+extern OPERATE_RET bk_ota_write_manage_info(void);
 /***********************************************************
 *************************variable define********************
 ***********************************************************/
@@ -145,12 +147,14 @@ OPERATE_RET tkl_ota_flash_erase(uint32_t addr, uint32_t size, void* arg)
     } else {
         real_size = (size%FLASH_SECTOR_SIZE) ? ((size/FLASH_SECTOR_SIZE) + 1)*FLASH_SECTOR_SIZE : size;
     }
-    //bk_printf("tkl_ota_flash_erase:%x %d, %d\r\n",address, param, real_size);
+    bk_printf("tkl_ota_flash_erase:%x %d, %d\r\n",address, param, real_size);
     tkl_watchdog_refresh();
     //tkl_flash_set_protect(FALSE);
     tkl_flash_erase(address, real_size);//这里的擦除的size 是否需要改为：off_size+len_v_to_p(size)
     //tkl_flash_set_protect(TRUE);
     tkl_watchdog_refresh();
+
+    bk_printf("tkl_ota_flash_erase:<<-\r\n");
 
     return OPRT_OK;
 
@@ -182,14 +186,14 @@ OPERATE_RET tkl_ota_flash_write(uint32_t addr, uint8_t *buf, uint32_t len, void*
 {
     uint32_t param = *((uint32_t*)arg);
     static uint8_t last_data_cnt = 0;
-    //bk_printf("tkl_ota_flash_write:%x, %d, %d\r\n",addr,len, param);
+    bk_printf("tkl_ota_flash_write:%x, %d, %d\r\n",addr,len, param);
 
     if(param == FIRMWARE_AREA || param == LAST_WRITE_FIRMWARE) {//write firmware
         uint32_t off = 0;
         uint32_t encrypt_num = 0;
         uint32_t lcnt = len;
         uint32_t address = addr;
-        //bk_printf("last cnt:%d, len:%d\r\n",last_data_cnt, len);
+        bk_printf("last cnt:%d, len:%d\r\n",last_data_cnt, len);
         if(last_data_cnt) {
             if((lcnt + last_data_cnt) >= 32) {
                 memcpy(tbuf+last_data_cnt, buf, 32-last_data_cnt);
@@ -299,7 +303,7 @@ OPERATE_RET tkl_ota_start_notify_with_data(UINT_T image_size, TUYA_OTA_TYPE_E ty
 
     return 0;
 
-    //bk_printf("_ota_start_notify:%d, %d, %d, %d\r\n",type, ug_proc->bin_len, ug_proc->ota_type,ug_proc->stat);
+    bk_printf("_ota_start_notify:%d, %d, %d, %d\r\n",type, ug_proc->bin_len, ug_proc->ota_type,ug_proc->stat);
 }
 
 /**
@@ -336,9 +340,15 @@ OPERATE_RET tkl_ota_start_notify(UINT_T image_size, TUYA_OTA_TYPE_E type, TUYA_O
         ug_proc->stat = UGS_RECV_IMG_DATA_B;
     }
 
+    OPERATE_RET ret = bk_ota_get_file_init(image_size);
+    if(ret != OPRT_OK) {
+        return ret;
+    }
+
+    bk_printf("_ota_start_notify:%d, %d, %d, %d\r\n",type, ug_proc->bin_len, ug_proc->ota_type,ug_proc->stat);
+
     return 0;
 
-    //bk_printf("_ota_start_notify:%d, %d, %d, %d\r\n",type, ug_proc->bin_len, ug_proc->ota_type,ug_proc->stat);
 }
 
 
@@ -354,6 +364,8 @@ OPERATE_RET tkl_ota_start_notify(UINT_T image_size, TUYA_OTA_TYPE_E type, TUYA_O
 */
 OPERATE_RET tkl_ota_data_process(TUYA_OTA_DATA_T *pack, UINT_T* remain_len)
 {
+    static uint32_t write_addr = 0;
+
     if(ug_proc == NULL) {
         bk_printf("ota don't start or start err,process error!\r\n");
         return OPRT_COM_ERROR;
@@ -362,7 +374,7 @@ OPERATE_RET tkl_ota_data_process(TUYA_OTA_DATA_T *pack, UINT_T* remain_len)
     if(ug_proc->ota_type == TYPE_SEG_A)
         return -1;
 
-    //bk_printf("ug_proc->stat:%d\r\n",ug_proc->stat);
+    bk_printf("ug_proc->stat:%d\r\n",ug_proc->stat);
     if(ug_proc->stat == UGS_RECV_IMG_DATA_B) {
         if(!tkl_fist_flag) {
             tkl_fist_flag = 1;
@@ -371,7 +383,7 @@ OPERATE_RET tkl_ota_data_process(TUYA_OTA_DATA_T *pack, UINT_T* remain_len)
             UCHAR_T *temp_buf = NULL;
             UINT_T off_size = BK_ADDR_CHANGE(pack->start_addr, TO_PHYSICS) % FLASH_SECTOR_SIZE;
             UINT_T address = BK_ADDR_CHANGE(pack->start_addr, TO_PHYSICS) - off_size;
-            //bk_printf("off_size:%x,%x,%x\r\n",off_size, address, pack->start_addr);
+            bk_printf("off_size:%x,%x,%x\r\n",off_size, address, pack->start_addr);
             if(off_size != 0) {
                 temp_buf = (UCHAR_T *) tkl_system_malloc(off_size);
                 if(NULL == temp_buf) {
@@ -401,14 +413,14 @@ OPERATE_RET tkl_ota_data_process(TUYA_OTA_DATA_T *pack, UINT_T* remain_len)
             flash_area = LAST_WRITE_FIRMWARE;
         }
 
-        //bk_printf("start_addr:%x\r\n",pack->start_addr);
+        bk_printf("start_addr:%x\r\n",pack->start_addr);
         tkl_ota_flash_write(pack->start_addr, pack->data, pack->len, (VOID *)&flash_area);
         ug_proc->recv_data_cnt += pack->len;
         *remain_len = 0;
 
         if(flash_area == LAST_WRITE_FIRMWARE) {
             flash_crc32 = hash_crc32i_finish(flash_crc32);
-            //bk_printf("crc:%x, %x, %x, %x\r\n",pack->start_addr, pack->len, ug_proc->bin_len, pack->start_addr + pack->len - ug_proc->bin_len);
+            bk_printf("crc:%x, %x, %x, %x\r\n",pack->start_addr, pack->len, ug_proc->bin_len, pack->start_addr + pack->len - ug_proc->bin_len);
             UINT_T result_crc32 = _flash_crc32_cal(pack->start_addr + pack->len - ug_proc->bin_len, ug_proc->bin_len);
             if(result_crc32 != flash_crc32) {
                 bk_printf("Area B crc32 err: %x, %x\r\n", result_crc32, flash_crc32);
@@ -419,10 +431,20 @@ OPERATE_RET tkl_ota_data_process(TUYA_OTA_DATA_T *pack, UINT_T* remain_len)
         if(!tkl_fist_flag) {
             tkl_fist_flag = 1;
             flash_area = PATCH_AREA;
+
+            OPERATE_RET ret = bk_ota_get_file_header(pack);
+            if(ret != OPRT_OK) {
+                *remain_len = pack->len;
+                return ret;
+            }
+
             tkl_ota_flash_erase(pack->start_addr, ug_proc->bin_len, (VOID *)&flash_area);
+            write_addr = pack->start_addr;
         }
         flash_area = PATCH_AREA;
-        tkl_ota_flash_write(pack->start_addr, pack->data, pack->len, (VOID *)&flash_area);
+        tkl_ota_flash_write(write_addr, pack->data, pack->len, (VOID *)&flash_area);
+        write_addr += pack->len;
+        *remain_len = 0;
     }
 
     return OPRT_OK;
@@ -438,6 +460,13 @@ OPERATE_RET tkl_ota_data_process(TUYA_OTA_DATA_T *pack, UINT_T* remain_len)
 OPERATE_RET tkl_ota_end_notify(BOOL_T reset)
 {
     tkl_fist_flag = 0;
+
+    bk_ota_write_manage_info();
+
+    if(reset) {
+        tkl_system_reset();
+    }
+
     return OPRT_OK;
 }
 
