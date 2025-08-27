@@ -38,22 +38,22 @@ extern void stop_cpu1_core(void);
 #if CONFIG_TOUCH
 void cli_pm_touch_callback(void *param)
 {
-	if(s_cli_sleep_mode == PM_MODE_DEEP_SLEEP)//when wakeup from deep sleep, all thing initial
-	{
-		bk_pm_sleep_mode_set(PM_MODE_DEFAULT);
-	}
-	else if(s_cli_sleep_mode == PM_MODE_LOW_VOLTAGE)
-	{
-		bk_pm_sleep_mode_set(PM_MODE_DEFAULT);
-		bk_pm_module_vote_sleep_ctrl(PM_SLEEP_MODULE_NAME_APP,0x0,0x0);
-	}
-	else
-	{
-		bk_pm_sleep_mode_set(PM_MODE_DEFAULT);
-		bk_pm_module_vote_sleep_ctrl(s_pm_vote1,0x0,0x0);
-		bk_pm_module_vote_sleep_ctrl(s_pm_vote2,0x0,0x0);
-		bk_pm_module_vote_sleep_ctrl(s_pm_vote3,0x0,0x0);
-	}
+	// if(s_cli_sleep_mode == PM_MODE_DEEP_SLEEP)//when wakeup from deep sleep, all thing initial
+	// {
+	// 	bk_pm_sleep_mode_set(PM_MODE_DEFAULT);
+	// }
+	// else if(s_cli_sleep_mode == PM_MODE_LOW_VOLTAGE)
+	// {
+	// 	bk_pm_sleep_mode_set(PM_MODE_DEFAULT);
+	// 	bk_pm_module_vote_sleep_ctrl(PM_SLEEP_MODULE_NAME_APP,0x0,0x0);
+	// }
+	// else
+	// {
+	// 	bk_pm_sleep_mode_set(PM_MODE_DEFAULT);
+	// 	bk_pm_module_vote_sleep_ctrl(s_pm_vote1,0x0,0x0);
+	// 	bk_pm_module_vote_sleep_ctrl(s_pm_vote2,0x0,0x0);
+	// 	bk_pm_module_vote_sleep_ctrl(s_pm_vote3,0x0,0x0);
+	// }
 	BK_LOGD(NULL, "cli_pm_touch_callback[%d]\r\n",bk_pm_exit_low_vol_wakeup_source_get());
 }
 #endif

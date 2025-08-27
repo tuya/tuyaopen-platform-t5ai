@@ -37,6 +37,7 @@ set(incs
     "include/qspi"
     "include/system"
     "include/timer"
+    "include/touch"
     "include/uart"
     "include/utilities/include"
     "include/vad"
@@ -116,6 +117,7 @@ if ("${CONFIG_CPU_INDEX}" STREQUAL "1")
         src/driver/tkl_gpio.c
         src/driver/tkl_i2c.c
         src/driver/tkl_timer.c
+        src/driver/tkl_touch.c
         # src/driver/tkl_wired.c
         src/driver/tkl_i2s.c
         src/driver/tkl_dma2d.c
