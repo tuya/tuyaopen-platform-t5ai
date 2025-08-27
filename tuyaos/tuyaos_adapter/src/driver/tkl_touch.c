@@ -19,43 +19,43 @@
 *************************micro define***********************
 ***********************************************************/
 
-#define FAST_RESPONSE_K 16 /* 快速响应IIR参数 */
-#define FAST_RESPONSE_N 12 /* 快速响应权重 */
-#define SLOW_RESPONSE_K 64 /* 慢速响应IIR参数 */
-#define SLOW_RESPONSE_N 4  /* 慢速响应权重 */
-#define GET_DATA_COUNT  5  /* init baseline get raw data count */
+#define FAST_RESPONSE_K 16 /* Fast response IIR parameter */
+#define FAST_RESPONSE_N 12 /* Fast response weight */
+#define SLOW_RESPONSE_K 64 /* Slow response IIR parameter */
+#define SLOW_RESPONSE_N 4  /* Slow response weight */
+#define GET_DATA_COUNT  5  /* Init baseline get raw data count */
 
-#define UPDATE_BASELINE_MAX 3    /* 更新基线计数最大次数 */
-#define SNR                 0.8  /* 信噪比 */
-#define CHANGE_THRESHOLD    0.6f /* 变化检测阈值 */
-#define BUF_SIZE            16   /* 减小缓冲区提高响应速度 */
+#define UPDATE_BASELINE_MAX 3    /* Maximum baseline update count */
+#define SNR                 0.8  /* Signal-to-noise ratio */
+#define CHANGE_THRESHOLD    0.6f /* Change detection threshold */
+#define BUF_SIZE            16   /* Reduce buffer size to improve response speed */
 
-#define THRESHOLD_TOUCH_ON  0.6f /* 触摸检测阈值 */
-#define THRESHOLD_TOUCH_OFF 0.5f /* 触摸释放阈值 (滞回) */
-#define THRESHOLD_VAR       0.3f /* 方差阈值 */
+#define THRESHOLD_TOUCH_ON  0.6f /* Touch detection threshold */
+#define THRESHOLD_TOUCH_OFF 0.5f /* Touch release threshold (hysteresis) */
+#define THRESHOLD_VAR       0.3f /* Variance threshold */
 
 #define DEBUG_ENABLE            0
 #define TOUCH_SAMPLE_TIME       20
-#define TOUCH_LONG_PRESSED_TIME 2000 /* 长按阈值时间 ms */ 
+#define TOUCH_LONG_PRESSED_TIME 2000 /* Long press threshold time ms */ 
 /***********************************************************
 ***********************variable define**********************
 ***********************************************************/
-// 内部回调函数类型
+// Internal callback function type
 typedef struct {
     TUYA_TOUCH_CALLBACK callback;
     VOID *arg;
 } touch_callback_t;
 
-// 触摸通道状态结构体
+// Touch channel state structure
 typedef struct {
     BOOL_T enabled;
     UINT32_T calibration_value;
     TUYA_TOUCH_DETECT_RANGE_E detect_range;
 } touch_channel_state_t;
 
-// 为每个通道定义独立的状态变量
+// Define independent state variables for each channel
 typedef struct {
-    UINT8_T touch_state; // 0: 未触摸, 1: 触摸
+    UINT8_T touch_state; // 0: Not touched, 1: Touched
     UINT8_T touch_flag;
     float baseline;
     float raw_buf[BUF_SIZE];
@@ -64,11 +64,11 @@ typedef struct {
     UINT8_T buf_index;
 } touch_channel_data_t;
 
-// 为每个通道维护独立的按键状态
+// Maintain independent key states for each channel
 typedef struct {
-    UINT8_T key_state;      // 当前按键状态
-    UINT8_T last_key_state; // 上一次按键状态
-    UINT32_T press_count;   // 按下计数器
+    UINT8_T key_state;      // Current key state
+    UINT8_T last_key_state; // Last key state
+    UINT32_T press_count;   // Press counter
 } key_state_t;
 
 static touch_callback_t touch_callbacks[TUYA_TOUCH_CHANNEL_MAX] = {0};
@@ -100,19 +100,19 @@ void touch_parameter_init(UINT32_T channel_mask)
     UINT8_T i = 0;
     float raw_data[GET_DATA_COUNT] = {0};
 
-    // 多次采样获得稳定基线
+    // Multiple sampling to obtain stable baseline
     while (i < GET_DATA_COUNT) {
         tkl_touch_get_single_calibration_value(channel_mask, &raw_data[i++]);
-        rtos_thread_msleep(10); // 短暂延时确保采样稳定
+        rtos_thread_msleep(10); // Short delay to ensure sampling stability
     }
 
-    /* 初始化基线和缓冲区 */
+    /* Initialize baseline and buffers */
     for (i = 0; i < TUYA_TOUCH_CHANNEL_MAX; i++) {
         if (channel_mask & (1 << i)) {
             float init_baseline = get_avg_value(raw_data, GET_DATA_COUNT);
             channel_data[i].baseline = init_baseline;
 
-            // 初始化缓冲区
+            // Initialize buffers
             for (UINT8_T j = 0; j < BUF_SIZE; j++) {
                 channel_data[i].raw_buf[j] = init_baseline;
                 channel_data[i].filtered_buf[j] = init_baseline;
@@ -133,30 +133,30 @@ UINT8_T __touch_status_process(UINT32_T touch_id)
     static float raw_value, filtered_value;
     static double variance_value_raw;
     
-    // 确保touch_id在有效范围内
+    // Ensure touch_id is within valid range
     if (touch_id >= TUYA_TOUCH_CHANNEL_MAX) {
         return 0;
     }
 
-    // 1、读取原始数据
+    // 1. Read raw data
     tkl_touch_get_single_calibration_value(1 << touch_id, &raw_value);
 
-    // 环形缓冲区索引更新
+    // Circular buffer index update
     channel_data[touch_id].buf_index = (channel_data[touch_id].buf_index + 1) % BUF_SIZE;
     channel_data[touch_id].raw_buf[channel_data[touch_id].buf_index] = raw_value;
 
-    // 计算原始数据方差判断信号稳定性
+    // Calculate raw data variance to determine signal stability
     variance_value_raw = get_variance_value(channel_data[touch_id].raw_buf, BUF_SIZE);
 
-    // 使用方波滤波算法
+    // Use square wave filtering algorithm
     filtered_value = get_square_wave_filter(raw_value, channel_data[touch_id].baseline, touch_id);
 
-    // 触摸状态检测 - 使用滞回比较器避免抖动
+    // Touch state detection - Use hysteresis comparator to avoid jitter
     float temp = filtered_value - channel_data[touch_id].baseline;
     float touch_diff = median_value[channel_data[touch_id].buf_index] - channel_data[touch_id].baseline;
     touch_diff = temp > touch_diff ? temp : touch_diff;
     if (channel_data[touch_id].touch_state == 0) {
-        // 当前未触摸状态，检测触摸
+        // Currently not touched, detect touch
         if (touch_diff > THRESHOLD_TOUCH_ON) {
             channel_data[touch_id].touch_state = 1;
             channel_data[touch_id].touch_flag = 1;
@@ -167,14 +167,14 @@ UINT8_T __touch_status_process(UINT32_T touch_id)
             // get_adaptive_baseline(filtered_value, channel_data[touch_id].baseline, 2);
             channel_data[touch_id].baseline = filtered_value;
         } else {
-            // 未触摸时缓慢更新基线
+            // Slowly update baseline when not touched
             if (variance_value_raw < THRESHOLD_VAR) {
                 channel_data[touch_id].baseline =
                 get_adaptive_baseline(filtered_value, channel_data[touch_id].baseline, 1);
             }
         }
     } else {
-        // 当前触摸状态，检测释放
+        // Currently touched, detect release
         if (touch_diff < THRESHOLD_TOUCH_OFF) {
             channel_data[touch_id].touch_state = 0;
             channel_data[touch_id].touch_flag = 0;
@@ -182,7 +182,7 @@ UINT8_T __touch_status_process(UINT32_T touch_id)
             get_adaptive_baseline(filtered_value, channel_data[touch_id].baseline, 2);
         } else {
             get_adaptive_baseline(filtered_value, channel_data[touch_id].baseline, 0);
-            rt = 1; // 持续触摸
+            rt = 1; // Continuous touch
         }
     }
 
@@ -198,7 +198,7 @@ UINT8_T __touch_status_process(UINT32_T touch_id)
 }
 
 
-// 内部中断处理函数
+// Internal interrupt handler function
 static void __tkl_touch_isr(void *param)
 {
     bk_touch_clear_int(0xFFFF);
@@ -206,7 +206,7 @@ static void __tkl_touch_isr(void *param)
     UINT32_T channel = (UINT32_T)param;
     UINT32_T int_status = 0;
 
-    // 获取中断状态
+    // Get interrupt status
     int_status = bk_touch_get_int_status();
     PR_DEBUG("Touch interrupt: channel=%d, status=0x%x", channel, int_status);
 
@@ -224,7 +224,7 @@ static void __tkl_touch_isr(void *param)
 int count_set_bits(uint32_t n) {
     int count = 0;
     while (n) {
-        n &= n - 1;  // 清除最低位的 1
+        n &= n - 1;  // Clear the lowest bit of 1
         count++;
     }
     return count;
@@ -232,50 +232,50 @@ int count_set_bits(uint32_t n) {
 
 static void __tkl_touch_scan_thread(void)
 {
-    // 计算长按时间
+    // Calculate long press time
     UINT32_T long_press_threshold = TOUCH_LONG_PRESSED_TIME / TOUCH_SAMPLE_TIME / 4 / count_set_bits(current_enabled_channels);
 
     while (1) {
-        // 遍历所有启用的通道
+        // Traverse all enabled channels
         for (UINT8_T touch_id = 0; touch_id < TUYA_TOUCH_CHANNEL_MAX; touch_id++) {
-            // 检查通道是否启用
+            // Check if channel is enabled
             if (!(current_enabled_channels & (1 << touch_id))) {
                 continue;
             }
 
-            // 获取当前通道的触摸状态
+            // Get current channel touch status
             UINT8_T key = 0;
             if (__touch_status_process(touch_id)) {
                 key = 1;
             }
 
-            // 更新按键状态
+            // Update key state
             key_states[touch_id].key_state = key;
 
-            // 状态机处理
+            // State machine processing
             if (key_states[touch_id].last_key_state == 0 && key_states[touch_id].key_state == 1) {
-                // 按键按下开始计数
+                // Key press starts counting
                 key_states[touch_id].press_count = 0;
                 if (touch_callbacks[touch_id].callback != NULL) {
                         touch_callbacks[touch_id].callback(touch_id, TUYA_TOUCH_EVENT_DOWN,
                                                            touch_callbacks[touch_id].arg);
                 }
             } else if (key_states[touch_id].last_key_state == 1 && key_states[touch_id].key_state == 0) {
-                // 按键释放，判断是短按还是长按
+                // Key release, determine short press or long press
                 if (key_states[touch_id].press_count < long_press_threshold) {
-                    // 短按事件
+                    // Short press event
                     if (touch_callbacks[touch_id].callback != NULL) {
                         touch_callbacks[touch_id].callback(touch_id, TUYA_TOUCH_EVENT_UP,
                                                            touch_callbacks[touch_id].arg);
                     }
                 }
-                // 重置计数
+                // Reset count
                 key_states[touch_id].press_count = 0;
             } else if (key_states[touch_id].last_key_state == 1 && key_states[touch_id].key_state == 1) {
-                // 持续按下状态，检查是否达到长按阈值
+                // Continuous press state, check if long press threshold is reached
                 key_states[touch_id].press_count++;
                 if (key_states[touch_id].press_count == long_press_threshold) {
-                    // 长按事件
+                    // Long press event
                     if (touch_callbacks[touch_id].callback != NULL) {
                         touch_callbacks[touch_id].callback(touch_id, TUYA_TOUCH_EVENT_LONG_PRESS,
                                                            touch_callbacks[touch_id].arg);
@@ -283,11 +283,11 @@ static void __tkl_touch_scan_thread(void)
                 }
             }
 
-            // 保存当前状态作为下一次的上一次状态
+            // Save current state as last state for next iteration
             key_states[touch_id].last_key_state = key_states[touch_id].key_state;
         }
 
-        rtos_thread_msleep(TOUCH_SAMPLE_TIME); // 提高采样频率到50Hz
+        rtos_thread_msleep(TOUCH_SAMPLE_TIME); // Increase sampling frequency to 50Hz
     }
 }
 
@@ -304,13 +304,13 @@ OPERATE_RET tkl_touch_init(UINT32_T channel_mask, TUYA_TOUCH_CONFIG_T *cfg)
         return OPRT_OK;
     }
 
-    // 初始化GPIO
+    // Initialize GPIO
     bk_touch_gpio_init(channel_mask);
 
-    // 初始化滤波参数
+    // Initialize filter parameters
     touch_parameter_init(channel_mask);
 
-    // 初始化回调函数数组和通道状态
+    // Initialize callback function array and channel states
     for (channel = 0; channel < TUYA_TOUCH_CHANNEL_MAX; channel++) {
         touch_callbacks[channel].callback = NULL;
         touch_callbacks[channel].arg = NULL;
@@ -327,7 +327,7 @@ OPERATE_RET tkl_touch_init(UINT32_T channel_mask, TUYA_TOUCH_CONFIG_T *cfg)
     current_enabled_channels = channel_mask;
     touch_initialized = TRUE;
 
-    // 转换配置参数
+    // Convert configuration parameters
     switch (cfg->sensitivity_level) {
     case TUYA_TOUCH_SENSITIVITY_LEVEL_0:
         touch_config.sensitivity_level = TOUCH_SENSITIVITY_LEVLE_0;
@@ -388,7 +388,7 @@ OPERATE_RET tkl_touch_init(UINT32_T channel_mask, TUYA_TOUCH_CONFIG_T *cfg)
         return OPRT_INVALID_PARM;
     }
 
-    // 配置触摸参数
+    // Configure touch parameters
     bk_touch_config(&touch_config);
 #if (CONFIG_SOC_BK7236XX || CONFIG_SOC_BK7239XX || CONFIG_SOC_BK7286XX)
     bk_touch_set_test_mode(0, 0);
@@ -407,11 +407,11 @@ OPERATE_RET tkl_touch_deinit(UINT32_T channel_mask)
         return OPRT_OK;
     }
 
-    // 禁用中断和扫描模式
+    // Disable interrupt and scan mode
     bk_touch_int_enable(channel_mask, 0);
     bk_touch_scan_mode_enable(0);
 
-    // 清除回调函数和通道状态
+    // Clear callback functions and channel states
     for (channel = 0; channel < TUYA_TOUCH_CHANNEL_MAX; channel++) {
         if (channel_mask & (1 << channel)) {
             touch_callbacks[channel].callback = NULL;
@@ -421,7 +421,7 @@ OPERATE_RET tkl_touch_deinit(UINT32_T channel_mask)
         }
     }
 
-    // 禁用触摸通道
+    // Disable touch channels
     bk_touch_disable();
 
     current_enabled_channels &= ~channel_mask;
@@ -449,19 +449,19 @@ OPERATE_RET tkl_touch_register_callback(UINT32_T channel_mask, TUYA_TOUCH_CALLBA
 {
     UINT32_T channel;
 
-    // 注册扫描线程（只创建一次）
+    // Register scan thread (create only once)
     if (__tkl_touch_scan_thread_handle == NULL) {
         rtos_create_thread(&__tkl_touch_scan_thread_handle, BEKEN_DEFAULT_WORKER_PRIORITY, "touch_scan",
                            (beken_thread_function_t)__tkl_touch_scan_thread, 4096, NULL);
     }
 
-    // 注册触摸中断
+    // Register touch interrupt
     for (channel = 0; channel < TUYA_TOUCH_CHANNEL_MAX; channel++) {
         if (channel_mask & (1 << channel)) {
             touch_callbacks[channel].callback = callback;
             touch_callbacks[channel].arg = arg;
 
-            // 注册中断处理函数
+            // Register interrupt handler function
             bk_touch_register_touch_isr(1 << channel, __tkl_touch_isr, (void *)channel);
             bk_touch_int_enable(1 << channel, 1);
         }
@@ -609,12 +609,12 @@ OPERATE_RET tkl_touch_interrupt_enable(UINT32_T channel_mask, BOOL_T enable)
 }
 
 /**
- * @brief 获取通道检测范围
+ * @brief Get channel detection range
  *
- * @param[in] channel 通道号
- * @param[out] detect_range 检测范围
+ * @param[in] channel Channel number
+ * @param[out] detect_range Detection range
  *
- * @return OPRT_OK: 成功，其他: 失败
+ * @return OPRT_OK: Success, others: Failure
  */
 OPERATE_RET tkl_touch_get_channel_detect_range(UINT32_T channel, TUYA_TOUCH_DETECT_RANGE_E *detect_range)
 {
@@ -805,45 +805,45 @@ float get_iir_filter_value(float current_value, float last_value, UINT32_T k, UI
 }
 
 /**
- * @brief 方波滤波算法 - 快速响应触摸变化
+ * @brief Square wave filtering algorithm - Fast response to touch changes
  *
- * @param[in] raw_value: 原始数据
- * @param[in] baseline_value: 基线值
- * @param[in] touch_id: 触摸通道ID
- * @return 滤波后的值
+ * @param[in] raw_value: Raw data
+ * @param[in] baseline_value: Baseline value
+ * @param[in] touch_id: Touch channel ID
+ * @return Filtered value
  */
 float get_square_wave_filter(float raw_value, float baseline_value, UINT8_T touch_id)
 {
     float change_rate = fabs(raw_value - channel_data[touch_id].last_filtered_value);
     float filtered_result;
     
-    // 根据变化率和当前状态选择滤波参数
+    // Select filter parameters based on change rate and current state
     if (change_rate > CHANGE_THRESHOLD) {
-        // 检测到快速变化，使用快速响应滤波
+        // Detect rapid changes, use fast response filtering
         if (channel_data[touch_id].touch_state == 0 && raw_value > baseline_value + THRESHOLD_TOUCH_ON) {
-            // 触摸上升沿 - 极快响应
+            // Touch rising edge - extremely fast response
             filtered_result = get_iir_filter_value(raw_value, channel_data[touch_id].last_filtered_value, 6, 5);
         } else if (channel_data[touch_id].touch_state == 1 && raw_value < baseline_value + THRESHOLD_TOUCH_OFF) {
-            // 触摸下降沿 - 极快响应
+            // Touch falling edge - extremely fast response
             filtered_result = get_iir_filter_value(raw_value, channel_data[touch_id].last_filtered_value, 6, 5);
         } else {
-            // 其他快速变化
+            // Other rapid changes
             filtered_result = get_iir_filter_value(raw_value, channel_data[touch_id].last_filtered_value,
                                                    FAST_RESPONSE_K, FAST_RESPONSE_N);
         }
     } else {
-        // 缓慢变化，使用慢速滤波保持稳定
+        // Slow changes, use slow filtering to maintain stability
         filtered_result = get_iir_filter_value(raw_value, channel_data[touch_id].last_filtered_value, SLOW_RESPONSE_K,
                                                SLOW_RESPONSE_N);
         
-        // 均值滤波
+        // Average filtering
         average_value[channel_data[touch_id].buf_index] = get_avg_value(channel_data[touch_id].filtered_buf, BUF_SIZE);
-        // 中值滤波
+        // Median filtering
         median_value[channel_data[touch_id].buf_index] = get_median_value(channel_data[touch_id].filtered_buf, BUF_SIZE);
 
         // filtered_result = median_value[channel_data[touch_id].buf_index];
         // if (channel_data[touch_id].touch_state == 1) {
-        //     // 中值滤波
+        //     // Median filtering
         //     median_value[channel_data[touch_id].buf_index] = get_median_value(channel_data[touch_id].filtered_buf, BUF_SIZE);
         //     filtered_result = median_value[channel_data[touch_id].buf_index];
 
@@ -857,12 +857,12 @@ float get_square_wave_filter(float raw_value, float baseline_value, UINT8_T touc
 }
 
 /**
- * @brief 自适应基线更新
+ * @brief Adaptive baseline update
  *
- * @param[in] current_value: 当前滤波值
- * @param[in] old_baseline: 旧基线值
- * @param[in] is_stable: 是否稳定状态
- * @return 新基线值
+ * @param[in] current_value: Current filtered value
+ * @param[in] old_baseline: Old baseline value
+ * @param[in] is_stable: Whether it is a stable state
+ * @return New baseline value
  */
 float get_adaptive_baseline(float current_value, float old_baseline, UINT8_T is_stable)
 {
@@ -873,10 +873,10 @@ float get_adaptive_baseline(float current_value, float old_baseline, UINT8_T is_
         return get_iir_filter_value(current_value, old_baseline, 8, 6);
     }
     else if (is_stable == 1) {
-        // 稳定状态下缓慢更新基线
+        // Slowly update baseline in stable state
         return get_iir_filter_value(current_value, old_baseline, 256, 1);
     } else {
-        // 不稳定状态下不更新基线
+        // Do not update baseline in unstable state
         return old_baseline;
     }
 }
