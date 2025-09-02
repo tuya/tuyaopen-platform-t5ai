@@ -16,10 +16,8 @@
 extern "C" {
 #endif
 
-// Touch channel count definition
 #define TUYA_TOUCH_CHANNEL_MAX 16
 
-// Touch detection threshold definitions
 typedef enum {
     TUYA_TOUCH_DETECT_THRESHOLD_0,  // Threshold 0
     TUYA_TOUCH_DETECT_THRESHOLD_1,  // Threshold 1
@@ -30,7 +28,6 @@ typedef enum {
     TUYA_TOUCH_DETECT_THRESHOLD_6,  // Threshold 6
 } TUYA_TOUCH_DETECT_THRESHOLD_E;
 
-// Touch detection range definitions
 typedef enum {
     TUYA_TOUCH_DETECT_RANGE_8PF,    // 8PF range
     TUYA_TOUCH_DETECT_RANGE_12PF,   // 12PF range
@@ -38,7 +35,6 @@ typedef enum {
     TUYA_TOUCH_DETECT_RANGE_27PF,   // 27PF range
 } TUYA_TOUCH_DETECT_RANGE_E;
 
-// Touch sensitivity level definitions
 typedef enum {
     TUYA_TOUCH_SENSITIVITY_LEVEL_0, // Sensitivity level 0
     TUYA_TOUCH_SENSITIVITY_LEVEL_1, // Sensitivity level 1
@@ -46,21 +42,26 @@ typedef enum {
     TUYA_TOUCH_SENSITIVITY_LEVEL_3, // Sensitivity level 3
 } TUYA_TOUCH_SENSITIVITY_LEVEL_E;
 
-// Touch event types
 typedef enum {
-    TUYA_TOUCH_EVENT_UP,           // Touch release event
-    TUYA_TOUCH_EVENT_DOWN,         // Touch press event
-    TUYA_TOUCH_EVENT_LONG_PRESS,   // Long press event
+    TUYA_TOUCH_EVENT_RELEASED,          // Touch release event
+    TUYA_TOUCH_EVENT_PRESSED,           // Touch press event
+    TUYA_TOUCH_EVENT_LONG_PRESS,        // Long press event
 } TUYA_TOUCH_EVENT_E;
 
-// Touch configuration structure
+typedef struct {
+    float touch_static_noise_threshold;
+    float touch_filter_update_threshold;
+    float touch_detect_threshold;
+    float touch_variance_threshold;
+} TUYA_TOUCH_THRESHOLD_T;
+
 typedef struct {
     TUYA_TOUCH_SENSITIVITY_LEVEL_E sensitivity_level;  // Sensitivity level
     TUYA_TOUCH_DETECT_THRESHOLD_E  detect_threshold;   // Detection threshold
     TUYA_TOUCH_DETECT_RANGE_E      detect_range;       // Detection range
+    TUYA_TOUCH_THRESHOLD_T         threshold;          // threshold parameters
 } TUYA_TOUCH_CONFIG_T;
 
-// Touch event callback function type
 typedef VOID (*TUYA_TOUCH_CALLBACK)(UINT32_T channel, TUYA_TOUCH_EVENT_E event, VOID *arg);
 
 /**
@@ -114,11 +115,38 @@ OPERATE_RET tkl_touch_register_callback(UINT32_T channel_mask, TUYA_TOUCH_CALLBA
 /**
  * @brief Get calibration value
  * 
- * @param[out] value Calibration value, maximum 0x1FF
+ * @param[out] value Calibration value, the unit is pF
  * 
  * @return OPRT_OK: Success, others: Failure
  */
-OPERATE_RET tkl_touch_get_single_calibration_value(UINT32_T channel_mask, float *value);
+OPERATE_RET tkl_touch_get_single_calibration_value(UINT32_T touch_id, float *value);
+
+/**
+ * @brief Get single channel median filter value
+ * 
+ * @param[in] touch_id Channel number
+ * @param[out] value median filter value
+ * 
+ * @return OPRT_OK: Success, others: Failure
+ */
+OPERATE_RET tkl_touch_get_single_median_filter_value(UINT8_T touch_id, float *value);
+
+/**
+ * @brief Get single channel average filter value
+ * 
+ * @param[in] touch_id Channel number
+ * @param[out] value average filter value
+ * 
+ * @return OPRT_OK: Success, others: Failure
+ */
+OPERATE_RET tkl_touch_get_single_average_filter_value(UINT8_T touch_id, float *value);
+
+/**
+ * @brief Get filter update threshold
+ * 
+ * @return Filter update threshold
+ */
+float tkl_touch_get_filter_update_threshold();
 
 /**
  * @brief Enable touch channels
@@ -156,13 +184,6 @@ OPERATE_RET tkl_touch_clear_interrupt(UINT32_T channel_mask);
  * @return OPRT_OK: Success, others: Failure
  */
 OPERATE_RET tkl_touch_interrupt_enable(UINT32_T channel_mask, BOOL_T enable);
-
-void cli_touch_single_channel_calib_mode_test_cmd();
-void cli_touch_single_channel_manul_mode_test_cmd();
-void cli_touch_multi_channel_scan_mode_test_cmd();
-void cli_touch_adc_mode_test_cmd();
-void cli_touch_multi_channel_cyclic_calib_test_cmd();
-void cli_touch_single_channel_multi_calib_test_cmd();
 
 #ifdef __cplusplus
 }
