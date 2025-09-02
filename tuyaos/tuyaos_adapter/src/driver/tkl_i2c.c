@@ -22,6 +22,7 @@
 
 #include "tkl_gpio.h"
 #include "tkl_i2c.h"
+#include "tkl_mutex.h"
 
 /***********************************************************
 ************************macro define************************
@@ -92,6 +93,7 @@ typedef struct {
 typedef struct {
     UCHAR_T addr_width;
     UCHAR_T delay_us;
+    TKL_MUTEX_HANDLE mutex;
 } SR_I2C_CONFIG_T;
 
 /***********************************************************
@@ -284,9 +286,8 @@ static BOOL_T __sw_i2c_get_ack(SR_I2C_GPIO_T i2c_pin)
     I2C_DELAY(1);
 
     while (I2C_SDA_READ()) {
-        if (timeout_count >= 500000) {
+        if (timeout_count >= 100) {
             __sw_i2c_stop(i2c_pin);
-            bk_printf("wait ack timeout %d\r\n", I2C_SDA_READ());
             return FALSE;
         }
         I2C_DELAY(10);
@@ -526,7 +527,16 @@ OPERATE_RET tkl_i2c_init(UCHAR_T port, CONST TUYA_IIC_BASE_CFG_T *cfg)
         return OPRT_NOT_SUPPORTED;
     }
 
+    if (NULL == sg_i2c_cfg[port].mutex) {
+        if (tkl_mutex_create_init(&sg_i2c_cfg[port].mutex) != OPRT_OK) {
+            bk_printf("tkl_i2c[%d] mutex init fail", port);
+            return OPRT_MALLOC_FAILED;
+        }
+    }
+
+    tkl_mutex_lock(sg_i2c_cfg[port].mutex);
     __sw_i2c_init(sg_i2c_pin[port]);
+    tkl_mutex_unlock(sg_i2c_cfg[port].mutex);
 
     return OPRT_OK;
 }
@@ -540,7 +550,8 @@ OPERATE_RET tkl_i2c_init(UCHAR_T port, CONST TUYA_IIC_BASE_CFG_T *cfg)
  */
 OPERATE_RET tkl_i2c_deinit(UCHAR_T port)
 {
-    if (port >= TUYA_I2C_NUM_MAX) {
+    if (port >= TUYA_I2C_NUM_MAX || NULL == sg_i2c_cfg[port].mutex) {
+        bk_printf("i2c port %d is invalid\n", port);
         return OPRT_INVALID_PARM;
     }
 
@@ -548,6 +559,9 @@ OPERATE_RET tkl_i2c_deinit(UCHAR_T port)
     tkl_gpio_deinit(sg_i2c_pin[port].sda);
     sg_i2c_pin[port].scl = TUYA_GPIO_NUM_MAX;
     sg_i2c_pin[port].sda = TUYA_GPIO_NUM_MAX;
+
+    tkl_mutex_release(sg_i2c_cfg[port].mutex);
+    sg_i2c_cfg[port].mutex = NULL;
 
     return OPRT_OK;
 }
@@ -604,15 +618,17 @@ OPERATE_RET tkl_i2c_master_send(TUYA_I2C_NUM_E port, USHORT_T dev_addr, CONST VO
 {
     int ret;
 
-    if (port >= TUYA_I2C_NUM_MAX) {
+    if (port >= TUYA_I2C_NUM_MAX || NULL == sg_i2c_cfg[port].mutex) {
         bk_printf("i2c port %d is invalid\n", port);
         return OPRT_INVALID_PARM;
     }
 
     // bk_printf("iic write %02x %02x %d\n", dev_addr, *(uint8_t *)data, size);
+    tkl_mutex_lock(sg_i2c_cfg[port].mutex);
     delay_us = sg_i2c_cfg[port].delay_us;
     ret = __sw_i2c_write_data(port, dev_addr, data, (UCHAR_T)size, xfer_pending);
-    if(ret < 0)
+    tkl_mutex_unlock(sg_i2c_cfg[port].mutex);
+    if (ret < 0)
         return OPRT_COM_ERROR;
 
     return OPRT_OK;
@@ -628,7 +644,8 @@ OPERATE_RET tkl_i2c_master_send(TUYA_I2C_NUM_E port, USHORT_T dev_addr, CONST VO
  * @param[in] xfer_pending: TRUE : not send stop condition, FALSE : send stop condition.
  * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
  */
-OPERATE_RET tkl_i2c_master_receive(TUYA_I2C_NUM_E port, USHORT_T dev_addr, VOID_T *data, UINT_T size, BOOL_T xfer_pending)
+OPERATE_RET tkl_i2c_master_receive(TUYA_I2C_NUM_E port, USHORT_T dev_addr, VOID_T *data, UINT_T size,
+                                   BOOL_T xfer_pending)
 {
     int ret;
     if (port >= TUYA_I2C_NUM_MAX) {
@@ -636,9 +653,11 @@ OPERATE_RET tkl_i2c_master_receive(TUYA_I2C_NUM_E port, USHORT_T dev_addr, VOID_
         return OPRT_INVALID_PARM;
     }
 
+    tkl_mutex_lock(sg_i2c_cfg[port].mutex);
     delay_us = sg_i2c_cfg[port].delay_us;
     ret = __sw_i2c_read_data(port, dev_addr, data, (UCHAR_T)size, xfer_pending);
-    if(ret < 0)
+    tkl_mutex_unlock(sg_i2c_cfg[port].mutex);
+    if (ret < 0)
         return OPRT_COM_ERROR;
 
     // bk_printf("iic read %02x %02x\n", dev_addr, *(uint8_t *)data);
