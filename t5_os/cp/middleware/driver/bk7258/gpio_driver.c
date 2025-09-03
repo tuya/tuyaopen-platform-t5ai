@@ -66,7 +66,7 @@ bk_err_t gpio_dev_map(gpio_id_t gpio_id, gpio_dev_t dev)
 
 	if (config == NULL)
 	{
-		GPIO_LOGW("GPIO%d not found in GPIO_DEFAULT_DEV_CONFIG table\r\n",gpio_id);
+		// GPIO_LOGW("GPIO%d not found in GPIO_DEFAULT_DEV_CONFIG table\r\n",gpio_id);
 		return BK_ERR_GPIO_INVALID_OPERATE;
 	}
 
@@ -94,7 +94,7 @@ bk_err_t gpio_dev_unmap(gpio_id_t gpio_id)
 
 	if (config == NULL)
 	{
-		GPIO_LOGW("GPIO%d not found in GPIO_DEFAULT_DEV_CONFIG table\r\n",gpio_id);
+		// GPIO_LOGW("GPIO%d not found in GPIO_DEFAULT_DEV_CONFIG table\r\n",gpio_id);
 		return BK_ERR_GPIO_INVALID_OPERATE;
 	}
 
@@ -361,7 +361,7 @@ bk_err_t gpio_check_dev_match(gpio_id_t gpio_id, gpio_dev_t dev)
 
 	if (config == NULL)
 	{
-		GPIO_LOGW("GPIO%d not found in GPIO_DEFAULT_DEV_CONFIG table\r\n",gpio_id);
+		// GPIO_LOGW("GPIO%d not found in GPIO_DEFAULT_DEV_CONFIG table\r\n",gpio_id);
 		return BK_ERR_GPIO_INVALID_OPERATE;
 	}
 
@@ -392,13 +392,13 @@ bk_err_t gpio_check_capacity_match(gpio_id_t gpio_id, uint8_t expect_capacity)
 
 	if (config == NULL)
 	{
-		GPIO_LOGW("GPIO%d not found in GPIO_DEFAULT_DEV_CONFIG table\r\n",gpio_id);
+		// GPIO_LOGW("GPIO%d not found in GPIO_DEFAULT_DEV_CONFIG table\r\n",gpio_id);
 		return BK_ERR_GPIO_INVALID_OPERATE;
 	}
 
 	if (config->driver_capacity != expect_capacity)
 	{
-		GPIO_LOGW("GPIO%d driver capacity mismatch, expect %d, but current is %d\r\n",gpio_id, expect_capacity, config->driver_capacity);
+		// GPIO_LOGW("GPIO%d driver capacity mismatch, expect %d, but current is %d\r\n",gpio_id, expect_capacity, config->driver_capacity);
 		return BK_ERR_GPIO_CONFIG_MISMATCH;
 	}
 

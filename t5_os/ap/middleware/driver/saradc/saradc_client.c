@@ -1059,7 +1059,7 @@ set_channel_exit:
 
 #if LOCAL_TRACE
 	if(ret_val != BK_OK)
-		BK_LOGI(TAG, "%s @%d, data=%d.\r\n", __FUNCTION__, line_num, ret);
+		// BK_LOGI(TAG, "%s @%d, data=%d.\r\n", __FUNCTION__, line_num, ret);
 #endif
 
 	return ret_val;

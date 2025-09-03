@@ -626,10 +626,10 @@ bk_err_t bk_lcd_qspi_quad_write_stops(qspi_id_t qspi_id)
     }
 
 
-    bk_printf("tkl_qspi_send size:%d,  dma_repeat_once_len:%d, is_send_use_dma:%d \r\n", size, qspi_infos[port].dma_repeat_once_len, qspi_infos[port].is_send_use_dma);
+    // bk_printf("tkl_qspi_send size:%d,  dma_repeat_once_len:%d, is_send_use_dma:%d \r\n", size, qspi_infos[port].dma_repeat_once_len, qspi_infos[port].is_send_use_dma);
     if ((size > 256) && (qspi_infos[port].dma_repeat_once_len == 0) && (qspi_infos[port].is_send_use_dma == TRUE)) {
         qspi_infos[port].dma_repeat_once_len = lcd_qspi_get_dma_repeat_once_len(size);
-        bk_printf("tkl dma_repeat_once_len = %d\r\n", qspi_infos[port].dma_repeat_once_len);
+        // bk_printf("tkl dma_repeat_once_len = %d\r\n", qspi_infos[port].dma_repeat_once_len);
         bk_dma_set_transfer_len(qspi_infos[port].lcd_qspi_dma_id, qspi_infos[port].dma_repeat_once_len);
         if (port == TUYA_QSPI_NUM_0) {
             dma_set_dst_pause_addr(qspi_infos[port].lcd_qspi_dma_id, LCD_QSPI0_DATA_ADDR + size);
