@@ -13,15 +13,17 @@ from tools.util import (
     copy_file, need_settarget, record_target,
     calc_md5sum, do_subprocess, get_system_name
 )
+from tools.download_toolchain import get_toolchain_package_info
 from tools.do_with_assets import do_with_assets
 
 
-def clean(build_root):
+def clean(build_root, toolchain_folder_path):
     '''
     make clean
     make clean -C ./bk_idk/
     '''
-    cmd = f"cd {build_root} && make clean"
+    cmd = f"export TUYA_TOOLCHAIN_PATH={toolchain_folder_path}; "
+    cmd += f"cd {build_root} && make clean"
     do_subprocess(cmd)
 
     pass
@@ -79,9 +81,10 @@ def setup_build(root, build_root, build_param_path, param_data):
     return True
 
 
-def build(build_root, target, app_name, app_ver) -> bool:
-    cmd = f"cd {build_root} && make {target} PROJECT=tuya_app"
-
+def build(build_root, toolchain_folder_path,
+          target, app_name, app_ver) -> bool:
+    cmd = f"export TUYA_TOOLCHAIN_PATH={toolchain_folder_path}; "
+    cmd += f"cd {build_root} && make {target} PROJECT=tuya_app"
     cmd += f" APP_NAME={app_name}"
     cmd += f" APP_VERSION={app_ver}"
     cmd += " -j"
@@ -93,26 +96,31 @@ def build(build_root, target, app_name, app_ver) -> bool:
         return False
     return True
 
+
 def create_ua_file(build_root, target, ua_bin_file):
     build_path = os.path.join(build_root, "build", target, "tuya_app")
     cp_bin = os.path.join(build_path, target, "app.bin")
     ap_bin = os.path.join(build_path, f"{target}_ap", "app.bin")
 
     project_path = os.path.join(build_root, "projects", "tuya_app")
-    partition_file = os.path.join(project_path, "partitions",\
+    partition_file = os.path.join(project_path, "partitions",
                                   target, "auto_partitions.csv")
-    create_ua_py = os.path.join(project_path, "tuya_scripts", "create_ua_file.py")
+    create_ua_py = os.path.join(project_path, "tuya_scripts",
+                                "create_ua_file.py")
 
-    cmd = f"python {create_ua_py} {partition_file} {cp_bin} {ap_bin}  --ua_file={ua_bin_file}"
+    cmd = f"python {create_ua_py} {partition_file} {cp_bin} {ap_bin}  \
+--ua_file={ua_bin_file}"
+
     if 0 != do_subprocess(cmd):
         print("Error: create_ua_file.py failed.")
         return False
 
     return True
 
+
 def get_section_offset(build_root, map_file, section_name):
-    get_section_offset_py = os.path.join(build_root, "projects", "tuya_app",\
-                                        "tuya_scripts", "get_map_section.py")
+    get_section_offset_py = os.path.join(build_root, "projects", "tuya_app",
+                                         "tuya_scripts", "get_map_section.py")
 
     try:
         result = subprocess.run(
@@ -129,28 +137,36 @@ def get_section_offset(build_root, map_file, section_name):
         print(f"错误: 未找到脚本 {get_section_offset_py}")
         return None
 
+
 def create_ug_file(build_root, target, ua_bin_file, ug_bin_file):
-    ap_map_file = os.path.join(build_root, "build", target, "tuya_app",\
+    ap_map_file = os.path.join(build_root, "build", target, "tuya_app",
                                f"{target}_ap", "app.map")
 
-    ap_ty_section_addr = get_section_offset(build_root, ap_map_file, "_ty_section_start")
-    ap_start_section_addr = get_section_offset(build_root, ap_map_file, "__vector_core0_table")
+    ap_ty_section_addr = get_section_offset(build_root, ap_map_file,
+                                            "_ty_section_start")
+    ap_start_section_addr = get_section_offset(build_root, ap_map_file,
+                                               "__vector_core0_table")
 
     # 1MB (1048576)
-    split_point = int(ap_ty_section_addr, 10) - int(ap_start_section_addr, 10) + 1048576
+    split_point = int(ap_ty_section_addr, 10) \
+        - int(ap_start_section_addr, 10) \
+        + 1048576
 
     print(f"ap_start_section_addr: {ap_start_section_addr}")
     print(f"ap_ty_section_addr: {ap_ty_section_addr}")
     print(f"split_point: {split_point}")
 
-    scripts_path = os.path.join(build_root, "projects", "tuya_app", "tuya_scripts")
-    ota_bin_tool  = os.path.join(scripts_path, "diff2ya")
+    scripts_path = os.path.join(build_root, "projects", "tuya_app",
+                                "tuya_scripts")
+    ota_bin_tool = os.path.join(scripts_path, "diff2ya")
     format_bin_py = os.path.join(scripts_path, "format_up_bin.py")
 
     bin_path = os.path.dirname(ug_bin_file)
     tmp_bin_file = os.path.join(bin_path, "tmp_ug_file.bin")
 
-    cmd = f"python {format_bin_py} {ua_bin_file} {tmp_bin_file} 6b8000 1000 0 1000 10D0 {split_point} -v"
+    cmd = f"python {format_bin_py} {ua_bin_file} {tmp_bin_file} \
+6b8000 1000 0 1000 10D0 {split_point} -v"
+
     if 0 != do_subprocess(cmd):
         print("Error: format bin failed.")
         return False
@@ -162,8 +178,10 @@ def create_ug_file(build_root, target, ua_bin_file, ug_bin_file):
 
     return True
 
+
 def copy_assets(build_root, target, param_data):
-    build_path = os.path.join(build_root, "build", target, "tuya_app", "package")
+    build_path = os.path.join(build_root, "build", target,
+                              "tuya_app", "package")
     app_all_bin = os.path.join(build_path, "all-app.bin")
     if not os.path.exists(app_all_bin):
         print(f"Error: Not found {app_all_bin}.")
@@ -196,7 +214,8 @@ def copy_assets(build_root, target, param_data):
 
 
 def do_with_compile(root, build_root, user_cmd,
-                    target, build_param_path, param_data):
+                    target, build_param_path, param_data,
+                    toolchain_folder_path):
     # Setup build
     if not setup_build(root, build_root, build_param_path, param_data):
         sys.exit(1)
@@ -205,14 +224,15 @@ def do_with_compile(root, build_root, user_cmd,
     app_target_file = os.path.join(build_root, ".app")
     app_name = param_data["CONFIG_PROJECT_NAME"]
     if "clean" == user_cmd or need_settarget(app_target_file, app_name):
-        clean(build_root)
+        clean(build_root, toolchain_folder_path)
         if "clean" == user_cmd:
             sys.exit(0)
 
     # build project
     record_target(app_target_file, app_name)
     app_ver = param_data["CONFIG_PROJECT_VERSION"]
-    if not build(build_root, target, app_name, app_ver):
+    if not build(build_root, toolchain_folder_path,
+                 target, app_name, app_ver):
         sys.exit(1)
     pass
 
@@ -236,9 +256,16 @@ def main():
     if not len(param_data):
         sys.exit(1)
 
-    if "linux" == get_system_name():
+    platform_root = os.path.abspath(os.path.join(root, ".."))
+    toolchain_root = os.path.join(platform_root, "tools")
+    toolchain_package_info = get_toolchain_package_info()
+    toolchain_folder = toolchain_package_info["folder"]
+    toolchain_folder_path = os.path.join(toolchain_root, toolchain_folder)
+
+    if "windows" != get_system_name():
         do_with_compile(root, build_root, user_cmd, target,
-                        build_param_path, param_data)
+                        build_param_path, param_data,
+                        toolchain_folder_path)
     else:
         do_with_assets(root, build_root, user_cmd,
                        target, param_data)
