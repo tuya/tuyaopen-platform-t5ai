@@ -110,7 +110,7 @@ static OPERATE_RET __ty_output_mode_to_bk_work_mode(TUYA_DVP_OUTPUT_MODE output_
             (*bk_work_mode) = H264_MODE;
             break;
         default:
-            PR_ERR("%s this device dont support mode(%d)\r\n", __func__, output_mode);
+            bk_printf("%s this device dont support mode(%d)\r\n", __func__, output_mode);
             return OPRT_NOT_SUPPORTED;
     }
 
@@ -225,7 +225,7 @@ static OPERATE_RET __dvp_yuv_buf_module_init(TUYA_DVP_BASE_CFG_T *base_cfg)
 
     if (g_dvp_module_manage.pingpong_buf == NULL)
     {
-        PR_ERR("%s malloc pingpong buf failed\r\n", __func__);
+        bk_printf("%s malloc pingpong buf failed\r\n", __func__);
         return OPRT_MALLOC_FAILED;
     }
 
@@ -235,7 +235,7 @@ init_yuv_buf:
     UINT8_T ret = bk_yuv_buf_init(&yuv_buf_config_cur);
 	if (ret != BK_OK)
 	{
-		PR_ERR("yuv_buf yuv mode init error\n");
+		bk_printf("yuv_buf yuv mode init error\n");
 		return OPRT_MALLOC_FAILED;
 	}
 
@@ -256,7 +256,7 @@ static OPERATE_RET __dvp_jpeg_module_init(TUYA_DVP_BASE_CFG_T *base_cfg)
     UINT8_T ret = bk_jpeg_enc_init(&jpeg_config_cur);
     if (ret != BK_OK)
     {
-        PR_ERR("jpeg init error\n");
+        bk_printf("jpeg init error\n");
         return OPRT_MALLOC_FAILED;
     }
 
@@ -289,14 +289,14 @@ static OPERATE_RET __dvp_encoder_output_dma_config(TUYA_DVP_BASE_CFG_T *base_cfg
     }
     if (coder_manage->out_channel >= DMA_ID_MAX)
     {
-        PR_ERR("malloc dma fail \r\n");
+        bk_printf("malloc dma fail \r\n");
         return OPRT_MALLOC_FAILED;
     }
 
     g_dvp_module_manage.encoded_frame = dvp_frame_assign_cb(g_dvp_module_manage.encoded_frame_fmt);
     if (g_dvp_module_manage.encoded_frame ==NULL)
     {
-        PR_ERR("%s, assign idle frame fail\r\n", __func__);
+        bk_printf("%s, assign idle frame fail\r\n", __func__);
         return OPRT_MALLOC_FAILED;
     }
     g_dvp_module_manage.encoded_frame->frame_fmt = g_dvp_module_manage.encoded_frame_fmt;
@@ -353,14 +353,14 @@ static OPERATE_RET __dvp_encoder_input_dma_config(TUYA_DVP_BASE_CFG_T *base_cfg)
     coder_manage->in_channel = bk_dma_alloc(DMA_DEV_DTCM);
     if (coder_manage->in_channel >= DMA_ID_MAX)
     {
-        PR_ERR("malloc dma fail \r\n");
+        bk_printf("malloc dma fail \r\n");
         return OPRT_MALLOC_FAILED;
     }
 
     g_dvp_module_manage.base_frame = dvp_frame_assign_cb(g_dvp_module_manage.base_frame_fmt);
     if (g_dvp_module_manage.base_frame == NULL)
     {
-        PR_ERR("%s, assign idle frame fail\r\n", __func__);
+        bk_printf("%s, assign idle frame fail\r\n", __func__);
         return OPRT_MALLOC_FAILED;
     }
 
@@ -403,7 +403,7 @@ static OPERATE_RET __dvp_yuv_mode_init(TUYA_DVP_BASE_CFG_T *base_cfg)
     g_dvp_module_manage.base_frame = dvp_frame_assign_cb(g_dvp_module_manage.base_frame_fmt);
     if (g_dvp_module_manage.base_frame == NULL)
     {
-        PR_ERR("%s, assign idle frame fail\r\n", __func__);
+        bk_printf("%s, assign idle frame fail\r\n", __func__);
         return OPRT_MALLOC_FAILED;
     }
 
@@ -552,7 +552,7 @@ static void __dvp_h264_eof_handler(h264_unit_t id, void *param)
     if (g_dvp_module_manage.encoded_frame == NULL
         || g_dvp_module_manage.encoded_frame->data == NULL)
     {
-        PR_ERR("g_dvp_module_manage->encode_frame NULL error\n");
+        bk_printf("g_dvp_module_manage->encode_frame NULL error\n");
         goto error;
     }
 
@@ -579,7 +579,7 @@ static void __dvp_h264_eof_handler(h264_unit_t id, void *param)
 
     if (real_length > CONFIG_H264_FRAME_SIZE - 0x20)
     {
-        PR_ERR("%s size over h264 buffer range, %d\r\n", __func__, real_length);
+        bk_printf("%s size over h264 buffer range, %d\r\n", __func__, real_length);
         g_dvp_module_manage.error_flag = true;
     }
 
@@ -594,7 +594,7 @@ static void __dvp_h264_eof_handler(h264_unit_t id, void *param)
     if (coder_manage->out_offset != real_length)
     {
         UINT32_T left_length = real_length - coder_manage->out_offset;
-        PR_INFO("%s size no match:%d-%d=%d\r\n", __func__, real_length, coder_manage->out_offset, left_length);
+        bk_printf("%s size no match:%d-%d=%d\r\n", __func__, real_length, coder_manage->out_offset, left_length);
         if (left_length != DVP_DMA_CACHE)
         {
             g_dvp_module_manage.error_flag = true;
@@ -693,7 +693,7 @@ static void __dvp_jpeg_eof_handler(h264_unit_t id, void *param)
     if (g_dvp_module_manage.encoded_frame == NULL
         || g_dvp_module_manage.encoded_frame->data == NULL)
     {
-        PR_ERR("g_dvp_module_manage->encode_frame NULL error\n");
+        bk_printf("g_dvp_module_manage->encode_frame NULL error\n");
         goto error;
     }
 
@@ -711,7 +711,7 @@ static void __dvp_jpeg_eof_handler(h264_unit_t id, void *param)
 
     if (coder_manage->out_offset != real_length)
     {
-        PR_ERR("%s size no match:%u-%u=%u\r\n", __func__, real_length, coder_manage->out_offset, real_length - coder_manage->out_offset);
+        bk_printf("%s size no match:%u-%u=%u\r\n", __func__, real_length, coder_manage->out_offset, real_length - coder_manage->out_offset);
     }
 
     coder_manage->out_offset = 0;
