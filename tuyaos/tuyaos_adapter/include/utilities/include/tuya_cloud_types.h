@@ -1516,20 +1516,21 @@ typedef enum {
 
 typedef struct
 {
-    UINT16_T frame_id;
-    UINT8_T is_frame_complete;
+    uint16_t frame_id;
+    uint8_t is_frame_complete;
     TUYA_FRAME_FMT_E frame_fmt;
-    UINT16_T width;
-	UINT16_T height;
-    UINT32_T data_len;
-    UINT8_T *data;
-    UINT32_T total_frame_len;
+    uint16_t width;
+	uint16_t height;
+    uint32_t data_len;
+    uint8_t *data;
+    uint32_t total_frame_len;
+    void    *arg;
 } TUYA_DVP_FRAME_MANAGE_T;
 
 typedef struct {
-    UINT16_T fps;
-    UINT16_T width;
-    UINT16_T height;
+    uint16_t fps;
+    uint16_t width;
+    uint16_t height;
     TUYA_DVP_OUTPUT_MODE output_mode;
 } TUYA_DVP_BASE_CFG_T;
 /**
