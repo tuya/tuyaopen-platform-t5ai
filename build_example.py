@@ -14,18 +14,20 @@ from tools.util import (
     calc_md5sum, do_subprocess, get_system_name
 )
 from tools.download_toolchain import get_toolchain_package_info
-from tools.do_with_assets import do_with_assets
 
 
-def clean(build_root, toolchain_folder_path):
+def clean(build_root, toolchain_folder_path, bash_path):
     '''
     make clean
     make clean -C ./bk_idk/
     '''
+    build_root = build_root.replace("\\", "/")
+    toolchain_folder_path = toolchain_folder_path.replace("\\", "/")
     cmd = f"export TUYA_TOOLCHAIN_PATH={toolchain_folder_path}; "
-    cmd += f"cd {build_root} && make clean"
+    cmd += f"cd {build_root}; echo $TUYA_TOOLCHAIN_PATH"
+    if os.path.exists(bash_path):  # only for windows
+        cmd = f"{bash_path} -c '{cmd}'"
     do_subprocess(cmd)
-
     pass
 
 
@@ -81,13 +83,17 @@ def setup_build(root, build_root, build_param_path, param_data):
     return True
 
 
-def build(build_root, toolchain_folder_path,
+def build(build_root, toolchain_folder_path, bash_path,
           target, app_name, app_ver) -> bool:
+    build_root = build_root.replace("\\", "/")
+    toolchain_folder_path = toolchain_folder_path.replace("\\", "/")
     cmd = f"export TUYA_TOOLCHAIN_PATH={toolchain_folder_path}; "
-    cmd += f"cd {build_root} && make {target} PROJECT=tuya_app"
+    cmd += f"cd {build_root}; make {target} PROJECT=tuya_app"
     cmd += f" APP_NAME={app_name}"
     cmd += f" APP_VERSION={app_ver}"
     cmd += " -j"
+    if os.path.exists(bash_path):  # only for windows
+        cmd = f"{bash_path} -c '{cmd}'"
 
     ret = do_subprocess(cmd)
 
@@ -191,7 +197,9 @@ def copy_assets(build_root, target, param_data):
     ug_file_bin = os.path.join(build_path, "ug_file.bin")
 
     create_ua_file(build_root, target, ua_file_bin)
-    create_ug_file(build_root, target, ua_file_bin, ug_file_bin)
+    if "linux" == get_system_name():
+        # only for linux (./t5_os/projects/tuya_app/tuya_scripts/diff2ya)
+        create_ug_file(build_root, target, ua_file_bin, ug_file_bin)
 
     app_name = param_data["CONFIG_PROJECT_NAME"]
     app_ver = param_data["CONFIG_PROJECT_VERSION"]
@@ -215,7 +223,7 @@ def copy_assets(build_root, target, param_data):
 
 def do_with_compile(root, build_root, user_cmd,
                     target, build_param_path, param_data,
-                    toolchain_folder_path):
+                    toolchain_folder_path, bash_path):
     # Setup build
     if not setup_build(root, build_root, build_param_path, param_data):
         sys.exit(1)
@@ -224,14 +232,14 @@ def do_with_compile(root, build_root, user_cmd,
     app_target_file = os.path.join(build_root, ".app")
     app_name = param_data["CONFIG_PROJECT_NAME"]
     if "clean" == user_cmd or need_settarget(app_target_file, app_name):
-        clean(build_root, toolchain_folder_path)
+        clean(build_root, toolchain_folder_path, bash_path)
         if "clean" == user_cmd:
             sys.exit(0)
 
     # build project
     record_target(app_target_file, app_name)
     app_ver = param_data["CONFIG_PROJECT_VERSION"]
-    if not build(build_root, toolchain_folder_path,
+    if not build(build_root, toolchain_folder_path, bash_path,
                  target, app_name, app_ver):
         sys.exit(1)
     pass
@@ -249,6 +257,7 @@ def main():
     user_cmd = sys.argv[2]
     target = "bk7258"
 
+    # setup environment
     root = os.path.dirname(os.path.abspath(__file__))
     build_root = os.path.join(root, "t5_os")
     build_param_file = os.path.join(build_param_path, "build_param.json")
@@ -256,19 +265,21 @@ def main():
     if not len(param_data):
         sys.exit(1)
 
+    # toolchain folder path
     platform_root = os.path.abspath(os.path.join(root, ".."))
     toolchain_root = os.path.join(platform_root, "tools")
     toolchain_package_info = get_toolchain_package_info()
     toolchain_folder = toolchain_package_info["folder"]
     toolchain_folder_path = os.path.join(toolchain_root, toolchain_folder)
 
-    if "windows" != get_system_name():
-        do_with_compile(root, build_root, user_cmd, target,
-                        build_param_path, param_data,
-                        toolchain_folder_path)
-    else:
-        do_with_assets(root, build_root, user_cmd,
-                       target, param_data)
+    # bash path
+    bash_path = ""
+    if "windows" == get_system_name():
+        bash_path = os.path.join(root, "tools", "bash", "bin", "bash.exe")
+
+    do_with_compile(root, build_root, user_cmd, target,
+                    build_param_path, param_data,
+                    toolchain_folder_path, bash_path)
 
     # copy asset
     if not copy_assets(build_root, target, param_data):
