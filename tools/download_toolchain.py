@@ -205,3 +205,23 @@ def download_toolchain(toolchain_root) -> bool:
         return False
 
     return True
+
+
+def download_bashtools(tools_root) -> bool:
+    name = "bash.zip"
+    url = "https://images.tuyacn.com/smart/embed/package/vscode/data/bash.zip"
+    download_file = os.path.join(tools_root, name)
+
+    if os.path.exists(download_file):
+        print(f"[Bashtools package is exiets]: {download_file}")
+        return True
+
+    print(f"[Downloading bashtools package]: {url}")
+    if not _download_from_url(url, download_file):
+        return False
+
+    print(f"[Extracting bashtools package]: {download_file}")
+    if not extract_archive(download_file, tools_root):
+        return False
+
+    return True

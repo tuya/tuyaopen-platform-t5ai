@@ -50,3 +50,6 @@ xx*.sh
 *.build/
 
 .mirror
+
+/tools/bash/
+/tools/bash.zip
