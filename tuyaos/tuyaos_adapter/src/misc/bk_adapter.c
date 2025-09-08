@@ -225,6 +225,7 @@ void _fini(void) {
 
 #include <stddef.h>
 #include <string.h>
+#include <time.h>
 
 #include "FreeRTOS.h"
 #include "task.h"
