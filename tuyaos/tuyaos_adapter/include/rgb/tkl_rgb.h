@@ -21,7 +21,7 @@ typedef enum {
 } TUYA_RGB_EVENT_E;
 
 
-typedef void (*TUYA_RGB_ISR_CB)(TUYA_RGB_EVENT_E event);
+typedef void (*TUYA_RGB_IRQ_CB)(TUYA_RGB_EVENT_E event);
 
 /**
  * @brief rgb init
@@ -47,7 +47,7 @@ OPERATE_RET tkl_rgb_deinit(void);
  *
  * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
  */
-OPERATE_RET tkl_rgb_irq_cb_register(TUYA_RGB_ISR_CB cb);
+OPERATE_RET tkl_rgb_irq_cb_register(TUYA_RGB_IRQ_CB cb);
 
 /**
  * @brief ppi set
