@@ -17,7 +17,6 @@ static struct spi_irq_config spi_irq[TUYA_SPI_NUM_MAX] = {0};
 extern bk_err_t bk_spi_dma_read_bytes_async(spi_id_t id, void *data, uint32_t size);
 extern bk_err_t bk_spi_dma_write_bytes_async(spi_id_t id, const void *data, uint32_t size);
 
-static void qspi_tx_done_cb(TUYA_QSPI_NUM_E port, TUYA_QSPI_IRQ_EVT_E event);
 bk_err_t tuya_bk_spi_dma_read_bytes_async(spi_id_t id, void *data, uint32_t size)
 {
     // return bk_spi_dma_read_bytes((spi_id_t)id, data, size);
@@ -179,30 +178,7 @@ OPERATE_RET tkl_spi_send(TUYA_SPI_NUM_E port, VOID_T *data, UINT32_T size)
     }
 
     if (port >= TUYA_SPI_NUM_2) {
-        if (size <= 256) {
-            TUYA_QSPI_CMD_T sd_command;
-            memset(&sd_command, 0 ,sizeof(TUYA_QSPI_CMD_T));
-            sd_command.op = TUYA_QSPI_WRITE;
-            sd_command.addr_size = 0;
-            // bk_printf("(uint8_t *)data[0]:%x,%x \r\n", (uint8_t *)data, *(uint8_t *)data);
-            memcpy(&sd_command.cmd[0], data, 1);
-            sd_command.cmd_lines = TUYA_QSPI_1WIRE;
-            sd_command.cmd_size = 1;
-            sd_command.addr_lines = TUYA_QSPI_1WIRE;
-            sd_command.data_size = size - 1;
-            sd_command.data = (UINT8_T *)(data + 1);
-            sd_command.data_lines = TUYA_QSPI_1WIRE;
-            ret = tkl_qspi_comand(port - TUYA_SPI_NUM_2,  &sd_command);
-            if(ret == BK_OK) {
-                if (spi_irq[port].irq_enable) {
-                    qspi_tx_done_cb(TUYA_QSPI_NUM_0, TUYA_QSPI_EVENT_TX);
-                }
-            }
-
-            return ret;
-        }else { // > 256 use dma
-            return tkl_qspi_send(port - TUYA_SPI_NUM_2, data, size);
-        }
+        return tkl_qspi_send(port - TUYA_SPI_NUM_2, data, size);
     }
 #if (CONFIG_SPI_DMA)
     if (SPI_DMA_MODE_ENABLE == spi_config.dma_mode) {
@@ -354,7 +330,16 @@ OPERATE_RET tkl_spi_abort_transfer(TUYA_SPI_NUM_E port)
     return OPRT_OK;
 }
 
-static void qspi_tx_done_cb(TUYA_QSPI_NUM_E port, TUYA_QSPI_IRQ_EVT_E event)
+/**
+ * @brief spi irq init
+ * NOTE: call this API will not enable interrupt
+ *
+ * @param[in] port: spi port, id index starts at 0
+ * @param[in] cb:  spi irq cb
+ *
+ * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
+ */
+STATIC VOID_T qspi_tx_done_cb(TUYA_QSPI_NUM_E port, TUYA_QSPI_IRQ_EVT_E event)
 {
     if (event == TUYA_QSPI_EVENT_TX) {
         if (spi_irq[port + TUYA_SPI_NUM_2].cb) {
@@ -392,7 +377,6 @@ OPERATE_RET tkl_spi_irq_enable(TUYA_SPI_NUM_E port)
     }
 
     if (port >= TUYA_SPI_NUM_2) {
-        spi_irq[port].irq_enable = 1;
         return tkl_qspi_irq_enable(port - TUYA_SPI_NUM_2);
     }
 
@@ -418,7 +402,6 @@ OPERATE_RET tkl_spi_irq_disable(TUYA_SPI_NUM_E port)
     }
 
     if (port >= TUYA_SPI_NUM_2) {
-        spi_irq[port].irq_enable = 0;
         return tkl_qspi_irq_disable(port - TUYA_SPI_NUM_2);
     }
     bk_spi_register_tx_finish_isr((spi_id_t)port, NULL, NULL);
