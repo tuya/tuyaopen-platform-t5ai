@@ -288,6 +288,7 @@ static BOOL_T __sw_i2c_get_ack(SR_I2C_GPIO_T i2c_pin)
     while (I2C_SDA_READ()) {
         if (timeout_count >= 100) {
             __sw_i2c_stop(i2c_pin);
+            bk_printf("wait ack timeout %d\r\n", I2C_SDA_READ());
             return FALSE;
         }
         I2C_DELAY(10);

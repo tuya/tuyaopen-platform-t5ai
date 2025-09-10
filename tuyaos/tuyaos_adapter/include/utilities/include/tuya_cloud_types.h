@@ -889,6 +889,12 @@ typedef enum {
     TUYA_PWM_NUM_3,	        // PWM 3
     TUYA_PWM_NUM_4,	        // PWM 4
     TUYA_PWM_NUM_5,	        // PWM 5
+    TUYA_PWM_NUM_6,	        // PWM 6
+    TUYA_PWM_NUM_7,	        // PWM 7
+    TUYA_PWM_NUM_8,	        // PWM 8
+    TUYA_PWM_NUM_9,	        // PWM 9
+    TUYA_PWM_NUM_10,	    // PWM 10
+    TUYA_PWM_NUM_11,	    // PWM 11
     TUYA_PWM_NUM_MAX,
 } TUYA_PWM_NUM_E;
 
@@ -1116,6 +1122,7 @@ typedef struct {
     TUYA_QSPI_MODE_E      mode;
 	UINT_T freq_hz;       /**< QSPI controller clock divide number */
 	BOOL_T use_dma;       /**< QSPI dma mode*/
+    TUYA_QSPI_WIRE_MODE_E dma_data_lines;
     TUYA_QSPI_MODULE_TYPE_E type;
     // TUYA_QSPI_LCD_REFRESH_METHOD_E refresh_method;  /**< QSPI lcd mode*/
 } TUYA_QSPI_BASE_CFG_T;
@@ -1507,17 +1514,18 @@ typedef enum {
 } TUYA_FRAME_FMT_E;
 
 typedef enum {
-    TUYA_DVP_OUTPUT_YUV422,
-    TUYA_DVP_OUTPUT_JPEG,
-    TUYA_DVP_OUTPUT_H264,
-    TUYA_DVP_OUTPUT_JPEG_YUV422_BOTH,
-    TUYA_DVP_OUTPUT_H264_YUV422_BOTH,
-} TUYA_DVP_OUTPUT_MODE;
+    TUYA_CAMERA_OUTPUT_YUV422,
+    TUYA_CAMERA_OUTPUT_JPEG,
+    TUYA_CAMERA_OUTPUT_H264,
+    TUYA_CAMERA_OUTPUT_JPEG_YUV422_BOTH,
+    TUYA_CAMERA_OUTPUT_H264_YUV422_BOTH,
+} TUYA_CAMERA_OUTPUT_MODE;
 
 typedef struct
 {
     uint16_t frame_id;
     uint8_t is_frame_complete;
+	uint8_t is_i_frame;
     TUYA_FRAME_FMT_E frame_fmt;
     uint16_t width;
 	uint16_t height;
@@ -1531,8 +1539,8 @@ typedef struct {
     uint16_t fps;
     uint16_t width;
     uint16_t height;
-    TUYA_DVP_OUTPUT_MODE output_mode;
-} TUYA_DVP_BASE_CFG_T;
+    TUYA_CAMERA_OUTPUT_MODE output_mode;
+} TUYA_DVP_CFG_T;
 /**
  * @brief timer num
  * 

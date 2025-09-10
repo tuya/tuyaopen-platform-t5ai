@@ -17,7 +17,6 @@ extern "C" {
 #include "tuya_cloud_types.h"
 
 typedef TUYA_DVP_FRAME_MANAGE_T *(*DVP_FRAME_ASSIGN_CB)(TUYA_FRAME_FMT_E fmt);
-typedef VOID_T (*DVP_FRAME_UNASSIGN_CB)(TUYA_DVP_FRAME_MANAGE_T *dvp_frame);
 typedef OPERATE_RET (*DVP_FRAME_POST_CB)(TUYA_DVP_FRAME_MANAGE_T *dvp_frame);
 
 /**
@@ -27,7 +26,7 @@ typedef OPERATE_RET (*DVP_FRAME_POST_CB)(TUYA_DVP_FRAME_MANAGE_T *dvp_frame);
  *
  * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
  */
-OPERATE_RET tkl_dvp_init(TUYA_DVP_BASE_CFG_T *base_cfg, UINT32_T clk);
+OPERATE_RET tkl_dvp_init(TUYA_DVP_CFG_T *dvp_cfg, UINT32_T clk);
 
 /**
  * @brief tkl_dvp_deinit
@@ -44,15 +43,6 @@ OPERATE_RET tkl_dvp_deinit(void);
  * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
  */
 OPERATE_RET tkl_dvp_frame_assign_cb_register(DVP_FRAME_ASSIGN_CB func);
-
-/**
- * @brief tkl_dvp_frame_unassign_register_callback
- *
- * @param[in] func: set dvp frame idle callback
- *
- * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
- */
-OPERATE_RET tkl_dvp_frame_unassign_cb_register(DVP_FRAME_UNASSIGN_CB func);
 
 /**
  * @brief tkl_dvp_frame_post_register_callback

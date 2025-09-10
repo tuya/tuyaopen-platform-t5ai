@@ -93,6 +93,16 @@ typedef enum {
 	SPI_CLK_UNKNOW = 0xff
 } spi_src_clk_t;
 
+// Modified by TUYA Start
+typedef enum {
+	SPI_BAUD_RATE_2M88 = 2887500,
+	SPI_BAUD_RATE_3M33 = 3330000,
+	SPI_BAUD_RATE_6M66 = 6500000,
+	SPI_BAUD_RATE_UNKNOW = 0xffffffff
+} spi_accurate_baud_rate_t;
+// Modified by TUYA End
+
+
 #if (CONFIG_SPI_DMA)
 
 typedef enum {

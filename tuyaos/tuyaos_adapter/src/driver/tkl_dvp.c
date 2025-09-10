@@ -27,7 +27,6 @@
 #define DVP_DMA_CACHE           (1024 * 10)
 
 static DVP_FRAME_ASSIGN_CB dvp_frame_assign_cb = NULL;
-static DVP_FRAME_UNASSIGN_CB dvp_frame_unassign_cb = NULL;
 static DVP_FRAME_POST_CB dvp_frame_post_cb = NULL;
 
 typedef struct
@@ -94,19 +93,19 @@ DVP_MODULE_MANAGE_T g_dvp_module_manage =
     .error_flag = false,
 };
 
-static OPERATE_RET __ty_output_mode_to_bk_work_mode(TUYA_DVP_OUTPUT_MODE output_mode, yuv_mode_t *bk_work_mode)
+static OPERATE_RET __ty_output_mode_to_bk_work_mode(TUYA_CAMERA_OUTPUT_MODE output_mode, yuv_mode_t *bk_work_mode)
 {
     switch (output_mode)
     {
-        case TUYA_DVP_OUTPUT_YUV422:
+        case TUYA_CAMERA_OUTPUT_YUV422:
             (*bk_work_mode) = YUV_MODE;
             break;
-        case TUYA_DVP_OUTPUT_JPEG:
-        case TUYA_DVP_OUTPUT_JPEG_YUV422_BOTH:
+        case TUYA_CAMERA_OUTPUT_JPEG:
+        case TUYA_CAMERA_OUTPUT_JPEG_YUV422_BOTH:
             (*bk_work_mode) = JPEG_MODE;
             break;
-        case TUYA_DVP_OUTPUT_H264:
-        case TUYA_DVP_OUTPUT_H264_YUV422_BOTH:
+        case TUYA_CAMERA_OUTPUT_H264:
+        case TUYA_CAMERA_OUTPUT_H264_YUV422_BOTH:
             (*bk_work_mode) = H264_MODE;
             break;
         default:
@@ -117,26 +116,26 @@ static OPERATE_RET __ty_output_mode_to_bk_work_mode(TUYA_DVP_OUTPUT_MODE output_
     return OPRT_OK;
 }
 
-static OPERATE_RET __dvp_output_mode_check(TUYA_DVP_BASE_CFG_T *base_cfg)
+static OPERATE_RET __dvp_output_mode_check(TUYA_DVP_CFG_T *dvp_cfg)
 {
     OPERATE_RET ret = OPRT_OK;
-    uint16_t width = base_cfg->width;
-    uint16_t height = base_cfg->height;
-    TUYA_DVP_OUTPUT_MODE output_mode = base_cfg->output_mode;
+    uint16_t width = dvp_cfg->width;
+    uint16_t height = dvp_cfg->height;
+    TUYA_CAMERA_OUTPUT_MODE output_mode = dvp_cfg->output_mode;
 
     ret = __ty_output_mode_to_bk_work_mode(output_mode, &(g_dvp_module_manage.cur_work_mode));
     if (ret)
         return OPRT_NOT_SUPPORTED;
 
 
-    if (output_mode == TUYA_DVP_OUTPUT_YUV422
-        || output_mode == TUYA_DVP_OUTPUT_JPEG_YUV422_BOTH 
-        || output_mode == TUYA_DVP_OUTPUT_H264_YUV422_BOTH)
+    if (output_mode == TUYA_CAMERA_OUTPUT_YUV422
+        || output_mode == TUYA_CAMERA_OUTPUT_JPEG_YUV422_BOTH 
+        || output_mode == TUYA_CAMERA_OUTPUT_H264_YUV422_BOTH)
     {
         g_dvp_module_manage.base_frame_fmt = TUYA_FRAME_FMT_YUV422;
         g_dvp_module_manage.base_frame_len = width * height * YUV422_PER_PIXEL_BYTE;
 
-        g_dvp_module_manage.is_mix_mode = (output_mode != TUYA_DVP_OUTPUT_YUV422) ? true : false;
+        g_dvp_module_manage.is_mix_mode = (output_mode != TUYA_CAMERA_OUTPUT_YUV422) ? true : false;
     }
 
     if (g_dvp_module_manage.cur_work_mode == H264_MODE)
@@ -190,7 +189,7 @@ static OPERATE_RET __ty_clk_to_bk_clk(UINT32_T clk, mclk_freq_t *outclk)
     return OPRT_OK;
 }
 
-static OPERATE_RET __dvp_yuv_buf_module_init(TUYA_DVP_BASE_CFG_T *base_cfg)
+static OPERATE_RET __dvp_yuv_buf_module_init(TUYA_DVP_CFG_T *dvp_cfg)
 {
     yuv_buf_config_t yuv_buf_config_cur = {0};
     memcpy(&yuv_buf_config_cur, &(g_dvp_module_manage.yuv_buf_module_config), sizeof(yuv_buf_config_t));
@@ -198,10 +197,10 @@ static OPERATE_RET __dvp_yuv_buf_module_init(TUYA_DVP_BASE_CFG_T *base_cfg)
     yuv_buf_config_cur.work_mode = g_dvp_module_manage.cur_work_mode;
 
     // 横向width的像素块个数
-    yuv_buf_config_cur.x_pixel = base_cfg->width / BLOCK_WIDTH; // 除以BLOCK_WIDTH得到横向块数
+    yuv_buf_config_cur.x_pixel = dvp_cfg->width / BLOCK_WIDTH; // 除以BLOCK_WIDTH得到横向块数
 
     // 纵向像素块个数
-    yuv_buf_config_cur.y_pixel = base_cfg->height / BLOCK_HEIGHT; // 除以BLOCK_HEIGHT得到纵向块数
+    yuv_buf_config_cur.y_pixel = dvp_cfg->height / BLOCK_HEIGHT; // 除以BLOCK_HEIGHT得到纵向块数
 
     if (g_dvp_module_manage.cur_work_mode == YUV_MODE)
         goto init_yuv_buf;
@@ -213,13 +212,13 @@ static OPERATE_RET __dvp_yuv_buf_module_init(TUYA_DVP_BASE_CFG_T *base_cfg)
     if (g_dvp_module_manage.cur_work_mode == H264_MODE)
     {
         // h264编码器每16行一输入，16 * pixel_per_size * pingpong
-        g_dvp_module_manage.pingpong_len = base_cfg->width * 32 * 2; 
+        g_dvp_module_manage.pingpong_len = dvp_cfg->width * 32 * 2;
         g_dvp_module_manage.pingpong_buf = (uint8_t *)os_malloc(g_dvp_module_manage.pingpong_len);
     }
     else if (g_dvp_module_manage.cur_work_mode == JPEG_MODE)
     {
         // jepg编码器每8行一输入，8 * pixel_per_size * pingpong
-        g_dvp_module_manage.pingpong_len = base_cfg->width * 16 * 2;
+        g_dvp_module_manage.pingpong_len = dvp_cfg->width * 16 * 2;
         g_dvp_module_manage.pingpong_buf = (uint8_t *)os_malloc(g_dvp_module_manage.pingpong_len);
     }
 
@@ -242,13 +241,13 @@ init_yuv_buf:
     return OPRT_OK;
 }
 
-static OPERATE_RET __dvp_jpeg_module_init(TUYA_DVP_BASE_CFG_T *base_cfg)
+static OPERATE_RET __dvp_jpeg_module_init(TUYA_DVP_CFG_T *dvp_cfg)
 {
     jpeg_config_t jpeg_config_cur = {0};
     memcpy(&jpeg_config_cur, &(g_dvp_module_manage.jpeg_module_config), sizeof(jpeg_config_t));
 
-    jpeg_config_cur.x_pixel = base_cfg->width / BLOCK_WIDTH;
-    jpeg_config_cur.y_pixel = base_cfg->height / BLOCK_WIDTH;
+    jpeg_config_cur.x_pixel = dvp_cfg->width / BLOCK_WIDTH;
+    jpeg_config_cur.y_pixel = dvp_cfg->height / BLOCK_WIDTH;
 
     jpeg_config_cur.clk = g_dvp_module_manage.bk_clk;
     jpeg_config_cur.mode = JPEG_MODE;
@@ -268,7 +267,7 @@ static void __dvp_dma_finish_cb(dma_id_t id)
     g_dvp_module_manage.encoder_manage.out_offset += DVP_DMA_CACHE;
 }
 
-static OPERATE_RET __dvp_encoder_output_dma_config(TUYA_DVP_BASE_CFG_T *base_cfg, yuv_mode_t work_mode)
+static OPERATE_RET __dvp_encoder_output_dma_config(TUYA_DVP_CFG_T *dvp_cfg, yuv_mode_t work_mode)
 {
     if (!dvp_frame_assign_cb)
         return OPRT_COM_ERROR;
@@ -276,6 +275,7 @@ static OPERATE_RET __dvp_encoder_output_dma_config(TUYA_DVP_BASE_CFG_T *base_cfg
     dma_config_t dma_config = {0};
     ENCODER_MANAGE_T *coder_manage = &(g_dvp_module_manage.encoder_manage);
 
+    coder_manage->sequence = 0;
     coder_manage->out_offset = 0;
     if (work_mode == H264_MODE)
     {
@@ -300,8 +300,10 @@ static OPERATE_RET __dvp_encoder_output_dma_config(TUYA_DVP_BASE_CFG_T *base_cfg
         return OPRT_MALLOC_FAILED;
     }
     g_dvp_module_manage.encoded_frame->frame_fmt = g_dvp_module_manage.encoded_frame_fmt;
-    g_dvp_module_manage.encoded_frame->width = base_cfg->width;
-    g_dvp_module_manage.encoded_frame->height = base_cfg->height;
+    g_dvp_module_manage.encoded_frame->width = dvp_cfg->width;
+    g_dvp_module_manage.encoded_frame->height = dvp_cfg->height;
+    g_dvp_module_manage.encoded_frame->is_frame_complete = false;
+    g_dvp_module_manage.encoded_frame->is_i_frame = false;
 
     dma_config.mode = DMA_WORK_MODE_REPEAT;
     dma_config.chan_prio = 0;
@@ -339,7 +341,7 @@ static OPERATE_RET __dvp_encoder_output_dma_config(TUYA_DVP_BASE_CFG_T *base_cfg
     return OPRT_OK;
 }
 
-static OPERATE_RET __dvp_encoder_input_dma_config(TUYA_DVP_BASE_CFG_T *base_cfg)
+static OPERATE_RET __dvp_encoder_input_dma_config(TUYA_DVP_CFG_T *dvp_cfg)
 {
     if (!dvp_frame_assign_cb)
         return OPRT_COM_ERROR;
@@ -364,10 +366,11 @@ static OPERATE_RET __dvp_encoder_input_dma_config(TUYA_DVP_BASE_CFG_T *base_cfg)
         return OPRT_MALLOC_FAILED;
     }
 
-    g_dvp_module_manage.base_frame->width = base_cfg->width;
-    g_dvp_module_manage.base_frame->height = base_cfg->height;
+    g_dvp_module_manage.base_frame->width = dvp_cfg->width;
+    g_dvp_module_manage.base_frame->height = dvp_cfg->height;
     g_dvp_module_manage.base_frame->frame_fmt = g_dvp_module_manage.base_frame_fmt;
     g_dvp_module_manage.base_frame->data_len = g_dvp_module_manage.base_frame_len;
+    g_dvp_module_manage.base_frame->is_frame_complete = false;
 
     dma_config.mode = DMA_WORK_MODE_SINGLE;
     dma_config.chan_prio = 1;
@@ -395,7 +398,7 @@ static OPERATE_RET __dvp_encoder_input_dma_config(TUYA_DVP_BASE_CFG_T *base_cfg)
     return OPRT_OK;
 }
 
-static OPERATE_RET __dvp_yuv_mode_init(TUYA_DVP_BASE_CFG_T *base_cfg)
+static OPERATE_RET __dvp_yuv_mode_init(TUYA_DVP_CFG_T *dvp_cfg)
 {
     if (!dvp_frame_assign_cb)
         return OPRT_COM_ERROR;
@@ -407,24 +410,25 @@ static OPERATE_RET __dvp_yuv_mode_init(TUYA_DVP_BASE_CFG_T *base_cfg)
         return OPRT_MALLOC_FAILED;
     }
 
-    g_dvp_module_manage.base_frame->width = base_cfg->width;
-    g_dvp_module_manage.base_frame->height = base_cfg->height;
+    g_dvp_module_manage.base_frame->width = dvp_cfg->width;
+    g_dvp_module_manage.base_frame->height = dvp_cfg->height;
     g_dvp_module_manage.base_frame->frame_fmt = g_dvp_module_manage.base_frame_fmt;
     g_dvp_module_manage.base_frame->data_len = g_dvp_module_manage.base_frame_len;
+    g_dvp_module_manage.base_frame->is_frame_complete = false;
     bk_yuv_buf_set_em_base_addr((uint32_t)g_dvp_module_manage.base_frame->data);
 
     return OPRT_OK;
 }
 
-static OPERATE_RET __dvp_h264_mode_init(TUYA_DVP_BASE_CFG_T *base_cfg)
+static OPERATE_RET __dvp_h264_mode_init(TUYA_DVP_CFG_T *dvp_cfg)
 {
     OPERATE_RET ret = 0;
 
-    ret = bk_h264_init(base_cfg->width, base_cfg->height);
+    ret = bk_h264_init(dvp_cfg->width, dvp_cfg->height);
     if (ret)
         return OPRT_COM_ERROR;
 
-    ret = __dvp_encoder_output_dma_config(base_cfg, H264_MODE);
+    ret = __dvp_encoder_output_dma_config(dvp_cfg, H264_MODE);
     if (ret)
         return OPRT_COM_ERROR;
 
@@ -434,9 +438,9 @@ static OPERATE_RET __dvp_h264_mode_init(TUYA_DVP_BASE_CFG_T *base_cfg)
     h264_encode_sei_init(&coder_manage->sei[0]);
 #endif
 
-    if (base_cfg->output_mode == TUYA_DVP_OUTPUT_H264_YUV422_BOTH)
+    if (dvp_cfg->output_mode == TUYA_CAMERA_OUTPUT_H264_YUV422_BOTH)
     {
-        ret = __dvp_encoder_input_dma_config(base_cfg);
+        ret = __dvp_encoder_input_dma_config(dvp_cfg);
         if (ret)
             return OPRT_COM_ERROR;
     }
@@ -444,21 +448,21 @@ static OPERATE_RET __dvp_h264_mode_init(TUYA_DVP_BASE_CFG_T *base_cfg)
     return ret;
 }
 
-static OPERATE_RET __dvp_jpeg_mode_init(TUYA_DVP_BASE_CFG_T *base_cfg)
+static OPERATE_RET __dvp_jpeg_mode_init(TUYA_DVP_CFG_T *dvp_cfg)
 {
     OPERATE_RET ret = 0;
 
-    ret = __dvp_jpeg_module_init(base_cfg);
+    ret = __dvp_jpeg_module_init(dvp_cfg);
     if (ret)
         return OPRT_COM_ERROR;
 
-    ret = __dvp_encoder_output_dma_config(base_cfg, JPEG_MODE);
+    ret = __dvp_encoder_output_dma_config(dvp_cfg, JPEG_MODE);
     if (ret)
         return OPRT_COM_ERROR;
 
-    if (base_cfg->output_mode == TUYA_DVP_OUTPUT_JPEG_YUV422_BOTH)
+    if (dvp_cfg->output_mode == TUYA_CAMERA_OUTPUT_JPEG_YUV422_BOTH)
     {
-        ret = __dvp_encoder_input_dma_config(base_cfg);
+        ret = __dvp_encoder_input_dma_config(dvp_cfg);
         if (ret)
             return OPRT_COM_ERROR;
     }
@@ -466,28 +470,28 @@ static OPERATE_RET __dvp_jpeg_mode_init(TUYA_DVP_BASE_CFG_T *base_cfg)
     return ret;
 }
 
-static OPERATE_RET __dvp_hardware_init(TUYA_DVP_BASE_CFG_T *base_cfg)
+static OPERATE_RET __dvp_hardware_init(TUYA_DVP_CFG_T *dvp_cfg)
 {
     OPERATE_RET ret = 0;
 
-    ret = __dvp_yuv_buf_module_init(base_cfg);
+    ret = __dvp_yuv_buf_module_init(dvp_cfg);
     if (ret)
         return ret;
 
     if (g_dvp_module_manage.cur_work_mode == YUV_MODE)
     {
-        ret =  __dvp_yuv_mode_init(base_cfg);
+        ret =  __dvp_yuv_mode_init(dvp_cfg);
         goto end;
     }
 
     if (g_dvp_module_manage.cur_work_mode == H264_MODE)
     {
-        ret = __dvp_h264_mode_init(base_cfg);
+        ret = __dvp_h264_mode_init(dvp_cfg);
     }
 
     if (g_dvp_module_manage.cur_work_mode == JPEG_MODE)
     {
-        ret = __dvp_jpeg_mode_init(base_cfg);
+        ret = __dvp_jpeg_mode_init(dvp_cfg);
     }
 
 end:
@@ -499,17 +503,18 @@ static void __dvp_yuv_eof_handler(yuv_buf_unit_t id, void *param)
     if (!g_dvp_module_manage.module_stat || !dvp_frame_assign_cb || !param)
 		return;
 
-    TUYA_DVP_BASE_CFG_T *base_cfg = (TUYA_DVP_BASE_CFG_T *)param;
+    TUYA_DVP_CFG_T *dvp_cfg = (TUYA_DVP_CFG_T *)param;
 
     g_dvp_module_manage.base_frame->is_frame_complete = true;
     g_dvp_module_manage.base_frame->total_frame_len = g_dvp_module_manage.base_frame_len;
     TUYA_DVP_FRAME_MANAGE_T *new_frame = dvp_frame_assign_cb(g_dvp_module_manage.base_frame_fmt);
     if (new_frame)
     {
-		new_frame->width = base_cfg->width;
-		new_frame->height = base_cfg->height;
+		new_frame->width = dvp_cfg->width;
+		new_frame->height = dvp_cfg->height;
 		new_frame->frame_fmt = g_dvp_module_manage.base_frame_fmt;
 		new_frame->data_len = g_dvp_module_manage.base_frame_len;
+        new_frame->is_frame_complete = false;
         if (dvp_frame_post_cb)
             dvp_frame_post_cb(g_dvp_module_manage.base_frame);
 
@@ -547,13 +552,13 @@ static void __dvp_h264_eof_handler(h264_unit_t id, void *param)
     if (!g_dvp_module_manage.module_stat || !dvp_frame_assign_cb || !param)
 		return;
 
-    TUYA_DVP_BASE_CFG_T *base_cfg = (TUYA_DVP_BASE_CFG_T *)param;
+    TUYA_DVP_CFG_T *dvp_cfg = (TUYA_DVP_CFG_T *)param;
 
     if (g_dvp_module_manage.encoded_frame == NULL
         || g_dvp_module_manage.encoded_frame->data == NULL)
     {
         bk_printf("g_dvp_module_manage->encode_frame NULL error\n");
-        goto error;
+        return;
     }
 
     UINT32_T real_length = bk_h264_get_encode_count() * 4;
@@ -567,7 +572,7 @@ static void __dvp_h264_eof_handler(h264_unit_t id, void *param)
         coder_manage->sequence = 1;
     }
 
-    coder_manage->is_i_frame_flag = (coder_manage->sequence == 1) ? 1 : 0;
+    coder_manage->is_i_frame_flag = (coder_manage->sequence == 1) ? true : false;
 
 #if (CONFIG_H264_GOP_START_IDR_FRAME)
     if (coder_manage->sequence == H264_GOP_FRAME_CNT)
@@ -605,6 +610,7 @@ static void __dvp_h264_eof_handler(h264_unit_t id, void *param)
 
     if (g_dvp_module_manage.error_flag)
     {
+        bk_h264_soft_reset();
         g_dvp_module_manage.encoded_frame->data_len = 0;
         coder_manage->sequence = 0;
         goto out;
@@ -614,6 +620,7 @@ static void __dvp_h264_eof_handler(h264_unit_t id, void *param)
     g_dvp_module_manage.encoded_frame->data_len = real_length;
     g_dvp_module_manage.encoded_frame->total_frame_len = real_length;
     g_dvp_module_manage.encoded_frame->is_frame_complete = true;
+    g_dvp_module_manage.encoded_frame->is_i_frame = coder_manage->is_i_frame_flag;
 
 #if 0
     handle->encode_frame->crc = hnd_crc8(handle->encode_frame->frame, handle->encode_frame->length, 0xFF);
@@ -625,9 +632,11 @@ static void __dvp_h264_eof_handler(h264_unit_t id, void *param)
     TUYA_DVP_FRAME_MANAGE_T *new_frame = dvp_frame_assign_cb(TUYA_FRAME_FMT_H264);
     if (new_frame)
     {
-        new_frame->width = base_cfg->width;
-        new_frame->height = base_cfg->height;
+        new_frame->width = dvp_cfg->width;
+        new_frame->height = dvp_cfg->height;
         new_frame->frame_fmt = TUYA_FRAME_FMT_H264;
+        new_frame->is_frame_complete = false;
+        new_frame->is_i_frame = false;
         if (dvp_frame_post_cb)
             dvp_frame_post_cb(g_dvp_module_manage.encoded_frame);
 
@@ -646,7 +655,7 @@ out:
     bk_dma_start(coder_manage->out_channel);
 
     if (!g_dvp_module_manage.error_flag && 
-        base_cfg->output_mode == TUYA_DVP_OUTPUT_H264_YUV422_BOTH)
+        dvp_cfg->output_mode == TUYA_CAMERA_OUTPUT_H264_YUV422_BOTH)
     {
         coder_manage->in_offset = 0;
         bk_dma_flush_src_buffer(coder_manage->in_channel);
@@ -655,10 +664,11 @@ out:
         new_frame = dvp_frame_assign_cb(g_dvp_module_manage.base_frame_fmt);
         if (new_frame)
         {
-            new_frame->width = base_cfg->width;
-            new_frame->height = base_cfg->height;
+            new_frame->width = dvp_cfg->width;
+            new_frame->height = dvp_cfg->height;
             new_frame->frame_fmt = g_dvp_module_manage.base_frame_fmt;
             new_frame->data_len = g_dvp_module_manage.base_frame_len;
+            new_frame->is_frame_complete = false;
             if (dvp_frame_post_cb)
                 dvp_frame_post_cb(g_dvp_module_manage.base_frame);
 
@@ -667,10 +677,6 @@ out:
     }
 
     return;
-
-error:
-    bk_dma_stop(coder_manage->out_channel);
-    bk_yuv_buf_stop(H264_MODE);
 }
 
 static void __dvp_jpeg_eof_handler(h264_unit_t id, void *param)
@@ -678,7 +684,7 @@ static void __dvp_jpeg_eof_handler(h264_unit_t id, void *param)
     if (!g_dvp_module_manage.module_stat || !dvp_frame_assign_cb || !param)
 		return;
 
-    TUYA_DVP_BASE_CFG_T *base_cfg = (TUYA_DVP_BASE_CFG_T *)param;
+    TUYA_DVP_CFG_T *dvp_cfg = (TUYA_DVP_CFG_T *)param;
     ENCODER_MANAGE_T *coder_manage = &(g_dvp_module_manage.encoder_manage);
 
     if (g_dvp_module_manage.error_flag)
@@ -694,7 +700,7 @@ static void __dvp_jpeg_eof_handler(h264_unit_t id, void *param)
         || g_dvp_module_manage.encoded_frame->data == NULL)
     {
         bk_printf("g_dvp_module_manage->encode_frame NULL error\n");
-        goto error;
+        return;
     }
 
     bk_dma_flush_src_buffer(coder_manage->out_channel);
@@ -743,9 +749,10 @@ static void __dvp_jpeg_eof_handler(h264_unit_t id, void *param)
     TUYA_DVP_FRAME_MANAGE_T *new_frame = dvp_frame_assign_cb(TUYA_FRAME_FMT_JPEG);
     if (new_frame)
     {
-        new_frame->width = base_cfg->width;
-        new_frame->height = base_cfg->height;
+        new_frame->width = dvp_cfg->width;
+        new_frame->height = dvp_cfg->height;
         new_frame->frame_fmt = TUYA_FRAME_FMT_JPEG;
+        new_frame->is_frame_complete = false;
         if (dvp_frame_post_cb)
             dvp_frame_post_cb(g_dvp_module_manage.encoded_frame);
 
@@ -762,7 +769,7 @@ out:
     bk_dma_start(coder_manage->out_channel);
 
     if (!g_dvp_module_manage.error_flag &&
-        base_cfg->output_mode == TUYA_DVP_OUTPUT_JPEG_YUV422_BOTH)
+        dvp_cfg->output_mode == TUYA_CAMERA_OUTPUT_JPEG_YUV422_BOTH)
     {
         coder_manage->in_offset = 0;
         bk_dma_flush_src_buffer(coder_manage->in_channel);
@@ -771,10 +778,11 @@ out:
         new_frame = dvp_frame_assign_cb(g_dvp_module_manage.base_frame_fmt);
         if (new_frame)
         {
-            new_frame->width = base_cfg->width;
-            new_frame->height = base_cfg->height;
+            new_frame->width = dvp_cfg->width;
+            new_frame->height = dvp_cfg->height;
             new_frame->frame_fmt = g_dvp_module_manage.base_frame_fmt;
             new_frame->data_len = g_dvp_module_manage.base_frame_len;
+            new_frame->is_frame_complete = false;
             if (dvp_frame_post_cb)
                 dvp_frame_post_cb(g_dvp_module_manage.base_frame);
 
@@ -783,10 +791,6 @@ out:
     }
 
     return;
-
-error:
-    bk_dma_stop(coder_manage->out_channel);
-    bk_yuv_buf_stop(JPEG_MODE);
 }
 
 static void __dvp_hardware_vsync_negedge_handler(jpeg_unit_t id, void *param)
@@ -836,28 +840,28 @@ static void __dvp_error_handler(jpeg_unit_t id, void *param)
         g_dvp_module_manage.error_flag = true;
 }
 
-static void __dvp_isr_register(TUYA_DVP_BASE_CFG_T *base_cfg)
+static void __dvp_isr_register(TUYA_DVP_CFG_T *dvp_cfg)
 {
-    switch (base_cfg->output_mode)
+    switch (dvp_cfg->output_mode)
     {
-    case TUYA_DVP_OUTPUT_YUV422:
-        bk_yuv_buf_register_isr(YUV_BUF_YUV_ARV, __dvp_yuv_eof_handler, (void *)base_cfg);
+    case TUYA_CAMERA_OUTPUT_YUV422:
+        bk_yuv_buf_register_isr(YUV_BUF_YUV_ARV, __dvp_yuv_eof_handler, (void *)dvp_cfg);
         break;
-    case TUYA_DVP_OUTPUT_JPEG:
-    case TUYA_DVP_OUTPUT_JPEG_YUV422_BOTH:
-        bk_jpeg_enc_register_isr(JPEG_EOF, __dvp_jpeg_eof_handler, (void *)base_cfg);
+    case TUYA_CAMERA_OUTPUT_JPEG:
+    case TUYA_CAMERA_OUTPUT_JPEG_YUV422_BOTH:
+        bk_jpeg_enc_register_isr(JPEG_EOF, __dvp_jpeg_eof_handler, (void *)dvp_cfg);
         bk_jpeg_enc_register_isr(JPEG_FRAME_ERR, __dvp_error_handler, NULL);
         break;
-    case TUYA_DVP_OUTPUT_H264:
-    case TUYA_DVP_OUTPUT_H264_YUV422_BOTH:
-        bk_h264_register_isr(H264_FINAL_OUT, __dvp_h264_eof_handler, (void *)base_cfg);
+    case TUYA_CAMERA_OUTPUT_H264:
+    case TUYA_CAMERA_OUTPUT_H264_YUV422_BOTH:
+        bk_h264_register_isr(H264_FINAL_OUT, __dvp_h264_eof_handler, (void *)dvp_cfg);
         break;
     default:
         break;
     }
 
-    if (base_cfg->output_mode == TUYA_DVP_OUTPUT_H264_YUV422_BOTH
-        || base_cfg->output_mode == TUYA_DVP_OUTPUT_JPEG_YUV422_BOTH)
+    if (dvp_cfg->output_mode == TUYA_CAMERA_OUTPUT_H264_YUV422_BOTH
+        || dvp_cfg->output_mode == TUYA_CAMERA_OUTPUT_JPEG_YUV422_BOTH)
     {
         static UINT8_T line_0 = 0;
         bk_yuv_buf_register_isr(YUV_BUF_SM0_WR, __dvp_yuv_line_done, (void *)(&line_0));
@@ -872,14 +876,14 @@ static void __dvp_isr_register(TUYA_DVP_BASE_CFG_T *base_cfg)
     bk_yuv_buf_register_isr(YUV_BUF_ENC_SLOW, __dvp_error_handler, NULL);
 }
 
-OPERATE_RET tkl_dvp_init(TUYA_DVP_BASE_CFG_T *base_cfg, UINT32_T clk)
+OPERATE_RET tkl_dvp_init(TUYA_DVP_CFG_T *dvp_cfg, UINT32_T clk)
 {
     OPERATE_RET ret = 0;
 
-    if (!base_cfg)
+    if (!dvp_cfg)
         return OPRT_INVALID_PARM;
 
-    ret = __dvp_output_mode_check(base_cfg);
+    ret = __dvp_output_mode_check(dvp_cfg);
     if (ret)
         return OPRT_NOT_SUPPORTED;
 
@@ -892,9 +896,9 @@ OPERATE_RET tkl_dvp_init(TUYA_DVP_BASE_CFG_T *base_cfg, UINT32_T clk)
 	//enable mclk
     bk_video_dvp_mclk_enable(YUV_MODE);
 
-    __dvp_hardware_init(base_cfg);
+    __dvp_hardware_init(dvp_cfg);
 
-    __dvp_isr_register(base_cfg);
+    __dvp_isr_register(dvp_cfg);
 
     //update mclk config
     bk_video_set_mclk(g_dvp_module_manage.bk_clk);
@@ -961,19 +965,11 @@ OPERATE_RET tkl_dvp_deinit()
         g_dvp_module_manage.pingpong_buf = NULL;
     }
 
-    if (g_dvp_module_manage.base_frame)
-    {
-        dvp_frame_unassign_cb(g_dvp_module_manage.base_frame);
-        g_dvp_module_manage.base_frame_len = 0;
-        g_dvp_module_manage.base_frame = NULL;
-    }
+    g_dvp_module_manage.base_frame_len = 0;
+    g_dvp_module_manage.base_frame = NULL;
 
-    if (g_dvp_module_manage.encoded_frame)
-    {
-        dvp_frame_unassign_cb(g_dvp_module_manage.encoded_frame);
-        g_dvp_module_manage.encoded_frame_len = 0;
-        g_dvp_module_manage.encoded_frame = NULL;
-    }
+    g_dvp_module_manage.encoded_frame_len = 0;
+    g_dvp_module_manage.encoded_frame = NULL;
 
     g_dvp_module_manage.error_flag = false;
 
@@ -983,12 +979,6 @@ OPERATE_RET tkl_dvp_deinit()
 OPERATE_RET tkl_dvp_frame_assign_cb_register(DVP_FRAME_ASSIGN_CB func)
 {
     dvp_frame_assign_cb = func;
-    return OPRT_OK;
-}
-
-OPERATE_RET tkl_dvp_frame_unassign_cb_register(DVP_FRAME_UNASSIGN_CB func)
-{
-    dvp_frame_unassign_cb = func;
     return OPRT_OK;
 }
 

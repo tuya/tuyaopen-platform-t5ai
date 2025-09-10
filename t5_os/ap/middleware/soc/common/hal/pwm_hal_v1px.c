@@ -177,10 +177,8 @@ void pwm_hal_set_single_chan_tim_enable(pwm_hal_t *hal, uint32_t hw_ch, uint32_t
 {
 	switch(hw_ch) {
 	case 0:
-		pwm_ll_set_pwm_cr1_cen1(hal->id, value);
-		break;
 	case 1:
-		pwm_ll_set_cr3_cen4_value(hal->id, value);
+		pwm_ll_set_pwm_cr1_cen1(hal->id, value);
 		break;
 	case 2:
 	case 3:

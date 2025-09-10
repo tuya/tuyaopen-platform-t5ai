@@ -15,8 +15,9 @@
 	} while (0)
 
 #define clk_m(a) (a * 1000 * 1000)
-TUYA_RGB_ISR_CB ty_rgb_cb = NULL;
+TUYA_RGB_IRQ_CB ty_rgb_cb = NULL;
 static lcd_rgb_t *g_rgb = NULL;
+
 static void __lcd_isr_cb(void)
 {
     flash_op_status_t flash_status = FLASH_OP_IDLE;
@@ -204,7 +205,7 @@ OPERATE_RET tkl_rgb_deinit(void)
  *
  * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
  */
-OPERATE_RET tkl_rgb_irq_cb_register(TUYA_RGB_ISR_CB cb)
+OPERATE_RET tkl_rgb_irq_cb_register(TUYA_RGB_IRQ_CB cb)
 {
     ty_rgb_cb = cb;
     bk_err_t ret = bk_lcd_isr_register(RGB_OUTPUT_EOF, __lcd_isr_cb);

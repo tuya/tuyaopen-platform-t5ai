@@ -30,7 +30,7 @@
 
 #define LOCAL_TRACE    (1)
 
-#define FLASH_OPERATE_TIMEOUT         3000      // 600 // Modified by TUYA
+#define FLASH_OPERATE_TIMEOUT         600
 
 static bool s_flash_client_init = false;
 
@@ -228,6 +228,8 @@ bk_err_t bk_flash_erase_sector(uint32_t address)
 
 	rtos_lock_mutex(&flash_mutex);
 
+	mb_ipc_recv(flash_socket_handle, NULL, NULL, 0, 0);  // data_buff == NULL or buff_len == 0 just discard all data.
+
 	int ret = mb_ipc_send(flash_socket_handle, FLASH_CMD_ERASE_SECTOR,
 		(u8 *)&cmd_buff, sizeof(cmd_buff), FLASH_OPERATE_TIMEOUT);
 
@@ -305,6 +307,8 @@ static bk_err_t flash_read_bytes(uint32_t address, uint8_t *user_buf, uint32_t s
 	cmd_buff.len  = size;
 
 	rtos_lock_mutex(&flash_mutex);
+
+	mb_ipc_recv(flash_socket_handle, NULL, NULL, 0, 0);  // data_buff == NULL or buff_len == 0 just discard all data.
 
 	int ret = mb_ipc_send(flash_socket_handle, FLASH_CMD_READ,
 			(u8 *)&cmd_buff, sizeof(cmd_buff), FLASH_OPERATE_TIMEOUT);
@@ -401,6 +405,31 @@ read_exit:
 	return ret_val;
 }
 
+static bk_err_t flash_read_bytes_retry(uint32_t address, uint8_t *user_buf, uint32_t size)
+{
+ int  try_cnt = 0;
+ int  ret_val = BK_OK;
+ 
+ while(1)
+ {
+     ret_val = flash_read_bytes(address, user_buf, size);
+     
+     if(ret_val == BK_OK)
+         break;
+
+     try_cnt++;          
+     if(try_cnt >= 2)
+         return ret_val;
+     else
+     {
+         rtos_delay_milliseconds(10);  // delay 10ms.
+         continue;
+     }
+ }
+
+ return ret_val;
+}
+
 bk_err_t bk_flash_read_bytes(uint32_t address, uint8_t *user_buf, uint32_t size)
 {
 	int  ret_val = BK_OK;
@@ -411,7 +440,7 @@ bk_err_t bk_flash_read_bytes(uint32_t address, uint8_t *user_buf, uint32_t size)
 
 	while(size > FLASH_IPC_READ_SIZE)
 	{
-		ret_val = flash_read_bytes(address + rd_len, user_buf + rd_len, FLASH_IPC_READ_SIZE);
+		ret_val = flash_read_bytes_retry(address + rd_len, user_buf + rd_len, FLASH_IPC_READ_SIZE);
 
 		if(ret_val != BK_OK)
 			return ret_val;
@@ -420,7 +449,7 @@ bk_err_t bk_flash_read_bytes(uint32_t address, uint8_t *user_buf, uint32_t size)
 		size -= FLASH_IPC_READ_SIZE;
 	}
 
-	ret_val = flash_read_bytes(address + rd_len, user_buf + rd_len, size);
+	ret_val = flash_read_bytes_retry(address + rd_len, user_buf + rd_len, size);
 
 	return ret_val;
 }
@@ -443,6 +472,8 @@ static bk_err_t flash_write_bytes(uint32_t address, const uint8_t *user_buf, uin
 	cmd_buff.crc  = calc_crc32(0, user_buf, size);
 
 	rtos_lock_mutex(&flash_mutex);
+
+	mb_ipc_recv(flash_socket_handle, NULL, NULL, 0, 0);  // data_buff == NULL or buff_len == 0 just discard all data.
 
 	int ret = mb_ipc_send(flash_socket_handle, FLASH_CMD_WRITE,
 		(u8 *)&cmd_buff, sizeof(cmd_buff), FLASH_OPERATE_TIMEOUT + size / 200);  // flash write speed: write done 200 bytes in 1ms.
@@ -554,6 +585,8 @@ bool bk_flash_is_driver_inited()
 	return s_flash_client_init;
 }
 
+#include "flash_driver.h"
+
 bk_err_t bk_flash_erase_fast(uint32_t erase_off, uint32_t len)
 {
 	int  ret_val = BK_FAIL;
@@ -571,8 +604,10 @@ bk_err_t bk_flash_erase_fast(uint32_t erase_off, uint32_t len)
 
 	rtos_lock_mutex(&flash_mutex);
 
+	mb_ipc_recv(flash_socket_handle, NULL, NULL, 0, 0);  // data_buff == NULL or buff_len == 0 just discard all data.
+
 	int ret = mb_ipc_send(flash_socket_handle, FLASH_CMD_FAST_ERASE,
-		(u8 *)&cmd_buff, sizeof(cmd_buff), FLASH_OPERATE_TIMEOUT);
+		(u8 *)&cmd_buff, sizeof(cmd_buff), FLASH_OPERATE_TIMEOUT * (1 + len / FLASH_SECTOR_SIZE));
 
 	if(ret != 0)
 	{

@@ -7,8 +7,8 @@
 * @copyright Copyright 2021-2030 Tuya Inc. All Rights Reserved.
 *
 */
-#ifndef __TKL_SPI_H__
-#define __TKL_SPI_H__
+#ifndef __TKL_QSPI_H__
+#define __TKL_QSPI_H__
 
 #include "tuya_cloud_types.h"
 #include "tkl_gpio.h"

@@ -134,6 +134,56 @@ bk_err_t spi_hal_set_baud_rate(spi_hal_t *hal, uint32_t baud_rate)
 		spi_clk = CONFIG_SPI_MAX_BAUD_RATE;
 	}
 
+	if(baud_rate == SPI_BAUD_RATE_2M88) {
+		HAL_LOGI("spi select src_clk apll 98M\r\n");
+		sys_hal_apll_en(1);
+		//set apll clock config
+		sys_hal_apll_cal_val_set(0x8973CA6F);  //98M    (98/2)*10*(2^24)/52 = 0x973CA6F
+		sys_hal_apll_config_set(0xC2A0AE86);
+		sys_hal_apll_spi_trigger_set(1);
+		delay(10);
+		sys_hal_apll_spi_trigger_set(0);
+		sys_hal_spi_select_clock(hal->id, SPI_CLK_APLL);
+		clk_div = 17;
+
+		HAL_LOGI("baud_rate = 2.88M, src_clk = 98M, clk_div = %d.\r\n", clk_div);
+		spi_ll_set_clk_div(hal->hw, clk_div);
+		return BK_OK;
+
+
+	} else if (baud_rate == SPI_BAUD_RATE_3M33){
+		HAL_LOGI("spi select src_clk apll 100M\r\n");
+		sys_hal_apll_en(1);
+		//set apll clock config
+		sys_hal_apll_cal_val_set(0x899D89D8);  //100M    (100/2)*10*(2^24)/52 = 0x99D89D8
+		sys_hal_apll_config_set(0xC2A0AE86);
+		sys_hal_apll_spi_trigger_set(1);
+		delay(10);
+		sys_hal_apll_spi_trigger_set(0);
+		sys_hal_spi_select_clock(hal->id, SPI_CLK_APLL);
+		clk_div = 15;
+
+		HAL_LOGI("baud_rate = 3.33M, src_clk = 100M, clk_div = %d.\r\n", clk_div);
+		spi_ll_set_clk_div(hal->hw, clk_div);
+		return BK_OK;
+
+	} else if (baud_rate == SPI_BAUD_RATE_6M66) {
+		HAL_LOGI("spi select src_clk apll 106.7M\r\n");
+		sys_hal_apll_en(1);
+		//set apll clock config
+		sys_hal_apll_cal_val_set(0x8A427627);  //106.7M    (106.7/2)*10*(2^24)/52 = 0xA427627
+		sys_hal_apll_config_set(0xC2A0AE86);
+		sys_hal_apll_spi_trigger_set(1);
+		delay(10);
+		sys_hal_apll_spi_trigger_set(0);
+		sys_hal_spi_select_clock(hal->id, SPI_CLK_APLL);
+		clk_div = 8;
+
+		HAL_LOGI("baud_rate = 6.66M, src_clk = 106.7M, clk_div = %d.\r\n", clk_div);
+		spi_ll_set_clk_div(hal->hw, clk_div);
+		return BK_OK;
+	}
+
 #if (CONFIG_SYSTEM_CTRL)
 	if (baud_rate <= CONFIG_XTAL_FREQ) {
 #else
