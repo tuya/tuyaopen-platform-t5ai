@@ -38,6 +38,7 @@ struct qspi_init_config {
     dma_id_t lcd_qspi_dma_id;
     uint32_t dma_repeat_once_len;
     BOOL_T is_send_use_dma;
+    TUYA_QSPI_WIRE_MODE_E dma_data_lines;
     uint8_t qspi_enable;
 };
 
@@ -133,21 +134,6 @@ static void qspi_rx_callback_dispatch(TUYA_QSPI_NUM_E id, void *param)
 }
 
 
-static bk_err_t qspi_pin_hardware_reset(void)
-{
-    gpio_dev_unmap(LCD_QSPI_RESET_PIN);
-    gpio_dev_map(LCD_QSPI_RESET_PIN, 0);
-    bk_gpio_enable_pull(LCD_QSPI_RESET_PIN);
-    bk_gpio_pull_up(LCD_QSPI_RESET_PIN);
-    rtos_delay_milliseconds(10);
-    bk_gpio_pull_down(LCD_QSPI_RESET_PIN);
-    rtos_delay_milliseconds(10);
-    bk_gpio_pull_up(LCD_QSPI_RESET_PIN);
-    rtos_delay_milliseconds(120);
-
-    return BK_OK;
-}
-
 static bk_err_t lcd_qspi_dma_common_init(uint8_t port)
 {
     bk_err_t ret = BK_OK;
@@ -216,10 +202,6 @@ static bk_err_t lcd_qspi_quad_write_enable(qspi_id_t qspi_id)
     qspi_hal_set_cmd_a_h(&s_tkl_qspi[qspi_id].hal, 0x10000100);
     qspi_hal_set_cmd_a_cfg1(&s_tkl_qspi[qspi_id].hal, 0xEAAA);
     qspi_hal_set_cmd_a_cfg2(&s_tkl_qspi[qspi_id].hal, 0x80008000);
-    // qspi_hal_set_cmd_a_l(&s_tkl_qspi[qspi_id].hal, 0);
-    // qspi_hal_set_cmd_a_h(&s_tkl_qspi[qspi_id].hal, 0);
-    // qspi_hal_set_cmd_a_cfg1(&s_tkl_qspi[qspi_id].hal, 0x3);
-    // qspi_hal_set_cmd_a_cfg2(&s_tkl_qspi[qspi_id].hal, 0x00008000);
     return BK_OK;
 }
 
