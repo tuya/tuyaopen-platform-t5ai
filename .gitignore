@@ -44,6 +44,7 @@ xx*.sh
 /t5_os/projects/tuya_app/tuya_build_env
 /t5_os/projects/tuya_app/config/bk7258/usr_gpio_cfg.h
 /t5_os/projects/tuya_app/config/temp_dir/
+/t5_os/projects/tuya_app/tuya_scripts/diff2ya*
 /t5_os/.bk7258_config.save
 
 /t5_os/.app
