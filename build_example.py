@@ -197,9 +197,7 @@ def copy_assets(build_root, target, param_data):
     ug_file_bin = os.path.join(build_path, "ug_file.bin")
 
     create_ua_file(build_root, target, ua_file_bin)
-    if "linux" == get_system_name():
-        # only for linux (./t5_os/projects/tuya_app/tuya_scripts/diff2ya)
-        create_ug_file(build_root, target, ua_file_bin, ug_file_bin)
+    create_ug_file(build_root, target, ua_file_bin, ug_file_bin)
 
     app_name = param_data["CONFIG_PROJECT_NAME"]
     app_ver = param_data["CONFIG_PROJECT_VERSION"]
