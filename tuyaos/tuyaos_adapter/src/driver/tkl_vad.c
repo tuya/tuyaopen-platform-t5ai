@@ -12,6 +12,7 @@
 #include "tkl_queue.h"
 #include "tkl_thread.h"
 #include "tkl_vad.h"
+#include "tkl_system.h"
 
 /***********************************************************
 ************************macro define************************
@@ -258,6 +259,10 @@ OPERATE_RET tkl_vad_start(void)
 
     __tkl_vad_send_msg(VAD_MSG_CMD_START, NULL, 0);
 
+    while (false == sg_p_vad_info->is_vad_work) {
+        tkl_system_sleep(10);
+    }
+
     return OPRT_OK;
 }
 
@@ -272,6 +277,10 @@ OPERATE_RET tkl_vad_stop(void)
     }
 
     __tkl_vad_send_msg(VAD_MSG_CMD_CANCLE, NULL, 0);
+
+    while (sg_p_vad_info->is_vad_work) {
+        tkl_system_sleep(10);
+    }
 
     return OPRT_OK;
 }
