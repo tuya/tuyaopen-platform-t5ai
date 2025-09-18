@@ -24,7 +24,7 @@ def clean(build_root, toolchain_folder_path, bash_path):
     build_root = build_root.replace("\\", "/")
     toolchain_folder_path = toolchain_folder_path.replace("\\", "/")
     cmd = f"export TUYA_TOOLCHAIN_PATH={toolchain_folder_path}; "
-    cmd += f"cd {build_root}; echo $TUYA_TOOLCHAIN_PATH"
+    cmd += f"cd {build_root}; make clean"
     if os.path.exists(bash_path):  # only for windows
         cmd = f"{bash_path} -c '{cmd}'"
     do_subprocess(cmd)
