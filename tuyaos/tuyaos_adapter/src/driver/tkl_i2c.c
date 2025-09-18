@@ -377,7 +377,7 @@ static UCHAR_T __sw_i2c_read_byte(SR_I2C_GPIO_T i2c_pin, BOOL_T need_ack)
  *
  * @return operation result
  */
-static INT_T __sw_i2c_write_data(UCHAR_T port, USHORT_T addr, const UCHAR_T *buf, UCHAR_T len, BOOL_T xfer_pending)
+static INT_T __sw_i2c_write_data(UCHAR_T port, USHORT_T addr, const UCHAR_T *buf, UINT_T len, BOOL_T xfer_pending)
 {
     __sw_i2c_start(sg_i2c_pin[port]);
 
@@ -387,7 +387,7 @@ static INT_T __sw_i2c_write_data(UCHAR_T port, USHORT_T addr, const UCHAR_T *buf
         return -1;
     }
 
-    for (UCHAR_T i = 0; i < len; i++) {
+    for (UINT_T i = 0; i < len; i++) {
         __sw_i2c_send_byte(sg_i2c_pin[port], buf[i]);
         if (!__sw_i2c_get_ack(sg_i2c_pin[port])) {
             __sw_i2c_stop(sg_i2c_pin[port]);
@@ -626,7 +626,7 @@ OPERATE_RET tkl_i2c_master_send(TUYA_I2C_NUM_E port, USHORT_T dev_addr, CONST VO
     // bk_printf("iic write %02x %02x %d\n", dev_addr, *(uint8_t *)data, size);
     tkl_mutex_lock(sg_i2c_cfg[port].mutex);
     delay_us = sg_i2c_cfg[port].delay_us;
-    ret = __sw_i2c_write_data(port, dev_addr, data, (UCHAR_T)size, xfer_pending);
+    ret = __sw_i2c_write_data(port, dev_addr, data, size, xfer_pending);
     tkl_mutex_unlock(sg_i2c_cfg[port].mutex);
     if (ret < 0)
         return OPRT_COM_ERROR;
