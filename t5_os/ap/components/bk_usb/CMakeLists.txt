@@ -135,14 +135,14 @@ endif() # CONFIG_USB_CDC_ACM_DEMO
 
 endif() # CONFIG_USB
 
-if (CONFIG_USB_CDC_ACM_DEMO)
+if (CONFIG_USB_CDC_MODEM)
     list (APPEND incs
         example/usb_cdc_acm
     )
     list (APPEND srcs
-        example/usb_cdc_acm/bk_usb_cdc_demo.c
+        example/usb_cdc_acm/bk_usb_cdc_modem.c
     )
-endif() # CONFIG_USB_CDC_ACM_DEMO
+endif() # CONFIG_USB_CDC_MODEM
 
 if (CONFIG_ATE_TEST)
 	list(APPEND incs
