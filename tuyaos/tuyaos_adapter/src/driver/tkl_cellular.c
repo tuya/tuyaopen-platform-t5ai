@@ -36,7 +36,8 @@
 #endif /* IPADDR2STR */
 
 #if CONFIG_BK_MODEM
-extern bk_err_t bk_modem_init(struct bk_modem_dce_pdp_ctx_s *ctx);
+// extern bk_err_t bk_modem_init(struct bk_modem_dce_pdp_ctx_s *ctx);
+extern bk_err_t bk_modem_init(void);
 #if CONFIG_LWIP_PPP_SUPPORT
 TKL_CELLULAR_STATUS_CHANGE_CB ppp_netif_link_chg_cb = NULL;
 #endif /* CONFIG_LWIP_PPP_SUPPORT */
@@ -51,28 +52,13 @@ TKL_CELLULAR_STATUS_CHANGE_CB ppp_netif_link_chg_cb = NULL;
  */
 OPERATE_RET tkl_cellular_init(TKL_CELLULAR_BASE_CFG_T *cfg)
 {
-    TUYA_GPIO_BASE_CFG_T gpio_cfg;
-
-    gpio_cfg.direct = TUYA_GPIO_OUTPUT;
-    gpio_cfg.level = TUYA_GPIO_LEVEL_HIGH;
-    gpio_cfg.mode = TUYA_GPIO_PUSH_PULL;
-    tkl_gpio_init( TUYA_GPIO_NUM_24,  &gpio_cfg); // reset pin 24 is 1;
-    tkl_gpio_write( TUYA_GPIO_NUM_24, TUYA_GPIO_LEVEL_HIGH);
-    // bk_printf(" reset pin 24 to high\r\n");
-    gpio_cfg.level = TUYA_GPIO_LEVEL_HIGH;
-    tkl_gpio_init( TUYA_GPIO_NUM_9,  &gpio_cfg); // power pin 9;
-    tkl_gpio_write( TUYA_GPIO_NUM_9, TUYA_GPIO_LEVEL_HIGH);
-    tkl_system_sleep(200);  //delay 200ms
-    // bk_printf(" power on pin 9 to low ");
-    tkl_gpio_write( TUYA_GPIO_NUM_9, TUYA_GPIO_LEVEL_LOW);  // power on pin LOW
-    tkl_system_sleep(1200);  //delay up 1s
-
 #if CONFIG_BK_MODEM
-    struct bk_modem_dce_pdp_ctx_s ctx;
-    memset(&ctx, 0, sizeof(ctx));
-    strncpy(ctx.apn, cfg->apn, TKL_CELLULAR_APN_LEN);
-    bk_printf("%s: Start USB Cellular Network\r\n", __func__);
-    bk_modem_init(&ctx);
+    // struct bk_modem_dce_pdp_ctx_s ctx;
+    // memset(&ctx, 0, sizeof(ctx));
+    // strncpy(ctx.apn, cfg->apn, TKL_CELLULAR_APN_LEN);
+    // bk_printf("%s: Start USB Cellular Network\r\n", __func__);
+    // bk_modem_init(&ctx);
+    bk_modem_init();
     return OPRT_OK;
 #else
     return OPRT_NOT_SUPPORTED;
@@ -95,8 +81,10 @@ OPERATE_RET tkl_cellular_get_status(TKL_CELLULAR_STAT_E *status)
     uint32_t mask;
     uint32_t gw;
 
-    netif = (struct netif *)tkl_lwip_get_netif_by_index(3);
+    // netif = (struct netif *)tkl_lwip_get_netif_by_index(3);
+    netif = (struct netif *)net_get_ppp_netif_handle();
     if (NULL == netif) {
+        *status = TKL_CELLULAR_LINK_DOWN;
         return OPRT_COM_ERROR;
     }
 
@@ -130,7 +118,7 @@ OPERATE_RET tkl_cellular_set_status_cb(TKL_CELLULAR_STATUS_CHANGE_CB cb)
 #if CONFIG_BK_MODEM
 #if CONFIG_LWIP_PPP_SUPPORT
     ppp_netif_link_chg_cb = cb;
-    //bk_printf("%s: Set status cb %p\r\n", __func__, cb);
+    // bk_printf("%s: Set status cb %p\r\n", __func__, cb);
     return OPRT_OK;
 #endif
 #else
@@ -152,7 +140,8 @@ OPERATE_RET tkl_cellular_get_ip(NW_IP_S *ip)
     unsigned int ip_addr;
     struct netif *netif;
 
-    netif = (struct netif *)tkl_lwip_get_netif_by_index(3);
+    // netif = (struct netif *)tkl_lwip_get_netif_by_index(3);
+    netif = (struct netif *)net_get_ppp_netif_handle();
     if (NULL == netif) {
         return OPRT_COM_ERROR;
     }
