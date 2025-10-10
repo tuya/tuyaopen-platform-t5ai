@@ -11,6 +11,8 @@
 #include "bk_modem_dce.h"
 #include "bk_modem_at_cmd.h"
 
+extern struct bk_modem_dce_pdp_ctx_s dce_pdp_ctx;
+
 bool bk_modem_dce_send_at(void)
 {
     return (BK_OK == bk_modem_at_ready());
@@ -26,6 +28,16 @@ bool bk_modem_dce_check_signal(void)
     return (BK_OK == bk_modem_at_csq());
 }
 
+bool bk_modem_dce_get_ccid(void)
+{
+    return (BK_OK == bk_modem_at_ccid());
+}
+
+bool bk_modem_dce_get_cbc(void)
+{
+    return (BK_OK == bk_modem_at_cbc());
+}
+
 bool bk_modem_dce_check_register(void)
 {
     return (BK_OK == bk_modem_at_get_operator_name());
@@ -33,7 +45,7 @@ bool bk_modem_dce_check_register(void)
 
 bool bk_modem_dce_set_apn(void)
 {
-    return (BK_OK == bk_modem_at_cgdcont(1,"ipv4v6",""));
+    return (BK_OK == bk_modem_at_cgdcont(1,"ipv4v6", dce_pdp_ctx.apn));
 }
 
 bool bk_modem_dce_check_attach(void)

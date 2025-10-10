@@ -7,8 +7,10 @@
  *
  ****************************************************************************************
  */
+#include <string.h>
 #include "bk_modem_main.h"
 #include "bk_modem_dte.h"
+#include "bk_modem_dce.h"
 #include "bk_modem_at_cmd.h"
 #include "bk_modem_usbh_if.h"
 #include "../../include/os/os.h"
@@ -21,6 +23,7 @@ beken_queue_t bk_modem_queue = NULL;
 static enum bk_modem_state_e s_bk_modem_state = WAIT_MODEM_CONN;
 struct bk_modem_env_s bk_modem_env;
 static uint8_t bk_modem_status = 0;
+struct bk_modem_dce_pdp_ctx_s dce_pdp_ctx;
 
 static void bk_modem_thread_main(void *args)
 {
@@ -143,7 +146,7 @@ void bk_modem_deinit(void)
     }
 }
 
-bk_err_t bk_modem_init(void)
+bk_err_t bk_modem_init(struct bk_modem_dce_pdp_ctx_s *ctx)
 {
     int ret;
 
@@ -160,6 +163,8 @@ bk_err_t bk_modem_init(void)
     {
         goto thread_fail;
     }
+
+    os_memset(&dce_pdp_ctx, 0, sizeof(dce_pdp_ctx));
 
     // Initialize bk modem queue
     ret = rtos_init_queue(&bk_modem_queue, "bk_modem_queue", sizeof(BUS_MSG_T), 16);
@@ -180,6 +185,12 @@ bk_err_t bk_modem_init(void)
     if (ret != kNoErr)
     {
         goto thread_fail;
+    }
+    
+    if (NULL == ctx) {
+        strcpy(dce_pdp_ctx.apn, "");
+    } else {
+        strncpy(dce_pdp_ctx.apn, ctx->apn, 64);
     }
 
     bk_pm_module_vote_boot_cp1_ctrl(PM_BOOT_CP1_MODULE_NAME_BK_MODEM, PM_POWER_MODULE_STATE_ON);

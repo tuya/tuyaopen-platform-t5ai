@@ -23,6 +23,7 @@ typedef enum {
 } TKL_CELLULAR_STAT_E;
 
 #define TKL_CELLULAR_APN_LEN         64
+#define TKL_CELLULAR_CCID_LEN        20
 #define TKL_CELLULAR_USER_NAME_LEN   32
 #define TKL_CELLULAR_USER_PASSWD_LEN 32
 #define TKL_CELLULAR_DIAL_UP_CMD_LEN 32
@@ -84,6 +85,24 @@ OPERATE_RET tkl_cellular_get_ip(NW_IP_S *ip);
  * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
  */
 OPERATE_RET tkl_cellular_get_ipv6(NW_IP_TYPE type, NW_IP_S *ip);
+
+/**
+ * @brief  get the ccid of the cellular link
+ *
+ * @param[out]   ccid: ccid string
+ *
+ * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
+ */
+OPERATE_RET tkl_cellular_get_ccid(char *ccid);
+
+/**
+ * @brief  get the rssi of the cellular link
+ *
+ * @param[out]   rssi: rssi value
+ *
+ * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
+ */
+OPERATE_RET tkl_cellular_get_rssi(char *rssi);
 
 #ifdef __cplusplus
 } // extern "C"

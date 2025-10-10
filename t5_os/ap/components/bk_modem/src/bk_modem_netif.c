@@ -21,6 +21,9 @@
 #include "bk_modem_dte.h"
 
 #if CONFIG_LWIP_PPP_SUPPORT
+#include "tkl_cellular.h"
+extern TKL_CELLULAR_STATUS_CHANGE_CB ppp_netif_link_chg_cb;
+
 #if PPP_SUPPORT && PPP_AUTH_SUPPORT
 typedef struct {
     struct tcpip_api_call_data call;
@@ -66,6 +69,7 @@ static void on_ppp_status_changed(ppp_pcb *pcb, int err_code, void *ctx)
 #if IP_NAPT
 extern const ip_addr_t *sta_dns;
             sta_dns = dns_getserver(0);
+            BK_MODEM_LOGI("DNS Server: %s 0x%x\r\n", ip4addr_ntoa((const ip4_addr_t *)&sta_dns->addr), sta_dns->addr);
 #endif
             bk_event_post(EVENT_MOD_NETIF, EVENT_NETIF_GOT_IP4,
                                    &event_data, sizeof(event_data), BEKEN_NEVER_TIMEOUT);
@@ -90,6 +94,9 @@ extern const ip_addr_t *sta_dns;
             //TODO post connection lost event
             bk_modem_set_state(PPP_STOP);
             bk_modem_send_msg(MSG_PPP_STOP, ABNORMAL_STOP,0,0);
+            if (ppp_netif_link_chg_cb) {
+                ppp_netif_link_chg_cb(TKL_CELLULAR_LINK_DOWN);
+            }
             return;
 
         case PPPERR_AUTHFAIL:
@@ -215,6 +222,9 @@ int bk_modem_ppp_netif_event_cb(void *arg, event_module_t event_module,
 		got_ip = (netif_event_got_ip4_t *)event_data;
 		if (got_ip->netif_if == NETIF_IF_PPP)
 			BK_MODEM_LOGI("BK PPP got ip\r\n");
+            if (ppp_netif_link_chg_cb) {
+                ppp_netif_link_chg_cb(TKL_CELLULAR_LINK_UP);
+            }
 		break;
 	default:
 		break;
