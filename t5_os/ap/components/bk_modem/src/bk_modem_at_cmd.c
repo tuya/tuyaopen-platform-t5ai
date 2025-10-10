@@ -15,10 +15,11 @@
 #include <os/str.h>
 #include <stdio.h>
 #include <stdarg.h>
+#include <string.h>
 #include "bk_modem_main.h"
 #include "bk_modem_at_cmd.h"
 #include "bk_modem_dte.h"
-
+#include "bk_modem_dce.h"
 
 #define AT_CMD_LEN_MAX (128)
 #define AT_RSP_LEN_MAX (256)
@@ -30,6 +31,7 @@ uint8_t g_modem_at_cmd_buf[AT_CMD_LEN_MAX];
 uint8_t g_modem_at_rsp_buf[AT_RSP_LEN_MAX];
 uint8_t g_modem_at_rsp_segment_cnt = 0;
 uint32_t g_modem_at_rsp_len = 0;
+extern struct bk_modem_dce_pdp_ctx_s dce_pdp_ctx;
 
 int bk_modem_at_rsp_parse_args(char *rsp_buf, const char *resp_expr, ...)
 {
@@ -253,21 +255,26 @@ bk_err_t bk_modem_at_cpin(void)
 // Get operator name
 bk_err_t bk_modem_at_csq(void)
 {
+	int rssi = 0;
+	int ber = 0;
+	char *ptr, *token, *saveptr, *endptr;
+
 	if (BK_OK == bk_modem_at_cmd_send(AT_CSQ, 3, 5000))
 	{
-		BK_MODEM_LOGI("AT_CPIN, rsp:%s\r\n",g_modem_at_rsp_buf);
-		int rssi = 0;
-		int ber = 0;
+		BK_MODEM_LOGI("AT_CSQ, rsp:%s\r\n",g_modem_at_rsp_buf);
 
 		if (bk_modem_at_rsp_parse_args((char *)g_modem_at_rsp_buf, "\r\n+CSQ: %d,%d", &rssi, &ber))
 		{
 			BK_MODEM_LOGI("CSQ: rssi=%d, ber=%d.\r\n", rssi, ber);
+			// dce_pdp_ctx.rssi = -112 + rssi * 2;
+			dce_pdp_ctx.rssi = rssi;
 		}
 		return BK_OK;
 	}
 	else
 	{
 		BK_MODEM_LOGI("at_cmd_send fail!,AT\r\n");
+		dce_pdp_ctx.rssi = rssi;
 		return BK_FAIL;
 	}
 }
@@ -302,6 +309,55 @@ bk_err_t bk_modem_at_cgdcont_check(void)
 		BK_MODEM_LOGI("at_cmd_send fail!,AT+CGDCONT\r\n");
 		return BK_FAIL;
 	}
+}
+
+bk_err_t bk_modem_at_ccid(void)
+{
+	char *ptr;
+
+	if (BK_OK == bk_modem_at_cmd_send(AT_CCID, 3, 5000))
+	{
+		BK_MODEM_LOGI("AT+CCID, rsp:%s\r\n",g_modem_at_rsp_buf);
+		if ((ptr = os_strstr((char *)g_modem_at_rsp_buf, "\r\n+CCID: ")) != NULL)
+		{
+			ptr += 9; // offset "\r\n+CCID: "
+			os_strncpy((char *)dce_pdp_ctx.cid, ptr, BK_MODEM_DCE_CID_LEN);
+		}
+		return BK_OK;
+	}
+	else
+	{
+		BK_MODEM_LOGI("at_cmd_send fail!,AT+CCID\r\n");
+		return BK_FAIL;
+	}
+}
+
+bk_err_t bk_modem_at_cbc(void)
+{
+	char *ptr, *token, *saveptr, *endptr;
+
+	if (BK_OK != bk_modem_at_cmd_send(AT_CBC, 3, 5000))	{
+		BK_MODEM_LOGI("at_cmd_send fail!,AT+CBC\r\n");
+		return BK_FAIL;
+	}
+
+	BK_MODEM_LOGI("AT+CBC, rsp:%s\r\n",g_modem_at_rsp_buf);
+
+	ptr = os_strstr((char *)g_modem_at_rsp_buf, "\r\n+CBC:");
+	if (NULL == ptr) {
+		BK_MODEM_LOGI("parse AT_CBC response fail!\r\n");
+		return BK_FAIL;
+	}
+
+	ptr += 8; // offset \r\n+CBC: 
+	token = strtok_r(ptr, ",", &saveptr);
+	if (NULL != token) {
+		dce_pdp_ctx.volt = (uint32_t)strtol(token, &endptr, 0);
+	} else {
+		dce_pdp_ctx.volt = 0;
+	}
+
+	return BK_OK;
 }
 
 //

@@ -21,6 +21,8 @@
 #define AT_CFUN_0				"AT+CFUN=0\r"
 #define AT_CFUN_1				"AT+CFUN=1\r"
 #define AT_CGREG				"AT+CGREG?\r"
+#define AT_CCID                 "AT+CCID\r"
+#define AT_CBC                  "AT+CBC\r"
 
 #define AT_RSP_OK				"OK"
 #define AT_RSP_ERROR			"ERROR"
@@ -41,6 +43,10 @@ bk_err_t bk_modem_at_csq(void);
 bk_err_t bk_modem_at_cgdcont(uint8_t cid,char *type,char *apn);
 //AT_CGDCONT?
 bk_err_t bk_modem_at_cgdcont_check(void);
+//AT_CCID
+bk_err_t bk_modem_at_ccid(void);
+//AT_CBC
+bool bk_modem_dce_get_cbc(void);
 //+++
 bk_err_t bk_modem_at_enter_cmd_mode(void);
 // PPP connect

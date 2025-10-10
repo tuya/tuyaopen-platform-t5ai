@@ -19,5 +19,5 @@ endif()
 armino_component_register(SRCS "${srcs}"
 	INCLUDE_DIRS "${incs}"
 	REQUIRES driver
-	PRIV_REQUIRES bk_common bk_wifi bk_rtos os_source lwip_intf_v2_1 bk_usb
+	PRIV_REQUIRES bk_common bk_wifi bk_rtos os_source lwip_intf_v2_1 bk_usb tuyaos_adapter
 	)

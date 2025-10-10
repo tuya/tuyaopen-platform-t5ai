@@ -6,8 +6,20 @@
 
 #include <common/bk_include.h>
 
+#define BK_MODEM_DCE_APN_LEN 64
+#define BK_MODEM_DCE_CID_LEN 20
+
+struct bk_modem_dce_pdp_ctx_s
+{
+    char            rssi;
+    uint32_t        volt;
+    char            apn[BK_MODEM_DCE_APN_LEN+1];
+    char            cid[BK_MODEM_DCE_CID_LEN+1];
+};
+
 extern bool bk_modem_dce_send_at(void);
 extern bool bk_modem_dce_check_sim(void);
+extern bool bk_modem_dce_get_ccid(void);
 extern bool bk_modem_dce_check_signal(void);
 extern bool bk_modem_dce_check_register(void);
 extern bool bk_modem_dce_set_apn(void);

@@ -1,12 +1,12 @@
 /**
-* @file tkl_cellular.h
-* @brief Common process - adapter the cellular api
-* @version 0.1
-* @date 2025-04-21
-*
-* @copyright Copyright 2020-2025 Tuya Inc. All Rights Reserved.
-*
-*/
+ * @file tkl_cellular.h
+ * @brief Common process - adapter the cellular api
+ * @version 0.1
+ * @date 2025-04-21
+ *
+ * @copyright Copyright 2020-2025 Tuya Inc. All Rights Reserved.
+ *
+ */
 #include <string.h>
 #include "tuya_cloud_types.h"
 #include "tuya_error_code.h"
@@ -31,34 +31,36 @@
 #endif
 
 #ifndef IPADDR2STR
-#define IPADDR2STR(ip) (unsigned char)(ip & 0xFF), (unsigned char)((ip >> 8) & 0xFF), \
-                        (unsigned char)((ip >> 16) & 0xFF), (unsigned char)((ip >> 24) & 0xFF)
+#define IPADDR2STR(ip)                                                                                                 \
+    (unsigned char)(ip & 0xFF), (unsigned char)((ip >> 8) & 0xFF), (unsigned char)((ip >> 16) & 0xFF),                 \
+        (unsigned char)((ip >> 24) & 0xFF)
 #endif /* IPADDR2STR */
 
 #if CONFIG_BK_MODEM
-// extern bk_err_t bk_modem_init(struct bk_modem_dce_pdp_ctx_s *ctx);
-extern bk_err_t bk_modem_init(void);
+extern bk_err_t bk_modem_init(struct bk_modem_dce_pdp_ctx_s *ctx);
+extern struct bk_modem_dce_pdp_ctx_s dce_pdp_ctx;
+
 #if CONFIG_LWIP_PPP_SUPPORT
 TKL_CELLULAR_STATUS_CHANGE_CB ppp_netif_link_chg_cb = NULL;
 #endif /* CONFIG_LWIP_PPP_SUPPORT */
+
 #endif /* CONFIG_BK_MODEM */
 
 /**
  * @brief  init create cellular link
  *
  * @param[in]   cfg: the configure for cellular link
- * 
+ *
  * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
  */
 OPERATE_RET tkl_cellular_init(TKL_CELLULAR_BASE_CFG_T *cfg)
 {
 #if CONFIG_BK_MODEM
-    // struct bk_modem_dce_pdp_ctx_s ctx;
-    // memset(&ctx, 0, sizeof(ctx));
-    // strncpy(ctx.apn, cfg->apn, TKL_CELLULAR_APN_LEN);
-    // bk_printf("%s: Start USB Cellular Network\r\n", __func__);
-    // bk_modem_init(&ctx);
-    bk_modem_init();
+    struct bk_modem_dce_pdp_ctx_s ctx;
+    memset(&ctx, 0, sizeof(ctx));
+    strncpy(ctx.apn, cfg->apn, TKL_CELLULAR_APN_LEN);
+    bk_printf("%s: Start USB Cellular Network\r\n", __func__);
+    bk_modem_init(&ctx);
     return OPRT_OK;
 #else
     return OPRT_NOT_SUPPORTED;
@@ -98,10 +100,10 @@ OPERATE_RET tkl_cellular_get_status(TKL_CELLULAR_STAT_E *status)
         *status = TKL_CELLULAR_LINK_DOWN;
     }
 
-    //bk_printf("%s: wired link status %d\r\n", __func__, *status);
+    // bk_printf("%s: wired link status %d\r\n", __func__, *status);
     return OPRT_OK;
 #endif /* CONFIG_LWIP_PPP_SUPPORT */
-#else  
+#else
     return OPRT_NOT_SUPPORTED;
 #endif /* CONFIG_BK_MODEM */
 }
@@ -123,19 +125,19 @@ OPERATE_RET tkl_cellular_set_status_cb(TKL_CELLULAR_STATUS_CHANGE_CB cb)
 #endif
 #else
     return OPRT_NOT_SUPPORTED;
-#endif /* CONFIG_BK_MODEM */    
+#endif /* CONFIG_BK_MODEM */
 }
 
 /**
  * @brief  get the ip address of the cellular link
- * 
+ *
  * @param[in]   ip: the ip address
  *
  * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
  */
 OPERATE_RET tkl_cellular_get_ip(NW_IP_S *ip)
 {
-#if CONFIG_BK_MODEM    
+#if CONFIG_BK_MODEM
 #if CONFIG_LWIP_PPP_SUPPORT
     unsigned int ip_addr;
     struct netif *netif;
@@ -155,19 +157,19 @@ OPERATE_RET tkl_cellular_get_ip(NW_IP_S *ip)
     ip_addr = netif->netmask.addr;
     sprintf(ip->mask, "%d.%d.%d.%d", IPADDR2STR(ip_addr));
 
-    //bk_printf("%s: get wired ip %s mask %s gw %s\r\n",
-    //    __func__, ip->ip, ip->mask, ip->gw);
+    // bk_printf("%s: get wired ip %s mask %s gw %s\r\n",
+    //     __func__, ip->ip, ip->mask, ip->gw);
     return OPRT_OK;
 #endif
 #else
     bk_printf("%s: Cellular link not supported\r\n", __func__);
     return OPRT_NOT_SUPPORTED;
-#endif    
+#endif
 }
 
 /**
  * @brief  get the ip address of the cellular link
- * 
+ *
  * @param[in]   ip: the ip address
  *
  * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
@@ -177,3 +179,32 @@ OPERATE_RET tkl_cellular_get_ipv6(NW_IP_TYPE type, NW_IP_S *ip)
     return OPRT_NOT_SUPPORTED;
 }
 
+/**
+ * @brief  get the ccid of the cellular link
+ *
+ * @param[out]   ccid: ccid string
+ *
+ * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
+ */
+OPERATE_RET tkl_cellular_get_ccid(char *ccid)
+{
+#if CONFIG_BK_MODEM
+    strncpy(ccid, dce_pdp_ctx.cid, TKL_CELLULAR_CCID_LEN);
+#endif
+    return OPRT_OK;
+}
+
+/**
+ * @brief  get the rssi of the cellular link
+ *
+ * @param[out]   rssi: rssi value
+ *
+ * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
+ */
+OPERATE_RET tkl_cellular_get_rssi(char *rssi)
+{
+#if CONFIG_BK_MODEM
+    *rssi = dce_pdp_ctx.rssi;
+#endif
+    return OPRT_OK;
+}

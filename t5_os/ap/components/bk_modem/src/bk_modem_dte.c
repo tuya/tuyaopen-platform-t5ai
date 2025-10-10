@@ -90,7 +90,7 @@ void bk_modem_dte_handle_modem_check(void)
             sim_check_cnt++;
             break;
         }
-        
+
         if (!bk_modem_dce_check_signal())
         {
             temp_flag = 3;
@@ -102,6 +102,19 @@ void bk_modem_dte_handle_modem_check(void)
             temp_flag = 4;
             break;
         }
+
+        if (!bk_modem_dce_get_ccid())
+        {
+            temp_flag = 5;
+            break;
+        }
+
+        if (!bk_modem_dce_get_cbc())
+        {
+            temp_flag = 6;
+            //break;
+        }
+
         sim_check_cnt = 0;
         bk_modem_set_state(PPP_START);
         bk_modem_send_msg(MSG_PPP_START, 0,0,0);
