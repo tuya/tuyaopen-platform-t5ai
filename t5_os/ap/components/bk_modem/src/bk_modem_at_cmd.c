@@ -263,12 +263,24 @@ bk_err_t bk_modem_at_csq(void)
 	{
 		BK_MODEM_LOGI("AT_CSQ, rsp:%s\r\n",g_modem_at_rsp_buf);
 
-		if (bk_modem_at_rsp_parse_args((char *)g_modem_at_rsp_buf, "\r\n+CSQ: %d,%d", &rssi, &ber))
-		{
-			BK_MODEM_LOGI("CSQ: rssi=%d, ber=%d.\r\n", rssi, ber);
-			// dce_pdp_ctx.rssi = -112 + rssi * 2;
-			dce_pdp_ctx.rssi = rssi;
+		ptr = os_strstr((char *)g_modem_at_rsp_buf, "\r\n+CSQ:");
+		if (NULL == ptr) {
+			BK_MODEM_LOGI("parse AT_CSQ response fail!\r\n");
+			return BK_FAIL;
 		}
+
+		ptr += 8; // offset \r\n+CSQ: 
+		token = strtok_r(ptr, ",", &saveptr);
+		if (NULL != token) {
+			rssi = (int)strtol(token, &endptr, 0);
+			token = strtok_r(NULL, ",", &saveptr);
+		}
+		if (NULL != token) {
+			ber = (int)strtol(token, &endptr, 0);
+		}
+
+		dce_pdp_ctx.rssi = -112 + rssi * 2;
+
 		return BK_OK;
 	}
 	else
