@@ -66,8 +66,14 @@ typedef struct
     mclk_freq_t bk_clk;
 } DVP_MODULE_MANAGE_T;
 
-DVP_MODULE_MANAGE_T g_dvp_module_manage =
+static DVP_MODULE_MANAGE_T g_dvp_module_manage =
 {
+    .encoder_manage = 
+    {
+        .in_channel = DMA_ID_MAX,
+        .out_channel = DMA_ID_MAX,
+    },
+
     .yuv_buf_module_config =
     {
         .mclk_div = YUV_MCLK_DIV_3,
@@ -505,21 +511,25 @@ static void __dvp_yuv_eof_handler(yuv_buf_unit_t id, void *param)
 
     TUYA_DVP_CFG_T *dvp_cfg = (TUYA_DVP_CFG_T *)param;
 
+    g_dvp_module_manage.base_frame->frame_id = g_dvp_module_manage.frame_id++;
     g_dvp_module_manage.base_frame->is_frame_complete = true;
     g_dvp_module_manage.base_frame->total_frame_len = g_dvp_module_manage.base_frame_len;
     TUYA_DVP_FRAME_MANAGE_T *new_frame = dvp_frame_assign_cb(g_dvp_module_manage.base_frame_fmt);
-    if (new_frame)
-    {
-		new_frame->width = dvp_cfg->width;
-		new_frame->height = dvp_cfg->height;
-		new_frame->frame_fmt = g_dvp_module_manage.base_frame_fmt;
-		new_frame->data_len = g_dvp_module_manage.base_frame_len;
-        new_frame->is_frame_complete = false;
-        if (dvp_frame_post_cb)
-            dvp_frame_post_cb(g_dvp_module_manage.base_frame);
-
-		g_dvp_module_manage.base_frame = new_frame;
+    if(new_frame == NULL) {
+        bk_printf("cant create new frame\r\n");
+        return;
     }
+
+    new_frame->width = dvp_cfg->width;
+    new_frame->height = dvp_cfg->height;
+    new_frame->frame_fmt = g_dvp_module_manage.base_frame_fmt;
+    new_frame->data_len = g_dvp_module_manage.base_frame_len;
+    new_frame->is_frame_complete = false;
+
+    if (dvp_frame_post_cb)
+        dvp_frame_post_cb(g_dvp_module_manage.base_frame);
+
+    g_dvp_module_manage.base_frame = new_frame;
 
     bk_yuv_buf_set_em_base_addr((UINT32_T)g_dvp_module_manage.base_frame->data);
 }
@@ -659,6 +669,7 @@ out:
     {
         coder_manage->in_offset = 0;
         bk_dma_flush_src_buffer(coder_manage->in_channel);
+        g_dvp_module_manage.base_frame->frame_id = g_dvp_module_manage.frame_id - 1;
         g_dvp_module_manage.base_frame->is_frame_complete = true;
         g_dvp_module_manage.base_frame->total_frame_len = g_dvp_module_manage.base_frame_len;
         new_frame = dvp_frame_assign_cb(g_dvp_module_manage.base_frame_fmt);
@@ -773,6 +784,7 @@ out:
     {
         coder_manage->in_offset = 0;
         bk_dma_flush_src_buffer(coder_manage->in_channel);
+        g_dvp_module_manage.base_frame->frame_id = g_dvp_module_manage.frame_id - 1;
         g_dvp_module_manage.base_frame->is_frame_complete = true;
         g_dvp_module_manage.base_frame->total_frame_len = g_dvp_module_manage.base_frame_len;
         new_frame = dvp_frame_assign_cb(g_dvp_module_manage.base_frame_fmt);
@@ -887,21 +899,27 @@ OPERATE_RET tkl_dvp_init(TUYA_DVP_CFG_T *dvp_cfg, UINT32_T clk)
     if (ret)
         return OPRT_NOT_SUPPORTED;
 
-    g_dvp_module_manage.bk_clk = MCLK_24M;
-    __ty_clk_to_bk_clk(clk, &g_dvp_module_manage.bk_clk);
+    if(clk) {
+        g_dvp_module_manage.bk_clk = MCLK_24M;
+        __ty_clk_to_bk_clk(clk, &g_dvp_module_manage.bk_clk);
+    }
 
     // SMP版本gpio功能都在usr_gpio_cfg配好
     // bk_video_gpio_init(DVP_GPIO_ALL);
 
-	//enable mclk
-    bk_video_dvp_mclk_enable(YUV_MODE);
+    if(g_dvp_module_manage.bk_clk) {
+        //enable mclk
+        bk_video_dvp_mclk_enable(YUV_MODE);
+    }
 
     __dvp_hardware_init(dvp_cfg);
 
     __dvp_isr_register(dvp_cfg);
 
-    //update mclk config
-    bk_video_set_mclk(g_dvp_module_manage.bk_clk);
+    if(g_dvp_module_manage.bk_clk) {
+        //update mclk config
+        bk_video_set_mclk(g_dvp_module_manage.bk_clk);
+    }
 
     yuv_mode_t work_mode = g_dvp_module_manage.cur_work_mode;
     bk_yuv_buf_start(work_mode);
