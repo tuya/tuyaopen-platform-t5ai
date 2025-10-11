@@ -187,7 +187,14 @@ OPERATE_RET tkl_spi_send(TUYA_SPI_NUM_E port, VOID_T *data, UINT32_T size)
         }
 
         if (spi_irq[port].irq_enable) {
-            ret = tuya_bk_spi_dma_write_bytes_async((spi_id_t)port, data, size);
+            if(size <= 8) {
+                ret = bk_spi_dma_write_bytes((spi_id_t)port, data, size);
+                if(ret == BK_OK) {
+                    spi_tx_callback_dispatch(port, NULL);
+                }
+            }else {
+                ret = tuya_bk_spi_dma_write_bytes_async((spi_id_t)port, data, size);
+            }
         } else {
             ret = bk_spi_dma_write_bytes((spi_id_t)port, data, size);
         }

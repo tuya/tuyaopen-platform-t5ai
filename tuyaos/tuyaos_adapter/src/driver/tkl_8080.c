@@ -103,6 +103,8 @@ static OPERATE_RET __rgb_ty_clk_to_bk_clk(UINT32_T clk, lcd_clk_t *outclk)
 
 bk_err_t tkl_lcd_mcu_gpio_init(UINT8_T data_bits)
 {
+    bk_printf("%s data_bits:%d\r\n", __func__, data_bits);
+
     switch (data_bits)
     {
     case 18:
