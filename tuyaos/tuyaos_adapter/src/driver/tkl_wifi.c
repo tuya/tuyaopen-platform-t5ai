@@ -1155,6 +1155,13 @@ int _netif_event_cb(void *arg, event_module_t event_module,
 					   int event_id, void *event_data)
 {
     bk_printf("_netif_event_cb %d\r\n", event_id);
+    
+    netif_event_got_ip4_t *pri_data = (netif_event_got_ip4_t *)event_data;
+    if (pri_data->netif_if != NETIF_IF_STA) {
+        bk_printf("netif_if not wifi: %d\r\n", pri_data->netif_if);
+        return 0;
+    }
+
 	switch (event_id) {
 	case EVENT_NETIF_GOT_IP4:
         bk_printf("WFE_CONNECTED %d\r\n", event_id);
@@ -1220,8 +1227,10 @@ OPERATE_RET tkl_wifi_station_fast_connect(CONST FAST_WF_CONNECTED_AP_INFO_T *fas
 	sta_config.is_not_support_auto_fci = 1;
 	sta_config.is_user_fast_connect = 1;
 
+    // sta_config.auto_reconnect_count = 1;
+    // sta_config.disable_auto_reconnect_after_disconnect = true;
     sta_config.auto_reconnect_count = 1;
-    sta_config.disable_auto_reconnect_after_disconnect = true;
+    sta_config.disable_auto_reconnect_after_disconnect = false;
 
     bk_printf("%s, ssid: %s\r\n", __func__, sta_config.ssid);
 
@@ -1274,7 +1283,7 @@ OPERATE_RET tkl_wifi_station_connect(CONST SCHAR_T *ssid, CONST SCHAR_T *passwd)
     sta_config.is_user_fast_connect = 0;
     sta_config.is_not_support_auto_fci = 1;
     sta_config.auto_reconnect_count = 1;
-    sta_config.disable_auto_reconnect_after_disconnect = true;
+    sta_config.disable_auto_reconnect_after_disconnect = false;
 
     BK_LOG_ON_ERR(bk_wifi_sta_set_config(&sta_config));
     ret = bk_wifi_sta_start();
