@@ -38,15 +38,10 @@ VOID_T tkl_system_psram_malloc_force_set(BOOL_T enable)
 */
 VOID_T* tkl_system_malloc(CONST SIZE_T size)
 {
-    if (size > 4096) {
-        //bk_printf("tkl_system_malloc big memory, size(%d), caller %p\r\n", size, __builtin_return_address(0));
-    }
-
     VOID_T* ptr = os_malloc(size);
     if(NULL == ptr) {
         bk_printf("tkl_system_malloc failed, size(%d)!\r\n", size);
     }
-
     return ptr;
 }
 

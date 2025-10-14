@@ -55,12 +55,12 @@ static bk_err_t usb_int_isr_register_wrapper(uint8_t type, void* isr, void*arg)
 
 static uint32_t disable_int_wrapper(void)
 {
-    return rtos_enter_critical();
+	return rtos_disable_int();
 }
 
 static void enable_int_wrapper(uint32_t int_level)
 {
-    rtos_exit_critical(int_level);
+	rtos_enable_int(int_level);
 }
 
 static bk_err_t init_queue_wrapper(void** queue, const char* name, uint32_t message_size, uint32_t number_of_messages )
