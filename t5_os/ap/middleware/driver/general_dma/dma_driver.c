@@ -841,6 +841,30 @@ uint32_t dma_get_src_read_addr(dma_id_t id)
     return dma_hal_get_src_read_addr(&s_dma[dma_num].hal, dma_channel);
 }
 
+// Modified by TUYA Start
+uint32_t dma_get_src_end_addr(dma_id_t id)
+{
+    uint8_t dma_channel,dma_num;
+    dma_id_to_hw_id_ch(id,&dma_num,&dma_channel);
+
+    DMA_RETURN_ON_NOT_INIT();
+    DMA_RETURN_ON_INVALID_ID(id);
+
+    return dma_hal_get_src_end_addr(&s_dma[dma_num].hal, dma_channel);
+}
+
+uint32_t dma_get_dst_end_addr(dma_id_t id)
+{
+    uint8_t dma_channel,dma_num;
+    dma_id_to_hw_id_ch(id,&dma_num,&dma_channel);
+
+    DMA_RETURN_ON_NOT_INIT();
+    DMA_RETURN_ON_INVALID_ID(id);
+
+    return dma_hal_get_dest_end_addr(&s_dma[dma_num].hal, dma_channel);
+}
+// Modified by TUYA End
+
 uint32_t dma_get_dest_write_addr(dma_id_t id)
 {
     uint8_t dma_channel,dma_num;
