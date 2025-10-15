@@ -425,6 +425,18 @@ static inline void dma_ll_set_dest_pause_addr(dma_hw_t *hw, dma_id_t id, uint32_
 	hw->config_group[id].dest_pause_addr = addr;
 }
 
+// Modified by TUYA Start
+static inline uint32_t dma_ll_get_dest_end_addr(dma_hw_t *hw, dma_id_t id)
+{
+	return hw->config_group[id].dest_loop_end_addr;
+}
+
+static inline uint32_t dma_ll_get_src_end_addr(dma_hw_t *hw, dma_id_t id)
+{
+	return hw->config_group[id].src_loop_end_addr;
+}
+// Modified by TUYA End
+
 static inline uint32_t dma_ll_get_src_read_addr(dma_hw_t *hw, dma_id_t id)
 {
 	return hw->config_group[id].src_rd_addr;

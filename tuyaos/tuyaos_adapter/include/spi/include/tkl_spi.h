@@ -17,7 +17,6 @@
 extern "C" {
 #endif
 
-
 /**
  * @brief spi init
  *

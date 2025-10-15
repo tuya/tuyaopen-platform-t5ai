@@ -69,6 +69,10 @@ typedef struct {
 
 #define dma_hal_set_src_pause_addr(hal, id, addr) dma_ll_set_src_pause_addr((hal)->hw, id, addr)
 #define dma_hal_set_dest_pause_addr(hal, id, addr) dma_ll_set_dest_pause_addr((hal)->hw, id, addr)
+// Modified by TUYA Start
+#define dma_hal_get_dest_end_addr(hal, id) dma_ll_get_dest_end_addr((hal)->hw, id)
+#define dma_hal_get_src_end_addr(hal, id) dma_ll_get_src_end_addr((hal)->hw, id)
+// Modified by TUYA End
 #define dma_hal_get_src_read_addr(hal, id) dma_ll_get_src_read_addr((hal)->hw, id)
 #define dma_hal_get_dest_write_addr(hal, id) dma_ll_get_dest_write_addr((hal)->hw, id)
 
