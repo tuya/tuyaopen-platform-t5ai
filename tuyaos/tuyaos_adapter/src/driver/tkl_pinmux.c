@@ -129,17 +129,7 @@ OPERATE_RET tkl_io_pinmux_config(TUYA_PIN_NAME_E pin, TUYA_PIN_FUNC_E pin_func)
         case TUYA_SDIO_HOST_D0:
         case TUYA_SDIO_HOST_D1:
         case TUYA_SDIO_HOST_D2:
-        case TUYA_SDIO_HOST_D3: {
-            TUYA_PIN_FUNC_MAP_T *map = tkl_pinmux_get_func_map(pin_func);
-            if(map == NULL) {
-                bk_printf("pin_func %d not found\r\n", pin_func);
-                return OPRT_INVALID_PARM;
-            }
-
-            map->pin = pin;
-        }
-            break;
-
+        case TUYA_SDIO_HOST_D3:
         case TUYA_UART2_RX:
         case TUYA_UART2_TX: {
             TUYA_PIN_FUNC_MAP_T *map = tkl_pinmux_get_func_map(pin_func);
@@ -150,7 +140,8 @@ OPERATE_RET tkl_io_pinmux_config(TUYA_PIN_NAME_E pin, TUYA_PIN_FUNC_E pin_func)
 
             map->pin = pin;
         }
-
+            break;
+            
         default:
             break;
 
