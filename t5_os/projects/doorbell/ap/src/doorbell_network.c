@@ -12,20 +12,16 @@
 
 #include <common/sys_config.h>
 #include <components/log.h>
-//#include <modules/wifi.h>
 #include <components/event.h>
 #include <components/netif.h>
 #include <string.h>
 
-
-//#include "bk_wifi.h"
 
 #include "doorbell_comm.h"
 #include "doorbell_network.h"
 #include "doorbell_transmission.h"
 #include "doorbell_cmd.h"
 
-//#include "wdrv_cntrl.h"
 #include "wifi_api.h"
 
 #define TAG "db-net"

@@ -196,13 +196,16 @@ static int setup_lfs_config(struct lfs_config *config, const struct bk_little_fs
 		ret = lfs_qspi_flashbd_init(bd->device_id);
 #endif
 
+#ifndef CONFIG_TUYA_USE_MTD
 		extern bk_err_t qflash_init(void);
 		ret = qflash_init();
-        // Modified by TUYA End
 		if (ret) {
 			os_free(config->context);
 			return -1;
 		}
+#endif
+        // Modified by TUYA End
+
 		config->read = lfs_qspi_flashbd_read;
 		config->prog = lfs_qspi_flashbd_prog;
 		config->erase = lfs_qspi_flashbd_erase;
@@ -514,6 +517,26 @@ static off_t _bk_lfs_lseek(struct bk_file *file, off_t offset, int whence) {
 	return ret;
 }
 
+static off_t _bk_lfs_ftell(struct bk_file *file) {
+	lfs_t *lfs;
+	lfs_file_t *lfs_file;
+
+	lfs = (lfs_t *)file->filesystem->fs_data;
+	lfs_file = (lfs_file_t *)file->f_data;
+
+	return lfs_file_tell(lfs, lfs_file);
+}
+
+static int _bk_lfs_feof(struct bk_file *file) {
+	lfs_t *lfs;
+	lfs_file_t *lfs_file;
+
+	lfs = (lfs_t *)file->filesystem->fs_data;
+	lfs_file = (lfs_file_t *)file->f_data;
+
+	//bk_printf("[%s][%d]size:%d, pos:%d\r\n", __FILE__, __LINE__, lfs_file_size(lfs, lfs_file), lfs_file_tell(lfs, lfs_file));
+	return lfs_file_size(lfs, lfs_file)<=lfs_file_tell(lfs, lfs_file);
+}
 static int _bk_lfs_unlink(struct bk_filesystem *fs, const char *pathname) {
 	lfs_t *lfs;
 	int ret;
@@ -690,6 +713,8 @@ static struct bk_file_ops g_lfs_file_ops = {
 	.closedir = _bk_lfs_closedir,
 	.mkdir = _bk_lfs_mkdir,
 	.rmdir = _bk_lfs_rmdir,
+	.ftell = _bk_lfs_ftell,
+	.feof = _bk_lfs_feof,
 };
 
 int bk_lfs_init(void) {

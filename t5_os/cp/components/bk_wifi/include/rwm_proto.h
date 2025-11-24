@@ -76,7 +76,7 @@ struct ipv4_hdr {
 #define ARP_OPCODE(hdr) ((hdr)->opcode)
 #define ARP_TYPE(hdr) ((hdr)->hwtype)
 #define ARP_PROTO(hdr) ((hdr)->proto)
-struct etharp_hdr {
+struct etharp_hdr_proto {
 	u16_t hwtype;
  	u16_t proto;
 	u8_t  hwlen;

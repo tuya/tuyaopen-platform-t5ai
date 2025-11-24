@@ -1528,9 +1528,16 @@ typedef enum {
     TUYA_CAMERA_OUTPUT_H264_YUV422_BOTH,
 } TUYA_CAMERA_OUTPUT_MODE;
 
+typedef enum {
+    TUYA_DVP_SYNC_MODE_0,      /* hsync: high valid,   vsync: high valid */
+    TUYA_DVP_SYNC_MODE_1,      /* hsync: high valid,   vsync: low valid */
+    TUYA_DVP_SYNC_MODE_2,      /* hsync: low valid,    vsync: high valid */
+    TUYA_DVP_SYNC_MODE_3,      /* hsync: low valid,    vsync: low valid */
+} TUYA_DVP_SYNC_MODE;
+
 typedef struct
 {
-    uint16_t frame_id;
+    uint32_t frame_id;
     uint8_t is_frame_complete;
 	uint8_t is_i_frame;
     TUYA_FRAME_FMT_E frame_fmt;
@@ -1546,6 +1553,7 @@ typedef struct {
     uint16_t fps;
     uint16_t width;
     uint16_t height;
+    TUYA_DVP_SYNC_MODE sync_polarity;
     TUYA_CAMERA_OUTPUT_MODE output_mode;
 } TUYA_DVP_CFG_T;
 /**

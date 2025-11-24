@@ -23,8 +23,6 @@
 extern "C" {
 #endif
 
-#define UVC_MAX_PACKET_SIZE (1024)
-
 extern uint32_t  platform_is_in_interrupt_context(void);
 
 typedef struct
@@ -44,9 +42,7 @@ typedef struct
     struct usbh_urb urb;
 } uvc_urb_node_t;
 
-
-
-bk_err_t uvc_camera_urb_list_init(void);
+bk_err_t uvc_camera_urb_list_init(uint32_t max_packet_size);
 bk_err_t uvc_camera_urb_list_deinit(void);
 void uvc_camera_urb_list_clear(void);
 

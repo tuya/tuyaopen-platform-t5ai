@@ -107,6 +107,15 @@ static bk_err_t pm_ap_core_message_handle(void)
                     }
                 }
                 break;
+                case PM_AP_CORE_SLEEP_DEMO_HANDLE:
+                {
+                    if(msg.param1 == PM_MODE_LOW_VOLTAGE)
+                    {
+                        bk_pm_ap_sleep_mode_set(PM_MODE_DEFAULT);
+                        bk_pm_module_vote_sleep_ctrl(PM_SLEEP_MODULE_NAME_APP,0x0,0x0);
+                    }
+                }
+                break;
                 default:
                     break;
             }

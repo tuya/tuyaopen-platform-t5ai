@@ -177,12 +177,12 @@ menu "Lwip_intf_v2_1"
 
 	config LWIP_TCP_MSS
 		int "Maximum Segment Size (MSS)"
-		default 1460
+		default 1400
 		range 536 1460
 		help
 			Set maximum segment size for TCP transmission.
 
-			Can be set lower to save RAM, the default value 1460(ipv4)/1440(ipv6) will
+			Can be set lower to save RAM, the max value 1460(ipv4)/1440(ipv6) will
 			give best throughput.
 			IPv4 TCP_MSS Range: 576 <= TCP_MSS <= 1460
 			IPv6 TCP_MSS Range: 1220<= TCP_mSS <= 1440

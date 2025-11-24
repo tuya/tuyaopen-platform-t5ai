@@ -1,4 +1,4 @@
-// Copyright 2022-2023 Beken
+// Copyright 2025-2026 Beken
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,8 +15,6 @@
 
 #ifndef _AUDIO_MEM_H_
 #define _AUDIO_MEM_H_
-
-#include <stdint.h>
 
 #ifdef __cplusplus
 extern "C" {

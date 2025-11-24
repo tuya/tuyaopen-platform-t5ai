@@ -474,6 +474,10 @@ int cmd_wlan_get_ps_status();
 
 #if CONFIG_BRIDGE
 #define WLAN_ANY_IP         "0.0.0.0"
+bk_bridge_state_t bk_wifi_get_bridge_state(void);
+bk_err_t bk_wifi_start_softap_for_bridge(void);
+void bk_wifi_switch_bridge_to_sta(void);
+bk_err_t bk_wifi_check_client_mac_connected(uint8_t *mac);
 #endif
 
 void demo_scan_app_init(void);

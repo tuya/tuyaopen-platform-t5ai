@@ -1,4 +1,4 @@
-// Copyright 2022-2023 Beken
+// Copyright 2025-2026 Beken
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,7 +20,7 @@
 #include "semphr.h"
 #include "task.h"
 #include <components/bk_audio/audio_streams/uac_speaker_stream.h>
-#include <components/bk_audio/audio_pipeline/audio_common.h>
+#include <components/bk_audio/audio_pipeline/audio_types.h>
 #include <components/bk_audio/audio_pipeline/audio_mem.h>
 #include <components/bk_audio/audio_pipeline/audio_error.h>
 #include <components/bk_audio/audio_pipeline/audio_element.h>

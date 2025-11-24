@@ -1158,10 +1158,6 @@ bool sys_hal_set_cp_sleep_vote_and_check_subcores_enter_wfi()
 	uint64_t current_tick  = 0;
 	if(bk_pm_low_vol_vote_state_get())
 	{
-		//s_int1_state1 = sys_ll_get_cpu1_int_0_31_en_value();
-		//s_int1_state2 = sys_ll_get_cpu1_int_32_63_en_value();
-		//s_int2_state1 = sys_ll_get_cpu2_int_0_31_en_value();
-		//s_int2_state2 = sys_ll_get_cpu2_int_32_63_en_value();
 		aon_pmu_ll_set_r3_cp0_sleep_vote_state(1);
 
 		previous_tick = bk_aon_rtc_get_current_tick(AON_RTC_ID_1);
@@ -1198,6 +1194,10 @@ bool sys_hal_set_cp_sleep_vote_and_check_subcores_enter_wfi()
 		}
 		else
 		{
+			if(check_IRQ_pending())
+			{
+				return false;
+			}
 			/*When the low-power condition is met, if CP2 fails to enter WFI within 3ms, it will resend a wake-up AP0 to re-enter WFI.*/
 			bk_pm_cp_wakeup_ap_from_wfi(0);
 			ret = false;

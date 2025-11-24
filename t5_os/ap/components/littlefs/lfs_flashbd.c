@@ -11,6 +11,12 @@
 #include <driver/qspi.h>
 #include <driver/qspi_flash.h>
 #endif
+#ifdef CONFIG_TUYA_USE_MTD
+// Modified by TUYA Start
+#include "tal_mtd_service.h"
+static MTD_HANDLE g_mtd_handle = NULL;
+// Modified by TUYA End
+#endif
 
 int lfs_flashbd_createcfg(const struct lfs_config *cfg,
         const struct lfs_flashbd_config *bdcfg) {
@@ -27,6 +33,24 @@ int lfs_flashbd_createcfg(const struct lfs_config *cfg,
     lfs_flashbd_t *bd = cfg->context;
     bd->cfg = bdcfg;
 
+#ifdef CONFIG_TUYA_USE_MTD
+// Modified by TUYA Start
+extern MTD_DEVICE_T *tuya_mtd_device_query(const char *name);
+    MTD_CFG_T mtd_cfg = {
+        .nor_cfg = {
+            .cfg_qspi = {
+                .port = TUYA_QSPI_NUM_1,
+            }
+        }
+    };
+    MTD_DEVICE_T *mtd_dev = tuya_mtd_device_query(CONFIG_TUYA_QSPI_FLASH_TYPE);
+    if (!g_mtd_handle)
+    {
+        g_mtd_handle = tal_mtd_init(mtd_dev, &mtd_cfg);
+    }
+    
+// Modified by TUYA End
+#endif
     LFS_FLASHBD_TRACE("lfs_flashbd_createcfg -> %d", 0);
     return 0;
 }
@@ -52,6 +76,13 @@ int lfs_flashbd_destroy(const struct lfs_config *cfg) {
     lfs_flashbd_t *bd = cfg->context;
 	(void)bd;
 
+
+#ifdef CONFIG_TUYA_USE_MTD
+// Modified by TUYA Start
+    tal_mtd_deinit(g_mtd_handle);
+    g_mtd_handle = NULL;
+// Modified by TUYA End
+#endif
     LFS_FLASHBD_TRACE("lfs_flashbd_destroy -> %d", 0);
     return 0;
 }
@@ -304,10 +335,16 @@ int lfs_qspi_flashbd_read(const struct lfs_config *cfg, lfs_block_t block,
     LFS_ASSERT(size % cfg->read_size == 0);
     LFS_ASSERT(block < cfg->block_count);
 
+
+// Modified by TUYA Start
+#ifdef CONFIG_TUYA_USE_MTD
+    tal_mtd_read(g_mtd_handle, cfg->block_size*block+off+bd->start_addr,buffer,size);
+#else
     // read data
 	// bk_qspi_flash_read(bd->device_id, cfg->block_size*block+off+bd->start_addr,buffer,size);
     qflash_read(cfg->block_size*block+off+bd->start_addr, buffer, size); // Modified by TUYA
-
+#endif
+// Modified by TUYA End
     LFS_FLASHBD_TRACE("lfs_qspi_flashbd_read -> %d", 0);
     return 0;
 }
@@ -324,10 +361,16 @@ int lfs_qspi_flashbd_prog(const struct lfs_config *cfg, lfs_block_t block,
     LFS_ASSERT(size % cfg->prog_size == 0);
     LFS_ASSERT(block < cfg->block_count);
 
+// Modified by TUYA Strat
+#ifdef CONFIG_TUYA_USE_MTD
+    tal_mtd_write(g_mtd_handle, cfg->block_size*block+off+bd->start_addr,buffer,size);
+#else
     // progflash data
 	// bk_qspi_flash_write(bd->device_id, cfg->block_size*block+off+bd->start_addr,(uint8_t *)buffer,size);
     qflash_write(cfg->block_size*block + bd->start_addr + off, buffer, size); // Modified by TUYA
 
+#endif
+// Modified by TUYA End
     LFS_FLASHBD_TRACE("lfs_qspi_flashbd_prog -> %d", id);
     return 0;
 }
@@ -339,10 +382,16 @@ int lfs_qspi_flashbd_erase(const struct lfs_config *cfg, lfs_block_t block) {
     // check if erase is valid
     LFS_ASSERT(block < cfg->block_count);
 
+// Modified by TUYA Start
+#ifdef CONFIG_TUYA_USE_MTD
+    tal_mtd_erase(g_mtd_handle, cfg->block_size*block+bd->start_addr,cfg->block_size);
+#else
     // erase
 	// bk_qspi_flash_erase(bd->device_id, cfg->block_size*block+bd->start_addr, cfg->block_size);
     qflash_erase(cfg->block_size*block+bd->start_addr, cfg->block_size); // Modified by TUYA
 
+#endif
+// Modified by TUYA End
     LFS_FLASHBD_TRACE("lfs_qspi_flashbd_erase -> %d", 0);
     return 0;
 }

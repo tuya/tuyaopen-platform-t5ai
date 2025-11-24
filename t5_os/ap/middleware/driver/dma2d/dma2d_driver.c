@@ -32,9 +32,6 @@
 #include <os/mem.h>
 #include "arch_interrupt.h"
 #include "sys_driver.h"
-#include "gpio_map.h"
-#include "gpio_driver.h"
-#include <driver/gpio.h>
 #include <driver/int.h>
 #include "dma2d_hal.h"
 #include <driver/dma2d_types.h>

@@ -6,6 +6,7 @@
 #include "shell_drv.h"
 #include <driver/mailbox_channel.h>
 #include <driver/mb_chnl_buff.h>
+#include <arch_interrupt.h>
 
 #if CONFIG_CACHE_ENABLE
 #include "cache.h"
@@ -269,6 +270,12 @@ static bk_err_t write_sync(shell_mb_ext_t *mb_ext, u8 * p_buf, u16 buf_len)
 {
 	volatile u8 * buff_busy;
 	u8 *   tx_buff;
+
+	if(arch_is_enter_exception())
+	{
+		emergency_uart_write_buf(CONFIG_DUMP_UART_PRINT_PORT, (const char *)p_buf, buf_len);
+		return BK_OK;
+	}
 
 	if(mb_ext->tx_sync_buf == NULL)
 	{

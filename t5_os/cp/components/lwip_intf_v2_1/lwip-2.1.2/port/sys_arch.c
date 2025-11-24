@@ -125,7 +125,10 @@ err_t sys_mbox_trypost(sys_mbox_t *mbox, void *msg)
    	{
       // could not post, queue must be full
       result = ERR_MEM;
-
+      LWIP_DEBUGF(SYS_DEBUG, ("lwip mbox post failed, ret:%d",ret));
+      #if BK_LWIP_DEBUG
+      LWIP_LOGW("%s, lwip mbox post failed, ret:%d\r\n", __func__, ret);
+      #endif
 #if SYS_STATS
       lwip_stats.sys.mbox.err++;
 #endif /* SYS_STATS */

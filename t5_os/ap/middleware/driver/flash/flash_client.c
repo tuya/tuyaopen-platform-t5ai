@@ -21,6 +21,9 @@
 #include "flash_ipc.h"
 #include <driver/mb_ipc.h>
 #include <driver/mb_ipc_port_cfg.h>
+#if CONFIG_FLASH_BYPASS_OTP_OPERATION
+#include "flash_bypass.h"
+#endif
 
 #if CONFIG_CACHE_ENABLE
 #include "cache.h"
@@ -28,9 +31,9 @@
 
 #define TAG		"flash_c"
 
-#define LOCAL_TRACE    (1)
+#define LOCAL_TRACE    (0)
 
-#define FLASH_OPERATE_TIMEOUT         600
+#define FLASH_OPERATE_TIMEOUT         2000
 
 static bool s_flash_client_init = false;
 
@@ -106,11 +109,6 @@ static uint32_t calc_crc32(uint32_t crc, const uint8_t *buf, int len)
 	}
 
 	return crc;
-}
-
-bk_err_t bk_flash_set_line_mode(flash_line_mode_t line_mode)
-{
-	return BK_FAIL;
 }
 
 // #define FLASH_SVR_TEST
@@ -217,6 +215,10 @@ bk_err_t bk_flash_erase_sector(uint32_t address)
 	int  ret_val = BK_FAIL;
 	int  line_num;
 
+#if !LOCAL_TRACE
+	(void)line_num;
+#endif
+
 	if(bk_flash_driver_init() != BK_OK)
 		return BK_FAIL;
 
@@ -295,6 +297,10 @@ static bk_err_t flash_read_bytes(uint32_t address, uint8_t *user_buf, uint32_t s
 {
 	int  ret_val = BK_FAIL;
 	int  line_num;
+
+#if !LOCAL_TRACE
+	(void)line_num;
+#endif
 
 	if(size > 0xFFFF)
 		return BK_FAIL;
@@ -407,27 +413,27 @@ read_exit:
 
 static bk_err_t flash_read_bytes_retry(uint32_t address, uint8_t *user_buf, uint32_t size)
 {
- int  try_cnt = 0;
- int  ret_val = BK_OK;
- 
- while(1)
- {
-     ret_val = flash_read_bytes(address, user_buf, size);
-     
-     if(ret_val == BK_OK)
-         break;
+	int  try_cnt = 0;
+	int  ret_val = BK_OK;
+	
+	while(1)
+	{
+		ret_val = flash_read_bytes(address, user_buf, size);
+		
+		if(ret_val == BK_OK)
+			break;
 
-     try_cnt++;          
-     if(try_cnt >= 2)
-         return ret_val;
-     else
-     {
-         rtos_delay_milliseconds(10);  // delay 10ms.
-         continue;
-     }
- }
+		try_cnt++;			
+		if(try_cnt >= 2)
+			return ret_val;
+		else
+		{
+			rtos_delay_milliseconds(10);  // delay 10ms.
+			continue;
+		}
+	}
 
- return ret_val;
+	return ret_val;
 }
 
 bk_err_t bk_flash_read_bytes(uint32_t address, uint8_t *user_buf, uint32_t size)
@@ -458,6 +464,10 @@ static bk_err_t flash_write_bytes(uint32_t address, const uint8_t *user_buf, uin
 {
 	int  ret_val = BK_FAIL;
 	int  line_num;
+
+#if !LOCAL_TRACE
+	(void)line_num;
+#endif
 
 	if(size > 0xFFFF)
 		return BK_FAIL;
@@ -592,6 +602,10 @@ bk_err_t bk_flash_erase_fast(uint32_t erase_off, uint32_t len)
 	int  ret_val = BK_FAIL;
 	int  line_num;
 
+#if !LOCAL_TRACE
+	(void)line_num;
+#endif
+
 	if(bk_flash_driver_init() != BK_OK)
 		return BK_FAIL;
 
@@ -656,3 +670,165 @@ erase_fast_exit:
 
 	return ret_val;
 }
+
+#if CONFIG_FLASH_BYPASS_OTP_OPERATION && (CONFIG_CPU_CNT > 1)
+
+#ifndef FLASH_BYPASS_OTP_IPC_RETRY_MAX
+#define FLASH_BYPASS_OTP_IPC_RETRY_MAX 8
+#endif
+
+bk_err_t flash_bypass_otp_operation(flash_bypass_otp_cmd_t cmd, flash_bypass_otp_ctrl_t *param)
+{
+	if(bk_flash_driver_init() != BK_OK)
+		return BK_FAIL;
+
+	for (uint8_t attempt = 0; attempt < FLASH_BYPASS_OTP_IPC_RETRY_MAX; attempt++)
+	{
+		int  ret_val = BK_FAIL;
+		int  line_num = 0;
+#if !LOCAL_TRACE
+		(void)line_num;
+#endif
+		int  ret = 0;
+
+		flash_bypass_otp_ipc_cmd_t ipc_cmd;
+		uint8_t *data_buff = NULL;
+		uint32_t data_len = 0;
+
+		memset(&ipc_cmd, 0, sizeof(ipc_cmd));
+
+		ipc_cmd.cmd = (uint8_t)cmd;
+		ipc_cmd.otp_idx = param->otp_idx;
+		ipc_cmd.addr_offset = param->addr_offset;
+		ipc_cmd.read_len = param->read_len;
+		ipc_cmd.write_len = param->write_len;
+
+		if(cmd == FLASH_BYPASS_OTP_WRITE && param->write_buf != NULL && param->write_len > 0)
+		{
+			data_len = param->write_len;
+			data_buff = (uint8_t *)os_malloc(data_len);
+			if(data_buff == NULL)
+			{
+				return BK_FAIL;
+			}
+			memcpy(data_buff, param->write_buf, data_len);
+			ipc_cmd.buf = data_buff;
+		}
+
+		rtos_lock_mutex(&flash_mutex);
+
+		mb_ipc_recv(flash_socket_handle, NULL, NULL, 0, 0);  // discard all data
+
+		ret = mb_ipc_send(flash_socket_handle, FLASH_CMD_BYPASS_OTP_OPERATION,
+				(u8 *)&ipc_cmd, sizeof(ipc_cmd), FLASH_OPERATE_TIMEOUT);
+
+		if(ret != 0) {
+			line_num = __LINE__;
+			goto bypass_otp_exit;
+		}
+
+		u8 user_cmd = INVALID_USER_CMD_ID;
+
+		memset(&ipc_cmd, 0, sizeof(ipc_cmd));
+
+		ret = mb_ipc_recv(flash_socket_handle, &user_cmd, (u8 *)&ipc_cmd,
+			sizeof(ipc_cmd), FLASH_OPERATE_TIMEOUT);
+
+		if(ret != sizeof(ipc_cmd))
+		{
+			line_num = __LINE__;
+			goto bypass_otp_exit;
+		}
+
+		if(user_cmd != FLASH_CMD_BYPASS_OTP_OPERATION)
+		{
+			line_num = __LINE__;
+			ret = user_cmd;
+			goto bypass_otp_exit;
+		}
+
+		if(ipc_cmd.ret_status != BK_OK)
+		{
+			line_num = __LINE__;
+			ret = ipc_cmd.ret_status;
+			goto bypass_otp_exit;
+		}
+
+		if(cmd == FLASH_BYPASS_OTP_READ && param->read_buf != NULL && param->read_len > 0)
+		{
+			uint32_t read_len = param->read_len;
+			uint8_t *read_buff = (uint8_t *)os_malloc(read_len);
+			if(read_buff == NULL)
+			{
+				line_num = __LINE__;
+				ret = BK_FAIL;
+				goto bypass_otp_exit;
+			}
+
+			u8 data_cmd = INVALID_USER_CMD_ID;
+			int data_recv_len = mb_ipc_recv(flash_socket_handle, &data_cmd, read_buff, read_len, FLASH_OPERATE_TIMEOUT);
+
+			if(data_recv_len != read_len || data_cmd != FLASH_CMD_BYPASS_OTP_OPERATION)
+			{
+				line_num = __LINE__;
+				ret = BK_FAIL;
+				os_free(read_buff);
+				goto bypass_otp_exit;
+			}
+
+			memcpy(param->read_buf, read_buff, read_len);
+			os_free(read_buff);
+
+			memset(&ipc_cmd, 0, sizeof(ipc_cmd));
+			ipc_cmd.ret_status = BK_OK;
+			ret = mb_ipc_send(flash_socket_handle, FLASH_CMD_BYPASS_OTP_OPERATION,
+				(u8 *)&ipc_cmd, sizeof(ipc_cmd), FLASH_OPERATE_TIMEOUT);
+			if(ret != 0)
+			{
+				line_num = __LINE__;
+				goto bypass_otp_exit;
+			}
+
+			memset(&ipc_cmd, 0, sizeof(ipc_cmd));
+			u8 final_cmd = INVALID_USER_CMD_ID;
+			ret = mb_ipc_recv(flash_socket_handle, &final_cmd, (u8 *)&ipc_cmd,
+				sizeof(ipc_cmd), FLASH_OPERATE_TIMEOUT);
+			if(ret != sizeof(ipc_cmd) || final_cmd != FLASH_CMD_BYPASS_OTP_OPERATION)
+			{
+				line_num = __LINE__;
+				#if LOCAL_TRACE
+				BK_LOGE(TAG, "%s @%d, recv final ack failed, final_cmd=%d, ret=%d\r\n", __FUNCTION__, line_num, final_cmd, ret);
+				#endif
+			}
+		}
+
+		ret_val = BK_OK;
+
+bypass_otp_exit:
+		if(data_buff != NULL)
+		{
+			os_free(data_buff);
+		}
+
+		rtos_unlock_mutex(&flash_mutex);
+
+		if(ret_val == BK_OK)
+		{
+#if LOCAL_TRACE
+			if(attempt != 0)
+				BK_LOGW(TAG, "%s retry success after %d attempt(s).\r\n", __FUNCTION__, attempt);
+#endif
+			return BK_OK;
+		}
+
+#if LOCAL_TRACE
+		BK_LOGE(TAG, "%s retry=%d @%d, data=%d.\r\n", __FUNCTION__, attempt, line_num, ret);
+#endif
+
+		if(attempt + 1 < FLASH_BYPASS_OTP_IPC_RETRY_MAX)
+			rtos_delay_milliseconds(5);
+	}
+
+	return BK_FAIL;
+}
+#endif

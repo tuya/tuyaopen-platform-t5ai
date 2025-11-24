@@ -611,6 +611,25 @@ typedef enum _dco_speed
 	DCO_CALIB_SPEED_320M,
 	DCO_CALIB_SPEED_480M,
 }dco_cali_speed_e;
+typedef enum
+{
+	PM_VDDDIG_095     = 0xE,
+	PM_VDDDIG_0925    = 0xD,
+	PM_VDDDIG_09      = 0xC,
+	PM_VDDDIG_0875    = 0xB,
+	PM_VDDDIG_DEFAULT = 0xB
+}pm_vdddig_value_e;
+#define CPU_FREQ_VDDDIG_MAP  \
+{\
+	{PM_CPU_FRQ_480M,     PM_VDDDIG_095}, \
+	{PM_CPU_FRQ_320M,     PM_VDDDIG_095}, \
+	{PM_CPU_FRQ_240M,     PM_VDDDIG_0925},\
+	{PM_CPU_FRQ_120M,     PM_VDDDIG_09},  \
+	{PM_CPU_FRQ_80M,      PM_VDDDIG_0875},\
+	{PM_CPU_FRQ_60M,      PM_VDDDIG_0875},\
+	{PM_CPU_FRQ_26M,      PM_VDDDIG_0875},\
+	{PM_CPU_FRQ_DEFAULT,  PM_VDDDIG_0875},\
+}
 #ifdef __cplusplus
 }
 #endif

@@ -232,6 +232,50 @@ static void i2c_interrupt_disable(i2c_id_t id)
 }
 #endif
 
+extern gpio_id_t ty_get_dev_io(gpio_dev_t dev);
+
+static void i2c_init_gpio_tuya(i2c_id_t id)
+{
+	gpio_dev_t i2c_scl, i2c_sda;
+
+	switch(id) {
+	case I2C_ID_0:
+		i2c_scl = GPIO_DEV_I2C0_SCL;
+		i2c_sda = GPIO_DEV_I2C0_SDA;
+		break;
+#if (SOC_I2C_UNIT_NUM > 1)
+	case I2C_ID_1:
+		i2c_scl = GPIO_DEV_I2C1_SCL;
+		i2c_sda = GPIO_DEV_I2C1_SDA;
+		break;
+#endif
+#if (SOC_I2C_UNIT_NUM > 2)
+	case I2C_ID_2:
+		i2c_scl = GPIO_DEV_I2C2_SCL;
+		i2c_sda = GPIO_DEV_I2C2_SDA;
+		break;
+#endif
+	default:
+		return;
+	}
+
+	gpio_id_t i2c_scl_pin = ty_get_dev_io(i2c_scl);
+	gpio_id_t i2c_sda_pin = ty_get_dev_io(i2c_sda);
+
+	if(i2c_scl_pin == GPIO_NUM || i2c_sda_pin == GPIO_NUM) {
+		I2C_LOGE("i2c%d pin invalid,scl:%d,sda:%d\r\n", id, i2c_scl_pin, i2c_sda_pin);
+		return;
+	}
+
+	i2c_hal_set_pin(&s_i2c[id].hal);
+	gpio_dev_unmap(i2c_scl_pin);
+	gpio_dev_unmap(i2c_sda_pin);
+	gpio_dev_map(i2c_scl_pin, i2c_scl);
+	gpio_dev_map(i2c_sda_pin, i2c_sda);
+	bk_gpio_pull_up(i2c_scl_pin);
+	bk_gpio_pull_up(i2c_sda_pin);
+}
+
 
 /* 1. power up i2c
  * 2. set clk
@@ -256,6 +300,7 @@ static void i2c_id_init_common(i2c_id_t id)
 	 * inited in bk_gpio_driver_init->gpio_hal_default_map_init.
 	 * If needs to re-config GPIO, can deal it here.
 	 */
+	i2c_init_gpio_tuya(id);
 #else
 	i2c_init_gpio(id);
 #endif

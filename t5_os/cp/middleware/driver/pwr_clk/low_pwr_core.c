@@ -42,7 +42,7 @@ static low_pwr_core_info_t *s_pm_info = NULL;
 /*================FUNCTION DECLARATION  SECTION  END===========*/
 static void low_pwr_core_rtc_callback(aon_rtc_id_t id, uint8_t *name_p, void *param)
 {
-	bk_pm_module_vote_sleep_ctrl(PM_SLEEP_MODULE_NAME_APP,0x0,0x0);
+	bk_pm_module_vote_sleep_ctrl(PM_SLEEP_MODULE_NAME_LV_WAKEUP,0x0,0x0);
 	low_pwr_core_msg_t msg = {0};
 	msg.event= LOW_PWR_CORE_RTC_WAKEUPED;
 	bk_low_pwr_core_send_msg(&msg);
@@ -51,7 +51,7 @@ static void low_pwr_core_rtc_callback(aon_rtc_id_t id, uint8_t *name_p, void *pa
 }
 static void low_pwr_core_gpio_callback(gpio_id_t gpio_id)
 {
-	bk_pm_module_vote_sleep_ctrl(PM_SLEEP_MODULE_NAME_APP,0x0,0x0);
+	bk_pm_module_vote_sleep_ctrl(PM_SLEEP_MODULE_NAME_LV_WAKEUP,0x0,0x0);
 	LOGD("gpio_cb[%d][%d]\r\n",bk_pm_exit_low_vol_wakeup_source_get(),gpio_id);
 	low_pwr_core_msg_t msg = {0};
 	msg.event= LOW_PWR_CORE_GPIO_WAKEUPED;
@@ -61,13 +61,13 @@ static void low_pwr_core_gpio_callback(gpio_id_t gpio_id)
 static bk_err_t low_pwr_core_rtc_wakeup_config(low_pwr_core_msg_t* msg)
 {
 	bk_err_t ret = BK_OK;
-	uint32_t rtc_period = msg->param3;
-	LOGD("rtc cfg[%d]\r\n",rtc_period);
+	pm_rtc_wakeup_config_t *rtc_cfg = (pm_rtc_wakeup_config_t*)msg->param3;
+
 #if CONFIG_AON_RTC || CONFIG_ANA_RTC
 	alarm_info_t lv_alarm = {
 						"lv_rtc",
-						rtc_period*AON_RTC_MS_TICK_CNT,
-						1,
+						(rtc_cfg->rtc_period)*AON_RTC_MS_TICK_CNT,
+						rtc_cfg->rtc_cnt,
 						low_pwr_core_rtc_callback,
 						NULL
 						};
@@ -167,7 +167,7 @@ static bk_err_t low_pwr_core_message_handle(void)
     while (1)
     {
         ret = rtos_pop_from_queue(&s_pm_info->queue, &msg, BEKEN_WAIT_FOREVER);
-		LOGD("LP event:%d\n", msg.event);
+		LOGV("LP event:%d\n", msg.event);
         if (kNoErr == ret)
         {
             switch (msg.event)

@@ -4,15 +4,18 @@
 #include "tuya_cloud_types.h"
 #include "tkl_wifi.h"
 #include "cli_tuya_test.h"
-#include "tkl_display.h"
 #include "lwip_netif_address.h"
 #include "lwip/inet.h"
 #include "driver/hal/hal_efuse_types.h"
 #include "driver/otp_types.h"
 
+#include <components/netif.h>
+#include <components/netif_types.h>
 
 extern void port_check_isr_stack(void);
 #include "tuya_cloud_types.h"
+
+#include "sdkconfig.h"
 
 static void cli_system_info_cmd(char *pcWriteBuffer, int xWriteBufferLen, int argc, char **argv)
 {
@@ -39,6 +42,7 @@ static void cli_system_info_cmd(char *pcWriteBuffer, int xWriteBufferLen, int ar
     }
 
     rtos_dump_task_list();
+    rtos_dump_task_runtime_stats();
 
     NW_MAC_S mac;
     tkl_wifi_get_mac(WF_STATION, &mac);
@@ -46,75 +50,56 @@ static void cli_system_info_cmd(char *pcWriteBuffer, int xWriteBufferLen, int ar
     bk_printf("mac: %02x:%02x:%02x:%02x:%02x:%02x\r\n",
             mac.mac[0], mac.mac[1], mac.mac[2], mac.mac[3], mac.mac[4], mac.mac[5]);
 
+    netif_ip4_config_t ip4_config;
+    bk_netif_get_ip4_config(0, &ip4_config);
+
+    bk_printf("ip: %s, mask: %s, gw: %s, dns: %s\r\n",
+            ip4_config.ip, ip4_config.mask,
+            ip4_config.gateway, ip4_config.dns);
+
+
     bk_printf("sram left heap: %d, min: %d\r\n", xPortGetFreeHeapSize(), xPortGetMinimumEverFreeHeapSize());
     bk_printf("psram left: %d, total: %d, used count: %d\r\n",
             xPortGetPsramFreeHeapSize(),
             xPortGetPsramTotalHeapSize(),
             bk_psram_heap_get_used_count());
     bk_printf("runtime: %d\r\n", xTaskGetTickCount());
+    bk_printf("bk_pm_current_max_cpu_freq_get: %d\r\n", bk_pm_current_max_cpu_freq_get());
 
     return;
 }
 
-extern OPERATE_RET tkl_wifi_set_mac(CONST WF_IF_E wf, CONST NW_MAC_S *mac);
-static void cli_set_mac(char *pcWriteBuffer, int xWriteBufferLen, int argc, char **argv)
+extern void smp_arch_dwt_trap_write(uint32_t addr, uint32_t data);
+static uint32_t g_dwt_test = 1234;
+
+static void cli_test_cmd(char *pcWriteBuffer, int xWriteBufferLen, int argc, char **argv)
 {
-    if (argc < 2) {
-        bk_printf("Usage: ap xmac set|get\r\n");
-        return;
+    bk_printf("argc: %d\r\n cmd: ", argc);
+    for (int i = 0; i < argc; i++) {
+        bk_printf_raw(0, NULL, " %s", argv[i]);
     }
+    bk_printf_raw(0, NULL, "\r\n");
 
-    if (!os_strcmp(argv[1], "set")) {
-        uint8_t tmp[6] = {0x3C, 0x0B, 0x59, 0xE9, 0x9D, 0x59};
-        NW_MAC_S mac;
-        memcpy(mac.mac, tmp, 6);
-        bk_printf("set mac: %02x:%02x:%02x:%02x:%02x:%02x\r\n",
-                mac.mac[0], mac.mac[1], mac.mac[2], mac.mac[3], mac.mac[4], mac.mac[5]);
-        tkl_wifi_set_mac(WF_STATION, &mac);
-    } else if (!os_strcmp(argv[1], "get")) {
-        NW_MAC_S m;
-        memset(&m, 0, sizeof(NW_MAC_S));
-        tkl_wifi_get_mac(WF_STATION, &m);
-        bk_printf("get mac: %02x:%02x:%02x:%02x:%02x:%02x\r\n",
-                m.mac[0], m.mac[1], m.mac[2], m.mac[3], m.mac[4], m.mac[5]);
+    if (!os_strcmp(argv[1], "init")) {
+        smp_arch_dwt_trap_write(&g_dwt_test, 0);
+        bk_printf_raw(0, NULL, "init\r\n");
+    } else if (!os_strcmp(argv[1], "read")) {
+        bk_printf_raw(0, NULL, "g_dwt_test: %d\r\n", g_dwt_test);
+    } else if (!os_strcmp(argv[1], "write")) {
+        bk_printf_raw(0, NULL, "set g_dwt_test 0, will dump\r\n");
+        tkl_system_sleep(500);
+        g_dwt_test = 0;
     }
-}
-
-///////////////////////////////////////////////////////////////////////////////////////////////
-#include "FreeRTOS.h"
-#include "task.h"
-static TaskHandle_t __tmp_thread_handle = NULL;
-static void __test_tmp_func(void *arg)
-{
-    TUYA_CPU_INFO_T *dev = NULL;
-    INT_T cnt = 0;
-    tkl_system_get_cpu_info(&dev, &cnt);
-    bk_printf("chip id: 0x%02x%02x%02x%02x%02x, cnt: %d\r\n",
-            dev->chipid[0], dev->chipid[1], dev->chipid[2],
-            dev->chipid[3], dev->chipid[4], cnt);
-
-    __tmp_thread_handle = NULL;
-    vTaskDelete(__tmp_thread_handle);
-}
-
-static void cli_tmp_cmd(char *pcWriteBuffer, int xWriteBufferLen, int argc, char **argv)
-{
-    xTaskCreate(__test_tmp_func, "test_func", 1024, NULL, 6, (TaskHandle_t * const )&__tmp_thread_handle);
-}
-///////////////////////////////////////////////////////////////////////////////////////////////
-
-static uint32_t tttttttttt = 0;
-static void cli_uuuuuu_cmd(char *pcWriteBuffer, int xWriteBufferLen, int argc, char **argv)
-{
-    tttttttttt++;
-    bk_printf("tttttttttt: %p, %d\r\n", &tttttttttt, tttttttttt);
 }
 
 
 static const struct cli_command tuya_cli_commands[] = {
     // {"audio_test", "mic to speaker test", cli_audio_test_cmd},
     {"info",    "system info",      cli_system_info_cmd},
-    {"xmac",    "set mac",          cli_set_mac},
+    {"xt",      "test",             cli_test_cmd},
+    {"lfs",     "little fs test",   cli_littlefs_cmd},
+    {"xsd",     "sd card test",     cli_sdcard_test_cmd},
+#if 0
     {"xid",     "set mac",          cli_tmp_cmd},
 #if 1
     {"xadc",    "adc test",         cli_adc_cmd},
@@ -123,20 +108,22 @@ static const struct cli_command tuya_cli_commands[] = {
     {"xgpio",   "gpio test",        cli_gpio_cmd},
     {"xlcd",    "lcd test",         cli_xlcd_cmd},
     {"xpwm",    "pwm test",         cli_pwm_cmd},
-    {"xmt",     "media test",       cli_tuya_media_cmd},
+    // {"xmt",     "media test",       cli_tuya_media_cmd},
     {"xqspi",   "qspi test",        cli_xqspi_cmd},
-    {"xmtd",   "mtd test",        cli_xmtd_cmd},
-    {"lfs",     "little fs test",   cli_littlefs_cmd},
+
+    {"xqspilcd",   "qspi test",        cli_xqspi_lcd_cmd},
+    // {"xmtd",   "mtd test",        cli_xmtd_cmd},
     {"xusb",    "usb device check", cli_usb_cmd},
-    {"xsd",     "sd card test",     cli_sdcard_test_cmd},
     {"xspi",    "spi test",         cli_spi_cmd},
+    {"xspi2",    "spi test",        cli_spi_2_3_cmd},
+
+
     // {"xeth",    "eth test",         cli_eth_cmd},
     // {"xiperf",  "iperf test",       cli_iperf_cmd},
     {"xmic",    "mic test",         cli_mic_cmd},
     {"xspk",    "spk test",         cli_speaker_cmd},
-    {"xt",      "spk test",         cli_uuuuuu_cmd},
     // {"xi2s",    "i2s test",         cli_tuya_i2s_cmd},
-
+#endif
 };
 
 #define TUYA_TEST_CMD_CNT (sizeof(tuya_cli_commands) / sizeof(struct cli_command))
@@ -144,6 +131,12 @@ static const struct cli_command tuya_cli_commands[] = {
 int ap_cli_tuya_test_init(void)
 {
     cli_register_commands(tuya_cli_commands, TUYA_TEST_CMD_CNT);
+
+#if (CONFIG_AUD_INTF_TEST)
+	extern int cli_aud_intf_init(void);
+	cli_aud_intf_init();
+#endif
+
     return 0;
 }
 

@@ -186,3 +186,15 @@ void aon_pmu_hal_gpio_retention_bitmap_set(uint32_t bitmap)
 	aon_pmu_ll_set_r25(0x424B55AA);
 	aon_pmu_ll_set_r25(0xBDB4AA55);
 }
+
+void aon_pmu_hal_set_r0(uint32_t value)
+{
+	aon_pmu_ll_set_r0(value);
+	aon_pmu_ll_set_r25(0x424B55AA);
+	aon_pmu_ll_set_r25(0xBDB4AA55);
+}
+
+uint32_t aon_pmu_hal_get_r0(void)
+{
+	return aon_pmu_ll_get_r0();
+}

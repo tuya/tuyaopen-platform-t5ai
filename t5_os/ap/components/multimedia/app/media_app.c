@@ -17,6 +17,7 @@
 #include <os/mem.h>
 #include <components/log.h>
 #include <driver/pwr_clk.h>
+#include <driver/flash.h>
 #include "media_app.h"
 #include "camera_act.h"
 #include "transfer_act.h"
@@ -89,7 +90,9 @@ bk_err_t media_app_lcd_fmt(pixel_format_t fmt)
 bk_err_t media_app_set_rotate(media_rotate_t rotate)
 {
     int ret = BK_FAIL;
+#ifdef CONFIG_MEDIA_PIPELINE
     ret = pipeline_set_rotate(rotate);
+#endif
     ret = image_rotate_set(rotate);
     LOGD("%s %d %d(0:0, 1:90, 2:180,3:270)\n", __func__, __LINE__, rotate);
     return ret;
@@ -162,6 +165,12 @@ bk_err_t media_app_lcd_disp_close(void)
     return ret;
 }
 
+static void media_app_send_flash_op_state_callback(uint32_t state)
+{
+    //LOGD("%s, state:%d\n", __func__, state);
+
+    camera_set_stream_state_handle(state);
+}
 
 bk_err_t media_app_jdec_open(uint32_t dec_type)
 {
@@ -170,7 +179,9 @@ bk_err_t media_app_jdec_open(uint32_t dec_type)
     bk_pm_module_vote_psram_ctrl(PM_POWER_PSRAM_MODULE_NAME_VIDP_JPEG_DE, PM_POWER_MODULE_STATE_ON);
     if (dec_type == JPEGDEC_BY_LINE)
     {
+#ifdef CONFIG_MEDIA_PIPELINE
         ret = lcd_jdec_pipeline_open();
+#endif
     }
     if (dec_type == JPEGDEC_BY_FRAME)
     {
@@ -190,12 +201,14 @@ bk_err_t media_app_jdec_close(void)
         LOGE("%s fail\n", __func__);
         return ret;
     }
+#ifdef CONFIG_MEDIA_PIPELINE
     ret = lcd_jdec_pipeline_close();
     if (ret != BK_OK)
     {
         LOGE("%s fail\n", __func__);
         return ret;
     }
+#endif
     bk_pm_module_vote_psram_ctrl(PM_POWER_PSRAM_MODULE_NAME_VIDP_JPEG_DE, PM_POWER_MODULE_STATE_OFF);
     LOGI("%s complete %x\n", __func__, ret);
     return ret;
@@ -215,18 +228,18 @@ bk_err_t media_app_camera_open(camera_handle_t *handle, media_camera_device_t *d
         return ret;
     }
 
-#if (CONFIG_BT_REUSE_MEDIA_MEMORY && CONFIG_BLUETOOTH_AP)
-    bk_bluetooth_deinit();
-#endif
-
     camera_handle_t tmp = bk_camera_handle_node_get_by_id_and_fomat(device->port, device->format);
     if (tmp)
     {
+        ret = BK_OK;
         LOGD("%s already opened, %p\n", __func__, tmp);
         *handle = tmp;
         return ret;
     }
 
+#if (CONFIG_BT_REUSE_MEDIA_MEMORY && CONFIG_BLUETOOTH_AP)
+    bk_bluetooth_deinit();
+#endif
     bk_pm_module_vote_psram_ctrl(PM_POWER_PSRAM_MODULE_NAME_VIDP_JPEG_EN,PM_POWER_MODULE_STATE_ON);
 
     media_device_t media_device = {0};
@@ -237,6 +250,12 @@ bk_err_t media_app_camera_open(camera_handle_t *handle, media_camera_device_t *d
 
     if (ret == BK_OK)
     {
+#if CONFIG_FLASH
+        /*while camera wroking, other user erase/write flash will influen the camera data,
+        so we need to register a callback to notify the camera state, and drop error frame
+        as much as possible */
+        mb_flash_register_op_camera_notify(media_app_send_flash_op_state_callback);
+#endif
         media_camera_node_t *node = bk_camera_handle_node_init(device->port, device->format);
         if (node == NULL)
         {
@@ -281,6 +300,7 @@ bk_err_t media_app_camera_close(camera_handle_t *handle)
         LOGD("%s already closed\n", __func__);
         return BK_OK;
     }
+
     ret = camera_close_handle(handle);
 
     if (ret == BK_OK)
@@ -290,7 +310,9 @@ bk_err_t media_app_camera_close(camera_handle_t *handle)
 
     if (list_empty(&media_modules_state->cam_list))
     {
-        LOGD("%s list_empty \n", __func__);
+#if CONFIG_FLASH
+        mb_flash_unregister_op_camera_notify();
+#endif
         bk_pm_module_vote_psram_ctrl(PM_POWER_PSRAM_MODULE_NAME_VIDP_JPEG_EN,PM_POWER_MODULE_STATE_OFF);
     }
 
@@ -308,8 +330,9 @@ bk_err_t media_app_pipeline_h264_open(void *config)
         LOGE("%s camera not open\n", __func__);
         return ret;
     }
-
-    ret = h264_jdec_pipeline_open();;
+#ifdef CONFIG_MEDIA_PIPELINE
+    ret = h264_jdec_pipeline_open();
+#endif
 
     LOGI("%s complete %x\n", __func__, ret);
 
@@ -325,9 +348,9 @@ bk_err_t media_app_pipeline_h264_close(void)
         LOGE("%s camera not open\n", __func__);
         return ret;
     }
-
+#ifdef CONFIG_MEDIA_PIPELINE
     ret = h264_jdec_pipeline_close();
-
+#endif
     LOGI("%s complete %x\n", __func__, ret);
 
     return ret;
@@ -345,7 +368,9 @@ bk_err_t media_app_h264_regenerate_idr(camera_type_t type)
 
     if (type == UVC_CAMERA)
     {
+#ifdef CONFIG_MEDIA_PIPELINE
         ret = h264_jdec_pipeline_regenerate_idr_frame();
+#endif
     }
     else
     {
@@ -397,7 +422,11 @@ bk_err_t media_app_unregister_read_frame_callback(void)
     LOGD("%s\n", __func__);
 
     ret = transfer_app_task_deinit();
-    if (ret == BK_OK)
+    if (ret != BK_OK)
+    {
+        LOGW("%s close app failed\n", __func__);
+    }
+    else
     {
         media_modules_state->trs_state = false;
     }
@@ -460,19 +489,16 @@ bk_err_t media_app_capture(image_format_t format, char *name)
     bk_err_t ret = BK_FAIL;
 
 #ifdef CONFIG_IMAGE_STORAGE
-
-    media_modules_state_t *media_state = media_modules_state;
-
-    if (media_state->stor_state == false)
+    if (name == NULL)
     {
-        ret = media_app_storage_open(NULL);
-        if (ret != BK_OK)
-        {
-            return ret;
-        }
+        return ret;
     }
 
-    media_state->stor_state = true;
+    ret = media_app_storage_open(NULL);
+    if (ret != BK_OK)
+    {
+        return ret;
+    }
 
     ret = storage_app_task_capture(format, name);
 #endif
@@ -485,22 +511,20 @@ bk_err_t media_app_save_start(image_format_t format, char *name)
     bk_err_t ret = BK_FAIL;
 
 #ifdef CONFIG_IMAGE_STORAGE
-
-    media_modules_state_t *media_state = media_modules_state;
-
-    if (media_state->stor_state == false)
+    if (name == NULL)
     {
-        ret = media_app_storage_open(NULL);
-        if (ret != BK_OK)
-        {
-            return ret;
-        }
+        return ret;
     }
 
-    media_state->stor_state = true;
+    ret = media_app_storage_open(NULL);
+    if (ret != BK_OK)
+    {
+        return ret;
+    }
 
     ret = storage_app_task_save_start(format, name);
 #endif
+    LOGI("%s complete\n", __func__);
 
     return ret;
 }

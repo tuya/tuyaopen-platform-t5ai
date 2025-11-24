@@ -234,7 +234,7 @@ bk_err_t cif_rxdata_pre_process(uint8_t channel,void* head,uint8_t need_retry)
     
     if(!need_retry)
     {
-        //BK_LOGD(NULL,"%s,%d,p:0x%x,ipc_chnl:%d\n",__func__,__LINE__,(struct pbuf*)head-1,ipc_chnl);
+        BK_LOGV(NULL,"%s,%d,p:0x%x,ipc_chnl:%d\n",__func__,__LINE__,(struct pbuf*)head-1,ipc_chnl);
         //add to tx pending list tail
         CIF_IRQ_DISABLE(int_level);
         co_list_push_back((struct co_list *)&cif_ipc_env[ipc_chnl].rx_list,(struct co_list_hdr *)head);

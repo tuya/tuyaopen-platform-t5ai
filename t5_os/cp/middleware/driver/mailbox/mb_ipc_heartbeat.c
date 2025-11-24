@@ -240,9 +240,9 @@ static void mb_ipc_task( void *para )
 				}
 				else
 				{
-					if(retry_cnt > 0)
+					if( retry_cnt > 3)
 					{
-						// BK_LOGW(MOD_TAG, "IPC retry to start core%d\r\n", cpu_x_id);
+						BK_DUMP_OUT("IPC retry to start core%d, retry_cnt:%d\r\n", cpu_x_id, retry_cnt);
 						// restart_cpu_x();
 						break;
 					}
@@ -307,7 +307,7 @@ void mb_ipc_heartbeat_notify(u32 cpu_id)
 	{
 		return;
 	}
-	
+	rtos_set_event_ex(&mb_ipc_heart_event, MB_IPC_POWER_UP_FLAG);
 	rtos_set_event_ex(&mb_ipc_heart_event, MB_IPC_HEARTBEAT_FLAG);
 }
 
@@ -317,7 +317,7 @@ void mb_ipc_power_on_notify(u32 cpu_id)
 	{
 		return;
 	}
-	
+
 	rtos_set_event_ex(&mb_ipc_heart_event, MB_IPC_POWER_UP_FLAG);
 }
 

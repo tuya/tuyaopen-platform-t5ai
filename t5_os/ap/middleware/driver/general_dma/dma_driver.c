@@ -1248,6 +1248,10 @@ static void dma_isr_common(dma_unit_t dma_unit_id)
         if (((channel) < CONFIG_DMA_LOGIC_CHAN_ID_MIN) || ((channel) >= CONFIG_DMA_LOGIC_CHAN_ID_MIN + CONFIG_DMA_LOGIC_CHAN_CNT)) {
             continue;
         }
+//Modify by Tuya Start
+        extern void tkl_dma_isr_common(dma_unit_t dma_unit_id, uint32_t id);
+        tkl_dma_isr_common(dma_unit_id, id);
+//Modify by Tuya End
         half_finish_isr_arg = s_dma_arg_isr[dma_unit_id][id].half_finish_isr;
         half_finish_arg = s_dma_arg_isr[dma_unit_id][id].half_finish_arg;
     

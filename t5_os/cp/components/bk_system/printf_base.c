@@ -48,13 +48,13 @@ bk_err_t bk_printf_init(void)
 	int ret;
 
 	ret = printf_lock_init();
-    if (BK_OK != ret) 
+    if (BK_OK != ret)
 	{
 		return ret;
     }
 
 #if (CONFIG_SYS_PRINT_DEV_UART)
-        const uart_config_t config = 
+        uart_config_t config =                  // Modified by TUYA
         {
                 .baud_rate = UART_BAUD_RATE,
                 .data_bits = UART_DATA_8_BITS,
@@ -67,6 +67,12 @@ bk_err_t bk_printf_init(void)
                 .src_clk = UART_SCLK_XTAL_26M
 #endif
         };
+
+        // Modified by TUYA Start
+        if (ate_is_enabled()) {
+            config.baud_rate = 115200;
+        }
+        // Modified by TUYA Start
 
         ret = bk_uart_init(s_print_port, &config);
         if (BK_OK != ret)

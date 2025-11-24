@@ -26,5 +26,12 @@ menu "QSPI"
 		depends on QSPI && DRIVER_TEST
 		bool "Enable qspi test"
 		default n
+
+	config QSPI_LINE_MODE
+		int "qspi line mode choose"
+		range 1 8
+		default 4
+		help
+		The value should be changed if need to change qspi line mode
 endmenu
 

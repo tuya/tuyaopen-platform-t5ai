@@ -15,12 +15,11 @@
 #include <os/os.h>
 #include <os/mem.h>
 #include <driver/int.h>
-
 #include <components/log.h>
-#include "bk_list.h"
+#include <bk_list.h>
 #include "camera_handle_list.h"
-
 #include "media_app.h"
+
 #define TAG "cam_handle"
 
 #define LOGI(...) BK_LOGI(TAG, ##__VA_ARGS__)

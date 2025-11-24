@@ -527,7 +527,30 @@ bk_err_t sys_hal_ctrl_vddd_h_vol(uint32_t vol_value)
 #endif
 	return BK_OK;
 }
-
+bk_err_t sys_hal_set_vdddig_h_vol(uint32_t target_value)
+{
+	volatile uint32_t i = 0;
+    uint32_t  cur_value  = sys_ll_get_ana_reg9_vcorehsel();
+	if(target_value < cur_value)
+	{
+		for(i = cur_value; i >= target_value; i--)
+		{
+			sys_hal_ctrl_vdddig_h_vol(i);
+		}
+	}
+	else if(target_value == cur_value)
+	{
+		//do nothing
+	}
+	else
+	{
+		for(i = cur_value; i <= target_value; i++)
+		{
+			sys_hal_ctrl_vdddig_h_vol(i);
+		}
+	}
+	return BK_OK;
+}
 bk_err_t sys_hal_ctrl_vdddig_h_vol(uint32_t vol_value)
 {
 	if(sys_ll_get_ana_reg9_vcorehsel() != vol_value)
@@ -563,8 +586,8 @@ bk_err_t sys_hal_switch_cpu_bus_freq_high_to_low(pm_cpu_freq_e cpu_bus_freq)
 			break;
 		case PM_CPU_FRQ_320M://cpu0:160m;cpu1:320m;cpu2:320m;bus:160m
 		    ret = sys_hal_core_bus_clock_ctrl(0x2,0x0,0x0,0x0,0x1);
-			sys_hal_ctrl_vddd_h_vol(0x7);// 1.05 v
-			sys_hal_ctrl_vdddig_h_vol(0xD);//0.925V
+			sys_hal_ctrl_vddd_h_vol(0x7);// 1.05v
+			sys_hal_ctrl_vdddig_h_vol(0xE);//0.95V
 
 			break;
 		case PM_CPU_FRQ_240M://cpu0:240m;cpu1:240m;;cpu2:240m;bus:240m
@@ -635,7 +658,7 @@ bk_err_t sys_hal_switch_cpu_bus_freq_low_to_high(pm_cpu_freq_e cpu_bus_freq)
 			break;
 		case PM_CPU_FRQ_320M://cpu0:160m;cpu1:320m;cpu2:320m;bus:160m
 			sys_hal_ctrl_vddd_h_vol(0x7);// 1.05v
-			sys_hal_ctrl_vdddig_h_vol(0xD);//0.925V
+			sys_hal_ctrl_vdddig_h_vol(0xE);//0.95V
 			ret = sys_hal_core_bus_clock_ctrl(0x2,0x0,0x0,0x0,0x1);
 			break;
 		case PM_CPU_FRQ_240M://cpu0:240m;cpu1:240m;;cpu2:240m;bus:240m
@@ -2520,10 +2543,12 @@ void sys_hal_set_ana_cb_cal_manu(uint32_t value)
 {
     sys_ll_set_ana_reg5_bcal_en(value);
 }
+
 void sys_hal_set_ana_adc_div(uint32_t value)
 {
     sys_ll_set_ana_reg5_adc_div(value);
 }
+
 void sys_hal_set_ana_cb_cal_trig(uint32_t value)
 {
     sys_ll_set_ana_reg5_bcal_start(value);
@@ -2825,11 +2850,13 @@ void sys_hal_early_init(void)
 		sys_hal_analog_set(ANALOG_REG25, 0x961FAA4);
 
 		sys_ll_set_ana_reg3_inbufen0v9(1);
-	} else if ((chip_id & PM_CHIP_ID_MASK) == (PM_CHIP_ID_MP_I & PM_CHIP_ID_MASK)) {
+	} else if(((chip_id & PM_CHIP_ID_MASK) == (PM_CHIP_ID_MP_I & PM_CHIP_ID_MASK))||((chip_id & PM_CHIP_ID_MASK) == (PM_CHIP_ID_MP_J & PM_CHIP_ID_MASK))) {
 		sys_hal_analog_set(ANALOG_REG10, 0xC3D543E7);//tenglong20240123
 		//default of MP
 		//tenglong20231017: SYS_reg0x4B<3:0>=8,SYS_reg0x4C<3:0>=0,SYS_reg0x4D<4:1>=7 for softstart
-		sys_hal_analog_set(ANALOG_REG11, 0xB47E99F8);//tenglong20240418
+		/*EVM optimize: Update the buck configuration as follows:
+		system0X4B<27:24> change from 4 to 0.This configuration change applies only to I and J versions.*/
+		sys_hal_analog_set(ANALOG_REG11, 0xB07E99F8);//tenglong20240418
 		sys_hal_analog_set(ANALOG_REG12, 0xB47ECF20);//tenglong20240418
 		sys_hal_analog_set(ANALOG_REG13, 0x727070EE);//tenglong20231020 disable psram/update volt for safe
 		sys_hal_analog_set(ANALOG_REG25, 0x961FAA4);

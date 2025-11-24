@@ -26,6 +26,7 @@
 #include "airtime_policy.h"
 #include "ap_config.h"
 #include "bk_wifi_types.h"
+#include "bk_wifi.h"
 
 extern ap_param_t *g_ap_param_ptr;
 
@@ -100,6 +101,11 @@ void hostapd_config_defaults_bss(struct hostapd_bss_config *bss)
 	bss->radius_server_auth_port = 1812;
 	bss->eap_sim_db_timeout = 1;
 	bss->eap_sim_id = 3;
+#endif
+#if BK_SUPPLICANT && CONFIG_BRIDGE
+	if (bk_wifi_get_bridge_state() == BRIDGE_STATE_DISABLING)
+		bss->ap_max_inactivity = AP_DEFAULT_MAX_INACTIVITY;
+	else
 #endif
 	bss->ap_max_inactivity = AP_MAX_INACTIVITY;
 	bss->eapol_version = EAPOL_VERSION;

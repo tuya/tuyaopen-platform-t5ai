@@ -51,6 +51,16 @@ extern "C" {
 #define FIXED_ADDR_WAKEUP_AP1_COUNT          (*(volatile uint32_t *)(CONFIG_PWR_MNG_ADDR+16))
 #define FIXED_ADDR_WAKEUP_AP1_DEBUG          (*(volatile uint32_t *)(CONFIG_PWR_MNG_ADDR+20))
 
+#define FIXED_ADDR_CP_RESET_REASON           (*(volatile uint32_t *)(CONFIG_PWR_MNG_ADDR+24))
+#define FIXED_ADDR_AP_RESET_REASON           (*(volatile uint32_t *)(CONFIG_PWR_MNG_ADDR+28))
+
+#define FIXED_ADDR_EXCEPTION_MAGIC_BEGIN     (*(volatile uint32_t *)(CONFIG_PWR_MNG_ADDR+32))
+#define FIXED_ADDR_CP_EXCEPTION_STATUS       (*(volatile uint32_t *)(CONFIG_PWR_MNG_ADDR+36))
+#define FIXED_ADDR_AP_EXCEPTION_STATUS       (*(volatile uint32_t *)(CONFIG_PWR_MNG_ADDR+40))
+#define FIXED_ADDR_EXCEPTION_TURN            (*(volatile uint32_t *)(CONFIG_PWR_MNG_ADDR+44))
+#define FIXED_ADDR_EXCEPTION_DUMPER          (*(volatile uint32_t *)(CONFIG_PWR_MNG_ADDR+48))
+#define FIXED_ADDR_EXCEPTION_MAGIC_END       (*(volatile uint32_t *)(CONFIG_PWR_MNG_ADDR+52))
+
 #define PM_PSRAM_POWER_DOWN_MAGIC            (0x123)
 
 typedef enum
@@ -106,6 +116,7 @@ typedef enum
 	PM_POWER_PSRAM_MODULE_NAME_CPU1         ,// 11
 	PM_POWER_PSRAM_MODULE_NAME_MEDIA        ,// 12
 	PM_POWER_PSRAM_MODULE_NAME_LVGL_CODE_RUN,// 13
+	PM_POWER_PSRAM_MODULE_NAME_AS_SECTIONS  ,// 14 //for code and bss section
 	PM_POWER_PSRAM_MODULE_NAME_MAX          ,// attention: MAX value can not exceed 31.
 }pm_power_psram_module_name_e;
 

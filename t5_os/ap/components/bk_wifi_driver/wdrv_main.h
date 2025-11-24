@@ -28,7 +28,7 @@ extern "C" {
 #define PTR_FROM_U32(type, addr) ((type *)(addr))
 #define PTR_TO_U32(addr) ((uint32_t)(addr))
 
-#define WDRV_QUEUE_LEN                          128
+#define WDRV_QUEUE_LEN                          192
 #define WDRV_TASK_PRIO                          2
 
 #define CPDU_LENGTH sizeof(struct cpdu_t)
@@ -106,9 +106,8 @@ enum wdrv_task_msg_evt
 
 struct wdrv_msg {
     uint32_t arg;
-    uint32_t len;
-    uint16_t type;
-    uint8_t  retry_flag;
+    uint16_t  type;
+    uint16_t  retry_flag;
 };
 
 enum ipc_buffer_status
@@ -138,7 +137,8 @@ enum data_path_special_type
 struct common_header
 {
     uint16_t length;//sdio whole buffer length(include common header)
-    uint8_t type;
+    uint8_t type:4;
+    uint8_t dst_index:4;//station index connected to bk softap
     uint8_t need_free:1;
     uint8_t is_buf_bank:1;
     uint8_t vif_idx:2;

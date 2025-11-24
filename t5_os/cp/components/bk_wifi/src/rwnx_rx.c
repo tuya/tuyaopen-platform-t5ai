@@ -28,7 +28,7 @@
 #ifdef CONFIG_WIFI_VNET_CONTROLLER
 #include "controller_wifi_if.h"
 #endif
-void ethernetif_input(int iface, struct pbuf *p);
+void ethernetif_input(int iface, struct pbuf *p, uint8_t dst_idx);
 wifi_monitor_cb_t wifi_monitor_get_cb(void);
 #define LLC_ETHERTYPE_IPX            0x8137
 
@@ -83,7 +83,7 @@ extern struct llc_snap_short llc_bridge_tunnel_hdr;
      (*(((uint8_t*)(addr1_ptr)) + 1) == 0x00) &&                                        \
      (*(((uint8_t*)(addr1_ptr)) + 2) == 0x5E))
 
-void ethernetif_input(int iface, struct pbuf *p);
+void ethernetif_input(int iface, struct pbuf *p, uint8_t dst_idx);
 
 static bool rwm_udp_filter(struct ipv4_hdr *ip_hdr)
 {
@@ -525,7 +525,7 @@ void rwnx_upload_amsdu(struct fhost_rx_header *rxhdr)
 		rwnx_rx_preprocess(iface, q);
 		#endif
 		/* upload to tcp/ip stack */
-		ethernetif_input(iface, q);
+		ethernetif_input(iface, q, rxhdr->flags_dst_idx);
 
 		/* get the next sub-MSDU */
 		i++;
@@ -657,7 +657,7 @@ UINT32 rwm_upload_data(void *host_id, uint32_t frame_len)
 			}
 		}
 		/* for 802.3 frame, pass it to lwip */
-		ethernetif_input(rxhdr->flags_vif_idx, q);
+		ethernetif_input(rxhdr->flags_vif_idx, q, rxhdr->flags_dst_idx);
 	}
 
 	return BK_OK;

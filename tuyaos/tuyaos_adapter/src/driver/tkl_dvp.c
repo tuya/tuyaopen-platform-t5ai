@@ -47,6 +47,7 @@ typedef struct
 
 typedef struct
 {
+    TUYA_DVP_CFG_T dvp_cfg;
     yuv_mode_t cur_work_mode;
     UINT8_T is_mix_mode;
     UINT8_T *pingpong_buf;
@@ -61,12 +62,12 @@ typedef struct
     yuv_buf_config_t yuv_buf_module_config;
     jpeg_config_t jpeg_module_config;
     UINT8_T module_stat;
-    UINT8_T frame_id;
+    UINT32_T frame_id;
     UINT8_T error_flag;
     mclk_freq_t bk_clk;
 } DVP_MODULE_MANAGE_T;
 
-static DVP_MODULE_MANAGE_T g_dvp_module_manage =
+DVP_MODULE_MANAGE_T g_dvp_module_manage =
 {
     .encoder_manage = 
     {
@@ -122,7 +123,7 @@ static OPERATE_RET __ty_output_mode_to_bk_work_mode(TUYA_CAMERA_OUTPUT_MODE outp
     return OPRT_OK;
 }
 
-static OPERATE_RET __dvp_output_mode_check(TUYA_DVP_CFG_T *dvp_cfg)
+static OPERATE_RET __dvp_config_param_check(TUYA_DVP_CFG_T *dvp_cfg)
 {
     OPERATE_RET ret = OPRT_OK;
     uint16_t width = dvp_cfg->width;
@@ -156,6 +157,31 @@ static OPERATE_RET __dvp_output_mode_check(TUYA_DVP_CFG_T *dvp_cfg)
         g_dvp_module_manage.encoded_frame_len = CONFIG_JPEG_FRAME_SIZE;
     }
 
+    yuv_mode_cfg_t *yuv_buf_cfg = &(g_dvp_module_manage.yuv_buf_module_config.yuv_mode_cfg);
+    jpeg_config_t *jpeg_cfg = &(g_dvp_module_manage.jpeg_module_config);
+    switch (dvp_cfg->sync_polarity)
+    {
+    case TUYA_DVP_SYNC_MODE_0:
+        yuv_buf_cfg->hsync = jpeg_cfg->hsync = 1;
+        yuv_buf_cfg->vsync = jpeg_cfg->vsync = 1;
+        break;
+    case TUYA_DVP_SYNC_MODE_1:
+        yuv_buf_cfg->hsync = jpeg_cfg->hsync = 1;
+        yuv_buf_cfg->vsync = jpeg_cfg->vsync = 0;
+        break;
+    case TUYA_DVP_SYNC_MODE_2:
+        yuv_buf_cfg->hsync = jpeg_cfg->hsync = 0;
+        yuv_buf_cfg->vsync = jpeg_cfg->vsync = 1;
+        break;
+    case TUYA_DVP_SYNC_MODE_3:
+        yuv_buf_cfg->hsync = jpeg_cfg->hsync = 0;
+        yuv_buf_cfg->vsync = jpeg_cfg->vsync = 0;
+        break;
+    default:
+        bk_printf("%s the sync mode %d is invalid\r\n", __func__, dvp_cfg->sync_polarity);
+        return OPRT_NOT_SUPPORTED;
+    }
+
     return OPRT_OK;
 }
 
@@ -163,6 +189,9 @@ static OPERATE_RET __ty_clk_to_bk_clk(UINT32_T clk, mclk_freq_t *outclk)
 {
     switch (clk)
     {
+        case 0:
+            (*outclk) = 0;
+            break;
         case clk_m(15):
             (*outclk) = MCLK_15M;
             break;
@@ -895,31 +924,39 @@ OPERATE_RET tkl_dvp_init(TUYA_DVP_CFG_T *dvp_cfg, UINT32_T clk)
     if (!dvp_cfg)
         return OPRT_INVALID_PARM;
 
-    ret = __dvp_output_mode_check(dvp_cfg);
+    TUYA_DVP_CFG_T *cfg = &(g_dvp_module_manage.dvp_cfg);
+    memcpy(cfg, dvp_cfg, sizeof(TUYA_DVP_CFG_T));
+
+    ret = __dvp_config_param_check(cfg);
     if (ret)
         return OPRT_NOT_SUPPORTED;
 
     if(clk) {
         g_dvp_module_manage.bk_clk = MCLK_24M;
         __ty_clk_to_bk_clk(clk, &g_dvp_module_manage.bk_clk);
-    }
+		
+		//enable mclk
+        bk_video_dvp_mclk_enable(YUV_MODE);
+		
+        //update mclk config
+        bk_video_set_mclk(g_dvp_module_manage.bk_clk);
+    }else {
+		g_dvp_module_manage.bk_clk = 0;
+	}
 
     // SMP版本gpio功能都在usr_gpio_cfg配好
     // bk_video_gpio_init(DVP_GPIO_ALL);
 
-    if(g_dvp_module_manage.bk_clk) {
-        //enable mclk
-        bk_video_dvp_mclk_enable(YUV_MODE);
+
+
+    ret = __dvp_hardware_init(cfg);
+    if (ret)
+    {
+        tkl_dvp_deinit();
+        return OPRT_NOT_SUPPORTED;
     }
 
-    __dvp_hardware_init(dvp_cfg);
-
-    __dvp_isr_register(dvp_cfg);
-
-    if(g_dvp_module_manage.bk_clk) {
-        //update mclk config
-        bk_video_set_mclk(g_dvp_module_manage.bk_clk);
-    }
+    __dvp_isr_register(cfg);
 
     yuv_mode_t work_mode = g_dvp_module_manage.cur_work_mode;
     bk_yuv_buf_start(work_mode);
@@ -950,22 +987,29 @@ OPERATE_RET tkl_dvp_deinit()
 	bk_h264_encode_disable();
 	bk_h264_deinit();
 	bk_jpeg_enc_deinit();
-    bk_video_dvp_mclk_disable();
+
+	if (g_dvp_module_manage.bk_clk) {
+    	bk_video_dvp_mclk_disable();
+        g_dvp_module_manage.bk_clk = 0;
+	}
+	
 
     // step 3: deinit dma
     ENCODER_MANAGE_T *coder_manage = &(g_dvp_module_manage.encoder_manage);
-    if (g_dvp_module_manage.cur_work_mode == H264_MODE)
+    if (g_dvp_module_manage.cur_work_mode == H264_MODE && coder_manage->out_channel < DMA_ID_MAX)
     {
         bk_dma_stop(coder_manage->out_channel);
         bk_dma_deinit(coder_manage->out_channel);
         bk_dma_free(DMA_DEV_H264, coder_manage->out_channel);
+        coder_manage->out_channel = DMA_ID_MAX;
     }
 
-    if (g_dvp_module_manage.cur_work_mode == JPEG_MODE)
+    if (g_dvp_module_manage.cur_work_mode == JPEG_MODE && coder_manage->out_channel < DMA_ID_MAX)
     {
         bk_dma_stop(coder_manage->out_channel);
         bk_dma_deinit(coder_manage->out_channel);
         bk_dma_free(DMA_DEV_JPEG, coder_manage->out_channel);
+        coder_manage->out_channel = DMA_ID_MAX;
     }
 
     if (g_dvp_module_manage.is_mix_mode)
@@ -988,6 +1032,9 @@ OPERATE_RET tkl_dvp_deinit()
 
     g_dvp_module_manage.encoded_frame_len = 0;
     g_dvp_module_manage.encoded_frame = NULL;
+
+    TUYA_DVP_CFG_T *cfg = &(g_dvp_module_manage.dvp_cfg);
+    memset(cfg, 0, sizeof(TUYA_DVP_CFG_T));
 
     g_dvp_module_manage.error_flag = false;
 

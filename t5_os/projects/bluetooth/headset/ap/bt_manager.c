@@ -362,7 +362,7 @@ void gap_event_cb(bk_gap_bt_cb_event_t event, bk_bt_gap_cb_param_t *param)
         else if(os_memcmp(btm_env.tmp_link_key, zero_linkkey, sizeof(btm_env.tmp_link_key)) &&
                         os_memcmp(btm_env.tmp_link_key, ff_linkkey, sizeof(btm_env.tmp_link_key)))
         {
-            LOGI("%s use tmp linkkey\n");
+            LOGI("%s use tmp linkkey\n", __func__);
             os_memcpy(tmp.link_key, btm_env.tmp_link_key, sizeof(btm_env.tmp_link_key));
             found_key = 1;
         }

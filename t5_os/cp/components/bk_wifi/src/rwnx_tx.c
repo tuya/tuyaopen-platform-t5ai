@@ -562,9 +562,9 @@ __ITCM_N int rwnx_start_xmit(uint8_t vif_idx, struct pbuf *p, BUS_MSG_T *msg)
 	}
 #endif
 	skb = (struct sk_buff *)((uint8_t *)p + (sizeof(struct pbuf)));
-	
+
 	if (!skb) {
-		RWNX_LOGD("rwnx_start_xmit: invalid skb pointer\n");
+		RWNX_LOGI("rwnx_start_xmit: invalid skb pointer\n");
 		goto exit;
 	}
 
@@ -612,7 +612,7 @@ __ITCM_N int rwnx_start_xmit(uint8_t vif_idx, struct pbuf *p, BUS_MSG_T *msg)
 	fhost_txdesc = (struct fhost_tx_desc_tag *)((uint8_t *)skb + (sizeof(struct sk_buff)));
 	if((sizeof(struct fhost_tx_desc_tag) + fhost_txdesc_extra_size() + p_cnt * sizeof(struct tx_pbd) + (sizeof(struct sk_buff))) > CONFIG_MSDU_RESV_DESC_LENGTH)
 	{
-		RWNX_LOGD("rwnx_start_xmit overflow mem \r\n");
+		RWNX_LOGI("rwnx_start_xmit overflow mem \r\n");
 		BK_ASSERT(0);
 	}
 	memset(fhost_txdesc, 0, sizeof(struct fhost_tx_desc_tag));

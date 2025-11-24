@@ -37,6 +37,7 @@
 #include "interrupt_base.h"
 #include <driver/otp.h>
 #include <driver/pwr_clk.h>
+#include "bk_api_ipc.h"
 
 #if CONFIG_AON_PMU
 #include "aon_pmu_driver.h"
@@ -329,6 +330,7 @@ int driver_init(void) {
 #if CONFIG_MAILBOX_IPC
 	mb_ipc_init();
 #endif
+	bk_ipc_init();
 #endif
 
 	os_show_memory_config_info();

@@ -8,7 +8,6 @@
 #include <os/os.h>
 #include <os/mem.h>
 #include <common/bk_assert.h>
-
 #include <driver/int.h>
 
 #include <driver/psram.h>
@@ -77,12 +76,6 @@ static bool frame_buffer_mem_is_in_heap(uint8_t type, void* mem_ptr)
 
 void bk_psram_frame_buffer_init(void)
 {
-	uint32_t end_adderss = PSRAM_ADDR;
-	GLOBAL_INT_DECLARATION();
-
-	GLOBAL_INT_DISABLE();
-
-	end_adderss += sizeof(psram_mem_slab);
 
 	os_memset(frame_mem_heap.heap, 0, sizeof(struct fb_block_free*) * PSRAM_HEAP_MAX);
 	os_memset(frame_mem_heap.heap_size, 0, sizeof(uint32_t) * PSRAM_HEAP_MAX);
@@ -106,8 +99,6 @@ void bk_psram_frame_buffer_init(void)
 	{
 		frame_buffer_heap_init(PSRAM_HEAP_YUV, &psram_mem_slab->display[0], PSRAM_MEM_SLAB_DISPLAY_SIZE);
 	}
-
-	GLOBAL_INT_RESTORE();
 }
 
 void *bk_psram_frame_buffer_malloc(psram_heap_type_t type, uint32_t size)
@@ -121,8 +112,6 @@ void *bk_psram_frame_buffer_malloc(psram_heap_type_t type, uint32_t size)
 		LOGE("%s, type:%d not init\r\n", __func__, type);
 		FRAME_BUFFER_ASSERT(type, 0);
 	}
-
-	GLOBAL_INT_DECLARATION();
 
 	// compute overall block size (including requested size PLUS descriptor size)
 	// aligned 4 byte
@@ -140,6 +129,7 @@ void *bk_psram_frame_buffer_malloc(psram_heap_type_t type, uint32_t size)
 	FRAME_BUFFER_ASSERT(type, totalsize >= sizeof(struct fb_block_free));
 
 	// protect accesses to descriptors
+	GLOBAL_INT_DECLARATION();
 	GLOBAL_INT_DISABLE();
 
 	uint8_t heap_id = COMMON_MOD(type, PSRAM_HEAP_MAX);
@@ -228,10 +218,8 @@ void *bk_psram_frame_buffer_malloc(psram_heap_type_t type, uint32_t size)
 	// end of protection (as early as possible)
 	GLOBAL_INT_RESTORE();
 	//BK_ASSERT(node == NULL);
-
 	return (void*)alloc;
 }
-
 
 void bk_psram_frame_buffer_free(void* mem_ptr)
 {
@@ -243,8 +231,9 @@ void bk_psram_frame_buffer_free(void* mem_ptr)
 	GLOBAL_INT_DECLARATION();
 
 	// sanity checks
-	if (mem_ptr == NULL)
+	if (mem_ptr == NULL) {
 		return;
+	}
 
 	//debug_mem_reset((uint32_t*)mem_ptr);
 	// point to the block descriptor (before user memory so decrement)
@@ -350,7 +339,6 @@ void bk_psram_frame_buffer_free(void* mem_ptr)
 		// move to the next free block node
 		prev_node = node;
 		node = node->next;
-
 	}
 
 	freed->corrupt_check = FB_LIST_PATTERN;
@@ -361,7 +349,6 @@ void bk_psram_frame_buffer_free(void* mem_ptr)
 	freed->previous = prev_node;
 	freed->free_size = size;
 	freed->corrupt_check = FB_LIST_PATTERN;
-
 
 free_end:
 	// end of protection

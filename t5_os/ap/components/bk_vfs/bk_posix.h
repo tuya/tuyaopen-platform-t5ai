@@ -51,6 +51,9 @@
 #define mkfs		bk_vfs_mkfs
 #define statfs(path,buf)	bk_vfs_statfs(path,buf)
 
+#define ftell		bk_vfs_ftell
+#undef feof
+#define feof		bk_vfs_feof
 
 
 

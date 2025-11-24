@@ -1,4 +1,4 @@
-// Copyright 2022-2023 Beken
+// Copyright 2025-2026 Beken
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,8 +19,10 @@
 #include "FreeRTOS.h"
 #include "semphr.h"
 #include "task.h"
+#include <timers.h>
+#include <components/bk_audio/audio_pipeline/bsd_queue.h>
 #include <components/bk_audio/audio_streams/onboard_speaker_stream.h>
-#include <components/bk_audio/audio_pipeline/audio_common.h>
+#include <components/bk_audio/audio_pipeline/audio_types.h>
 #include <components/bk_audio/audio_pipeline/audio_mem.h>
 #include <components/bk_audio/audio_pipeline/audio_error.h>
 #include <components/bk_audio/audio_pipeline/audio_port.h>
@@ -28,6 +30,7 @@
 #include <driver/aud_dac.h>
 #include <driver/dma.h>
 #include <driver/audio_ring_buff.h>
+#include <driver/gpio.h>
 #include "gpio_driver.h"
 
 
@@ -124,40 +127,224 @@ static const uint32_t PCM_8000[] = {
 };
 #endif
 
+#if CONFIG_ADK_ONBOARD_SPEAKER_STREAM_SUPPORT_MULTIPLE_SOURCE
+typedef struct input_audio_port_info_item
+{
+    STAILQ_ENTRY(input_audio_port_info_item)    next;
+    audio_port_info_t                           port_info;
+} input_audio_port_info_item_t;
+
+typedef STAILQ_HEAD(input_audio_port_info_list, input_audio_port_info_item) input_audio_port_info_list_t;
+#endif
+
 typedef struct onboard_speaker_stream
 {
-    uint8_t                  chl_num;          /**< speaker channel number */
-    uint32_t                 sample_rate;      /**< speaker sample rate */
-    int32_t                  dig_gain;         /**< audio dac digital gain: value range: , suggest: */
-    int32_t                  ana_gain;         /**< audio dac analog gain: value range: , suggest: */
-    aud_dac_work_mode_t      work_mode;        /**< audio dac mode: signal_ended/differen */
-    uint8_t                  bits;             /**< Bit wide (8, 16, 24, 32 bits) */
-    aud_clk_t                clk_src;          /**< audio clock: XTAL(26MHz)/APLL */
-    bool                     is_open;          /**< speaker enable, true: enable, false: disable */
-    uint32_t                 frame_size;       /**< size of one frame speaker data, the size
-                                                        when AUD_DAC_CHL_L_ENABLE mode, the size must bean integer multiple of two bytes
-                                                        when AUD_DAC_CHL_LR_ENABLE mode, the size must bean integer multiple of four bytes */
-    dma_id_t                 spk_dma_id;       /**< dma id that dma carry spk data from ring buffer to fifo */
-    RingBufferContext        spk_rb;           /**< speaker rb handle */
-    int8_t                  *spk_ring_buff;    /**< speaker ring buffer addr */
-    uint32_t                 pool_length;      /**< speaker data pool size, the unit is byte */
-    uint32_t                 pool_play_thold;  /**< the play threshold of pool, the unit is byte */
-    uint32_t                 pool_pause_thold; /**< the pause threshold of pool, the unit is byte */
-    RingBufferContext        pool_rb;          /**< the pool ringbuffer handle */
-    int8_t                  *pool_ring_buff;   /**< pool ring buffer addr */
-    bool                     pool_can_read;    /**< the pool if can read */
-    beken_semaphore_t        can_process;      /**< can process */
-    int8_t                  *temp_buff;        /**< temp buffer addr used to save data written to speaker ring buffer */
-    bool                     wr_spk_rb_done;   /**< write one farme data to speaker ring buffer done */
+    uint8_t                  chl_num;                       /**< speaker channel number */
+    uint32_t                 sample_rate;                   /**< speaker sample rate */
+    int32_t                  dig_gain;                      /**< audio dac digital gain: value range: , suggest: */
+    int32_t                  ana_gain;                      /**< audio dac analog gain: value range: , suggest: */
+    aud_dac_work_mode_t      work_mode;                     /**< audio dac mode: signal_ended/differen */
+    uint8_t                  bits;                          /**< Bit wide (8, 16, 24, 32 bits) */
+    aud_clk_t                clk_src;                       /**< audio clock: XTAL(26MHz)/APLL */
+    bool                     is_open;                       /**< speaker enable, true: enable, false: disable */
+    uint32_t                 frame_size;                    /**< size of one frame speaker data, the size
+                                                                        when AUD_DAC_CHL_L_ENABLE mode, the size must bean integer multiple of two bytes
+                                                                        when AUD_DAC_CHL_LR_ENABLE mode, the size must bean integer multiple of four bytes */
+    dma_id_t                 spk_dma_id;                    /**< dma id that dma carry spk data from ring buffer to fifo */
+    RingBufferContext        spk_rb;                        /**< speaker rb handle */
+    int8_t                  *spk_ring_buff;                 /**< speaker ring buffer addr */
+    uint32_t                 pool_length;                   /**< speaker data pool size, the unit is byte */
+    uint32_t                 pool_play_thold;               /**< the play threshold of pool, the unit is byte */
+    uint32_t                 pool_pause_thold;              /**< the pause threshold of pool, the unit is byte */
+    RingBufferContext        pool_rb;                       /**< the pool ringbuffer handle */
+    int8_t                  *pool_ring_buff;                /**< pool ring buffer addr */
+    bool                     pool_can_read;                 /**< the pool if can read */
+    beken_semaphore_t        can_process;                   /**< can process */
+    int8_t                  *temp_buff;                     /**< temp buffer addr used to save data written to speaker ring buffer */
+    bool                     wr_spk_rb_done;                /**< write one farme data to speaker ring buffer done */
+    uint8_t                  valid_frame_count_in_spk_rb;   /**< the count of valid farme data in speaker ring buffer, data playback finish when the count is 0 */
+
+    bool                     pa_ctrl_en;                    /**< control pa enable */
+    uint16_t                 pa_ctrl_gpio;                  /**< the gpio id of control pa */
+    uint8_t                  pa_on_level;                   /**< the gpio level of turn on pa, 0: low level, 1: high level */
+    uint32_t                 pa_on_delay;                   /**< the delay time(ms) of turn on pa after enable audio dac. [dac init -> pa turn on] */
+    uint32_t                 pa_off_delay;                  /**< the delay time(ms) of disable audio dac after turn off pa. [mute -> pa turn off -> dac deinit] */
+    TimerHandle_t            pa_turn_on_timer;              /**< the timer handle of turn on pa */
+    bool                     pa_state;                      /**< the state of pa, true: on, false: off */
+
+#if CONFIG_ADK_ONBOARD_SPEAKER_STREAM_SUPPORT_MULTIPLE_SOURCE
+    int                             current_port_id;        /**< the valid audio port of currently reading speaker data, 0: element->in, >=1: element->multi_in */
+    SemaphoreHandle_t               lock;                   /**< input audio port info list lock */
+    input_audio_port_info_list_t    input_port_list;        /**< the list of input audio port info */
+#endif
 } onboard_speaker_stream_t;
 
 static onboard_speaker_stream_t *gl_onboard_speaker = NULL;
 
+#if CONFIG_ADK_ONBOARD_SPEAKER_STREAM_SUPPORT_MULTIPLE_SOURCE
+#define input_port_list_release(handle) xSemaphoreGive(handle)
+#define input_port_list_block(handle, time) xSemaphoreTake(handle, time)
+#endif
 
 //#define AEC_MIC_DELAY_POINTS_DEBUG
 
-#ifdef AEC_MIC_DELAY_POINTS_DEBUG
+static bk_err_t _onboard_speaker_close(audio_element_handle_t self);
 
+#if CONFIG_ADK_ONBOARD_SPEAKER_STREAM_SUPPORT_MULTIPLE_SOURCE
+//#define PORT_LIST_DEBUG
+#ifdef PORT_LIST_DEBUG
+#define INPUT_PORT_LIST_DEBUG(list_ptr, func, line)  _debug_print_input_port_list(list_ptr, func, line)
+#else
+#define INPUT_PORT_LIST_DEBUG(list_ptr, func, line)
+#endif
+
+static void _debug_print_input_port_list(input_audio_port_info_list_t *input_port_list, const char *func, int line)
+{
+    if (input_port_list == NULL)
+    {
+        BK_LOGD(TAG, "input_port_list is NULL\n");
+        return;
+    }
+
+    input_audio_port_info_item_t *audio_port_info_item = NULL;
+
+    BK_LOGD(TAG, "----------------- [%s] %d, input_port_list -----------------\n", func, line);
+    STAILQ_FOREACH(audio_port_info_item, input_port_list, next)
+    {
+        if (audio_port_info_item)
+        {
+            BK_LOGD(TAG, "port_id: %d, priority: %d, port: %p, chl_num: %d, sample_rate: %d, dig_gain: %d, ana_gain: %d, bits: %d\n",
+                    audio_port_info_item->port_info.port_id,
+                    audio_port_info_item->port_info.priority,
+                    audio_port_info_item->port_info.port,
+                    audio_port_info_item->port_info.chl_num,
+                    audio_port_info_item->port_info.sample_rate,
+                    audio_port_info_item->port_info.dig_gain,
+                    audio_port_info_item->port_info.ana_gain,
+                    audio_port_info_item->port_info.bits);
+        }
+    }
+    BK_LOGD(TAG, "\n");
+
+}
+
+/* Traverse the input_audio_port_info_list according to port priority to obtain the high-priority port id with valid data */
+static int8_t _get_valid_port_id(input_audio_port_info_list_t *input_port_list)
+{
+    int8_t valid_port_id = -1;
+    input_audio_port_info_item_t *audio_port_info_item = NULL;
+
+    STAILQ_FOREACH(audio_port_info_item, input_port_list, next)
+    {
+        if (audio_port_info_item && audio_port_info_item->port_info.port)
+        {
+            uint32_t filled_size = audio_port_get_filled_size(audio_port_info_item->port_info.port);
+            if (filled_size > 0)
+            {
+                valid_port_id = audio_port_info_item->port_info.port_id;
+                break;
+            }
+        }
+    }
+
+    return valid_port_id;
+}
+
+static audio_port_info_t *_get_audio_port_info_by_port_id(input_audio_port_info_list_t *input_port_list, uint8_t input_poit_id)
+{
+    audio_port_info_t *port_info = NULL;
+    input_audio_port_info_item_t *audio_port_info_item = NULL;
+
+    STAILQ_FOREACH(audio_port_info_item, input_port_list, next)
+    {
+        if (audio_port_info_item && audio_port_info_item->port_info.port_id == input_poit_id)
+        {
+            port_info = &audio_port_info_item->port_info;
+            break;
+        }
+    }
+
+    return port_info;
+}
+
+static bk_err_t _add_audio_port_to_list(input_audio_port_info_list_t *input_port_list, audio_port_info_t *port_info)
+{
+    input_audio_port_info_item_t *audio_port_info_item = NULL;
+    input_audio_port_info_item_t *prev_audio_port_info_item = NULL;
+
+    STAILQ_FOREACH(audio_port_info_item, input_port_list, next)
+    {
+        if (audio_port_info_item && audio_port_info_item->port_info.priority >= port_info->priority)
+        {
+            prev_audio_port_info_item = audio_port_info_item;
+        }
+    }
+
+    input_audio_port_info_item_t *new_audio_port_info_item = audio_calloc(1, sizeof(input_audio_port_info_item_t));
+    AUDIO_MEM_CHECK(TAG, new_audio_port_info_item, return BK_FAIL);
+    os_memcpy(&new_audio_port_info_item->port_info, port_info, sizeof(audio_port_info_t));
+
+    if (prev_audio_port_info_item)
+    {
+        STAILQ_INSERT_AFTER(input_port_list, prev_audio_port_info_item, new_audio_port_info_item, next);
+    }
+    else
+    {
+        STAILQ_INSERT_HEAD(input_port_list, new_audio_port_info_item, next);
+    }
+
+    return BK_OK;
+}
+
+static bk_err_t _update_audio_port_to_list(input_audio_port_info_list_t *input_port_list, audio_port_info_t *port_info)
+{
+    input_audio_port_info_item_t *audio_port_info_item = NULL;
+    input_audio_port_info_item_t *tmp_item = NULL;
+    input_audio_port_info_item_t *prev_audio_port_info_item = NULL;
+    input_audio_port_info_item_t *audio_port_info_item_bk = NULL;
+
+    STAILQ_FOREACH_SAFE(audio_port_info_item, input_port_list, next, tmp_item)
+    {
+        if (audio_port_info_item && audio_port_info_item->port_info.port_id == port_info->port_id)
+        {
+            STAILQ_REMOVE(input_port_list, audio_port_info_item, input_audio_port_info_item, next);
+            audio_port_info_item_bk = audio_port_info_item;
+            break;
+        }
+    }
+
+    /* if port_info->port is NULL, remove this port from list */
+    if (port_info->port == NULL)
+    {
+        audio_free(audio_port_info_item_bk);
+        return BK_OK;
+    }
+
+    os_memcpy(&audio_port_info_item_bk->port_info, port_info, sizeof(audio_port_info_t));
+
+    audio_port_info_item = NULL;
+    STAILQ_FOREACH(audio_port_info_item, input_port_list, next)
+    {
+        if (audio_port_info_item && audio_port_info_item->port_info.priority >= port_info->priority)
+        {
+            prev_audio_port_info_item = audio_port_info_item;
+        }
+    }
+
+    if (prev_audio_port_info_item)
+    {
+        STAILQ_INSERT_AFTER(input_port_list, prev_audio_port_info_item, audio_port_info_item_bk, next);
+    }
+    else
+    {
+        STAILQ_INSERT_HEAD(input_port_list, audio_port_info_item_bk, next);
+    }
+
+    return BK_OK;
+}
+#endif
+
+#ifdef AEC_MIC_DELAY_POINTS_DEBUG
 static void aec_mic_delay_debug(int16_t *data, uint32_t size)
 {
     static uint32_t mic_delay_num = 0;
@@ -170,7 +357,6 @@ static void aec_mic_delay_debug(int16_t *data, uint32_t size)
         BK_LOGD(TAG, "AEC_MIC_DELAY_POINTS_DEBUG \n");
     }
 }
-
 #endif
 
 #ifdef SPK_DATA_DEBUG
@@ -182,6 +368,127 @@ void change_pcm_data_to_8k(uint8_t* buffer, uint32_t size)
     }
 }
 #endif
+
+/* PA control gpio */
+static void _pa_gpio_ctrl(uint16_t pa_ctrl_gpio, uint8_t pa_on_level, bool en)
+{
+    if (en)
+    {
+        BK_LOGD(TAG, "%s, %d, PA turn on \n", __func__, __LINE__);
+        /* open pa according to congfig */
+        if (pa_on_level)
+        {
+            bk_gpio_set_output_high(pa_ctrl_gpio);
+        }
+        else
+        {
+            bk_gpio_set_output_low(pa_ctrl_gpio);
+        }
+    }
+    else
+    {
+        BK_LOGD(TAG, "%s, %d, PA turn off \n", __func__, __LINE__);
+        if (pa_on_level)
+        {
+            bk_gpio_set_output_low(pa_ctrl_gpio);
+        }
+        else
+        {
+            bk_gpio_set_output_high(pa_ctrl_gpio);
+        }
+    }
+}
+
+/*
+ * @brief: pa control api
+ * @param: onboard_spk: speaker stream
+ * @param: en: true: turn on, false: turn off
+ * @param: delay_flag: true: delay turn on, false: no delay
+ * @return: none
+ */
+static void pa_ctrl_en(onboard_speaker_stream_t *onboard_spk, uint8_t en, bool delay_flag)
+{
+    if (!onboard_spk->pa_ctrl_en)
+    {
+        return;
+    }
+
+    if (en)
+    {
+        if (onboard_spk->pa_state)
+        {
+            /* pa already turn on */
+            return;
+        }
+        else
+        {
+            if (onboard_spk->pa_turn_on_timer && delay_flag)
+            {
+                if (xTimerIsTimerActive(onboard_spk->pa_turn_on_timer))
+                {
+                    xTimerReset(onboard_spk->pa_turn_on_timer, portMAX_DELAY);
+                }
+                else
+                {
+                    BK_LOGD(TAG, "start pa_turn_on_timer, pa_on_delay: %d\n", onboard_spk->pa_on_delay);
+                    xTimerStart(onboard_spk->pa_turn_on_timer, portMAX_DELAY);
+                }
+            }
+            else
+            {
+                /* not need delay */
+                _pa_gpio_ctrl(onboard_spk->pa_ctrl_gpio, onboard_spk->pa_on_level, true);
+                if (onboard_spk->dig_gain > 0)
+                {
+                    bk_aud_dac_unmute();
+                }
+                onboard_spk->pa_state = true;
+            }
+        }
+    }
+    else
+    {
+        if (onboard_spk->pa_turn_on_timer)
+        {
+            if (xTimerIsTimerActive(onboard_spk->pa_turn_on_timer))
+            {
+                xTimerStop(onboard_spk->pa_turn_on_timer, portMAX_DELAY);
+            }
+        }
+
+        if (!onboard_spk->pa_state)
+        {
+            /* pa already turn off */
+            return;
+        }
+
+        /* mute -> turn off pa */
+        bk_aud_dac_mute();
+        if (onboard_spk->pa_off_delay)
+        {
+            rtos_delay_milliseconds(onboard_spk->pa_off_delay);
+        }
+        _pa_gpio_ctrl(onboard_spk->pa_ctrl_gpio, onboard_spk->pa_on_level, false);
+        onboard_spk->pa_state = false;
+    }
+}
+
+/* PA turn on callback */
+static void pa_turn_on_timer_callback(TimerHandle_t xTimer)
+{
+    onboard_speaker_stream_t *onboard_spk = (onboard_speaker_stream_t *)pvTimerGetTimerID(xTimer);
+
+    /* turn on pa according to congfig */
+    _pa_gpio_ctrl(onboard_spk->pa_ctrl_gpio, onboard_spk->pa_on_level, true);
+
+    if (onboard_spk->dig_gain > 0)
+    {
+        bk_aud_dac_unmute();
+    }
+
+    onboard_spk->pa_state = true;
+    BK_LOGD(TAG, "turn on pa complete, pa_ctrl_gpio: %d, pa_on_level: %d\n", onboard_spk->pa_ctrl_gpio, onboard_spk->pa_on_level);
+}
 
 static bk_err_t aud_dac_dma_deconfig(onboard_speaker_stream_t *onboard_spk)
 {
@@ -338,6 +645,31 @@ static bk_err_t _onboard_speaker_open(audio_element_handle_t self)
         return BK_OK;
     }
 
+#if CONFIG_ADK_ONBOARD_SPEAKER_STREAM_SUPPORT_MULTIPLE_SOURCE
+    if (audio_element_get_multi_input_max_port_num(self) > 0)
+    {
+        audio_port_info_t *port_info = _get_audio_port_info_by_port_id(&onboard_spk->input_port_list, 0);
+        if (port_info == NULL)
+        {
+            input_audio_port_info_item_t *port_info_item = audio_calloc(1, sizeof(input_audio_port_info_item_t));
+            if (port_info_item == NULL)
+            {
+                BK_LOGE(TAG, "[%s] malloc intput audio port info item fail \n", audio_element_get_tag(self));
+                return BK_FAIL;
+            }
+            port_info_item->port_info.sample_rate = onboard_spk->sample_rate;
+            port_info_item->port_info.chl_num = onboard_spk->chl_num;
+            port_info_item->port_info.ana_gain = onboard_spk->ana_gain;
+            port_info_item->port_info.dig_gain = onboard_spk->dig_gain;
+            port_info_item->port_info.bits = onboard_spk->bits;
+            port_info_item->port_info.port_id = 0;
+            port_info_item->port_info.priority = 0;
+            port_info_item->port_info.port = audio_element_get_input_port(self);
+            STAILQ_INSERT_TAIL(&gl_onboard_speaker->input_port_list, port_info_item, next);
+        }
+    }
+#endif
+
     /* set read data timeout */
     audio_element_set_input_timeout(self, 0);   // 2000, 15 / portTICK_RATE_MS
 
@@ -373,6 +705,10 @@ static bk_err_t _onboard_speaker_open(audio_element_handle_t self)
         return BK_FAIL;
     }
 
+    if (gl_onboard_speaker->pa_ctrl_en)
+    {
+        bk_aud_dac_mute();
+    }
 
 	ret = bk_aud_dac_start();
     if (ret != BK_OK)
@@ -383,6 +719,10 @@ static bk_err_t _onboard_speaker_open(audio_element_handle_t self)
 
     onboard_spk->is_open = true;
     onboard_spk->pool_can_read = true;
+    onboard_spk->valid_frame_count_in_spk_rb = 2;
+
+    /* turn on pa */
+    pa_ctrl_en(onboard_spk, true, true);
 
     return BK_OK;
 }
@@ -447,13 +787,126 @@ static int _onboard_speaker_write(audio_port_handle_t self, char *buffer, int le
         }
     }
 
+    //BK_LOGD(TAG, "%s, ret: %d\n", __func__, ret);
     return ret;
 }
+
+static bk_err_t audio_dac_reconfig(onboard_speaker_stream_t *onboard_spk, int rate, int ch, int bits)
+{
+    /* check and set sample rate */
+    if (onboard_spk->sample_rate != rate)
+    {
+        if (BK_OK != bk_aud_dac_set_samp_rate(rate))
+        {
+            BK_LOGE(TAG, "%s, line: %d, updata onboard speaker sample rate: %d fail \n", __func__, __LINE__, rate);
+            return BK_FAIL;
+        }
+        else
+        {
+            BK_LOGD(TAG, "%s, line: %d, updata onboard speaker sample rate: %d ok \n", __func__, __LINE__, rate);
+        }
+    }
+
+    /* check and set channel num */
+    if (onboard_spk->chl_num != ch)
+    {
+        aud_dac_chl_t chl_cfg = AUD_DAC_CHL_L;
+        if (ch == 1)
+        {
+            chl_cfg = AUD_DAC_CHL_L;
+        }
+        else
+        {
+            chl_cfg = AUD_DAC_CHL_LR;
+        }
+        if (BK_OK != bk_aud_dac_set_chl(chl_cfg))
+        {
+            BK_LOGE(TAG, "%s, line: %d, updata onboard speaker channel: %d fail \n", __func__, __LINE__, ch);
+            return BK_FAIL;
+        }
+        else
+        {
+            BK_LOGD(TAG, "%s, line: %d, updata onboard speaker channel: %d ok \n", __func__, __LINE__, ch);
+        }
+
+        //TODO
+        //set dest_data_width 16bit or 32bit
+        //lack dma set api
+        /*
+                aud_dac_dma_deconfig(onboard_spk);
+                if (BK_OK != aud_dac_dma_config(onboard_spk)) {
+                    BK_LOGE(TAG, "%s, line: %d, audio_dac_dma_reconfig fail \n", __func__, __LINE__);
+                    return BK_FAIL;
+                }
+        */
+    }
+
+    return BK_OK;
+}
+
+#if CONFIG_ADK_ONBOARD_SPEAKER_STREAM_SUPPORT_MULTIPLE_SOURCE
+/* Check whether audio dac configuration need to be updated */
+static bk_err_t _update_dac_config(audio_element_handle_t onboard_speaker_stream, uint8_t current_port_id, uint8_t new_port_id)
+{
+    onboard_speaker_stream_t *onboard_spk = (onboard_speaker_stream_t *)audio_element_getdata(onboard_speaker_stream);
+
+    audio_port_info_t *current_port_info = _get_audio_port_info_by_port_id(&onboard_spk->input_port_list, current_port_id);
+    audio_port_info_t *new_port_info = _get_audio_port_info_by_port_id(&onboard_spk->input_port_list, new_port_id);
+
+    if (new_port_info)
+    {
+        if (!current_port_info || current_port_info->sample_rate != new_port_info->sample_rate)
+        {
+            if (BK_OK != bk_aud_dac_set_samp_rate(new_port_info->sample_rate))
+            {
+                BK_LOGE(TAG, "%s, line: %d, updata onboard speaker sample rate: %d fail \n", __func__, __LINE__, new_port_info->sample_rate);
+            }
+            else
+            {
+                BK_LOGD(TAG, "%s, line: %d, updata onboard speaker sample rate: %d->%d ok \n", __func__, __LINE__, current_port_info ? current_port_info->sample_rate : -1, new_port_info->sample_rate);
+            }
+        }
+
+        if (!current_port_info || current_port_info->chl_num != new_port_info->chl_num)
+        {
+            aud_dac_chl_t chl_cfg = AUD_DAC_CHL_L;
+            if (new_port_info->chl_num == 1)
+            {
+                chl_cfg = AUD_DAC_CHL_L;
+            }
+            else
+            {
+                chl_cfg = AUD_DAC_CHL_LR;
+            }
+            if (BK_OK != bk_aud_dac_set_chl(chl_cfg))
+            {
+                BK_LOGE(TAG, "%s, line: %d, updata onboard speaker channel: %d fail \n", __func__, __LINE__, new_port_info->chl_num);
+            }
+            else
+            {
+                BK_LOGD(TAG, "%s, line: %d, updata onboard speaker channel: %d->%d ok \n", __func__, __LINE__, current_port_info ? current_port_info->chl_num : -1, new_port_info->chl_num);
+            }
+        }
+
+        if (!current_port_info || current_port_info->bits != new_port_info->bits)
+        {
+            //TODO
+            BK_LOGD(TAG, "%s, line: %d, updata onboard speaker bits: %d->%d ok \n", __func__, __LINE__, current_port_info ? current_port_info->bits : -1, new_port_info->bits);
+        }
+    }
+    else
+    {
+        BK_LOGE(TAG, "%s, line: %d, new_port_id: %d is not valid \n", __func__, __LINE__, new_port_id);
+        return BK_FAIL;
+    }
+
+    return BK_OK;
+}
+#endif
 
 static int _onboard_speaker_process(audio_element_handle_t self, char *in_buffer, int in_len)
 {
     onboard_speaker_stream_t *onboard_spk = (onboard_speaker_stream_t *)audio_element_getdata(self);
-
     bool read_data_valid_flag = true;
 
     AUD_ONBOARD_SPK_PROCESS_START();
@@ -461,6 +914,12 @@ static int _onboard_speaker_process(audio_element_handle_t self, char *in_buffer
     {
         //return -1;
         BK_LOGE(TAG, "[%s] semaphore get timeout 2000ms\n", audio_element_get_tag(self));
+        // TODO
+        static int cnt = 0;
+        cnt ++;
+        if (cnt > 3) {
+            return -1;
+        }
     }
 
     BK_LOGV(TAG, "[%s] _onboard_speaker_process \n", audio_element_get_tag(self));
@@ -505,7 +964,110 @@ static int _onboard_speaker_process(audio_element_handle_t self, char *in_buffer
 
     /* read input data */
     AUD_ONBOARD_SPK_INPUT_START();
+#if CONFIG_ADK_ONBOARD_SPEAKER_STREAM_SUPPORT_MULTIPLE_SOURCE
+    int r_size = 0;
+    if (audio_element_get_multi_input_max_port_num(self) > 0)
+    {
+        int old_port_id = onboard_spk->current_port_id;
+        int valid_port_id = _get_valid_port_id(&onboard_spk->input_port_list);
+        if (valid_port_id == -1)
+        {
+            /* Use default audio port, if all audio port is empty */
+            //TODO
+            BK_LOGV(TAG, "%s, line: %d, valid_port_id: %d \n", __func__, __LINE__, valid_port_id);
+            valid_port_id = 0;
+        }
+
+        if (valid_port_id != onboard_spk->current_port_id)
+        {
+            INPUT_PORT_LIST_DEBUG(&onboard_spk->input_port_list, __func__, __LINE__);
+            BK_LOGD(TAG, "%s, line: %d, valid_port_id: %d -> %d\n", __func__, __LINE__, onboard_spk->current_port_id, valid_port_id);
+            _onboard_speaker_close(self);
+
+            //TODO
+            if (BK_OK != _update_dac_config(self, onboard_spk->current_port_id, valid_port_id))
+            {
+                BK_LOGE(TAG, "%s, line: %d, update dac config fail \n", __func__, __LINE__);
+                //TODO
+            }
+            onboard_spk->current_port_id = valid_port_id;
+            _onboard_speaker_open(self);
+        }
+
+        /* valid audio port change */
+        if (old_port_id != onboard_spk->current_port_id)
+        {
+            if (old_port_id == 0)
+            {
+                input_port_list_block(onboard_spk->lock, portMAX_DELAY);
+                audio_port_info_t *current_port_info = _get_audio_port_info_by_port_id(&onboard_spk->input_port_list, onboard_spk->current_port_id);
+                if (current_port_info && current_port_info->notify_cb)
+                {
+                    current_port_info->notify_cb(APT_STATE_RUNNING, (void *)current_port_info, current_port_info->user_data);
+                }
+                input_port_list_release(onboard_spk->lock);
+            }
+            else
+            {
+                if (onboard_spk->current_port_id == 0)
+                {
+                    input_port_list_block(onboard_spk->lock, portMAX_DELAY);
+                    audio_port_info_t *old_port_info = _get_audio_port_info_by_port_id(&onboard_spk->input_port_list, old_port_id);
+                    if (old_port_info && old_port_info->notify_cb)
+                    {
+                        old_port_info->notify_cb(APT_STATE_FINISHED, (void *)old_port_info, old_port_info->user_data);
+                    }
+                    input_port_list_release(onboard_spk->lock);
+                }
+                else
+                {
+                    input_port_list_block(onboard_spk->lock, portMAX_DELAY);
+                    audio_port_info_t *current_port_info = _get_audio_port_info_by_port_id(&onboard_spk->input_port_list, onboard_spk->current_port_id);
+                    audio_port_info_t *old_port_info = _get_audio_port_info_by_port_id(&onboard_spk->input_port_list, old_port_id);
+
+                    if (current_port_info && current_port_info->notify_cb)
+                    {
+                        current_port_info->notify_cb(APT_STATE_RUNNING, (void *)current_port_info, current_port_info->user_data);
+                    }
+
+                    if (old_port_info != NULL)
+                    {
+                        if (current_port_info->priority > old_port_info->priority)
+                        {
+                            if (old_port_info && old_port_info->notify_cb)
+                            {
+                                old_port_info->notify_cb(APT_STATE_PAUSED, (void *)old_port_info, old_port_info->user_data);
+                            }
+                        }
+                        else
+                        {
+                            if (old_port_info && old_port_info->notify_cb)
+                            {
+                                old_port_info->notify_cb(APT_STATE_FINISHED, (void *)old_port_info, old_port_info->user_data);
+                            }
+                        }
+                    }
+
+                    input_port_list_release(onboard_spk->lock);
+                }
+            }
+            BK_LOGD(TAG, "%s, line: %d, old_port_id: %d -> %d\n", __func__, __LINE__, old_port_id, onboard_spk->current_port_id);
+        }
+        //BK_LOGD(TAG, "%s, audio_element_multi_input r_size: %d\n", __func__, r_size);
+    }
+
+    if (onboard_spk->current_port_id == 0)
+    {
+        r_size = audio_element_input(self, in_buffer, in_len);
+    }
+    else
+    {
+        r_size = audio_element_multi_input(self, in_buffer, in_len, onboard_spk->current_port_id - 1, 0);
+        //BK_LOGD(TAG, "%s, line: %d, multi_input: %d, r_size: %d \n", __func__, __LINE__, onboard_spk->current_port_id - 1, r_size);
+    }
+#else
     int r_size = audio_element_input(self, in_buffer, in_len);
+#endif
     AUD_ONBOARD_SPK_INPUT_END();
 
     if (onboard_spk->wr_spk_rb_done == false)
@@ -549,16 +1111,7 @@ static int _onboard_speaker_process(audio_element_handle_t self, char *in_buffer
     }
 
     int w_size = 0;
-    if (r_size == AEL_IO_TIMEOUT)
-    {
-        /* call _onboard_speaker_write to play or pause if pool ring buffer is exist */
-        if (onboard_spk->pool_ring_buff)
-        {
-            audio_element_output(self, in_buffer, 0);
-        }
-        //w_size = onboard_spk->frame_size;
-    }
-    else if (r_size > 0)
+    if (r_size > 0)
     {
         AUD_ONBOARD_SPK_OUTPUT_START();
         /* call _onboard_speaker_write to play or pause if pool ring buffer is exist */
@@ -574,19 +1127,80 @@ static int _onboard_speaker_process(audio_element_handle_t self, char *in_buffer
                 w_size = audio_element_output(self, in_buffer, r_size);
             }
         }
+        else
+        {
+            w_size = r_size;
+        }
         AUD_ONBOARD_SPK_OUTPUT_END();
-        //更新处理数据的指针
-        //      audio_element_update_byte_pos(self, w_size);
+        /* Update the pointer for processing data */
+        //audio_element_update_byte_pos(self, w_size);
     }
     else
     {
-        //w_size = r_size;
+        /* check r_size value
+           If r_size is AEL_IO_DONE, return AEL_IO_DONE until speaker data of pool_ring_buff is empty.
+           If r_size is AEL_IO_TIMEOUT, return in_len.
+           If r_size is others, return r_size.
+        */
+        if (r_size == AEL_IO_TIMEOUT)
+        {
+            /* call _onboard_speaker_write to play or pause if pool ring buffer is exist */
+            if (onboard_spk->pool_ring_buff)
+            {
+                audio_element_output(self, in_buffer, 0);
+            }
+            w_size = in_len;
+        }
+        else if (r_size == AEL_IO_DONE)
+        {
+            /* two frames in speaker ring buffer playback finish */
+            if (onboard_spk->valid_frame_count_in_spk_rb == 0)
+            {
+                w_size = r_size;
+            }
+            else
+            {
+                if (onboard_spk->pool_ring_buff)
+                {
+                    /* check whether pool_ring_buff is empty */
+                    uint32_t fill_size = ring_buffer_get_fill_size(&onboard_spk->pool_rb);
+                    if (fill_size < onboard_spk->frame_size)
+                    {
+                        onboard_spk->valid_frame_count_in_spk_rb -=1;
+                        BK_LOGD(TAG, "read data finish, valid_frame_count_in_spk_rb: %d\n", onboard_spk->valid_frame_count_in_spk_rb);
+                    }
+                }
+                else
+                {
+                    onboard_spk->valid_frame_count_in_spk_rb -=1;
+                }
+                w_size = in_len;
+            }
+        }
+        else
+        {
+#if CONFIG_ADK_ONBOARD_SPEAKER_STREAM_SUPPORT_MULTIPLE_SOURCE
+            /* When reading data from other sources returns AEL_IO_ABORT, it indicates that the data source has stopped.
+               In this case, no error code is returned to prevent the speaker from stopping playback.
+             */
+            if (onboard_spk->current_port_id > 0)
+            {
+                w_size = in_len;
+            }
+            else
+            {
+                w_size = r_size;
+            }
+#else
+            w_size = r_size;
+#endif
+        }
     }
 
-    w_size = onboard_spk->frame_size;
+    //w_size = onboard_spk->frame_size;
 
     AUD_ONBOARD_SPK_PROCESS_END();
-
+    //BK_LOGD(TAG, "%s, %d, w_size: %d\n", __func__, __LINE__, w_size);
     return w_size;
 }
 
@@ -603,6 +1217,8 @@ static bk_err_t _onboard_speaker_close(audio_element_handle_t self)
         return BK_FAIL;
     }
 
+    pa_ctrl_en(onboard_spk, false, false);
+
     ret = bk_aud_dac_stop();
     if (ret != BK_OK)
     {
@@ -613,6 +1229,7 @@ static bk_err_t _onboard_speaker_close(audio_element_handle_t self)
     onboard_spk->is_open = false;
     onboard_spk->pool_can_read = false;
     onboard_spk->wr_spk_rb_done = false;
+    onboard_spk->valid_frame_count_in_spk_rb = 0;
 
     return BK_OK;
 }
@@ -643,6 +1260,12 @@ static bk_err_t _onboard_speaker_destroy(audio_element_handle_t self)
     {
         rtos_deinit_semaphore(&onboard_spk->can_process);
         onboard_spk->can_process = NULL;
+    }
+
+    if (gl_onboard_speaker->pa_turn_on_timer)
+    {
+        xTimerDelete(gl_onboard_speaker->pa_turn_on_timer, portMAX_DELAY);
+        gl_onboard_speaker->pa_turn_on_timer = NULL;
     }
 
     if (onboard_spk)
@@ -678,6 +1301,7 @@ audio_element_handle_t onboard_speaker_stream_init(onboard_speaker_stream_cfg_t 
     cfg.task_prio = config->task_prio;
     cfg.task_core = config->task_core;
     cfg.buffer_len = config->frame_size;
+    cfg.multi_in_port_num = config->multi_in_port_num;
     cfg.multi_out_port_num = config->multi_out_port_num;
     BK_LOGD(TAG, "cfg.buffer_len: %d\n", cfg.buffer_len);
 
@@ -693,6 +1317,14 @@ audio_element_handle_t onboard_speaker_stream_init(onboard_speaker_stream_cfg_t 
     gl_onboard_speaker->pool_length = config->pool_length;
     gl_onboard_speaker->pool_play_thold = config->pool_play_thold;
     gl_onboard_speaker->pool_pause_thold = config->pool_pause_thold;
+    gl_onboard_speaker->pa_ctrl_en = config->pa_ctrl_en;
+    gl_onboard_speaker->pa_ctrl_gpio = config->pa_ctrl_gpio;
+    gl_onboard_speaker->pa_on_level = config->pa_on_level;
+    gl_onboard_speaker->pa_on_delay = config->pa_on_delay;
+    gl_onboard_speaker->pa_off_delay = config->pa_off_delay;
+#if CONFIG_ADK_ONBOARD_SPEAKER_STREAM_SUPPORT_MULTIPLE_SOURCE
+    gl_onboard_speaker->current_port_id = 0;
+#endif
 
     /* init onboard speaker */
     aud_dac_config_t aud_dac_cfg = DEFAULT_AUD_DAC_CONFIG();
@@ -714,7 +1346,7 @@ audio_element_handle_t onboard_speaker_stream_init(onboard_speaker_stream_cfg_t 
     aud_dac_cfg.clk_src = config->clk_src;
     aud_dac_cfg.dac_gain = config->dig_gain;
     //aud_dac_cfg.ana_gain = config->ana_gain;
-    BK_LOGD(TAG, "dac_cfg chl_num: %s, dig_gain: 0x%02x, sample_rate: 0x%02x, clk_src: %s, dac_mode: %s \n",
+    BK_LOGD(TAG, "dac_cfg chl_num: %s, dig_gain: 0x%02x, sample_rate: 0x%d, clk_src: %s, dac_mode: %s \n",
             aud_dac_cfg.dac_chl == AUD_DAC_CHL_L ? "AUD_DAC_CHL_L" : "AUD_DAC_CHL_LR",
             aud_dac_cfg.dac_gain,
             aud_dac_cfg.samp_rate,
@@ -770,6 +1402,42 @@ audio_element_handle_t onboard_speaker_stream_init(onboard_speaker_stream_cfg_t 
         goto _onboard_speaker_init_exit;
     }
 
+#if CONFIG_ADK_ONBOARD_SPEAKER_STREAM_SUPPORT_MULTIPLE_SOURCE
+    if (cfg.multi_in_port_num > 0)
+    {
+        STAILQ_INIT(&gl_onboard_speaker->input_port_list);
+
+        gl_onboard_speaker->lock = xSemaphoreCreateMutex();
+        if (gl_onboard_speaker->lock == NULL)
+        {
+            BK_LOGE(TAG, "[%s] create semaphore fail \n", cfg.tag);
+            goto _onboard_speaker_init_exit;
+        }
+    }
+#endif
+
+    if (gl_onboard_speaker->pa_ctrl_en)
+    {
+        if (gl_onboard_speaker->pa_on_delay > 0)
+        {
+            gl_onboard_speaker->pa_turn_on_timer = xTimerCreate(
+                "pa_turn_on_timer",
+                BK_MS_TO_TICKS(gl_onboard_speaker->pa_on_delay),
+                pdFALSE,
+                (void *)gl_onboard_speaker,
+                pa_turn_on_timer_callback);
+            if (gl_onboard_speaker->pa_turn_on_timer == NULL)
+            {
+                BK_LOGE(TAG, "create pa_turn_on_timer fail \n");
+                goto _onboard_speaker_init_exit;
+            }
+        }
+
+        /* config gpio to output */
+        gpio_dev_unmap(gl_onboard_speaker->pa_ctrl_gpio);
+        bk_gpio_enable_output(gl_onboard_speaker->pa_ctrl_gpio);
+    }
+
     el = audio_element_init(&cfg);
     AUDIO_MEM_CHECK(TAG, el, goto _onboard_speaker_init_exit);
     audio_element_setdata(el, gl_onboard_speaker);
@@ -809,62 +1477,23 @@ _onboard_speaker_init_exit:
         gl_onboard_speaker->can_process = NULL;
     }
 
+#if CONFIG_ADK_ONBOARD_SPEAKER_STREAM_SUPPORT_MULTIPLE_SOURCE
+    if (gl_onboard_speaker->lock)
+    {
+        vSemaphoreDelete(gl_onboard_speaker->lock);
+        gl_onboard_speaker->lock = NULL;
+    }
+#endif
+
+    if (gl_onboard_speaker->pa_turn_on_timer)
+    {
+        xTimerDelete(gl_onboard_speaker->pa_turn_on_timer, portMAX_DELAY);
+        gl_onboard_speaker->pa_turn_on_timer = NULL;
+    }
+
     audio_free(gl_onboard_speaker);
     gl_onboard_speaker = NULL;
     return NULL;
-}
-
-static bk_err_t audio_dac_reconfig(onboard_speaker_stream_t *onboard_spk, int rate, int ch, int bits)
-{
-    /* check and set sample rate */
-    if (onboard_spk->sample_rate != rate)
-    {
-        if (BK_OK != bk_aud_dac_set_samp_rate(rate))
-        {
-            BK_LOGE(TAG, "%s, line: %d, updata onboard speaker sample rate: %d fail \n", __func__, __LINE__, rate);
-            return BK_FAIL;
-        }
-        else
-        {
-            BK_LOGD(TAG, "%s, line: %d, updata onboard speaker sample rate: %d ok \n", __func__, __LINE__, rate);
-        }
-    }
-
-    /* check and set channel num */
-    if (onboard_spk->chl_num != ch)
-    {
-        aud_dac_chl_t chl_cfg = AUD_DAC_CHL_L;
-        if (ch == 1)
-        {
-            chl_cfg = AUD_DAC_CHL_L;
-        }
-        else
-        {
-            chl_cfg = AUD_DAC_CHL_LR;
-        }
-        if (BK_OK != bk_aud_dac_set_chl(chl_cfg))
-        {
-            BK_LOGE(TAG, "%s, line: %d, updata onboard speaker channel: %d fail \n", __func__, __LINE__, ch);
-            return BK_FAIL;
-        }
-        else
-        {
-            BK_LOGD(TAG, "%s, line: %d, updata onboard speaker channel: %d ok \n", __func__, __LINE__, ch);
-        }
-
-        //TODO
-        //set dest_data_width 16bit or 32bit
-        //lack dma set api
-        /*
-                aud_dac_dma_deconfig(onboard_spk);
-                if (BK_OK != aud_dac_dma_config(onboard_spk)) {
-                    BK_LOGE(TAG, "%s, line: %d, audio_dac_dma_reconfig fail \n", __func__, __LINE__);
-                    return BK_FAIL;
-                }
-        */
-    }
-
-    return BK_OK;
 }
 
 bk_err_t onboard_speaker_stream_set_param(audio_element_handle_t onboard_speaker_stream, int rate, int bits, int ch)
@@ -963,10 +1592,12 @@ bk_err_t onboard_speaker_stream_set_digital_gain(audio_element_handle_t onboard_
     {
         if (gain == 0)
         {
+            pa_ctrl_en(onboard_spk, false, false);
             bk_aud_dac_mute();
         }
         else
         {
+            pa_ctrl_en(onboard_spk, true, false);
             bk_aud_dac_unmute();
         }
         onboard_spk->dig_gain = gain;
@@ -1028,4 +1659,175 @@ bk_err_t onboard_speaker_stream_dac_mute_en(audio_element_handle_t onboard_speak
     return BK_OK;
 }
 
+bk_err_t onboard_speaker_stream_set_analog_gain(audio_element_handle_t onboard_speaker_stream, uint8_t gain)
+{
+    onboard_speaker_stream_t *onboard_spk = (onboard_speaker_stream_t *)audio_element_getdata(onboard_speaker_stream);
 
+    /* check param */
+    if (gain < 0 || gain > 0x3f)
+    {
+        BK_LOGE(TAG, "gain: %d is out of range: 0x00 ~ 0x3f \n", gain);
+        return BK_FAIL;
+    }
+
+    /* check param */
+    if (onboard_spk == NULL)
+    {
+        BK_LOGE(TAG, "%s, line: %d, onboard_spk is not init \n", __func__, __LINE__);
+        return BK_FAIL;
+    }
+
+    if (onboard_spk->ana_gain == gain)
+    {
+        BK_LOGD(TAG, "not need update onboard spk analog gain \n");
+        return BK_OK;
+    }
+
+	if (BK_OK == bk_aud_set_ana_dac_gain(gain))
+	{
+		onboard_spk->ana_gain = gain;
+		audio_element_setdata(onboard_speaker_stream, onboard_spk);
+	} else
+	{
+		BK_LOGE(TAG, "%s, line: %d, update spk analog gain fail \n", __func__, __LINE__);
+		return BK_FAIL;
+	}
+
+    return BK_OK;
+}
+
+bk_err_t onboard_speaker_stream_get_analog_gain(audio_element_handle_t onboard_speaker_stream, uint8_t *gain)
+{
+    onboard_speaker_stream_t *onboard_spk = (onboard_speaker_stream_t *)audio_element_getdata(onboard_speaker_stream);
+    /* check param */
+    if (gain == NULL)
+    {
+        BK_LOGE(TAG, "%s, line: %d, gain is NULL\n", __func__, __LINE__);
+        return BK_FAIL;
+    }
+    /* check param */
+    if (onboard_spk == NULL)
+    {
+        BK_LOGE(TAG, "%s, line: %d, onboard_spk is not init \n", __func__, __LINE__);
+        return BK_FAIL;
+    }
+
+    *gain = onboard_spk->ana_gain;
+    return BK_OK;
+}
+
+#if CONFIG_ADK_ONBOARD_SPEAKER_STREAM_SUPPORT_MULTIPLE_SOURCE
+bk_err_t onboard_speaker_stream_get_input_port_info_by_port_id(audio_element_handle_t onboard_speaker_stream, uint8_t port_id, audio_port_info_t **port_info)
+{
+    onboard_speaker_stream_t *onboard_spk = (onboard_speaker_stream_t *)audio_element_getdata(onboard_speaker_stream);
+
+    /* check param */
+    if (onboard_spk == NULL)
+    {
+        BK_LOGE(TAG, "%s, line: %d, onboard_spk is not init \n", __func__, __LINE__);
+        return BK_FAIL;
+    }
+
+    if (port_info == NULL)
+    {
+        BK_LOGE(TAG, "%s, line: %d, port_info is NULL \n", __func__, __LINE__);
+        return BK_FAIL;
+    }
+
+    if (port_id > (audio_element_get_multi_input_max_port_num(onboard_speaker_stream) + 1))
+    {
+        BK_LOGE(TAG, "%s, line: %d, audio port id: %d out of range: 0 ~ %d \n", __func__, __LINE__, port_id, audio_element_get_multi_input_max_port_num(onboard_speaker_stream) + 1);
+        return BK_FAIL;
+    }
+
+    *port_info = _get_audio_port_info_by_port_id(&onboard_spk->input_port_list, port_id);
+
+    return BK_OK;
+}
+
+bk_err_t onboard_speaker_stream_set_input_port_info(audio_element_handle_t onboard_speaker_stream, audio_port_info_t *port_info)
+{
+    input_audio_port_info_item_t *audio_port_info_item = NULL;
+    onboard_speaker_stream_t *onboard_spk = (onboard_speaker_stream_t *)audio_element_getdata(onboard_speaker_stream);
+
+    INPUT_PORT_LIST_DEBUG(&onboard_spk->input_port_list, __func__, __LINE__);
+
+    /* check param */
+    if (onboard_spk == NULL || port_info == NULL)
+    {
+        BK_LOGE(TAG, "%s, line: %d, onboard_spk is not init or port_info: %p is NULL \n", __func__, __LINE__, port_info);
+        return BK_FAIL;
+    }
+
+    if (port_info->port_id > (audio_element_get_multi_input_max_port_num(onboard_speaker_stream) + 1))
+    {
+        BK_LOGE(TAG, "%s, line: %d, audio port id: %d out of range: 0 ~ %d \n", __func__, __LINE__, port_info->port_id, audio_element_get_multi_input_max_port_num(onboard_speaker_stream) + 1);
+        return BK_FAIL;
+    }
+
+    /* Only one input port is allowed under one priority level */
+    STAILQ_FOREACH(audio_port_info_item, &onboard_spk->input_port_list, next)
+    {
+        if (audio_port_info_item && audio_port_info_item->port_info.priority == port_info->priority && audio_port_info_item->port_info.port_id != port_info->port_id)
+        {
+            BK_LOGE(TAG, "%s, line: %d, audio port: %d, priority: %d is exist, different ports are not allowed to use the same priority\n", __func__, __LINE__, port_info->port_id, port_info->priority);
+            return BK_FAIL;
+        }
+    }
+
+    /* Check all ports in the input port list to see if there is a port with the same port ID as port_info, and update the port information */
+    audio_port_info_t *tmp_port_info = _get_audio_port_info_by_port_id(&onboard_spk->input_port_list, port_info->port_id);
+    if (tmp_port_info)
+    {
+        /* check whether port_info is same as tmp_port_info */
+        if (memcmp(tmp_port_info, port_info, sizeof(audio_port_info_t)) == 0)
+        {
+            BK_LOGD(TAG, "%s, line: %d, port_info is same as tmp_port_info, not update\n", __func__, __LINE__);
+            return BK_OK;
+        }
+
+        /* update audio port info in port list */
+        input_port_list_block(onboard_spk->lock, portMAX_DELAY);
+        _update_audio_port_to_list(&onboard_spk->input_port_list, port_info);
+        input_port_list_release(onboard_spk->lock);
+        /* check and update audio port */
+        if (port_info->port_id == 0)
+        {
+            if (audio_element_get_input_port(onboard_speaker_stream) != port_info->port)
+            {
+                audio_element_set_input_port(onboard_speaker_stream, port_info->port);
+            }
+        }
+        else
+        {
+            if (audio_element_get_multi_input_port(onboard_speaker_stream, port_info->port_id - 1) != port_info->port)
+            {
+                audio_element_set_multi_input_port(onboard_speaker_stream, port_info->port, (int)(port_info->port_id - 1));
+            }
+        }
+    }
+    else
+    {
+        /* if port_info->port is NULL, not add to list */
+        if (port_info->port != NULL)
+        {
+            /* add new port */
+            input_port_list_block(onboard_spk->lock, portMAX_DELAY);
+            _add_audio_port_to_list(&onboard_spk->input_port_list, port_info);
+            input_port_list_release(onboard_spk->lock);
+        }
+        /* check and update audio port */
+        if (port_info->port_id == 0)
+        {
+            audio_element_set_input_port(onboard_speaker_stream, port_info->port);
+        }
+        else
+        {
+            audio_element_set_multi_input_port(onboard_speaker_stream, port_info->port, (int)(port_info->port_id - 1));
+        }
+    }
+
+    INPUT_PORT_LIST_DEBUG(&onboard_spk->input_port_list, __func__, __LINE__);
+    return BK_OK;
+}
+#endif

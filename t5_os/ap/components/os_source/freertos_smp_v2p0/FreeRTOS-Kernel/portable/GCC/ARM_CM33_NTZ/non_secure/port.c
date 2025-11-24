@@ -469,7 +469,7 @@ extern uint32_t rtos_get_time_diff(void);
         }
         else
         {
- 
+
             /* Sleep until something happens.  configPRE_SLEEP_PROCESSING() can
              * set its parameter to 0 to indicate that its implementation contains
              * its own wait for interrupt or wait for event instruction, and so wfi
@@ -1008,6 +1008,7 @@ static volatile uint32_t   crosscore_mb_busy[configNUM_CORES] = {0};
 static uint32_t  dwt_addr, dwt_data;
 extern void arch_dwt_trap_write(uint32_t addr, uint32_t data);
 extern void arch_dwt_trap_disable(void);
+extern void dwt_set_data_address_write(uint32_t data_address);
 
 // message send between cores
 // xCoreID: to where the message will send
@@ -1059,7 +1060,7 @@ void crosscore_mb_rx_isr(mailbox_data_t *data)
 
 	spin_unlock(&crosscore_spin_lock);
 	rtos_enable_int(flag);
-	
+
     #if configDEBUG_SMP
         /* check mailbox msg and send msg to task */
         if (portGET_CORE_ID() == 0)
@@ -1072,27 +1073,28 @@ void crosscore_mb_rx_isr(mailbox_data_t *data)
             REG_WRITE(GPIO_15_DEBUG, 0);
         }
     #endif
-	
+
 	if(cmd & (0x01 << CC_DUMP_CORE))
-	{       
+	{
 		__BKPT(0xEE);  // trigger a debug exception to dump core & backtrace.
 	}
-	
+
 	if(cmd & (0x01 << CC_YIELD_CORE))
 	{
 		portYIELD_FROM_ISR(true);  // FIXME: always true ?
 	}
-	
+
 	if(cmd & (0x01 << CC_SET_DWT))
 	{
-		arch_dwt_trap_write(dwt_addr, dwt_data);
+		// arch_dwt_trap_write(dwt_addr, dwt_data);
+		dwt_set_data_address_write(dwt_addr);
 	}
-	
+
 	if(cmd & (0x01 << CC_CLR_DWT))
 	{
 		arch_dwt_trap_disable();
 	}
-	
+
 	return;
 }
 
@@ -1121,7 +1123,8 @@ void smp_arch_dwt_trap_write(uint32_t addr, uint32_t data)
 {
 	dwt_addr = addr;
 	dwt_data = data;
-	arch_dwt_trap_write(addr, data);
+	// arch_dwt_trap_write(addr, data);
+	dwt_set_data_address_write(addr);
 	crosscore_int_send_dwt_set(!portGET_CORE_ID());
 }
 

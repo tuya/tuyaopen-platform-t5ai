@@ -173,6 +173,7 @@ OPERATE_RET tkl_adc_deinit(TUYA_ADC_NUM_E unit_num)
     }
 
     memset(g_channel_id_div, 0, sizeof(g_channel_id_div));
+    memset(g_config, 0, sizeof(g_config));
     g_channel_id_div[ADC_4] = 1; // adc4 default div
 
     adc[unit_num] = TUYA_ADC_NUM_MAX;
@@ -362,7 +363,7 @@ OPERATE_RET tkl_adc_read_voltage(TUYA_ADC_NUM_E port_num, INT32_T *buff, UINT16_
                 extern UINT16 bk_adc_data_calculate(UINT16 adc_val, UINT8 adc_chan);
                 cali_value = bk_adc_data_calculate(value, g_config[i].chan);
 
-                buff[read_cnt] = (INT32_T) (cali_value * 1000);
+                buff[read_cnt] = (INT32_T) (cali_value);
                 //bk_printf("buff[%d]:%dmv, %f\r\n", read_cnt, buff[read_cnt], cali_value);
                 read_cnt++;
             }
@@ -391,12 +392,18 @@ OPERATE_RET tkl_adc_ioctl(ADC_IOCTL_CMD_E cmd,  VOID *args)
 
     switch (cmd)
     {
-    case ADC_DIV_RESIS:
+    case ADC_DIV_RESIS_CLOSE:
         //bk_printf("tkl_adc_ioctl :%d\r\n", ch_id);
         g_channel_id_div[ch_id] = 1;
         break;
 
+    case ADC_DIV_RESIS_OPEN:
+        //bk_printf("tkl_adc_ioctl :%d\r\n", ch_id);
+        g_channel_id_div[ch_id] = 0;
+        break;
+
     default:
+        bk_printf("tkl_adc_ioctl not support\r\n", cmd);
         break;
     }
 

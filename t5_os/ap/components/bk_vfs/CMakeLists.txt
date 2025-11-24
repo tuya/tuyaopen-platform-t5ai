@@ -13,8 +13,9 @@ if(CONFIG_VFS)
 		"littlefs_adapter.c"
 		)
 endif()
-
+# Modified by TUYA Start
 armino_component_register(SRCS "${srcs}"
 		INCLUDE_DIRS "${incs}"
-		PRIV_REQUIRES bk_common littlefs fatfs
+		PRIV_REQUIRES bk_common littlefs fatfs tuyaos_adapter
 		)
+# Modified by TUYA End

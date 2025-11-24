@@ -1,4 +1,4 @@
-// Copyright 2022-2023 Beken
+// Copyright 2025-2026 Beken
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,7 +17,7 @@
 
 #include <components/bk_audio/audio_pipeline/audio_event_iface.h>
 #include <components/bk_audio/audio_pipeline/audio_port.h>
-#include <components/bk_audio/audio_pipeline/audio_common.h>
+#include <components/bk_audio/audio_pipeline/audio_types.h>
 #include <os/os.h>
 
 #ifdef __cplusplus
@@ -793,6 +793,28 @@ bk_err_t audio_element_set_multi_output_port(audio_element_handle_t el, audio_po
  *     - Others audio_port_handle_t
  */
 audio_port_handle_t audio_element_get_multi_input_port(audio_element_handle_t el, int index);
+
+/**
+ * @brief      Get max port number of multi input audio port Element.
+ *
+ * @param[in]  el    The audio element handle
+ *
+ * @return
+ *     - >= 0: Max port number of multi input audio port Element
+ *     -  < 0: Error
+ */
+bk_err_t audio_element_get_multi_input_max_port_num(audio_element_handle_t el);
+
+/**
+ * @brief      Get max port number of multi output audio port Element.
+ *
+ * @param[in]  el    The audio element handle
+ *
+ * @return
+ *     - >= 0: Max port number of multi output audio port Element
+ *     -  < 0: Error
+ */
+bk_err_t audio_element_get_multi_output_max_port_num(audio_element_handle_t el);
 
 /**
  * @brief      Get handle of multi output audio port Element by index.

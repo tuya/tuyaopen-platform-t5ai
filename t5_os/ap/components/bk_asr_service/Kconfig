@@ -24,6 +24,22 @@ menu "ASR Service"
 				asr service use psram memory
 	endchoice
 
+	choice ASR_SERVICE_MIC
+		depends on ASR_SERVICE
+		prompt "Select asr service with mic"
+		default ASR_SERVICE_WITH_MIC
+
+		config ASR_SERVICE_WITH_MIC
+			bool "Enable asr service with mic"
+			help
+				asr service with mic
+
+		config ASR_SERVICE_NO_MIC
+			bool "Enable asr service no mic"
+			help
+				the mic will be opened by other modules, the asr src is from the mic multioutput.
+	endchoice
+
 	config AUD_ASR_READ_SERVICE
 		depends on ASR_SERVICE 
 		bool "Enable Audio ASR Service"

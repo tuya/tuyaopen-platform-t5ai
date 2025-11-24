@@ -287,6 +287,9 @@ struct netif {
   /** This function is called by the network device driver
    *  to pass a packet up the TCP/IP stack. */
   netif_input_fn input;
+#if BK_LWIP && CONFIG_BRIDGE
+  netif_input_fn input_origin;
+#endif
 #if LWIP_IPV4
   /** This function is called by the IP module when it wants
    *  to send a packet on the interface. This function typically

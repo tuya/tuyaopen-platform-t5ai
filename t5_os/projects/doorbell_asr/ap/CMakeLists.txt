@@ -15,6 +15,7 @@ if (CONFIG_INTEGRATION_DOORBELL)
 		src/doorbell_devices.c
 		src/doorbell_cmd.c
 		src/bk_smart_config.c
+		src/bk_audio_para.c
 	)
 endif()
 

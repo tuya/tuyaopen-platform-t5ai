@@ -15,10 +15,10 @@ extern void rtos_set_user_app_entry(beken_thread_function_t entry);
 
 void user_app_main(void)
 {
-    bk_printf_raw(BK_LOG_INFO, NULL, "-------- co-procresser startup, left heap: %d, reset reason: %x\r\n",
-            xPortGetFreeHeapSize(), bk_misc_get_reset_reason() & 0xFF);
-
     if (!ate_is_enabled()) {
+        bk_printf_raw(BK_LOG_INFO, NULL, "-------- co-procresser startup, left heap: %d, reset reason: %x\r\n",
+                xPortGetFreeHeapSize(), bk_misc_get_reset_reason() & 0xFF);
+
         cifd_cust_msg_init();
         // doorbell_core_init();
         bk_printf_raw(BK_LOG_INFO, NULL, "start cp1\r\n");
@@ -26,11 +26,10 @@ void user_app_main(void)
 
         tuya_ipc_init();
 
-#if 1 //(CONFIG_TUYA_TEST_CLI)
-        // extern int cp_cli_tuya_test_init(void);
-        // cp_cli_tuya_test_init();
+#if (CONFIG_TUYA_TEST_CLI)
+        extern int cp_cli_tuya_test_init(void);
+        cp_cli_tuya_test_init();
 #endif
-
     } else {
         bk_printf_raw(BK_LOG_INFO, NULL, "ate enable\r\n");
     }

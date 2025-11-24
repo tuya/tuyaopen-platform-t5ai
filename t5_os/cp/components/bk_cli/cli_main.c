@@ -35,6 +35,7 @@
 #include "bk_api_cli.h"
 
 
+
 #define TAG "cli"
 
 static struct cli_st *pCli = NULL;
@@ -53,6 +54,10 @@ extern int hexstr2bin(const char *hex, u8 *buf, size_t len);
 
 #if CONFIG_DVP_CAMERA
 extern int video_demo_register_cmd(void);
+#endif
+
+#if CONFIG_DUMP_TEST
+extern int cli_trap_test_init(void);
 #endif
 
 #if CONFIG_BKREG
@@ -185,7 +190,12 @@ int handle_shell_input(char *inbuf, int in_buf_size, char * outbuf, int out_buf_
 	cmd_par.cmd_data_len = in_buf_size;
 	cmd_par.out_buf_size = out_buf_size;
 
-    rtos_init_semaphore(&wait_shell_handle_semaphore,1);
+    ret = rtos_init_semaphore(&wait_shell_handle_semaphore,1);
+    if(ret != 0)
+    {
+        os_printf("Error: rtos_init_semaphore failed: %d\r\n",ret);
+        return ret;
+    }
 
     /* If you send  cli commands too quickly,it may cause memory exhaustion.
     Here we wait for enough memory before responding to command */
@@ -1537,11 +1547,6 @@ int bk_cli_init(void)
 	cli_cs2_p2p_init();
 #endif
 
-#if (CONFIG_SOC_BK7271)
-#if CONFIG_BT
-	bk7271_ble_cli_init();
-#endif
-#endif
 
 #if (CLI_CFG_MATTER == 1)
     cli_matter_init();
@@ -1741,6 +1746,10 @@ int bk_cli_init(void)
 
 #if (CONFIG_TRUSTENGINE_TEST && CONFIG_PSA_MBEDTLS)
 	cli_mbedtls_init();
+#endif
+
+#if (CONFIG_DUMP_TEST)
+	cli_trap_test_init();
 #endif
 
 #endif //CONFIG_DEBUG_VERSION

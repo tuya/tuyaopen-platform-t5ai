@@ -2,10 +2,12 @@ menu "SARADC"
 	config SARADC
 		bool "Enable saradc"
 		default y
+
 	config SARADC_SERVER
 		bool "Enable SARADC server"
 		depends on SARADC
 		default y
+
 	config SARADC_NEED_FLUSH
 		bool "SARADC whether need flush data"
 		default y
@@ -37,6 +39,7 @@ menu "SARADC"
 		depends on SARADC
 		bool "Enable adc api test"
 		default n
+
 	config SARADC_MB
 		bool "Enable SARADC mailbox"
 		depends on SARADC

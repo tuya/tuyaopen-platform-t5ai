@@ -19,9 +19,9 @@
 #include <driver/pwr_clk.h>
 #include <driver/rosc_32k.h>
 #include <driver/rosc_ppm.h>
+#include <driver/pm_ap_core.h>
 #if CONFIG_PM_DEMO_ENABLE
 #include "pm_ap_demo.h"
-#include <driver/pm_ap_core.h>
 #endif
 
 #if CONFIG_SYSTEM_CTRL
@@ -38,35 +38,42 @@ extern void stop_cpu1_core(void);
 #if CONFIG_TOUCH
 void cli_pm_touch_callback(void *param)
 {
-	// if(s_cli_sleep_mode == PM_MODE_DEEP_SLEEP)//when wakeup from deep sleep, all thing initial
-	// {
-	// 	bk_pm_sleep_mode_set(PM_MODE_DEFAULT);
-	// }
-	// else if(s_cli_sleep_mode == PM_MODE_LOW_VOLTAGE)
-	// {
-	// 	bk_pm_sleep_mode_set(PM_MODE_DEFAULT);
-	// 	bk_pm_module_vote_sleep_ctrl(PM_SLEEP_MODULE_NAME_APP,0x0,0x0);
-	// }
-	// else
-	// {
-	// 	bk_pm_sleep_mode_set(PM_MODE_DEFAULT);
-	// 	bk_pm_module_vote_sleep_ctrl(s_pm_vote1,0x0,0x0);
-	// 	bk_pm_module_vote_sleep_ctrl(s_pm_vote2,0x0,0x0);
-	// 	bk_pm_module_vote_sleep_ctrl(s_pm_vote3,0x0,0x0);
-	// }
+#if 0
+	if(s_cli_sleep_mode == PM_MODE_DEEP_SLEEP)//when wakeup from deep sleep, all thing initial
+	{
+		bk_pm_sleep_mode_set(PM_MODE_DEFAULT);
+	}
+	else if(s_cli_sleep_mode == PM_MODE_LOW_VOLTAGE)
+	{
+		bk_pm_sleep_mode_set(PM_MODE_DEFAULT);
+		bk_pm_module_vote_sleep_ctrl(PM_SLEEP_MODULE_NAME_APP,0x0,0x0);
+	}
+	else
+	{
+		bk_pm_sleep_mode_set(PM_MODE_DEFAULT);
+		bk_pm_module_vote_sleep_ctrl(s_pm_vote1,0x0,0x0);
+		bk_pm_module_vote_sleep_ctrl(s_pm_vote2,0x0,0x0);
+		bk_pm_module_vote_sleep_ctrl(s_pm_vote3,0x0,0x0);
+	}
+#endif
 	BK_LOGD(NULL, "cli_pm_touch_callback[%d]\r\n",bk_pm_exit_low_vol_wakeup_source_get());
 }
 #endif
 void cli_pm_gpio_callback(gpio_id_t gpio_id)
 {
+	pm_ap_core_msg_t msg = {0};
+
 	if(s_cli_sleep_mode == PM_MODE_DEEP_SLEEP)//when wakeup from deep sleep, all thing initial
 	{
 		bk_pm_ap_sleep_mode_set(PM_MODE_DEFAULT);
 	}
 	else if(s_cli_sleep_mode == PM_MODE_LOW_VOLTAGE)
 	{
-		bk_pm_ap_sleep_mode_set(PM_MODE_DEFAULT);
-		bk_pm_module_vote_sleep_ctrl(PM_SLEEP_MODULE_NAME_APP,0x0,0x0);
+		msg.event= PM_AP_CORE_SLEEP_DEMO_HANDLE;
+		msg.param1 = PM_MODE_LOW_VOLTAGE;
+		msg.param2 = PM_WAKEUP_SOURCE_INT_GPIO;
+		msg.param3 = gpio_id;
+		bk_pm_ap_core_send_msg(&msg);
 	}
 	else
 	{
@@ -77,7 +84,17 @@ void cli_pm_gpio_callback(gpio_id_t gpio_id)
 	}
 	BK_LOGD(NULL, "cli_pm_gpio_callback[%d]\r\n",bk_pm_exit_low_vol_wakeup_source_get());
 }
-
+static bk_err_t cli_pm_rtc_sleep_wakeup_callback(pm_sleep_mode_e sleep_mode,pm_wakeup_source_e wake_source,void* param_p)
+{
+	pm_ap_core_msg_t msg = {0};
+	msg.event= PM_AP_CORE_SLEEP_DEMO_HANDLE;
+	msg.param1 = PM_MODE_LOW_VOLTAGE;
+	msg.param2 = PM_WAKEUP_SOURCE_INT_RTC;
+	msg.param3 = 0;
+	bk_pm_ap_core_send_msg(&msg);
+	BK_LOGD(NULL,"rtc sleep wakeup cb[mode:%d][src:%d][param_p:%p]\r\n",sleep_mode,wake_source,param_p);
+    return BK_OK;
+}
 #define PM_MANUAL_LOW_VOL_VOTE_ENABLE    (0)
 #define PM_DEEPSLEEP_RTC_THRESHOLD       (500)
 #define PM_SHUTDOWN_RTC_THRESHOLD        (4)        //=500ms
@@ -97,7 +114,7 @@ static void cli_pm_cmd(char *pcWriteBuffer, int xWriteBufferLen, int argc, char 
 	#endif
 	usbplug_wakeup_param_t  usbplug_wakeup_param     = {0};
 
-	if (argc != 9) 
+	if (argc != 9)
 	{
 		BK_LOGD(NULL, "set low power parameter invalid %d\r\n",argc);
 		return;
@@ -166,10 +183,16 @@ static void cli_pm_cmd(char *pcWriteBuffer, int xWriteBufferLen, int argc, char 
 		}
 		else
 		{
-			pm_rtc_wakeup_config_t rtc_wakeup = {0};
-			rtc_wakeup.rtc_period = pm_param1;//10s
-			bk_pm_ap_rtc_wakeup_source_config(PM_MODE_LOW_VOLTAGE,WAKEUP_SOURCE_INT_RTC,&rtc_wakeup);
-			bk_pm_wakeup_source_set(PM_WAKEUP_SOURCE_INT_RTC, NULL);
+			if(pm_param2 == 0)
+			{
+				pm_param2 = 0x1;
+			}
+			pm_ap_rtc_info_t low_power_info = {0};
+			low_power_info.period_tick                = pm_param1;
+			low_power_info.period_cnt                 = pm_param2;
+			low_power_info.callback                   = cli_pm_rtc_sleep_wakeup_callback;
+			low_power_info.param_p                    = NULL;
+			bk_pm_ap_rtc_regsiter_wakeup(pm_sleep_mode,&low_power_info);
 		}
 	}
 	else if(pm_wake_source == PM_WAKEUP_SOURCE_INT_GPIO)
@@ -182,12 +205,17 @@ static void cli_pm_cmd(char *pcWriteBuffer, int xWriteBufferLen, int argc, char 
 		}
 		else
 		{
-			pm_gpio_wakeup_config_t gpio_wakeup= {pm_param1,pm_param2};
-			bk_pm_ap_gpio_wakeup_source_config(PM_MODE_LOW_VOLTAGE,WAKEUP_SOURCE_INT_GPIO,&gpio_wakeup);
+			// pm_gpio_wakeup_config_t gpio_wakeup= {pm_param1,pm_param2};
+			// bk_pm_ap_gpio_wakeup_source_config(PM_MODE_LOW_VOLTAGE,WAKEUP_SOURCE_INT_GPIO,&gpio_wakeup);
+			#if CONFIG_GPIO_WAKEUP_SUPPORT
+			bk_gpio_register_isr(pm_param1, cli_pm_gpio_callback);
+			bk_gpio_register_wakeup_source(pm_param1,pm_param2);
+			bk_pm_wakeup_source_set(PM_WAKEUP_SOURCE_INT_GPIO, NULL);
+			#endif //CONFIG_GPIO_WAKEUP_SUPPORT
 		}
 	}
 	else if(pm_wake_source == PM_WAKEUP_SOURCE_INT_SYSTEM_WAKE)
-	{   
+	{
 		if(pm_param1 == WIFI_WAKEUP)
 		{
 			system_wakeup_param.wifi_bt_wakeup = WIFI_WAKEUP;
@@ -202,7 +230,7 @@ static void cli_pm_cmd(char *pcWriteBuffer, int xWriteBufferLen, int argc, char 
 	else if((pm_wake_source == PM_WAKEUP_SOURCE_INT_TOUCHED)
 		||(pm_wake_source == PM_OLD_TOUCH_WAKE_SOURCE))//bk7256 touch wakeup source value is 4,in order to adapt new project for old cmd
 	{
-		#if CONFIG_TOUCH
+		#if 0 // CONFIG_TOUCH
 		touch_wakeup_param.touch_channel = pm_param1;
 		bk_touch_register_touch_isr((1<< touch_wakeup_param.touch_channel), cli_pm_touch_callback, NULL);
 		bk_pm_wakeup_source_set(PM_WAKEUP_SOURCE_INT_TOUCHED, &touch_wakeup_param);
@@ -518,7 +546,7 @@ static void cli_dvfs_cmd(char *pcWriteBuffer, int xWriteBufferLen, int argc, cha
 	UINT32 ckdiv_cpu0 = 0;
 	UINT32 ckdiv_cpu1 = 0;
 
-	if (argc != 6) 
+	if (argc != 6)
 	{
 		BK_LOGD(NULL, "set dvfs parameter invalid %d\r\n",argc);
 		return;
@@ -660,7 +688,7 @@ static void cli_dvfs_auto_test_all_timer_isr(timer_id_t chan)
 #if 0
 	uint8_t rand_num;
 	uint8_t i;
-	
+
 	for(i=0; i<DVFS_AUTO_TEST_COUNT; i++)
 	{
 		rand_num = (uint32_t)bk_rand()%(sizeof(core_bus_clock)/sizeof(core_bus_clock_ctrl_t));
@@ -676,7 +704,7 @@ static void cli_dvfs_auto_test_all_timer_isr(timer_id_t chan)
 static void cli_dvfs_auto_test(char *pcWriteBuffer, int xWriteBufferLen, int argc, char **argv)
 {
 	uint32_t period_us;
-	
+
 	if (argc != 3)
 	{
 		BK_LOGD(NULL, "set dvfs_auto_test parameter invalid %d\r\n",argc);
@@ -687,7 +715,7 @@ static void cli_dvfs_auto_test(char *pcWriteBuffer, int xWriteBufferLen, int arg
 
 	//bk_trng_driver_init();
 	//bk_trng_start();
-	
+
 	if (os_strcmp(argv[2], "default") == 0)
 	{
 		bk_timer_delay_with_callback(TIMER_ID5,period_us,cli_dvfs_auto_test_timer_isr);
@@ -772,8 +800,8 @@ static void cli_pm_demo_cmd(char *pcWriteBuffer, int xWriteBufferLen, int argc, 
 	{
 		CLI_LOGD("pm demo init\r\n");
 		pm_demo_thread_main();
-	} 
-	else if (os_strcmp(argv[1], "deep_sleep") == 0) 
+	}
+	else if (os_strcmp(argv[1], "deep_sleep") == 0)
 	{
 		CLI_LOGD("pm demo deep sleep\r\n");
 		#if CONFIG_PM_DEMO_ENABLE
@@ -781,7 +809,7 @@ static void cli_pm_demo_cmd(char *pcWriteBuffer, int xWriteBufferLen, int argc, 
 		msg.event = PM_DEMO_ENTER_DEEP_SLEEP;
 		bk_pm_demo_send_msg(&msg);
 		#endif
-	} 
+	}
 	else if (os_strcmp(argv[1], "low_vol") == 0)
 	{
 		CLI_LOGD("pm demo low vol\r\n");
@@ -790,8 +818,8 @@ static void cli_pm_demo_cmd(char *pcWriteBuffer, int xWriteBufferLen, int argc, 
 		msg.event = PM_DEMO_ENTER_LOW_VOLTAGE;
 		bk_pm_demo_send_msg(&msg);
 		#endif
-	} 
-	else 
+	}
+	else
 	{
 		CLI_LOGD("pm demo unknown cmd\r\n");
 		return;
@@ -824,6 +852,7 @@ static const struct cli_command s_pwr_commands[] = {
 	{"pm", "pm [sleep_mode] [wake_source] [vote1] [vote2] [vote3] [param1] [param2] [param3]", cli_pm_cmd},
 	{"pm_vote", "pm_vote [pm_sleep_mode] [pm_vote] [pm_vote_value] [pm_sleep_time]", cli_pm_vote_cmd},
 	{"pm_debug", "pm_debug [debug_en_value]", cli_pm_debug},
+	{"pm_demo", "pm_demo {init||send_cmd|config_data}", cli_pm_demo_cmd},
 #endif //CONFIG_DEBUG_VERSION
 #endif //CONFIG_SYSTEM_CTRL
 };

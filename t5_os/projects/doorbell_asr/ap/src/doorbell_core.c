@@ -256,6 +256,10 @@ static void doorbell_message_handle(void)
                 {
                     doorbell_video_transfer_turn_off();
                     doorbell_audio_turn_off();
+                #if (CONFIG_ASR_SERVICE_WITH_MIC)
+                    extern int doorbell_asr_turn_on(void);
+                    doorbell_asr_turn_on();
+                #endif
 
                     if (db_info->service == DOORBELL_SERVICE_LAN_UDP)
                     {

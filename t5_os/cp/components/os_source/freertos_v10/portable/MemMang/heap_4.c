@@ -770,11 +770,9 @@ static inline void show_mem_info(BlockLink_t *pxLink)
 	bk_task_wdt_feed();
 #endif
 
-	bk_wdt_feed();
-
-#if (CONFIG_INT_AON_WDT)
-	bk_int_aon_wdt_feed();
-#endif
+	if(arch_is_enter_exception()) {
+		bk_wdt_force_feed();
+	}
 
 #endif //CONFIG_WDT_EN
 }
@@ -1176,15 +1174,16 @@ void vPortFree( void *pv )
 				pxLink->line = 0;
 #endif
 #if (CONFIG_PSRAM_AS_SYS_MEMORY)
-				if ((uint32_t)puc >= (uint32_t)PSRAM_START_ADDRESS)
-                {
-                    /* Add this block to the list of psram free blocks. */
-                    psram_xFreeBytesRemaining += pxLink->xBlockSize;
-                    traceFREE( pv, pxLink->xBlockSize );
-                    psram_prvInsertBlockIntoFreeList( ( ( BlockLink_t * ) pxLink ) );
+				if ((uint32_t)puc >= (uint32_t)CONFIG_CP_PSRAM_HEAP_ADDR
+				&& (uint32_t)puc < (uint32_t)(CONFIG_CP_PSRAM_HEAP_ADDR + CONFIG_CP_PSRAM_HEAP_SIZE))
+				{
+					/* Add this block to the list of psram free blocks. */
+					psram_xFreeBytesRemaining += pxLink->xBlockSize;
+					traceFREE( pv, pxLink->xBlockSize );
+					psram_prvInsertBlockIntoFreeList( ( ( BlockLink_t * ) pxLink ) );
 					s_psram_used_count--;
-                }
-                else
+				}
+				else
 #endif
 				{
 					/* Add this block to the list of ram free blocks. */
@@ -1358,7 +1357,13 @@ void bk_psram_heap_get_used_state(void) {
 void bk_psram_heap_dump_data(void)
 {
 #if CONFIG_PSRAM_AS_SYS_MEMORY
-	stack_mem_dump(psram_used_area_begin, psram_used_area_end);
+	if (psram_used_area_begin > SOC_PSRAM_DATA_BASE
+		&& psram_used_area_begin < SOC_PSRAM_DATA_BASE + SOC_PSRAM_DATA_SIZE
+		&& psram_used_area_end > SOC_PSRAM_DATA_BASE
+		&& psram_used_area_end < SOC_PSRAM_DATA_BASE + SOC_PSRAM_DATA_SIZE)
+	{
+		stack_mem_dump(psram_used_area_begin, psram_used_area_end);
+	}
 #endif
 }
 

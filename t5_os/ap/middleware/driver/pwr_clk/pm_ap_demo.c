@@ -25,6 +25,7 @@ typedef enum
 {
    PM_DEMO_ENTER_LOW_VOLTAGE = 0,
    PM_DEMO_ENTER_DEEP_SLEEP,
+   PM_DEMO_CALLBACK_MSG_HANDLE
 }pm_demo_sleep_mode_e;
 /*=====================STRUCT AND ENUM  SECTION  END=============*/
 /*=====================VARIABLE  SECTION  START==================*/
@@ -33,54 +34,35 @@ static  beken_queue_t  s_queue;
 /*=====================VARIABLE  SECTION  END==================*/
 
 /*================FUNCTION DECLARATION  SECTION  START==========*/
-extern void rtos_set_user_app_entry(beken_thread_function_t entry);
-extern bk_err_t bk_pm_module_vote_boot_cp1_ctrl(pm_boot_cp1_module_name_e module,pm_power_module_state_e power_state);
+bk_err_t bk_pm_demo_send_msg(pm_ap_core_msg_t *msg);
 /*================FUNCTION DECLARATION  SECTION  END===========*/
+static bk_err_t pm_demo_rtc_sleep_wakeup_callback(pm_sleep_mode_e sleep_mode,pm_wakeup_source_e wake_source,void* param_p)
+{
+    pm_ap_core_msg_t msg = {0};
+    msg.event= PM_DEMO_CALLBACK_MSG_HANDLE;
+    msg.param1 = PM_MODE_LOW_VOLTAGE;
+    msg.param2 = PM_WAKEUP_SOURCE_INT_RTC;
+    msg.param3 = 0;
+    bk_pm_demo_send_msg(&msg);
+    return BK_OK;
+}
+void pm_demo_gpio_callback(gpio_id_t gpio_id)
+{
+    pm_ap_core_msg_t msg = {0};
+    msg.event= PM_DEMO_CALLBACK_MSG_HANDLE;
+    msg.param1 = PM_MODE_LOW_VOLTAGE;
+    msg.param2 = PM_WAKEUP_SOURCE_INT_GPIO;
+    msg.param3 = gpio_id;
+    bk_pm_demo_send_msg(&msg);
+}
 static bk_err_t pm_demo_sleep_wakeup_callback(void* param1,uint32_t param2)
 {
     LOGD("%s\r\n",__func__);
     return BK_OK;
 }
-static bk_err_t pm_demo_cpu1_shutdown_callback(void* param1,uint32_t param2)
-{
-    bk_pm_cp1_recovery_response(PM_CP1_RECOVERY_CMD, PM_CP1_PREPARE_CLOSE_MODULE_NAME_APP, PM_CP1_MODULE_RECOVERY_STATE_FINISH);
-    return BK_OK;
-}
-static bk_err_t pm_demo_psram_power_on_callback(uint32_t param1,uint32_t param2)
-{
-    LOGD("%s\r\n",__func__);
-    return BK_OK;
-}
-static bk_err_t pm_demo_psram_power_off_callback(uint32_t param1,uint32_t param2)
-{
-    LOGD("%s\r\n",__func__);
-    return BK_OK;
-}
+
 static bk_err_t pm_demo_init()
 {
-    /* resource recovery in A cpu*/
-    int param = 5;
-    pm_ap_close_ap_callback_info_t cb_info = {PM_AP_CLOSE_AP_MODULE_APP,pm_demo_cpu1_shutdown_callback,&param,param};
-    bk_pm_ap_close_ap_register_callback(&cb_info);
-    bk_pm_cp1_recovery_response(PM_CP1_RECOVERY_CMD, PM_CP1_PREPARE_CLOSE_MODULE_NAME_APP,PM_CP1_MODULE_RECOVERY_STATE_INIT);
-
-    //pm_ap_system_wakeup_cb_info_t cb_info_sleep_wakeup = {PM_AP_CLOSE_AP_MODULE_APP,PM_MODE_LOW_VOLTAGE,PM_WAKEUP_SOURCE_INT_GPIO,pm_demo_sleep_wakeup_callback};
-    //bk_pm_ap_system_wakeup_register_callback(&cb_info_sleep_wakeup);
-
-    /*aov,wifi vote cp1 power*/
-    rtos_delay_milliseconds(2);
-    bk_pm_module_vote_boot_cp1_ctrl(PM_BOOT_CP1_MODULE_NAME_AOV,PM_POWER_MODULE_STATE_ON);
-    rtos_delay_milliseconds(2);
-    bk_pm_module_vote_boot_cp1_ctrl(PM_BOOT_CP1_MODULE_NAME_WIFI,PM_POWER_MODULE_STATE_ON);
-
-    pm_ap_psram_power_state_callback_info_t  power_state_cb = {0};
-    power_state_cb.dev_id = PM_AP_USING_PSRAM_POWER_STATE_DEV_MEDIA;
-    power_state_cb.psram_off_cb_fn = pm_demo_psram_power_off_callback;
-    power_state_cb.psram_on_cb_fn = pm_demo_psram_power_on_callback;
-    power_state_cb.param1 = 0;
-    power_state_cb.param2 = 0;
-    bk_pm_ap_psram_power_state_register_callback(&power_state_cb);
-
     return BK_OK;
 }
 bk_err_t bk_pm_demo_send_msg(pm_ap_core_msg_t *msg)
@@ -106,8 +88,7 @@ bk_err_t bk_pm_demo_send_msg(pm_ap_core_msg_t *msg)
 
     return ret;
 }
-//pm_rtc_wakeup_config_t rtc_wakeup = {0};
-//pm_gpio_wakeup_config_t gpio_wakeup= {GPIO_20,GPIO_INT_TYPE_HIGH_LEVEL};
+
 static bk_err_t pm_demo_message_handle(void)
 {
     bk_err_t ret = BK_OK;
@@ -125,58 +106,52 @@ static bk_err_t pm_demo_message_handle(void)
             {
                 case PM_DEMO_ENTER_LOW_VOLTAGE:
                 {
-					/*config rtc wakeup source*/
-					pm_rtc_wakeup_config_t rtc_wakeup = {0};
-					rtc_wakeup.rtc_period = 10*1000;//10s
-					bk_pm_ap_rtc_wakeup_source_config(PM_MODE_LOW_VOLTAGE,WAKEUP_SOURCE_INT_RTC,&rtc_wakeup);
+                    /*config rtc wakeup source*/
+                    pm_ap_rtc_info_t low_power_info = {0};
+                    low_power_info.period_tick                = 50*1000;//eg:50s;
+                    low_power_info.period_cnt                 = 1;//eg:1 time
+                    low_power_info.callback                   = pm_demo_rtc_sleep_wakeup_callback;
+                    low_power_info.param_p                    = NULL;
+                    bk_pm_ap_rtc_regsiter_wakeup(PM_MODE_LOW_VOLTAGE,&low_power_info);
 
-					/*config gpio wakeup source*/
-					pm_gpio_wakeup_config_t gpio_wakeup= {GPIO_20,GPIO_INT_TYPE_HIGH_LEVEL};
-					bk_pm_ap_gpio_wakeup_source_config(PM_MODE_LOW_VOLTAGE,WAKEUP_SOURCE_INT_GPIO,&gpio_wakeup);
+                    /*config gpio wakeup source*/
+                    #if CONFIG_GPIO_WAKEUP_SUPPORT
+                    bk_gpio_register_isr(GPIO_5, pm_demo_gpio_callback);
+                    bk_gpio_register_wakeup_source(GPIO_5,GPIO_INT_TYPE_HIGH_LEVEL);
+                    #endif //CONFIG_GPIO_WAKEUP_SUPPORT
 
-					/*AOV vote close cp1*/
-					bk_pm_module_vote_boot_cp1_ctrl(PM_BOOT_CP1_MODULE_NAME_AOV,PM_POWER_MODULE_STATE_OFF);
-					//rtos_delay_milliseconds(2);
-
-					/*WIFI vote close cp1*/
-					bk_pm_module_vote_boot_cp1_ctrl(PM_BOOT_CP1_MODULE_NAME_WIFI,PM_POWER_MODULE_STATE_OFF);
-					//rtos_delay_milliseconds(2);
-
-					/*multimedia vote close cp1*/
-					bk_pm_module_vote_boot_cp1_ctrl(PM_BOOT_CP1_MODULE_NAME_APP,PM_POWER_MODULE_STATE_OFF);
-
-					/*Close cpu2*/
-					extern void stop_cpu2_core(void);
-					stop_cpu2_core();
-
-					/*APP vote enter low voltage*/
-					bk_pm_module_vote_sleep_ctrl(PM_SLEEP_MODULE_NAME_APP,0x1,0x0);
+                    /*APP vote enter low voltage*/
+                    bk_pm_module_vote_sleep_ctrl(PM_SLEEP_MODULE_NAME_APP,0x1,0x0);
                 }
                 break;
                 case PM_DEMO_ENTER_DEEP_SLEEP:
                 {
-					/*config rtc wakeup source*/
-					pm_rtc_wakeup_config_t rtc_wakeup = {0};
-					rtc_wakeup.rtc_period = 10*1000;//10s
-					bk_pm_ap_rtc_wakeup_source_config(PM_MODE_LOW_VOLTAGE,WAKEUP_SOURCE_INT_RTC,&rtc_wakeup);
+                    /*config rtc wakeup source*/
+                    pm_ap_rtc_info_t low_power_info = {0};
+                    low_power_info.period_tick                = 50*1000;//eg:50s;
+                    low_power_info.period_cnt                 = 1;//eg:1 time
+                    low_power_info.callback                   = pm_demo_rtc_sleep_wakeup_callback;
+                    low_power_info.param_p                    = NULL;
+                    bk_pm_ap_rtc_regsiter_wakeup(PM_MODE_DEEP_SLEEP,&low_power_info);
 
-					/*config gpio wakeup source*/
-					pm_gpio_wakeup_config_t gpio_wakeup= {GPIO_20,GPIO_INT_TYPE_HIGH_LEVEL};
-					bk_pm_ap_gpio_wakeup_source_config(PM_MODE_LOW_VOLTAGE,WAKEUP_SOURCE_INT_GPIO,&gpio_wakeup);
+                    /*config gpio wakeup source*/
+                    #if CONFIG_GPIO_WAKEUP_SUPPORT
+                    bk_gpio_register_isr(GPIO_5, pm_demo_gpio_callback);
+                    bk_gpio_register_wakeup_source(GPIO_5,GPIO_INT_TYPE_HIGH_LEVEL);
+                    #endif //CONFIG_GPIO_WAKEUP_SUPPORT
 
-					/*AOV vote close cp1*/
-					bk_pm_module_vote_boot_cp1_ctrl(PM_BOOT_CP1_MODULE_NAME_AOV,PM_POWER_MODULE_STATE_OFF);
-					//rtos_delay_milliseconds(2);
-
-					/*WIFI vote close cp1*/
-					bk_pm_module_vote_boot_cp1_ctrl(PM_BOOT_CP1_MODULE_NAME_WIFI,PM_POWER_MODULE_STATE_OFF);
-					//rtos_delay_milliseconds(2);
-
-					/*multimedia vote close cp1*/
-					bk_pm_module_vote_boot_cp1_ctrl(PM_BOOT_CP1_MODULE_NAME_MULTIMEDIA,PM_POWER_MODULE_STATE_OFF);
-
-					/*Enter deep sleep*/
-					bk_pm_ap_sleep_mode_set(PM_MODE_DEEP_SLEEP);
+                    /*Enter deep sleep*/
+                    bk_pm_ap_sleep_mode_set(PM_MODE_DEEP_SLEEP);
+                }
+                break;
+                case PM_DEMO_CALLBACK_MSG_HANDLE:
+                {
+                    if(msg.param1 == PM_MODE_LOW_VOLTAGE)
+                    {
+                        bk_pm_ap_sleep_mode_set(PM_MODE_DEFAULT);
+                        bk_pm_module_vote_sleep_ctrl(PM_SLEEP_MODULE_NAME_APP,0x0,0x0);
+	                    LOGD("pm_demo_callback[mode:%d][src:%d][%d]\r\n",msg.param1,msg.param2,bk_pm_exit_low_vol_wakeup_source_get());
+                    }
                 }
                 break;
                 default:

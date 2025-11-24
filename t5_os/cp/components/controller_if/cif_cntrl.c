@@ -386,6 +386,25 @@ bk_err_t cif_handle_bk_cmd_scan_wifi_ind(uint32_t scan_id,uint32_t scan_use_time
 }
 
 
+bk_err_t cif_handle_bk_cmd_bcn_cc_ind(uint8_t *cc, uint8_t cc_len)
+{
+    bk_err_t ret = BK_OK;
+
+    ret = cif_bk_send_event(BK_EVT_BCN_CC_RXED, cc, cc_len);
+
+    return ret;
+}
+
+
+bk_err_t cif_handle_bk_cmd_csi_info_ind(void *data)
+{
+    bk_err_t ret = BK_OK;
+
+    ret = cif_bk_send_event(BK_EVT_CSI_INFO_IND, (uint8_t *)(data), sizeof(struct wifi_csi_info_t));
+
+    return ret;
+}
+
 
 bk_err_t cif_send_exit_sleep_cfm(void)
 {

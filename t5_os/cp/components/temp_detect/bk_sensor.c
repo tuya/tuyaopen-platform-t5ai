@@ -2,9 +2,6 @@
 #include <common/bk_err.h>
 #if ((CONFIG_SOC_BK7236XX) || (CONFIG_SOC_BK7239XX) || (CONFIG_SOC_BK7286XX)) && (CONFIG_OTP_V1)
 #include <driver/otp.h>
-#elif (CONFIG_SOC_BK7256XX)
-#include <driver/efuse.h>
-#include "modules/chip_support.h"
 #endif
 #include <os/os.h>
 #include <math.h>
@@ -65,82 +62,6 @@ LOAD_SDMADC:
 FAILURE:
     return BK_FAIL;
 }
-#elif (CONFIG_SOC_BK7256XX)
-static bk_err_t bk_sensor_load_adc_cali_value(void)
-{
-    UINT8 values[5];
-    float data = 0.0;
-    saradc_calibrate_val saradc_val;
-
-    bk_efuse_read_byte(6, &values[0]);
-    bk_efuse_read_byte(7, &values[1]);
-    bk_efuse_read_byte(8, &values[2]);
-    bk_efuse_read_byte(9, &values[3]);
-    if(((values[0] == 0xFF) && (values[2] == 0xFF))
-        ||((values[0] == 0x00) && (values[1] == 0x00))
-        ||(((values[1] == 0xFF) && (values[3] == 0xFF)) ||((values[1] == 0x00) && (values[3] == 0x00))))
-    {
-        BK_LOGW(TAG, "uncali adc value efuse 6,7,8,9:[%2x %02x %02x %02x]\r\n", values[0], values[1], values[2], values[3]);
-        bk_efuse_read_byte(18, &values[0]);
-        bk_efuse_read_byte(19, &values[1]);
-        bk_efuse_read_byte(20, &values[2]);
-        bk_efuse_read_byte(21, &values[3]);
-        if(((values[0] == 0xFF) && (values[2] == 0xFF))
-            ||((values[0] == 0x00) && (values[1] == 0x00))
-            ||(((values[1] == 0xFF) && (values[3] == 0xFF)) ||((values[1] == 0x00) && (values[3] == 0x00))))
-        {
-            BK_LOGW(TAG, "uncali adc value efuse 18,19,20,21:[%2x %02x %02x %02x]\r\n", values[0], values[1], values[2], values[3]);
-            bk_efuse_read_byte(12, &values[0]);
-            bk_efuse_read_byte(13, &values[1]);
-            bk_efuse_read_byte(14, &values[2]);
-            bk_efuse_read_byte(15, &values[3]);
-            if(((values[0] == 0xFF) && (values[2] == 0xFF))
-            ||((values[0] == 0x00) && (values[1] == 0x00))
-            ||(((values[1] == 0xFF) && (values[3] == 0xFF)) ||((values[1] == 0x00) && (values[3] == 0x00))))
-            {
-                BK_LOGW(TAG, "uncali adc value efuse 12,13,14,15:[%2x %02x %02x %02x]\r\n", values[0], values[1], values[2], values[3]);
-                goto FAILURE;
-            }
-            else
-            {
-                bk_efuse_read_byte(11, &values[4]);
-                if(CHIP_VERSION_C > bk_get_hardware_chip_id_version())
-                {
-                    if((values[4]&0xC0) != 0x0)
-                       goto FAILURE;
-                }
-                else
-                {
-                    if((values[4]&0xC0) != 0xC0)
-                       goto FAILURE;
-                }
-            }
-        }
-    }
-
-    saradc_val.low = values[1] & 0xFF;
-    saradc_val.low = (saradc_val.low << 8) | values[0];
-
-    saradc_val.high = values[3] & 0xFF;
-    saradc_val.high = (saradc_val.high << 8) | values[2];
-    data = (float)(saradc_val.high) / saradc_val.low;
-    if(abs(data - ADC_SWITCH_DELT) <= 0.02)
-    {
-        g_saradc_flag = 0x1;
-    }
-    else
-        g_saradc_flag = 0x0;
-
-    BK_LOGD(TAG, "saradc low value:[%x]\r\n", saradc_val.low);
-    BK_LOGD(TAG, "saradc high value:[%x]\r\n", saradc_val.high);
-    saradc_set_calibrate_val(&saradc_val.low, SARADC_CALIBRATE_LOW);
-    saradc_set_calibrate_val(&saradc_val.high, SARADC_CALIBRATE_HIGH);
-
-    return BK_OK;
-
-FAILURE:
-    return BK_FAIL;
-}
 #else
 static bk_err_t bk_sensor_load_adc_cali_value(void)
 {
@@ -150,18 +71,39 @@ static bk_err_t bk_sensor_load_adc_cali_value(void)
 
 bk_err_t bk_sensor_init(void)
 {
-	bk_err_t ret = BK_OK;
+    bk_err_t ret = BK_OK;
 
-	bk_sensor_load_adc_cali_value();
+    bk_sensor_load_adc_cali_value();
 #if (CONFIG_TEMP_DETECT || CONFIG_VOLT_DETECT)
-	if (NULL == g_sensor_info.lock)
-	{
-		ret = rtos_init_mutex(&g_sensor_info.lock);
-		g_sensor_info.voltage    = NAN;
-		g_sensor_info.temperature = NAN;
-	}
-#endif
-	return ret;
+    if (NULL == g_sensor_info.lock)
+    {
+        ret = rtos_init_mutex(&g_sensor_info.lock);
+        g_sensor_info.voltage    = NAN;
+        g_sensor_info.temperature = NAN;
+    }
+
+#if CONFIG_PHY_MB
+    bk_err_t ret_mb = BK_OK;
+    extern bk_err_t mb_phy_ipc_init(void);
+    ret_mb = mb_phy_ipc_init();
+    if(ret_mb != BK_OK)
+    {
+        BK_LOGE("phy_driver", "mb_phy_ipc_init failed %d.\r\n", ret);
+    }
+    else
+    {
+#if (CONFIG_CPU_CNT > 1)
+        extern bk_err_t bk_phy_server_init(void);
+        ret_mb = bk_phy_server_init();
+        if(ret_mb != BK_OK)
+        {
+            BK_LOGE("phy_driver", "phy svr create failed %d.\r\n", ret);
+        }
+#endif//CONFIG_CPU_CNT
+    }
+#endif//CONFIG_PHY_MB
+#endif //CONFIG_TEMP_DETECT || CONFIG_VOLT_DETECT
+    return ret;
 }
 
 bk_err_t bk_sensor_deinit(void)

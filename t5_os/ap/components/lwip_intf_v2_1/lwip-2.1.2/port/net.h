@@ -32,10 +32,19 @@ extern void eth_ip_start(void);
 extern void eth_ip_down(void);
 #endif
 #if CONFIG_BRIDGE
+extern void bridge_set_ip_start_flag(bool enable);
 extern void bridge_ip_start(void);
 extern void bridge_ip_stop(void);
 extern uint32_t bridge_ip_is_start(void);
 extern void *net_get_br_handle(void);
+#endif
+#if CONFIG_PAN
+void net_pan_init(void);
+extern void *net_get_pan_handle(void);
+extern void pan_ip_start(void);
+extern void pan_set_ip_start_flag(bool enable);
+extern uint32_t pan_ip_is_start(void);
+bk_err_t bk_pan_get_mac(uint8_t *mac);
 #endif
 #ifdef CONFIG_WIFI_VNET_CONTROLLER
 int host_wlan_add_netif(uint8_t *mac);

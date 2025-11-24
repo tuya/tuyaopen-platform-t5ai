@@ -18,7 +18,8 @@ extern "C" {
 #endif
 
 typedef enum {
-    ADC_DIV_RESIS,   // divider resistance for adc
+    ADC_DIV_RESIS_CLOSE,   // divider resistance for adc
+    ADC_DIV_RESIS_OPEN,
 } ADC_IOCTL_CMD_E;
 
 // ADC_DIV_RESIS struct define, ref

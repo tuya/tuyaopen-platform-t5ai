@@ -1,4 +1,4 @@
-// Copyright 2022-2023 Beken
+// Copyright 2025-2026 Beken
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -31,7 +31,6 @@ typedef struct
     void *data;             /*!< Data pointer */
     int data_len;           /*!< Data length */
     void *source;           /*!< Source event */
-    int source_type;        /*!< Source type (To know where it came from) */
     bool need_free_data;    /*!< Need to free data pointer after the event has been processed */
 } audio_event_iface_msg_t;
 

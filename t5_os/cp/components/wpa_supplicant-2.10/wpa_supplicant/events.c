@@ -803,6 +803,7 @@ static int wpa_supplicant_ssid_bss_match(struct wpa_supplicant *wpa_s,
 		return 1;
 	}
 
+#if !BK_SUPPLICANT
 #ifdef CONFIG_IEEE80211W
 	if (wpas_get_ssid_pmf(wpa_s, ssid) == MGMT_FRAME_PROTECTION_REQUIRED &&
 	    (!(ssid->key_mgmt & WPA_KEY_MGMT_OWE) || ssid->owe_only)) {
@@ -812,6 +813,7 @@ static int wpa_supplicant_ssid_bss_match(struct wpa_supplicant *wpa_s,
 		return 0;
 	}
 #endif /* CONFIG_IEEE80211W */
+#endif
 
 	wpa_ie = wpa_bss_get_vendor_ie(bss, WPA_IE_VENDOR_TYPE);
 	while ((ssid->proto & WPA_PROTO_WPA) && wpa_ie) {
@@ -877,6 +879,18 @@ static int wpa_supplicant_ssid_bss_match(struct wpa_supplicant *wpa_s,
 				"   selected based on WPA IE");
 		return 1;
 	}
+
+#if BK_SUPPLICANT
+#ifdef CONFIG_IEEE80211W
+	if (wpas_get_ssid_pmf(wpa_s, ssid) == MGMT_FRAME_PROTECTION_REQUIRED &&
+		(!(ssid->key_mgmt & WPA_KEY_MGMT_OWE) || ssid->owe_only)) {
+		if (debug_print)
+			wpa_dbg(wpa_s, MSG_DEBUG,
+				"	skip - MFP Required but network not MFP Capable");
+		return 0;
+	}
+#endif /* CONFIG_IEEE80211W */
+#endif
 
 	if ((ssid->key_mgmt & WPA_KEY_MGMT_IEEE8021X_NO_WPA) && !wpa_ie &&
 	    !rsn_ie) {
@@ -1416,9 +1430,7 @@ static bool wpa_scan_res_ok(struct wpa_supplicant *wpa_s, struct wpa_ssid *ssid,
 			if (bk_feature_fast_connect_enable()) {
 				if (g_sta_param_ptr->fast_connect_set) {
 					struct wlan_fast_connect_info fci = {0};
-#if CONFIG_EASY_FLASH_FAST_CONNECT
-					bk_get_env_enhance("fast_connect_id", (void *)&fci, sizeof(struct wlan_fast_connect_info));
-#endif
+					wlan_read_fast_connect_info(&fci);
 					psk = fci.psk;
 					psk_len = PMK_LEN * 2;
 					wpa_dbg(wpa_s, MSG_DEBUG, "fast connect: %s", __func__);
@@ -3220,6 +3232,9 @@ static int wpa_supplicant_use_own_rsne_params(struct wpa_supplicant *wpa_s,
 }
 
 
+#if CONFIG_BRIDGE
+extern bool g_bk_ap_connected;
+#endif
 static int wpa_supplicant_event_associnfo(struct wpa_supplicant *wpa_s,
 					  union wpa_event_data *data)
 {
@@ -3289,6 +3304,14 @@ static int wpa_supplicant_event_associnfo(struct wpa_supplicant *wpa_s,
 				 BAND_2_4_GHZ);
 			wpa_s->connection_he = req_elems.he_capabilities &&
 				resp_elems.he_capabilities;
+#if CONFIG_BRIDGE
+			if (resp_elems.bk_vsie && resp_elems.bk_vsie_len > 3) {
+				unsigned int oui = WPA_GET_BE24(resp_elems.bk_vsie);
+				if (oui == OUI_BEKEN && resp_elems.bk_vsie[3] == 1) {
+					g_bk_ap_connected = true;
+				}
+			}
+#endif
 		}
 	}
 
@@ -3635,6 +3658,9 @@ static void wpa_supplicant_event_assoc(struct wpa_supplicant *wpa_s,
 
 #ifdef CONFIG_IEEE80211R
 	ft_completed = wpa_ft_is_completed(wpa_s->wpa);
+#endif
+#if CONFIG_BRIDGE
+	g_bk_ap_connected = false;
 #endif
 	if (data && wpa_supplicant_event_associnfo(wpa_s, data) < 0)
 		return;

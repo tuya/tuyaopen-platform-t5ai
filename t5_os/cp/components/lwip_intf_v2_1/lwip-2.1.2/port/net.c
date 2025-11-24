@@ -273,9 +273,7 @@ static void wm_netif_status_static_callback(struct netif *n)
 			if (bk_feature_fast_dhcp_enable()) {
 				/* read stored IP from flash as the static IP */
 				struct wlan_fast_connect_info fci = {0};
-#if CONFIG_EASY_FLASH_FAST_DHCP
-				bk_get_env_enhance("fast_connect_id", (void *)&fci, sizeof(struct wlan_fast_connect_info));
-#endif
+				wlan_read_fast_connect_info(&fci);
 				ip_addr_set_ip4_u32(&n->ip_addr, *((u32 *)&fci.ip_addr));
 				ip_addr_set_ip4_u32(&n->netmask, *((u32 *)&fci.netmask));
 				ip_addr_set_ip4_u32(&n->gw, *((u32 *)&fci.gw));
@@ -296,6 +294,9 @@ static void wm_netif_status_static_callback(struct netif *n)
 	}
 }
 
+#ifdef CONFIG_RIO
+extern int8_t bk_route_hook_init(void);
+#endif
 //extern wifi_connect_tick_t sta_tick;
 #if IP_NAPT
 const ip_addr_t *sta_dns;
@@ -312,6 +313,9 @@ static void wm_netif_status_callback(struct netif *n)
 
 		for (i = 0; i < MAX_IPV6_ADDRESSES; i++) {
 			if (ip6_addr_isvalid(netif_ip6_addr_state(n, i))) {
+#ifdef CONFIG_RIO
+			        bk_route_hook_init();
+#endif
 				ipv6_addr = (u8 *)(ip_2_ip6(&n->ip6_addr[i]))->addr;
 				BK_LOGD(NULL,"ipv6_addr[%d] : %02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x\r\n", i,
 						  ipv6_addr[0], ipv6_addr[1], ipv6_addr[2], ipv6_addr[3],
@@ -378,17 +382,13 @@ static void wm_netif_status_callback(struct netif *n)
 						dns_server = dns_getserver(0);
 						n->dns1 = ip_addr_get_ip4_u32(dns_server);
 						struct wlan_fast_connect_info fci = { 0 };
-#if CONFIG_EASY_FLASH_FAST_DHCP
-						bk_get_env_enhance("fast_connect_id", (void *)&fci, sizeof(struct wlan_fast_connect_info));
-#endif
+						wlan_read_fast_connect_info(&fci);
 						os_memset(&fci.ip_addr, 0, sizeof(fci.ip_addr));
 						os_memcpy((char *)&fci.ip_addr, (char *)ip_2_ip4(&n->ip_addr), sizeof(fci.ip_addr));
 						os_memcpy((char *)&fci.netmask, (char *)ip_2_ip4(&n->netmask), sizeof(fci.netmask));
 						os_memcpy((char *)&fci.gw, (char *)ip_2_ip4(&n->gw), sizeof(fci.gw));
 						os_memcpy((char *)&fci.dns1, (char *)&n->dns1, sizeof(fci.dns1));
-#if CONFIG_EASY_FLASH_FAST_DHCP
-						bk_set_env_enhance("fast_connect_id", (void *)&fci, sizeof(struct wlan_fast_connect_info));
-#endif
+						wlan_write_fast_connect_info(&fci);
 					}
 
 #if !CONFIG_DISABLE_DEPRECIATED_WIFI_API
@@ -552,6 +552,11 @@ void sta_ip_start(void)
 }
 
 #if CONFIG_BRIDGE
+void bridge_set_ip_start_flag(bool enable)
+{
+	bridge_ip_start_flag = enable;
+}
+
 void bridge_ip_start(void)
 {
 
@@ -562,21 +567,37 @@ void bridge_ip_start(void)
 		return;
 	}
 }
+
+extern void bridgeif_deinit(struct netif *netif);
+extern u8_t bridgeif_netif_client_id;
+
+static void beken_reset_bridge(struct netif *netif)
+{
+	netif_set_client_data((struct netif *)net_get_sta_handle(), bridgeif_netif_client_id, NULL);
+	netif_set_flags((struct netif *)net_get_sta_handle(), NETIF_FLAG_ETHARP);
+	netif_set_client_data((struct netif *)net_get_uap_handle(), bridgeif_netif_client_id, NULL);
+	netif_set_flags((struct netif *)net_get_uap_handle(), NETIF_FLAG_ETHARP);
+	LWIP_LOGD("bridg ip down\r\n");
+	netif_set_status_callback(&g_br.netif, NULL);
+}
+
 void bridge_ip_stop(void)
 {
 	if (bridge_ip_start_flag) {
-			LWIP_LOGD("bridg ip down\r\n");
-			bridge_ip_start_flag = false;
-			netif_set_status_callback(&g_br.netif, NULL);
-			netifapi_dhcp_stop(&g_br.netif);
-			netifapi_netif_set_down(&g_br.netif);
+		struct netif *br = (struct netif *)net_get_br_handle();
+
+		netifapi_netif_common(br, beken_reset_bridge, NULL);
+		netifapi_netif_remove(br);
+		netifapi_netif_common(br, bridgeif_deinit, NULL);
 #if LWIP_IPV6
-			for (u8_t addr_idx = 1; addr_idx < LWIP_IPV6_NUM_ADDRESSES; addr_idx++) {
-				netif_ip6_addr_set(&g_br.netif, addr_idx, (const ip6_addr_t *)IP6_ADDR_ANY);
-				g_br.netif.ip6_addr_state[addr_idx] = IP6_ADDR_INVALID;
-			}
-#endif
+		for (u8_t addr_idx = 1; addr_idx < LWIP_IPV6_NUM_ADDRESSES; addr_idx++) {
+			netif_ip6_addr_set(&g_br.netif, addr_idx, (const ip6_addr_t *)IP6_ADDR_ANY);
+			g_br.netif.ip6_addr_state[addr_idx] = IP6_ADDR_INVALID;
 		}
+#endif
+
+		bridge_ip_start_flag = false;
+	}
 }
 
 uint32_t bridge_ip_is_start(void)
@@ -974,9 +995,7 @@ void net_configure_dns(struct iface *if_handle, struct wlan_ip_config *ip)
 			if (if_handle == &g_mlan && bk_feature_fast_dhcp_enable()) {
 #ifdef CONFIG_WIFI_ENABLE
 				struct wlan_fast_connect_info fci = {0};
-#if CONFIG_EASY_FLASH_FAST_DHCP
-				bk_get_env_enhance("fast_connect_id", (void *)&fci, sizeof(struct wlan_fast_connect_info));
-#endif
+				wlan_read_fast_connect_info(&fci);
 				os_memcpy((char *)&ip->ipv4.dns1, (char *)&fci.dns1, sizeof(fci.dns1));
 #endif
 			} else {
@@ -1088,8 +1107,16 @@ int net_wlan_remove_netif(uint8_t *mac)
 
 #if CONFIG_WIFI6_CODE_STACK
 bool etharp_tmr_flag = false;
+#if CONFIG_BRIDGE
+bool g_bk_ap_connected = false;
+#endif
 void net_begin_send_arp_reply(bool is_send_arp, bool is_allow_send_req)
 {
+#if CONFIG_BRIDGE
+	// If connected to beken repeater, don't send arp response
+	if (g_bk_ap_connected)
+		return;
+#endif
 	//send reply
 	if (is_send_arp && !is_allow_send_req) {
 		etharp_tmr_flag = true;

@@ -101,7 +101,7 @@ __attribute__((section(".itcm_sec_code"))) void flash_bypass_quad_test(uint32_t 
 #define FLASH_STA_REG_WIP_BIT                  (1 << 0)
 #define FLASH_STA_REG_QUAD_ENABLE_BIT          (1 << 9)
 
-#define FLASH_BYPASS_OTP_READ_RETRY_MAX        (3)
+#define FLASH_BYPASS_OTP_READ_RETRY_MAX        (5)
 #define FLASH_BYPASS_OTP_EARSE_RETRY_MAX       (3)
 #define FLASH_BYPASS_OTP_LOCK_RETRY_MAX        (3)
 

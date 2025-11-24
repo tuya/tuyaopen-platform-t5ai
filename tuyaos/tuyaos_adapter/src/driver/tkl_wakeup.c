@@ -17,6 +17,7 @@
 #include <driver/aon_rtc.h>
 #endif
 
+#include "driver/pm_ap_core.h"
 #define WAKEUP_SOURCE_CNT   6
 
 static TUYA_WAKEUP_SOURCE_BASE_CFG_T  *wakeup_source = NULL;
@@ -64,7 +65,11 @@ static int __save_wakeup_node(CONST TUYA_WAKEUP_SOURCE_BASE_CFG_T  *param)
 }
 
 #if CONFIG_GPIO_WAKEUP_SUPPORT
-static void __gpio_wakeup_source_set(gpio_id_t id, TUYA_GPIO_WAKE_TYPE_E level)
+void tkl_pm_demo_gpio_callback(gpio_id_t gpio_id)
+{
+    bk_printf("%s %d\r\n", __func__, __LINE__);
+}
+static void __gpio_wakeup_source_set(gpio_id_t gpio_id, TUYA_GPIO_WAKE_TYPE_E level)
 {
     gpio_int_type_t int_type = GPIO_INT_TYPE_FALLING_EDGE;
 
@@ -87,21 +92,31 @@ static void __gpio_wakeup_source_set(gpio_id_t id, TUYA_GPIO_WAKE_TYPE_E level)
             break;
     }
 
-	pm_gpio_wakeup_config_t gpio_wakeup= {id,int_type};
-	bk_pm_ap_gpio_wakeup_source_config(PM_MODE_LOW_VOLTAGE,WAKEUP_SOURCE_INT_GPIO,&gpio_wakeup);
+    // bk_gpio_register_isr(gpio_id, tkl_pm_demo_gpio_callback);
+    bk_gpio_register_wakeup_source(gpio_id, int_type);
     bk_pm_wakeup_source_set(PM_WAKEUP_SOURCE_INT_GPIO, NULL);
 }
 #endif //CONFIG_GPIO_WAKEUP_SUPPORT
 
 #if CONFIG_AON_RTC
+static pm_ap_rtc_info_t low_power_info = {0};
+static bk_err_t tkl_pm_rtc_sleep_wakeup_callback(pm_sleep_mode_e sleep_mode,pm_wakeup_source_e wake_source,void* param_p)
+{
+    bk_printf("%s %d\r\n", __func__, __LINE__);
+    return 0;
+}
+
 static void __rtc_wakeup_source_set(uint32_t ms)
 {
     // TODO
     bk_printf("TODO RTC WAKEUP\r\n");
-	pm_rtc_wakeup_config_t rtc_wakeup = {0};
-	rtc_wakeup.rtc_period = ms;//10s
-	bk_pm_ap_rtc_wakeup_source_config(PM_MODE_LOW_VOLTAGE,WAKEUP_SOURCE_INT_RTC,&rtc_wakeup);
-    bk_pm_wakeup_source_set(PM_WAKEUP_SOURCE_INT_RTC, NULL);
+
+    low_power_info.period_tick  = ms;
+    low_power_info.period_cnt   = 1;
+    low_power_info.callback     = tkl_pm_rtc_sleep_wakeup_callback;
+    low_power_info.param_p      = NULL;
+    bk_printf("---trace %s %d, wakeup data:%p\r\n", __func__, __LINE__, &low_power_info);
+    bk_pm_ap_rtc_regsiter_wakeup(PM_MODE_LOW_VOLTAGE, &low_power_info);
 }
 #endif // CONFIG_AON_RTC
 

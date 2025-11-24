@@ -149,6 +149,10 @@ bk_err_t bk_netif_get_ip4_config(netif_if_t ifx, netif_ip4_config_t *ip4_config)
 	} else if (ifx == NETIF_IF_BRIDGE) {
 		net_get_if_addr(&addr, net_get_br_handle());
 #endif
+#if CONFIG_PAN
+	} else if (ifx == NETIF_IF_PAN) {
+		net_get_if_addr(&addr, net_get_pan_handle());
+#endif
 	} else {
 		return BK_ERR_NETIF_IF;
 	}

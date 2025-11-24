@@ -14,12 +14,6 @@ typedef struct
     unsigned long   start;
     unsigned long   current;
 } TUYA_OS_STORAGE_TIMER;
-
-typedef struct {
-    char *uuid;
-    char *authkey;
-} tuya_iot_license_t;
-
 //flash 最大持续处理时间
 #define FLASH_MAX_HANDLE_KEEP_TIME 10000    //10s
 
@@ -325,16 +319,3 @@ OPERATE_RET tkl_flash_get_one_type_info(TUYA_FLASH_TYPE_E type, TUYA_FLASH_BASE_
 
 }
 
-/**
- * @brief tuya_iot_license_read
- *
- * @param[in] license: iot license struct pointer
- *
- * @note This API is used for read license .
- *
- * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
- */
-int tuya_iot_license_read(tuya_iot_license_t *license)
-{
-    return OPRT_NOT_SUPPORTED;
-}

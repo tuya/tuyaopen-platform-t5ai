@@ -14,8 +14,7 @@
 
 #pragma once
 
-#include <common/bk_include.h>
-#include "media_app.h"
+#include <driver/media_types.h>
 
 #ifdef __cplusplus
 extern "C" {

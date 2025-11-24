@@ -1,4 +1,4 @@
-// Copyright 2022-2023 Beken
+// Copyright 2025-2026 Beken
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,7 +17,7 @@
 #define _UART_STREAM_H_
 
 #include <components/bk_audio/audio_pipeline/audio_element.h>
-#include <components/bk_audio/audio_pipeline/audio_common.h>
+#include <components/bk_audio/audio_pipeline/audio_types.h>
 #include <driver/uart.h>
 
 
@@ -53,7 +53,9 @@ typedef struct
 #define UART_STREAM_TASK_CORE           (1)
 #define UART_STREAM_TASK_PRIO           (BEKEN_DEFAULT_WORKER_PRIORITY - 1)
 
-#define UART_STREAM_CFG_DEFAULT() {                     \
+#define UART_STREAM_CFG_DEFAULT() DEFAULT_UART_STREAM_CONFIG()
+
+#define DEFAULT_UART_STREAM_CONFIG() {                  \
         .uart_id = UART_STREAM_UART_ID,                 \
         .baud_rate = UART_STREAM_BAUD_RATE,             \
         .type = AUDIO_STREAM_NONE,                      \

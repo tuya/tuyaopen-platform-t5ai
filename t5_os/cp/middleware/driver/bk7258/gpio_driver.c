@@ -46,6 +46,7 @@ static uint32_t s_gpio_retention_map[GPIO_RETENTION_MAP_SIZE] = GPIO_RETENTION_M
 static uint32_t s_gpio_retention_en_bitmap = 0;
 #endif
 
+#if CONFIG_GPIO_DEFAULT_SET_SUPPORT
 static const gpio_default_map_t s_default_map[] = GPIO_DEFAULT_DEV_CONFIG;
 
 static const gpio_default_map_t* get_gpio_config(gpio_id_t gpio_id)
@@ -59,14 +60,16 @@ static const gpio_default_map_t* get_gpio_config(gpio_id_t gpio_id)
   }
   return NULL;
 }
+#endif
 
 bk_err_t gpio_dev_map(gpio_id_t gpio_id, gpio_dev_t dev)
 {
+#if CONFIG_GPIO_DEFAULT_SET_SUPPORT
 	const gpio_default_map_t *config = get_gpio_config(gpio_id);
 
 	if (config == NULL)
 	{
-		// GPIO_LOGW("GPIO%d not found in GPIO_DEFAULT_DEV_CONFIG table\r\n",gpio_id);
+		//GPIO_LOGW("GPIO%d not found in GPIO_DEFAULT_DEV_CONFIG table\r\n",gpio_id);
 		return BK_ERR_GPIO_INVALID_OPERATE;
 	}
 
@@ -77,7 +80,7 @@ bk_err_t gpio_dev_map(gpio_id_t gpio_id, gpio_dev_t dev)
       return BK_ERR_GPIO_INVALID_OPERATE;
     }
 #endif
-
+#endif
 	/* Restore a configuration that is not a secondary function to its initial state. */
 	gpio_hal_output_enable(&s_gpio.hal, gpio_id, 0);
 	gpio_hal_input_enable(&s_gpio.hal, gpio_id, 0);
@@ -90,11 +93,12 @@ bk_err_t gpio_dev_map(gpio_id_t gpio_id, gpio_dev_t dev)
 
 bk_err_t gpio_dev_unmap(gpio_id_t gpio_id)
 {
+#if CONFIG_GPIO_DEFAULT_SET_SUPPORT
 	const gpio_default_map_t *config = get_gpio_config(gpio_id);
 
 	if (config == NULL)
 	{
-		// GPIO_LOGW("GPIO%d not found in GPIO_DEFAULT_DEV_CONFIG table\r\n",gpio_id);
+		//GPIO_LOGW("GPIO%d not found in GPIO_DEFAULT_DEV_CONFIG table\r\n",gpio_id);
 		return BK_ERR_GPIO_INVALID_OPERATE;
 	}
 
@@ -105,7 +109,7 @@ bk_err_t gpio_dev_unmap(gpio_id_t gpio_id)
       return BK_ERR_GPIO_INVALID_OPERATE;
     }
 #endif
-
+#endif
 	/* Restore a configuration that is not a secondary function to its initial state. */
 	gpio_hal_output_enable(&s_gpio.hal, gpio_id, 0);
 	gpio_hal_input_enable(&s_gpio.hal, gpio_id, 0);
@@ -350,6 +354,7 @@ bk_err_t gpio_dump_map_dev_cfg(void)
 }
 #endif
 
+#if CONFIG_GPIO_DEFAULT_SET_SUPPORT
 /*according to GPIO_DEFAULT_DEV_CONFIG to check dev match and capacity match
 if dev or capacity mismatch, will print dev mismatch info,please check GPIO_DEFAULT_DEV_CONFIG
 table and fix it
@@ -404,3 +409,4 @@ bk_err_t gpio_check_capacity_match(gpio_id_t gpio_id, uint8_t expect_capacity)
 
 	return BK_OK;
 }
+#endif

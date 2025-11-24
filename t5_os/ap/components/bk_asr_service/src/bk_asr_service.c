@@ -178,12 +178,12 @@ static void aud_asr_task_main(beken_thread_arg_t param_data)
 				read_size = bk_aud_asr_read_mic_data(aud_asr_handle->asr_handle, (char *)aud_asr_handle->read_buff, aud_asr_handle->max_read_size);
 				if (read_size == AUD_ASR_RAW_READ_SIZE*2)
 				{
-					ASR_DATA_DUMP_BY_UART_DATA(aud_asr_handle->read_buff, read_size);
 					uint64_t __maybe_unused start_time = rtos_get_time();
 					ASR_INPUT_START();
 					result = Wanson_ASR_Recog((short*)aud_asr_handle->read_buff, AUD_ASR_RAW_READ_SIZE, &text, &score);
 					ASR_INPUT_END();
 					uint64_t __maybe_unused stop_time = rtos_get_time();
+					ASR_DATA_DUMP_BY_UART_DATA(aud_asr_handle->read_buff, read_size);
 
 					if ((uint32_t)(stop_time-start_time) >= 30)
 					{

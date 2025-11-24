@@ -20,10 +20,8 @@ extern "C" {
 
 #include <common/bk_include.h>
 #include <driver/media_types.h>
-#include <driver/psram_types.h>
 #include <modules/tjpgd.h>
-#include <bk_list.h>
-
+#include "bk_list.h"
 
 typedef enum {
 	H264_ENCODE_START = 0,
@@ -91,7 +89,6 @@ bool check_h264_task_is_open(void);
 void jpeg_decode_restart(void);
 
 bk_err_t jpeg_decode_task_send_msg(uint8_t type, uint32_t param);
-bk_err_t jpeg_decode_task_send_more_msg(uint8_t type, uint32_t param, uint32_t param1);
 
 bk_err_t jpeg_decode_task_open(media_decode_mode_t jdec_mode, media_decode_type_t jdec_type, media_rotate_t rotate_angle);
 

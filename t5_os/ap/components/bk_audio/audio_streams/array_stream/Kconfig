@@ -1,0 +1,12 @@
+menu "Adk::Audio_streams::Array_stream"
+	config ADK_ARRAY_STREAM
+		depends on ADK
+		bool "Enable Audio Array stream"
+		default n
+
+	config ADK_ARRAY_STREAM_TEST
+		depends on ADK_ARRAY_STREAM
+		bool "Enable Audio Array stream test"
+		default n
+
+endmenu

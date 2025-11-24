@@ -45,7 +45,12 @@ void arch_int_set_target_state_all(void);
 void arch_int_set_default_priority(void);
 
 unsigned int arch_is_enter_exception(void);
+unsigned int arch_is_ap_in_dump_mode(void);
 void arch_set_enter_exception(void);
+void arch_init_exception_magic_status(void);
+bk_err_t emergency_uart_write_string(uint32_t uart_id, const char *string);
+bk_err_t emergency_uart_write_buf(uint32_t uart_id, const char *data_buff, uint16_t data_len);
+
 int_group_isr_t arch_interrupt_get_handler(uint32_t int_number);
 bk_err_t arch_isr_entry_init(void);
 void arch_int_dump_statis(void);

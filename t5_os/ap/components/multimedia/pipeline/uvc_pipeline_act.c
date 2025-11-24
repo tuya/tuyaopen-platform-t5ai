@@ -213,6 +213,7 @@ bk_err_t lcd_jdec_pipeline_open(void)
 error:
 	LOGD("%s fail\n", __func__, __LINE__);
 	rotate_task_close();
+
 	if (check_h264_task_is_open() == false)
 	{
 		jpeg_decode_task_close();
@@ -311,6 +312,7 @@ bk_err_t uvc_pipeline_init(void)
 #ifdef CONFIG_BT_REUSE_MEDIA_MEMORY
 		LOGE("%s, BT_REUSE_MEDIA_MEMORY mux_sram_buffer failed\r\n", __func__);
 #endif
+
 		mux_sram_buffer = (mux_sram_buffer_t *)os_malloc(sizeof(mux_sram_buffer_t));
 
 		if (mux_sram_buffer == NULL)

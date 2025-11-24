@@ -360,7 +360,13 @@ static void flash_command_test(char *pcWriteBuffer, int xWriteBufferLen, int arg
 
 		sys_drv_flash_set_clk_div(flash_div_clk);
 		sys_drv_flash_cksel(flash_src_clk);
-		bk_flash_set_line_mode(flash_line_mode);
+		if (flash_line_mode == 2) {
+			bk_flash_power_saving_enter();
+			CLI_LOGI("switch to 2 line.\r\n");
+		} else {
+			bk_flash_power_saving_exit();
+			CLI_LOGI("switch to 4 line.\r\n");
+		}
 		BK_DUMP_OUT("flash_src_clk = %u. [0:/26M,  1:/480M,  2:/98M]\n", flash_src_clk);
 		BK_DUMP_OUT("flash_div_clk = %u. [0:/4,  1:/6,  2:/8,  3:/10]\n", flash_div_clk);
 		BK_DUMP_OUT("flash_line_mode = %u.  \n", flash_line_mode);
@@ -368,50 +374,6 @@ static void flash_command_test(char *pcWriteBuffer, int xWriteBufferLen, int arg
 		return;
 	}
 
-//used for set flash status in itcm, not used now
-#if 0
-	if (os_strcmp(argv[1], "qe") == 0) {
-		uint32_t param = 0;
-		uint32_t quad_enable = os_strtoul(argv[2], NULL, 10);
-		uint32_t delay_cycle1 = os_strtoul(argv[3], NULL, 10);
-		uint32_t delay_cycle2 = os_strtoul(argv[4], NULL, 10);
-
-		for(int i = 0; i< 20; i++) {
-			bk_flash_set_line_mode(2);
-			flash_bypass_quad_test(quad_enable, delay_cycle1, delay_cycle2);
-			while (REG_READ(REG_FLASH_OPERATE_SW) & BUSY_SW);
-			param = bk_flash_read_status_reg();
-			if (quad_enable) {
-				if(param & 0x200){
-					break;
-				} else {
-					BK_DUMP_OUT("retry quad test, i = %d, flash status: 0x%x.\n", i, param);
-				}
-			} else {
-				if(param & 0x200){
-					BK_DUMP_OUT("retry quad test, i = %d, flash status: 0x%x.\n", i, param);
-				} else {
-					break;
-				}
-			}
-		}
-
-		if (quad_enable) {
-			if(param & 0x200){
-				BK_DUMP_OUT("flash quad enable success, flash status: 0x%x.\n", param);
-			} else {
-				BK_DUMP_OUT("flash quad enable fail, flash status: 0x%x.\n", param);
-			}
-		} else {
-			if(param & 0x200){
-				BK_DUMP_OUT("flash quad disable fail, flash status: 0x%x.\n", param);
-			} else {
-				BK_DUMP_OUT("flash quad disable success, flash status: 0x%x.\n", param);
-			}
-		}
-		return;
-	}
-#endif
 #endif
 	if (os_strcmp(argv[1], "idle_read_start") == 0) {
 		uint32_t task_prio = os_strtoul(argv[2], NULL, 10);

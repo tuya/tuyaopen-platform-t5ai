@@ -70,4 +70,17 @@ menu "TKL_CONFIG"
     config USE_PRIVATE_HELIX
         bool "use private helix"
         default n
+
+    config TUYA_USE_MTD
+        bool "use mtd as fs device"
+        default n
+
+
+    config DMA_USR_CHAN_ID_MIN
+        int "dma user min"
+        default 8
+
+    config DMA_USR_CHAN_CNT
+        int "dma user number"
+        default 4
 endmenu

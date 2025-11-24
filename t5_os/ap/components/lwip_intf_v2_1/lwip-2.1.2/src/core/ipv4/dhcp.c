@@ -647,6 +647,10 @@ dhcp_handle_ack(struct netif *netif, struct dhcp_msg *msg_in)
   if (dhcp_option_given(dhcp, DHCP_OPTION_IDX_LEASE_TIME)) {
     /* remember offered lease time */
     dhcp->offered_t0_lease = dhcp_get_option_value(dhcp, DHCP_OPTION_IDX_LEASE_TIME);
+#if CONFIG_BK_DHCP_RELEASE_TIME && CONFIG_BRIDGE
+    if ((bk_wifi_get_bridge_state() == BK_WIFI_BRIDGE_STATE_ENABLED) && dhcp->offered_t0_lease < BK_DHCP_RELEASE_TIME)
+      dhcp->offered_t0_lease = BK_DHCP_RELEASE_TIME;
+#endif
   }
   /* renewal period given? */
   if (dhcp_option_given(dhcp, DHCP_OPTION_IDX_T1)) {
@@ -752,7 +756,11 @@ void dhcp_cleanup(struct netif *netif)
 {
   LWIP_ASSERT_CORE_LOCKED();
   LWIP_ASSERT("netif != NULL", netif != NULL);
-
+#if CONFIG_BRIDGE
+  struct dhcp *dhcp = netif_dhcp_data((struct netif *)net_get_br_handle());
+  if ((netif == net_get_sta_handle()) && dhcp)
+    netif_set_client_data((struct netif *)net_get_br_handle(), LWIP_NETIF_CLIENT_DATA_INDEX_DHCP, NULL);
+#endif
   if (netif_dhcp_data(netif) != NULL) {
     mem_free(netif_dhcp_data(netif));
     netif_set_client_data(netif, LWIP_NETIF_CLIENT_DATA_INDEX_DHCP, NULL);
@@ -1153,10 +1161,15 @@ dhcp_discover(struct netif *netif)
    * so lower the discover retry backoff time from (2,4,8,16,32,60,60)s to
    * (0.5,1,2,4,8,15,15)s.
    **/
+#ifndef CONFIG_FUZZ_TEST
 #if BK_DHCP
   msecs = (dhcp->tries < 6 ? 1 << dhcp->tries : 60) * 250;
 #else
   msecs = (dhcp->tries < 6 ? 1 << dhcp->tries : 60) * 1000;
+#endif
+#else
+  dhcp->tries = 1;
+  msecs = dhcp->tries * 1000;
 #endif
   dhcp->request_timeout = (u16_t)((msecs + DHCP_FINE_TIMER_MSECS - 1) / DHCP_FINE_TIMER_MSECS);
   LWIP_DEBUGF(DHCP_DEBUG | LWIP_DBG_TRACE | LWIP_DBG_STATE, ("dhcp_discover(): set request timeout %"U16_F" msecs\n", msecs));

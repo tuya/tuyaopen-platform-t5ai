@@ -253,6 +253,13 @@ bk_err_t bk_aud_dac_unmute(void)
 	return BK_OK;
 }
 
+bk_err_t bk_aud_dac_work_mode_set(uint32_t value)
+{
+	AUD_DAC_RETURN_ON_NOT_INIT();
+	sys_drv_aud_dac_work_mode_set(value);
+	return BK_OK;
+}
+
 bk_err_t bk_aud_dac_set_chl(aud_dac_chl_t dac_chl)
 {
 	AUD_DAC_RETURN_ON_NOT_INIT();

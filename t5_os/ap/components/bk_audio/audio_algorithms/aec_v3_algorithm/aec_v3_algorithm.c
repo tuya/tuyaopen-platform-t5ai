@@ -19,7 +19,7 @@
 #include "semphr.h"
 #include "task.h"
 #include <components/bk_audio/audio_algorithms/aec_v3_algorithm.h>
-#include <components/bk_audio/audio_pipeline/audio_common.h>
+#include <components/bk_audio/audio_pipeline/audio_types.h>
 #include <components/bk_audio/audio_pipeline/audio_mem.h>
 #include <components/bk_audio/audio_pipeline/audio_error.h>
 #include <components/bk_audio/audio_pipeline/audio_element.h>
@@ -70,25 +70,25 @@
 
 #ifdef AEC_DATA_DUMP
 
-/* dump aec data by uart or tfcard, only choose one */
+/* dump aec data by uart or vfs, only choose one */
 #define AEC_DATA_DUMP_BY_UART
-//#define AEC_DATA_DUMP_BY_TFCARD       /* you must sure CONFIG_FATFS=y */
+//#define AEC_DATA_DUMP_BY_VFS       /* you must sure CONFIG_VFS=y */
 
 #ifdef AEC_DATA_DUMP_BY_UART
 #include <components/bk_audio/audio_utils/uart_util.h>
-static uart_util_handle_t g_aec_uart_util = NULL;
+static struct uart_util g_aec_uart_util = {0};
 #define AEC_DATA_DUMP_UART_ID            (1)
 #define AEC_DATA_DUMP_UART_BAUD_RATE     (2000000)
 #endif
 
-#ifdef AEC_DATA_DUMP_BY_TFCARD
-#include "tfcard_util.h"
-static tfcard_util_handle_t g_aec_tfcard_util_mic = NULL;
-static tfcard_util_handle_t g_aec_tfcard_util_ref = NULL;
-static tfcard_util_handle_t g_aec_tfcard_util_out = NULL;
-#define AEC_DATA_DUMP_TFCARD_MIC_NAME     "aec_mic.pcm"
-#define AEC_DATA_DUMP_TFCARD_REF_NAME     "aec_ref.pcm"
-#define AEC_DATA_DUMP_TFCARD_OUT_NAME     "aec_out.pcm"
+#ifdef AEC_DATA_DUMP_BY_VFS
+#include <components/bk_audio/audio_utils/vfs_util.h>
+static struct vfs_util g_aec_vfs_util_mic = {0};
+static struct vfs_util g_aec_vfs_util_ref = {0};
+static struct vfs_util g_aec_vfs_util_out = {0};
+#define AEC_DATA_DUMP_VFS_MIC_NAME     "/sd0/aec_mic.pcm"
+#define AEC_DATA_DUMP_VFS_REF_NAME     "/sd0/aec_ref.pcm"
+#define AEC_DATA_DUMP_VFS_OUT_NAME     "/sd0/aec_out.pcm"
 #endif
 
 #endif  //AEC_DATA_DUMP
@@ -118,75 +118,65 @@ typedef struct aec_algorithm
     ringbuf_handle_t vad_rb;
 } aec_v3_algorithm_t;
 
-
+static aec_vad_process_fun tuya_vad_aec_process_fun = NULL;
 #ifdef AEC_DATA_DUMP
 
 static void aec_data_dump_open(void)
 {
 #ifdef AEC_DATA_DUMP_BY_UART
-    g_aec_uart_util = audio_malloc(sizeof(struct uart_util));
-    if(!g_aec_uart_util)
-    {
-        BK_LOGI(TAG, "g_aec_uart_util malloc failure!\n");
-        return;
-    }
-    uart_util_create(g_aec_uart_util,AEC_DATA_DUMP_UART_ID, AEC_DATA_DUMP_UART_BAUD_RATE);
+    uart_util_create(&g_aec_uart_util, AEC_DATA_DUMP_UART_ID, AEC_DATA_DUMP_UART_BAUD_RATE);
 #endif
 
-#ifdef AEC_DATA_DUMP_BY_TFCARD
-    g_aec_tfcard_util_mic = tfcard_util_create(AEC_DATA_DUMP_TFCARD_MIC_NAME);
-    g_aec_tfcard_util_ref = tfcard_util_create(AEC_DATA_DUMP_TFCARD_REF_NAME);
-    g_aec_tfcard_util_out = tfcard_util_create(AEC_DATA_DUMP_TFCARD_OUT_NAME);
+#ifdef AEC_DATA_DUMP_BY_VFS
+    vfs_util_create(&g_aec_vfs_util_mic, AEC_DATA_DUMP_VFS_MIC_NAME);
+    vfs_util_create(&g_aec_vfs_util_ref, AEC_DATA_DUMP_VFS_REF_NAME);
+    vfs_util_create(&g_aec_vfs_util_out, AEC_DATA_DUMP_VFS_OUT_NAME);
 #endif
 }
 
 static void aec_data_dump_close(void)
 {
 #ifdef AEC_DATA_DUMP_BY_UART
-    uart_util_destroy(g_aec_uart_util);
-    g_aec_uart_util = NULL;
+    uart_util_destroy(&g_aec_uart_util);
 #endif
 
-#ifdef AEC_DATA_DUMP_BY_TFCARD
-    tfcard_util_create(g_aec_tfcard_util_mic);
-    g_aec_tfcard_util_mic = NULL;
-    tfcard_util_create(g_aec_tfcard_util_ref);
-    g_aec_tfcard_util_ref = NULL;
-    tfcard_util_create(g_aec_tfcard_util_out);
-    g_aec_tfcard_util_out = NULL;
+#ifdef AEC_DATA_DUMP_BY_VFS
+    vfs_util_destroy(&g_aec_vfs_util_mic);
+    vfs_util_destroy(&g_aec_vfs_util_ref);
+    vfs_util_destroy(&g_aec_vfs_util_out);
 #endif
 }
 
 static void aec_data_dump_mic_data(void *data_buf, uint32_t len)
 {
 #ifdef AEC_DATA_DUMP_BY_UART
-    uart_util_tx_data(g_aec_uart_util, data_buf, len);
+    uart_util_tx_data(&g_aec_uart_util, data_buf, len);
 #endif
 
-#ifdef AEC_DATA_DUMP_BY_TFCARD
-    tfcard_util_tx_data(g_aec_tfcard_util_mic, data_buf, len);
+#ifdef AEC_DATA_DUMP_BY_VFS
+    vfs_util_tx_data(&g_aec_vfs_util_mic, data_buf, len);
 #endif
 }
 
 static void aec_data_dump_ref_data(void *data_buf, uint32_t len)
 {
 #ifdef AEC_DATA_DUMP_BY_UART
-    uart_util_tx_data(g_aec_uart_util, data_buf, len);
+    uart_util_tx_data(&g_aec_uart_util, data_buf, len);
 #endif
 
-#ifdef AEC_DATA_DUMP_BY_TFCARD
-    tfcard_util_tx_data(g_aec_tfcard_util_ref, data_buf, len);
+#ifdef AEC_DATA_DUMP_BY_VFS
+    vfs_util_tx_data(&g_aec_vfs_util_ref, data_buf, len);
 #endif
 }
 
 static void aec_data_dump_out_data(void *data_buf, uint32_t len)
 {
 #ifdef AEC_DATA_DUMP_BY_UART
-    uart_util_tx_data(g_aec_uart_util, data_buf, len);
+    uart_util_tx_data(&g_aec_uart_util, data_buf, len);
 #endif
 
-#ifdef AEC_DATA_DUMP_BY_TFCARD
-    tfcard_util_tx_data(g_aec_tfcard_util_out, data_buf, len);
+#ifdef AEC_DATA_DUMP_BY_VFS
+    vfs_util_tx_data(&g_aec_vfs_util_out, data_buf, len);
 #endif
 }
 
@@ -662,7 +652,7 @@ static int _aec_v3_algorithm_process(audio_element_handle_t self, char *in_buffe
     }
     else
     {
-        if (aec->aec_cfg.mode == AEC_V3_MODE_HARDWARE)
+        if (aec->aec_cfg.mode == AEC_MODE_HARDWARE)
         {
             int16_t *lr_data_ptr = (int16_t *)in_buffer;
             for (uint16_t i = 0; i < r_size / 4; i++)
@@ -705,8 +695,13 @@ static int _aec_v3_algorithm_process(audio_element_handle_t self, char *in_buffe
         AEC_DATA_DUMP_REF_DATA(aec->ref_addr, aec->frame_size);
         AEC_ALGORITHM_START();
 
-        aec_proc(aec->aec_ctx, aec->ref_addr, aec->mic_addr, aec->out_addr);
-        aec_vad_proc(aec);
+        // add for tuya aec vad
+        if (tuya_vad_aec_process_fun) {
+            tuya_vad_aec_process_fun(aec->mic_addr, aec->ref_addr, aec->out_addr);
+        } else {
+            aec_proc(aec->aec_ctx, aec->ref_addr, aec->mic_addr, aec->out_addr);
+            aec_vad_proc(aec);
+        }
 
         AEC_ALGORITHM_END();
 
@@ -783,6 +778,8 @@ static int _aec_v3_algorithm_process(audio_element_handle_t self, char *in_buffe
     return w_size;
 }
 
+
+
 static bk_err_t _aec_v3_algorithm_destroy(audio_element_handle_t self)
 {
     BK_LOGD(TAG, "[%s] %s \n", audio_element_get_tag(self), __func__);
@@ -846,9 +843,12 @@ audio_element_handle_t aec_v3_algorithm_init(aec_v3_algorithm_cfg_t *config)
     cfg.out_block_num = config->out_block_num;
     cfg.multi_out_port_num = config->multi_out_port_num;
 
-    if (config->aec_cfg.mode == AEC_V3_MODE_HARDWARE)
+    if (config->aec_cfg.mode == AEC_MODE_HARDWARE)
     {
         cfg.buffer_len = aec_alg->frame_size * 2;
+// Modified by TUYA Start
+        cfg.multi_in_port_num = 1;
+// Modified by TUYA End
     }
     else
     {
@@ -884,3 +884,102 @@ _aec_algorithm_init_exit:
     return NULL;
 }
 
+bk_err_t aec_v3_algorithm_set_config(audio_element_handle_t aec_algorithm, void * aec_config)
+{
+    aec_v3_algorithm_t *aec = (aec_v3_algorithm_t *)audio_element_getdata(aec_algorithm);
+    if (aec == NULL) {
+        BK_LOGE(TAG, "aec is NULL \n");
+        return BK_FAIL;
+    }
+
+    if (aec_config == NULL) {
+        BK_LOGE(TAG, "aec_config is NULL \n");
+        return BK_FAIL;
+    }
+    app_aud_aec_v3_config_t *aec_cfg = (app_aud_aec_v3_config_t *)aec_config;
+
+    aec_ctrl(aec->aec_ctx, AEC_CTRL_CMD_SET_FLAGS, 0x1F);//(uint32_t)aec_cfg->init_flags);
+
+    aec->aec_cfg.init_flags   = 0x1F;//aec_cfg->init_flags;    // 0x1f
+    aec->aec_cfg.delay_points = aec_cfg->mic_delay;    //0x0
+    aec->aec_cfg.ec_depth     = aec_cfg->ec_depth;     //0x14
+    aec->aec_cfg.ns_type      = aec_cfg->ns_type;
+    aec->aec_cfg.ns_level     = aec_cfg->ns_level;
+    aec->aec_cfg.ns_para      = aec_cfg->ns_para;
+    aec->aec_cfg.ref_scale    = aec_cfg->ref_scale;
+    aec->aec_cfg.drc          = aec_cfg->drc_gain;
+    aec->aec_cfg.voice_vol    = aec_cfg->voice_vol;
+    aec->aec_cfg.ec_filter    = aec_cfg->ec_filter;
+    aec->aec_cfg.ns_filter    = aec_cfg->ns_filter;
+
+    aec->vad_cfg.vad_enable = aec_cfg->vad_enable;
+    aec->vad_cfg.vad_start_threshold   = aec_cfg->vad_start_threshold;
+    aec->vad_cfg.vad_stop_threshold    = aec_cfg->vad_stop_threshold;
+    aec->vad_cfg.vad_silence_threshold = aec_cfg->vad_silence_threshold;
+    aec->vad_cfg.vad_eng_threshold     = aec_cfg->vad_eng_threshold;
+
+    aec_ctrl(aec->aec_ctx, AEC_CTRL_CMD_SET_MIC_DELAY, aec_cfg->mic_delay);
+    aec_ctrl(aec->aec_ctx, AEC_CTRL_CMD_SET_EC_DEPTH, aec_cfg->ec_depth);
+    aec_ctrl(aec->aec_ctx, AEC_CTRL_CMD_SET_REF_SCALE, aec_cfg->ref_scale);
+    aec_ctrl(aec->aec_ctx, AEC_CTRL_CMD_SET_VOL, aec_cfg->voice_vol);
+
+    aec_ctrl(aec->aec_ctx, AEC_CTRL_CMD_SET_NS_LEVEL, aec_cfg->ns_level);
+    aec_ctrl(aec->aec_ctx, AEC_CTRL_CMD_SET_NS_PARA, aec_cfg->ns_para);
+
+    aec_ctrl(aec->aec_ctx, AEC_CTRL_CMD_SET_DRC, aec_cfg->drc_gain);
+    aec_ctrl(aec->aec_ctx, AEC_CTRL_CMD_SET_EC_FILTER, aec_cfg->ec_filter);
+
+    if((aec->vad_cfg.vad_start_threshold !=0 && aec->vad_cfg.vad_stop_threshold != 0xff)
+    && (aec->vad_cfg.vad_start_threshold != aec->vad_cfg.vad_stop_threshold))
+    {
+        aec_vad_thr_mapping(aec->aec_ctx->SPthr, 
+                            aec->vad_cfg.vad_start_threshold, 
+                            aec->vad_cfg.vad_stop_threshold, 
+                            aec->vad_cfg.vad_silence_threshold,
+                            aec->vad_cfg.vad_eng_threshold);
+    }
+    os_printf("[+]%s, ec_depth:%d\n", __func__, aec->aec_cfg.ec_depth);
+    audio_element_setdata(aec_algorithm, aec);
+	return BK_OK;
+}
+
+bk_err_t aec_v3_algorithm_get_config(audio_element_handle_t aec_algorithm, void * aec_config)
+{
+    aec_v3_algorithm_t *aec = (aec_v3_algorithm_t *)audio_element_getdata(aec_algorithm);
+    if (aec == NULL) {
+        BK_LOGE(TAG, "aec is NULL \n");
+        return BK_FAIL;
+    }
+    if (aec_config == NULL) {
+        BK_LOGE(TAG, "aec_config is NULL \n");
+        return BK_FAIL;
+    }
+    app_aud_aec_v3_config_t *aec_cfg = (app_aud_aec_v3_config_t *)aec_config;
+
+    aec_cfg->aec_enable = 1;//aec->aec_cfg.enable;
+
+    aec_cfg->mic_delay = aec->aec_cfg.delay_points;    //0x0
+    aec_cfg->ec_depth  = aec->aec_cfg.ec_depth;     //0x14
+    aec_cfg->ns_type   = aec->aec_cfg.ns_type;
+    aec_cfg->ns_level  = aec->aec_cfg.ns_level;
+    aec_cfg->ns_para   = aec->aec_cfg.ns_para;
+    aec_cfg->ref_scale = aec->aec_cfg.ref_scale;
+    aec_cfg->drc_gain  = aec->aec_cfg.drc;
+    aec_cfg->voice_vol = aec->aec_cfg.voice_vol;
+    aec_cfg->ec_filter = aec->aec_cfg.ec_filter;
+    aec_cfg->ns_filter = aec->aec_cfg.ns_filter;
+                    
+    aec_cfg->vad_enable            = aec->vad_cfg.vad_enable;
+    aec_cfg->vad_start_threshold   = aec->vad_cfg.vad_start_threshold;
+    aec_cfg->vad_stop_threshold    = aec->vad_cfg.vad_stop_threshold;
+    aec_cfg->vad_silence_threshold = aec->vad_cfg.vad_silence_threshold;
+    aec_cfg->vad_eng_threshold     = aec->vad_cfg.vad_eng_threshold;
+    os_printf("[+]%s, ec_depth:%d\n", __func__, aec->aec_cfg.ec_depth);
+
+    return BK_OK;
+}
+
+bk_err_t aec_v3_algorithm_set_user_process(aec_vad_process_fun user_process_fun)
+{
+    tuya_vad_aec_process_fun = user_process_fun;
+}

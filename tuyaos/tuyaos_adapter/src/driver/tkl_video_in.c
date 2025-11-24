@@ -15,8 +15,6 @@
 #define TKL_VI_SENSOR_UVC       1
 #define TKL_VI_SENSOR_MAX       2
 
-static TKL_VI_DISP_CB sg_vi_disp_cb = NULL;
-
 // default
 static TKL_VI_EXT_CONFIG_T camera_conf[TKL_VI_SENSOR_MAX] = {
     [TKL_VI_SENSOR_DVP] = {
@@ -103,27 +101,6 @@ int tkl_vi_get_dvp_i2c_idx(uint8_t *clk, uint8_t *sda)
     return TUYA_I2C_NUM_0;
 }
 
-void tkl_vi_dvp_display_frame_cb(frame_buffer_t *p_frame)
-{
-    TKL_VI_DISP_FRAME_T disp_fb;
-
-    if(NULL == sg_vi_disp_cb || NULL == p_frame) {
-        return;
-    }
-
-    if(p_frame->fmt != PIXEL_FMT_RGB565_LE && p_frame->fmt != PIXEL_FMT_RGB565) {
-        return;
-    }
-
-    disp_fb.width     = p_frame->width;
-    disp_fb.height    = p_frame->height;
-    disp_fb.fmt       = TUYA_PIXEL_FMT_RGB565; 
-    disp_fb.frame_len = p_frame->width * p_frame->height * 2; // RGB565 is 2 bytes per pixel
-    disp_fb.pbuf      = p_frame->frame;
-
-    sg_vi_disp_cb(&disp_fb);
-}
-
 /**
  * @brief vi init
  *
@@ -196,8 +173,6 @@ OPERATE_RET tkl_vi_init(TKL_VI_CONFIG_T *pconfig, INT32_T count)
     } else if (device.type == DVP_CAMERA) {
         vi_dvp_status = 1;
         img_service_open();
-        sg_vi_disp_cb = pconfig->disp_cb;
-        img_register_display_cb(tkl_vi_dvp_display_frame_cb);
     }
 
     vi_handle = video_handle;
@@ -214,8 +189,8 @@ OPERATE_RET tkl_vi_uninit(TKL_VI_CAMERA_TYPE_E device_type)
 {
     OPERATE_RET ret;
     camera_handle_t handle = NULL;
+
     camera_type_t type;
-    
     if (device_type == TKL_VI_CAMERA_TYPE_UVC) {
         type = UVC_CAMERA;
         vi_uvc_status = 2;

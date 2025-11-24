@@ -1,4 +1,4 @@
-// Copyright 2023-2024 Beken
+// Copyright 2025-2026 Beken
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,7 +16,7 @@
 #define _AEC_V3_ALGORITHM_H_
 
 #include <components/bk_audio/audio_pipeline/audio_element.h>
-
+#include <components/audio_param_ctrl.h>
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -77,9 +77,9 @@ extern "C" {
 */
 typedef enum
 {
-    AEC_V3_MODE_HARDWARE,      /*!< hardware mode: Hardware mode get source and reference signal through audio adc L and R channel. Audio adc L channel
+    AEC_MODE_HARDWARE,      /*!< hardware mode: Hardware mode get source and reference signal through audio adc L and R channel. Audio adc L channel
                                  connect to mic, and collect source signal. Audio adc R channel connect to speaker, and collect reference signal. */
-    AEC_V3_MODE_SOFTWARE       /*!< software mode: Software mode get source and reference signal through audio adc L and software writting. Audio adc L
+    AEC_MODE_SOFTWARE       /*!< software mode: Software mode get source and reference signal through audio adc L and software writting. Audio adc L
                                  channel connect to mic, and collect source signal. Software write speaker data to input ringbuffer to support reference signal. */
 } aec_v3_mode_t;
 
@@ -153,7 +153,7 @@ typedef struct
 
 #define AEC_V3_DELAY_SAMPLE_POINTS_MAX           (1000)
     
-#define AEC_V3_ALGORITHM_TASK_STACK          (1 * 1024)
+#define AEC_V3_ALGORITHM_TASK_STACK          (10 * 1024)
 #define AEC_V3_ALGORITHM_TASK_CORE           (1)
 #define AEC_V3_ALGORITHM_TASK_PRIO           (5)
 #define AEC_V3_ALGORITHM_OUT_BLOCK_NUM       (2)
@@ -177,7 +177,7 @@ typedef struct
     .task_core = AEC_V3_ALGORITHM_TASK_CORE,                \
     .task_prio = AEC_V3_ALGORITHM_TASK_PRIO,                \
     .aec_cfg = {                                            \
-        .mode = AEC_V3_MODE_SOFTWARE,                       \
+        .mode = AEC_MODE_SOFTWARE,                          \
         .fs = AEC_V3_ALGORITHM_FS,                          \
         .init_flags = AEC_V3_ALGORITHM_INIT_FLAG,           \
         .delay_points = AEC_V3_DELAY_POINTS,                \
@@ -218,6 +218,32 @@ typedef struct
  */
 audio_element_handle_t aec_v3_algorithm_init(aec_v3_algorithm_cfg_t *config);
 
+/**
+ * @brief      Set AEC V3 algorithm configuration parameters
+ *
+ * @param[in]      aec_algorithm  The aec algorithm handle
+ * @param[in]      aec_config     The aec configuration
+ *
+ * @return     The status of the operation
+ *                 - BK_OK: success
+ *                 - BK_FAIL: failed
+ */
+bk_err_t aec_v3_algorithm_set_config(audio_element_handle_t aec_algorithm, void *aec_config);
+
+/**
+ * @brief      Get AEC V3 algorithm configuration parameters
+ *
+ * @param[in]      aec_algorithm  The aec algorithm handle
+ * @param[out]     aec_config     The aec configuration to store the retrieved parameters
+ *
+ * @return     The status of the operation
+ *                 - BK_OK: success
+ *                 - BK_FAIL: failed
+ */
+bk_err_t aec_v3_algorithm_get_config(audio_element_handle_t aec_algorithm, void *aec_config);
+
+typedef int (*aec_vad_process_fun)(short *mic_data, short *ref_data, short *out_data); 
+bk_err_t aec_v3_algorithm_set_user_process(aec_vad_process_fun user_process_fun);
 
 #ifdef __cplusplus
 }

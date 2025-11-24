@@ -1,4 +1,4 @@
-// Copyright 2022-2023 Beken
+// Copyright 2025-2026 Beken
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,7 +20,6 @@
 #include <os/str.h>
 #include <stdint.h>
 #include <components/bk_audio/audio_pipeline/audio_port.h>
-#include <components/bk_audio/audio_pipeline/audio_type_def.h>
 #include <components/bk_audio/audio_pipeline/ringbuf.h>
 
 #ifdef __cplusplus

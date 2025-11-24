@@ -1,4 +1,4 @@
-// Copyright 2022-2023 Beken
+// Copyright 2025-2026 Beken
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,7 +20,7 @@
 #include "semphr.h"
 #include "task.h"
 #include <components/bk_audio/audio_streams/uac_mic_stream.h>
-#include <components/bk_audio/audio_pipeline/audio_common.h>
+#include <components/bk_audio/audio_pipeline/audio_types.h>
 #include <components/bk_audio/audio_pipeline/audio_mem.h>
 #include <components/bk_audio/audio_pipeline/audio_error.h>
 #include <components/bk_audio/audio_pipeline/audio_element.h>
@@ -1058,7 +1058,7 @@ audio_element_handle_t uac_mic_stream_init(uac_mic_stream_cfg_t *config)
     cfg.multi_out_port_num = config->multi_out_port_num;
     cfg.tag = "uac_mic";
 
-    BK_LOGE(TAG, "%s, %d, buffer_len: %d, out_rb_size: %d \n", __func__, __LINE__, cfg.buffer_len, cfg.out_block_size);
+    BK_LOGE(TAG, "%s, %d, buffer_len: %d, out_block_size: %d \n", __func__, __LINE__, cfg.buffer_len, cfg.out_block_size);
 
     /* init uac mic */
     uac_mic->port_index = config->port_index;

@@ -840,22 +840,13 @@ static void pm_low_voltage_resource_set()
 #endif
 
 	/*flash line mode 4->2 when enter low voltage*/
-#if CONFIG_FLASH_ORIGIN_API
-	flash_set_line_mode(2);
-#else
-	bk_flash_set_line_mode(2);
-#endif
-
+	bk_flash_power_saving_enter();
 }
 
 void pm_low_voltage_bsp_restore(void)
 {
 	/*flash line mode 2->4 when exit low voltage*/
-#if CONFIG_FLASH_ORIGIN_API
-	flash_set_line_mode(flash_get_line_mode());
-#else
-	bk_flash_set_line_mode(bk_flash_get_line_mode());
-#endif
+	bk_flash_power_saving_exit();
 
 #if CONFIG_CKMN
 	bk_rosc_32k_ckest_prog(32);

@@ -46,12 +46,14 @@ void cli_audio_test_cmd(char *pcWriteBuffer, int xWriteBufferLen, int argc, char
 void cli_gpio_cmd(char *pcWriteBuffer, int xWriteBufferLen, int argc, char **argv);
 void cli_tuya_media_cmd(char *pcWriteBuffer, int xWriteBufferLen, int argc, char **argv);
 void cli_xqspi_cmd(char *pcWriteBuffer, int xWriteBufferLen, int argc, char **argv);
+void cli_xqspi_lcd_cmd(char *pcWriteBuffer, int xWriteBufferLen, int argc, char **argv);
 void cli_littlefs_cmd(char *pcWriteBuffer, int xWriteBufferLen, int argc, char **argv);
 // void cli_tkl_timer_test(char *pcWriteBuffer, int xWriteBufferLen, int argc, char **argv);
 void cli_timer_cmd(char *pcWriteBuffer, int xWriteBufferLen, int argc, char **argv);
 void cli_usb_cmd(char *pcWriteBuffer, int xWriteBufferLen, int argc, char **argv);
 void cli_sdcard_test_cmd(char *pcWriteBuffer, int xWriteBufferLen, int argc, char **argv);
 void cli_spi_cmd(char *pcWriteBuffer, int xWriteBufferLen, int argc, char **argv);
+void cli_spi_2_3_cmd(char *pcWriteBuffer, int xWriteBufferLen, int argc, char **argv);
 void cli_eth_cmd(char *pcWriteBuffer, int xWriteBufferLen, int argc, char **argv);
 void cli_iperf_cmd(char *pcWriteBuffer, int xWriteBufferLen, int argc, char **argv);
 void cli_speaker_cmd(char *pcWriteBuffer, int xWriteBufferLen, int argc, char **argv);

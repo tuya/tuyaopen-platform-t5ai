@@ -677,6 +677,12 @@ int wpa_supplicant_ctrl_iface_set_network(struct wpa_supplicant *wpa_s, wlan_sta
 		//WPA_LOGD("ssid: |%s|\n", config->u.ssid.ssid);
 		if ((ssid->ssid_len != config->u.ssid.ssid_len) ||
 			os_memcmp(ssid->ssid, config->u.ssid.ssid, ssid->ssid_len)) {
+#if BK_SUPPLICANT
+#ifdef CONFIG_SAE
+			sae_deinit_pt(ssid->pt);	// clear the last pt
+			ssid->pt = NULL;
+#endif
+#endif
 			ssid->psk_set = 0;	// recalc psk
 			if (wpa_s->wpa)
 				wpa_sm_pmksa_cache_flush(wpa_s->wpa, ssid);
@@ -890,13 +896,17 @@ int wpa_supplicant_ctrl_iface_update_psk(struct wpa_supplicant *wpa_s, wlan_gen_
 		!os_memcmp(ssid->ssid, psk->ssid, ssid->ssid_len) &&
 		!os_strcmp(ssid->passphrase, psk->passphrase)) {
 
+		bool scan_pending = !!radio_work_pending(wpa_s, "scan");
+
 		/* copy caculated PSK from pskc thread */
 		os_memcpy(ssid->psk, psk->psk, PMK_LEN);
 		ssid->psk_set = 1;
 		ssid->mem_only_psk = 0;
 
-		/* reconnect to ap */
-		wpas_select_network_from_last_scan(wpa_s, 0, 1);
+		/* reconnect to ap, if scan pending, wait scan done */
+		WPA_LOGI("update psk, scan pending %d\n", scan_pending);
+		if (!scan_pending)
+			wpas_select_network_from_last_scan(wpa_s, 0, 1);
 	}
 
 	return 0;
@@ -1170,9 +1180,7 @@ static int wpa_supplicant_ctrl_iface_get_network(struct wpa_supplicant *wpa_s, w
 
 	case WLAN_STA_FIELD_PSK:
 		os_memset(&fci, 0, sizeof(fci));
-#if CONFIG_EASY_FLASH_FAST_CONNECT
-		bk_get_env_enhance("fast_connect_id", (void *)&fci, sizeof(struct wlan_fast_connect_info));
-#endif
+		wlan_read_fast_connect_info(&fci);
 		get_psk = fci.psk;
 		uint8_t psk_len = os_strlen((const char *)get_psk);
 		uint8_t psk_max_len = 64;

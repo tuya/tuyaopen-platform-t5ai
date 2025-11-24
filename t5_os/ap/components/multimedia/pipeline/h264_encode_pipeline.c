@@ -23,7 +23,6 @@
 #include <driver/video_common_driver.h>
 #include <driver/dma.h>
 #include <driver/psram.h>
-#include <driver/aon_rtc.h>
 
 #include "media_evt.h"
 #include "frame_buffer.h"
@@ -70,12 +69,12 @@ typedef enum
 
 typedef struct {
 	uint8_t task_state;
-	uint8_t input_buf_type : 1; // 1: input a complete yuv_frame, 0: input a 16line yuv_buffer
-	uint8_t h264_init : 1; // h264 release param have been init ok or not
-	uint8_t frame_err : 1;
-	uint8_t sps_pps_flag : 1;
-	uint8_t i_frame : 1;
-	uint8_t regenerate_idr : 1; // h264 module reset, will regenerate idr frame
+	uint8_t input_buf_type; // 1: input a complete yuv_frame, 0: input a 16line yuv_buffer
+	uint8_t h264_init; // h264 release param have been init ok or not
+	uint8_t frame_err;
+	uint8_t sps_pps_flag;
+	uint8_t i_frame;
+	uint8_t regenerate_idr; // h264 module reset, will regenerate idr frame
 	uint8_t line_done_cnt; // urrent frame resolution total line done number = width / 16;
 	uint8_t line_done_index; // current encode line index
 	uint8_t psram_overwrite_id;
@@ -116,27 +115,6 @@ typedef struct {
 extern media_debug_t *media_debug;
 static h264_encode_config_t * h264_encode_config = NULL;
 static h264_info_t *h264_info = NULL;
-
-
-static uint32_t h264_encode_get_milliseconds(void)
-{
-	uint32_t time = 0;
-
-#if CONFIG_ARCH_RISCV
-	extern u64 riscv_get_mtimer(void);
-
-	time = (riscv_get_mtimer() / 26000) & 0xFFFFFFFF;
-#elif CONFIG_ARCH_CM33
-
-#if CONFIG_AON_RTC
-	time = (bk_aon_rtc_get_us() / 1000) & 0xFFFFFFFF;
-#endif
-
-#endif
-
-	return time;
-}
-
 
 bk_err_t h264_encode_task_send_msg(uint8_t type, uint32_t param)
 {
@@ -223,6 +201,12 @@ static void h264_encode_reset_handle(void)
 	h264_encode_config->h264_init = false;
 	h264_encode_config->encode_offset = 0;
 	h264_encode_config->encode_dma_length = 0;
+	if (h264_encode_config->decoder_buffer)
+	{
+		h264_encode_config->decoder_free_cb(h264_encode_config->decoder_buffer);
+		h264_encode_config->decoder_buffer = NULL;
+	}
+
 	LOGV("%s, %d-%d\r\n", __func__, h264_encode_config->line_done_index, h264_encode_config->line_done_cnt);
 
 	LOGD("%s, complete\r\n", __func__);
@@ -619,10 +603,13 @@ static void h264_encode_finish_handle(void)
 		goto error;
 	}
 
-	new_frame = frame_buffer_fb_malloc(h264_encode_config->stream, CONFIG_H264_FRAME_SIZE);
-	if (new_frame == NULL)
+	if (h264_encode_config->regenerate_idr == false)
 	{
-		h264_encode_config->frame_err = true;
+		new_frame = frame_buffer_fb_malloc(h264_encode_config->stream, CONFIG_H264_FRAME_SIZE);
+		if (new_frame == NULL)
+		{
+			h264_encode_config->frame_err = true;
+		}
 	}
 
 	media_debug->isr_h264++;
@@ -631,7 +618,7 @@ static void h264_encode_finish_handle(void)
 error:
 
 	h264_encode_config->encode_dma_length = 0;
-	if (h264_encode_config->frame_err)
+	if (h264_encode_config->frame_err || h264_encode_config->regenerate_idr)
 	{
 		h264_encode_config->regenerate_idr = true;
 		h264_encode_config->frame_err = false;
@@ -641,7 +628,7 @@ error:
 
 	media_debug->h264_kbps += h264_encode_config->h264_frame->length;
 
-	h264_encode_config->h264_frame->timestamp = h264_encode_get_milliseconds();
+	h264_encode_config->h264_frame->timestamp = get_current_timestamp();
 
 #ifdef CONFIG_H264_ADD_SELF_DEFINE_SEI
 	h264_encode_config->h264_frame->crc = hnd_crc8(h264_encode_config->h264_frame->frame, h264_encode_config->h264_frame->length, 0xFF);
@@ -668,7 +655,6 @@ error:
 	LOGV("%s, I:%d, p:%d\r\n", __func__, (h264_encode_config->h264_frame->h264_type & 0x1000020) > 0 ? 1 : 0, (h264_encode_config->h264_frame->h264_type >> 23) & 0x1);
 
 	frame_buffer_fb_push(h264_encode_config->stream, h264_encode_config->h264_frame);
-
 	h264_encode_config->h264_frame = new_frame;
 
 	bk_psram_enable_write_through(h264_encode_config->psram_overwrite_id, (uint32_t)h264_encode_config->h264_frame->frame,
@@ -797,7 +783,7 @@ static void h264_encode_task_deinit(void)
 			}
 		}
 
-		frame_buffer_list_node_invalid(h264_encode_config->stream);
+		frame_buffer_list_node_clear(h264_encode_config->stream);
 		frame_buffer_list_node_deinit(h264_encode_config->stream);
 		h264_encode_config->stream = NULL;
 
@@ -1136,14 +1122,14 @@ bk_err_t h264_encode_task_close(void)
 bk_err_t bk_h264_encode_request(pipeline_encode_request_t *request, mux_callback_t cb)
 {
 	pipeline_encode_request_t *h264_request = NULL;
-	rtos_lock_mutex(&h264_info->lock);
 
 	if (h264_encode_config == NULL || h264_encode_config->task_state == false)
 	{
 		LOGD("%s not open\n", __func__);
-		goto error;
+		return BK_FAIL;
 	}
 
+	rtos_lock_mutex(&h264_info->lock);
 	h264_request = (pipeline_encode_request_t *)os_malloc(sizeof(pipeline_encode_request_t));
 
 	if (h264_request == NULL)

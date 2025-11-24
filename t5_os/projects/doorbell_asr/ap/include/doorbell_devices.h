@@ -77,6 +77,8 @@ typedef struct
     voice_write_handle_t voice_write_handle;
 #endif
 #if (CONFIG_ASR_SERVICE)
+	uint32_t asr_enable;
+	uint32_t asr_camera;
 	asr_handle_t asr_handle;
 	aud_asr_handle_t aud_asr_handle;
 #endif

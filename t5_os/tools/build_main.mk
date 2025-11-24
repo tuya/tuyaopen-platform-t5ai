@@ -186,10 +186,24 @@ bootloader_build_script := $(ARMINO_AVDK_DIR)/tools/build_tools/build_process/bk
 bl:
 	@python $(bootloader_build_script) $(PROJECT_DIR) $(CURDIR)/build $(ARMINO_SOC)
 
+# Modified by TUYA Start
 clean:
+	@echo "save sdkconfig.h"
+	@cd ../
+	@mkdir -p .tmp_build/bk7258/tuya_app/bk7258/armino_as_lib/bk7258/config/
+	@mkdir -p .tmp_build/bk7258/tuya_app/bk7258/config/
+	@mkdir -p .tmp_build/bk7258/tuya_app/bk7258_ap/armino_as_lib/bk7258_ap/config/
+	@mkdir -p .tmp_build/bk7258/tuya_app/bk7258_ap/config/
+	@cp build/bk7258/tuya_app/bk7258/armino_as_lib/bk7258/config/sdkconfig.h         .tmp_build/bk7258/tuya_app/bk7258/armino_as_lib/bk7258/config/
+	@cp build/bk7258/tuya_app/bk7258/config/sdkconfig.h                              .tmp_build/bk7258/tuya_app/bk7258/config/
+	@cp build/bk7258/tuya_app/bk7258_ap/armino_as_lib/bk7258_ap/config/sdkconfig.h   .tmp_build/bk7258/tuya_app/bk7258_ap/armino_as_lib/bk7258_ap/config/
+	@cp build/bk7258/tuya_app/bk7258_ap/config/sdkconfig.h                           .tmp_build/bk7258/tuya_app/bk7258_ap/config/
 	@echo "rm -rf ./build"
 	@python3 ./tools/armino_doc.py --clean True
 	@rm -rf ./build
 	@rm -rf $(ARMINO_AP_DIR)/build
 	@rm -rf $(ARMINO_CP_DIR)/build
+	@mv .tmp_build build
+	@cd -
+# Modified by TUYA End
 

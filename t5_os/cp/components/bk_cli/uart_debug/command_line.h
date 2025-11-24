@@ -269,6 +269,10 @@ enum {
 	BEKEN_TEST_UDP                              = 0XDE,
 	BEKEN_SD_CLOSE                              = 0XDC,
 	BEKEN_DO_REBOOT                             = 0XFE,
+///app audio cmd
+	BEKEN_SET_EQ_CONFIG_VOICE_PARA              =0xB2,
+	BEKEN_SET_SYS_CONFIG_VOICE_PARA             =0xB3,
+	BEKEN_SET_AEC_CONFIG_VOICE_PARA             =0xB4,
 };
 
 

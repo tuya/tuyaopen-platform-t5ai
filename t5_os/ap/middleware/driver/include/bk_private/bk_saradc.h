@@ -116,7 +116,7 @@ UINT32 saradc_check_busy(void);
 UINT32 saradc_check_accuracy(void);
 
 float saradc_calculate(UINT16 adc_val);
-uint16_t bk_adc_data_calculate(UINT16 adc_val, UINT8 adc_chan);
+//UINT16 bk_adc_data_calculate(UINT16 adc_val, UINT8 adc_chan);
 extern saradc_calibrate_val saradc_val;
 extern UINT8  g_saradc_flag;
 UINT32 saradc_set_calibrate_val(uint16_t *value, SARADC_MODE mode);

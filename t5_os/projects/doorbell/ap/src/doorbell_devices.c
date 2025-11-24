@@ -20,6 +20,7 @@
 #include "doorbell_cmd.h"
 #include "doorbell_devices.h"
 #include "doorbell_cs2_service.h"
+#include "bk_audio_para.h"
 
 #include "wifi_transfer.h"
 #include "media_app.h"
@@ -54,7 +55,7 @@ extern const dvp_sensor_config_t **get_sensor_config_devices_list(void);
 extern int get_sensor_config_devices_num(void);
 
 extern const doorbell_service_interface_t *doorbell_current_service;
-static media_camera_device_t current_device = {0};
+static camera_type_t curr_cam_type = UNKNOW_CAMERA;
 
 
 #define DEVICE_RESPONSE_SIZE (DOORBELL_NETWORK_MAX_SIZE - sizeof(db_evt_head_t))
@@ -395,16 +396,19 @@ int doorbell_camera_turn_on(camera_parameters_t *parameters)
     device.height = parameters->height;
     device.fps = FPS30;
 
-    ret = media_app_camera_open(&db_device_info->video_handle, &device);
-
-    if (ret != BK_OK)
+    // if camera already opened and transfer h264, need to regenerate idr
+    if (db_device_info->pipeline_enable)
     {
-        LOGE("%s failed\n", __func__);
         if (media_app_h264_regenerate_idr(device.type) != BK_OK)
         {
             LOGE("%s h264_regenerate_idr failed\n", __func__);
         }
+    }
 
+    ret = media_app_camera_open(&db_device_info->video_handle, &device);
+    if (ret != BK_OK)
+    {
+        LOGE("%s failed\n", __func__);
         return ret;
     }
 
@@ -451,7 +455,7 @@ int doorbell_camera_turn_on(camera_parameters_t *parameters)
         }
     }
 
-    current_device.type = device.type;
+    curr_cam_type = device.type;
 
     return ret;
 }
@@ -487,9 +491,7 @@ int doorbell_camera_turn_off(void)
 
     db_device_info->video_handle = NULL;
     db_device_info->camera_id = CAMERA_MAX_NUM;
-
     db_device_info->pipeline_enable = false;
-
     db_device_info->h264_transfer = false;
 
     return 0;
@@ -598,11 +600,11 @@ int doorbell_display_turn_on(uint16_t id, uint16_t rotate, uint16_t fmt)
     }
     media_app_set_rotate(rot_angle);
 
-    if (current_device.type == UVC_CAMERA)
+    if (curr_cam_type == UVC_CAMERA)
     {
         media_app_jdec_open(JPEGDEC_BY_LINE);
     }
-    else if (current_device.type == DVP_CAMERA)
+    else if (curr_cam_type == DVP_CAMERA)
     {
         media_app_jdec_open(JPEGDEC_BY_FRAME);
     }
@@ -629,6 +631,7 @@ int doorbell_display_turn_off(void)
     media_app_jdec_close();
     media_app_lcd_disp_close();
     db_device_info->lcd_id = 0;
+
     return 0;
 }
 
@@ -715,6 +718,9 @@ int doorbell_audio_turn_off(void)
     db_device_info->voice_write_handle = NULL;
     db_device_info->voice_handle  = NULL;
 
+    bk_app_aud_set_service_off(AUD_SERVICE_DOORBELL_VOC);
+    bk_aud_debug_set_service_type(AUD_SERVICE_MAX);
+
     LOGD("%s out\n", __func__);
     return BK_OK;
 }
@@ -742,9 +748,80 @@ bk_err_t doorbell_audio_event_handle(vioce_evt_t event, void *param, void *args)
     return BK_OK;
 }
 
+void doorbell_audio_set_voc_cust_params(voice_cfg_t * voice_cfg, app_aud_service_type_t service_type)
+{
+	app_aud_para_t * cust_aud_para = NULL;
+	{
+		cust_aud_para = get_app_aud_cust_para(AUD_SERVICE_DOORBELL_VOC);
+		if (cust_aud_para == NULL)
+		{
+			LOGE("get_app_aud_cust_para fail\n");
+		} else 
+		{
+			bk_aud_debug_get_audpara(cust_aud_para, AUD_SERVICE_DOORBELL_VOC);
+		}
+
+#if CONFIG_VOICE_SERVICE_EQ
+		if (voice_cfg->eq_en)
+		{
+			if (cust_aud_para && cust_aud_para->eq_dl_config.app_eq_en)
+			{
+				if (1)//(spk_sample_rate == cust_aud_para->eq_dl_config.eq_load.samplerate)
+				{
+					voice_cfg->eq_en = cust_aud_para->eq_dl_config.eq_en;
+				} else
+				{
+					voice_cfg->eq_en = 0;
+					LOGE("voice dl eq init fail, spk_sample_rate not match\n");
+				}
+			}
+		}
+#endif
+
+		if (voice_cfg->mic_type == MIC_TYPE_ONBOARD)
+		{
+			if (cust_aud_para && cust_aud_para->sys_config.app_sys_en)
+			{
+				voice_cfg->mic_cfg.onboard_mic_cfg.adc_cfg.ana_gain = cust_aud_para->sys_config.mic0_analog_gain;
+				voice_cfg->mic_cfg.onboard_mic_cfg.adc_cfg.dig_gain = cust_aud_para->sys_config.mic0_digital_gain;
+			}
+		}
+		if (voice_cfg->spk_type == SPK_TYPE_ONBOARD)
+		{
+			if (cust_aud_para && cust_aud_para->sys_config.app_sys_en)
+			{
+				voice_cfg->spk_cfg.onboard_spk_cfg.ana_gain = cust_aud_para->sys_config.speaker_chan0_analog_gain;
+				voice_cfg->spk_cfg.onboard_spk_cfg.dig_gain = cust_aud_para->sys_config.speaker_chan0_digital_gain;
+			}
+		}
+		if (voice_cfg->aec_en)
+		{
+			if (cust_aud_para && cust_aud_para->aec_v3_config.app_aec_en)
+			{
+				voice_cfg->aec_en = cust_aud_para->aec_v3_config.aec_enable;
+				voice_cfg->aec_cfg.aec_alg_cfg.aec_cfg.delay_points = cust_aud_para->aec_v3_config.mic_delay;
+				voice_cfg->aec_cfg.aec_alg_cfg.aec_cfg.ec_depth 	= cust_aud_para->aec_v3_config.ec_depth;
+				voice_cfg->aec_cfg.aec_alg_cfg.aec_cfg.ref_scale	= cust_aud_para->aec_v3_config.ref_scale;
+				voice_cfg->aec_cfg.aec_alg_cfg.aec_cfg.ns_level 	= cust_aud_para->aec_v3_config.ns_level;
+				voice_cfg->aec_cfg.aec_alg_cfg.aec_cfg.ns_para		= cust_aud_para->aec_v3_config.ns_para;
+			}
+		}
+	}
+}
+
+
 int doorbell_audio_turn_on(audio_parameters_t *parameters)
 {
-    voice_cfg_t voice_cfg = {0};
+    voice_cfg_t *voice_cfg;
+
+    voice_cfg = os_malloc(sizeof(voice_cfg_t));
+
+    if (!voice_cfg)
+    {
+        LOGD("%s voice_cfg malloc failure!\n", __func__);
+
+        return BK_FAIL;
+    }
 
     if (db_device_info->audio_enable == BK_TRUE)
     {
@@ -792,38 +869,38 @@ int doorbell_audio_turn_on(audio_parameters_t *parameters)
 
     if (parameters->uac == 1)
     {
-        voice_cfg_t voice_uac_cfg = VOICE_BY_UAC_MIC_SPK_CFG_DEFAULT();
-        voice_cfg = voice_uac_cfg;
-        voice_cfg.mic_cfg.uac_mic_cfg.samp_rate = mic_sample_rate;
-        voice_cfg.mic_cfg.uac_mic_cfg.frame_size = mic_sample_rate * 2 * 20 / 1000; //one frame size(20ms)
-        voice_cfg.mic_cfg.uac_mic_cfg.out_block_size = voice_cfg.mic_cfg.uac_mic_cfg.frame_size;
-        voice_cfg.mic_cfg.uac_mic_cfg.out_block_num = 2;
+        voice_cfg_t voice_uac = VOICE_BY_UAC_MIC_SPK_CFG_DEFAULT();
+        *voice_cfg = voice_uac;
+        voice_cfg->mic_cfg.uac_mic_cfg.samp_rate = mic_sample_rate;
+        voice_cfg->mic_cfg.uac_mic_cfg.frame_size = mic_sample_rate * 2 * 20 / 1000; //one frame size(20ms)
+        voice_cfg->mic_cfg.uac_mic_cfg.out_block_size = voice_cfg->mic_cfg.uac_mic_cfg.frame_size;
+        voice_cfg->mic_cfg.uac_mic_cfg.out_block_num = 2;
 
-        voice_cfg.spk_cfg.uac_spk_cfg.samp_rate = spk_sample_rate;
-        voice_cfg.spk_cfg.uac_spk_cfg.frame_size = spk_sample_rate * 2 * 20 / 1000; //one frame size(20ms)
+        voice_cfg->spk_cfg.uac_spk_cfg.samp_rate = spk_sample_rate;
+        voice_cfg->spk_cfg.uac_spk_cfg.frame_size = spk_sample_rate * 2 * 20 / 1000; //one frame size(20ms)
     }
     else
     {
-        voice_cfg_t voice_onboard_cfg = VOICE_BY_ONBOARD_MIC_SPK_CFG_DEFAULT();
-        voice_cfg = voice_onboard_cfg;
-        voice_cfg.mic_cfg.onboard_mic_cfg.adc_cfg.sample_rate = mic_sample_rate;
-        voice_cfg.mic_cfg.onboard_mic_cfg.frame_size = mic_sample_rate * 2 * 20 / 1000; //one frame size(20ms)
-        //voice_cfg.mic_cfg.onboard_mic_cfg.out_rb_size = voice_cfg.mic_cfg.onboard_mic_cfg.frame_size;
-        voice_cfg.mic_cfg.onboard_mic_cfg.out_block_size = voice_cfg.mic_cfg.onboard_mic_cfg.frame_size;
-        voice_cfg.mic_cfg.onboard_mic_cfg.out_block_num = 2;
+        voice_cfg_t voice_onboard = VOICE_BY_ONBOARD_MIC_SPK_CFG_DEFAULT();
+        *voice_cfg = voice_onboard;
+        voice_cfg->mic_cfg.onboard_mic_cfg.adc_cfg.sample_rate = mic_sample_rate;
+        voice_cfg->mic_cfg.onboard_mic_cfg.frame_size = mic_sample_rate * 2 * 20 / 1000; //one frame size(20ms)
+        //voice_cfg->mic_cfg.onboard_mic_cfg.out_rb_size = voice_cfg->mic_cfg.onboard_mic_cfg.frame_size;
+        voice_cfg->mic_cfg.onboard_mic_cfg.out_block_size = voice_cfg->mic_cfg.onboard_mic_cfg.frame_size;
+        voice_cfg->mic_cfg.onboard_mic_cfg.out_block_num = 2;
 
-        voice_cfg.spk_cfg.onboard_spk_cfg.sample_rate = spk_sample_rate;
-        voice_cfg.spk_cfg.onboard_spk_cfg.frame_size = spk_sample_rate * 2 * 20 / 1000; //one frame size(20ms)
+        voice_cfg->spk_cfg.onboard_spk_cfg.sample_rate = spk_sample_rate;
+        voice_cfg->spk_cfg.onboard_spk_cfg.frame_size = spk_sample_rate * 2 * 20 / 1000; //one frame size(20ms)
     }
 
     if (parameters->aec == 1)
     {
-        voice_cfg.aec_en = true;
-        voice_cfg.aec_cfg.aec_alg_cfg.aec_cfg.fs = mic_sample_rate;
+        voice_cfg->aec_en = true;
+        voice_cfg->aec_cfg.aec_alg_cfg.aec_cfg.fs = mic_sample_rate;
     }
     else
     {
-        voice_cfg.aec_en = false;
+        voice_cfg->aec_en = false;
     }
 
     switch (parameters->rmt_recoder_fmt)
@@ -833,53 +910,53 @@ int doorbell_audio_turn_on(audio_parameters_t *parameters)
         {
             /* g711 encoder config */
             g711_encoder_cfg_t g711_encoder_cfg = DEFAULT_G711_ENCODER_CONFIG();
-            voice_cfg.enc_cfg.g711_enc_cfg = g711_encoder_cfg;
+            voice_cfg->enc_cfg.g711_enc_cfg = g711_encoder_cfg;
             if (parameters->rmt_recoder_fmt == CODEC_FORMAT_G711A)
             {
-                voice_cfg.enc_type = AUDIO_ENC_TYPE_G711A;
-                voice_cfg.enc_cfg.g711_enc_cfg.enc_mode = G711_ENC_MODE_A_LOW;
+                voice_cfg->enc_type = AUDIO_ENC_TYPE_G711A;
+                voice_cfg->enc_cfg.g711_enc_cfg.enc_mode = G711_ENC_MODE_A_LOW;
             }
             else
             {
-                voice_cfg.enc_type = AUDIO_ENC_TYPE_G711U;
-                voice_cfg.enc_cfg.g711_enc_cfg.enc_mode = G711_ENC_MODE_U_LOW;
+                voice_cfg->enc_type = AUDIO_ENC_TYPE_G711U;
+                voice_cfg->enc_cfg.g711_enc_cfg.enc_mode = G711_ENC_MODE_U_LOW;
             }
-            voice_cfg.enc_cfg.g711_enc_cfg.buf_sz = mic_sample_rate * 2 * 20 / 1000; //one frame size(20ms)
-            voice_cfg.enc_cfg.g711_enc_cfg.out_block_size = voice_cfg.enc_cfg.g711_enc_cfg.buf_sz >> 1;
+            voice_cfg->enc_cfg.g711_enc_cfg.buf_sz = mic_sample_rate * 2 * 20 / 1000; //one frame size(20ms)
+            voice_cfg->enc_cfg.g711_enc_cfg.out_block_size = voice_cfg->enc_cfg.g711_enc_cfg.buf_sz >> 1;
             /* config raw_read input buffer */
-            voice_cfg.read_pool_size = voice_cfg.enc_cfg.g711_enc_cfg.out_block_size;
+            voice_cfg->read_pool_size = voice_cfg->enc_cfg.g711_enc_cfg.out_block_size;
 
             /* g711 decoder config */
             g711_decoder_cfg_t g711_decoder_cfg = DEFAULT_G711_DECODER_CONFIG();
-            voice_cfg.dec_cfg.g711_dec_cfg = g711_decoder_cfg;
+            voice_cfg->dec_cfg.g711_dec_cfg = g711_decoder_cfg;
             if (parameters->rmt_recoder_fmt == CODEC_FORMAT_G711A)
             {
-                voice_cfg.dec_type = AUDIO_DEC_TYPE_G711A;
-                voice_cfg.dec_cfg.g711_dec_cfg.dec_mode = G711_DEC_MODE_A_LOW;
+                voice_cfg->dec_type = AUDIO_DEC_TYPE_G711A;
+                voice_cfg->dec_cfg.g711_dec_cfg.dec_mode = G711_DEC_MODE_A_LOW;
             }
             else
             {
-                voice_cfg.dec_type = AUDIO_DEC_TYPE_G711U;
-                voice_cfg.dec_cfg.g711_dec_cfg.dec_mode = G711_DEC_MODE_U_LOW;
+                voice_cfg->dec_type = AUDIO_DEC_TYPE_G711U;
+                voice_cfg->dec_cfg.g711_dec_cfg.dec_mode = G711_DEC_MODE_U_LOW;
             }
-            voice_cfg.dec_cfg.g711_dec_cfg.out_block_size = spk_sample_rate * 2 * 20 / 1000; //one frame size(20ms)
-            voice_cfg.dec_cfg.g711_dec_cfg.buf_sz = voice_cfg.dec_cfg.g711_dec_cfg.out_block_size >> 1;
+            voice_cfg->dec_cfg.g711_dec_cfg.out_block_size = spk_sample_rate * 2 * 20 / 1000; //one frame size(20ms)
+            voice_cfg->dec_cfg.g711_dec_cfg.buf_sz = voice_cfg->dec_cfg.g711_dec_cfg.out_block_size >> 1;
             /* config raw_write output buffer */
-            voice_cfg.write_pool_size = voice_cfg.dec_cfg.g711_dec_cfg.buf_sz;
+            voice_cfg->write_pool_size = voice_cfg->dec_cfg.g711_dec_cfg.buf_sz;
         }
         break;
 
         case CODEC_FORMAT_PCM:
         {
             /* pcm encoder config */
-            voice_cfg.enc_type = AUDIO_ENC_TYPE_PCM;
-            voice_cfg.enc_cfg.pcm_enc_cfg = 0;      // not used
-            voice_cfg.dec_type = AUDIO_DEC_TYPE_PCM;
-            voice_cfg.dec_cfg.pcm_dec_cfg = 0;      //not used
+            voice_cfg->enc_type = AUDIO_ENC_TYPE_PCM;
+            voice_cfg->enc_cfg.pcm_enc_cfg = 0;      // not used
+            voice_cfg->dec_type = AUDIO_DEC_TYPE_PCM;
+            voice_cfg->dec_cfg.pcm_dec_cfg = 0;      //not used
 
             /* config raw_read input buffer and raw_write output buffer */
-            voice_cfg.read_pool_size = mic_sample_rate * 2 * 20 / 1000; //one frame size(20ms)
-            voice_cfg.write_pool_size = spk_sample_rate * 2 * 20 / 1000; //one frame size(20ms)
+            voice_cfg->read_pool_size = mic_sample_rate * 2 * 20 / 1000; //one frame size(20ms)
+            voice_cfg->write_pool_size = spk_sample_rate * 2 * 20 / 1000; //one frame size(20ms)
         }
         break;
 
@@ -891,19 +968,25 @@ int doorbell_audio_turn_on(audio_parameters_t *parameters)
         break;
     }
 
-    //voice_cfg.event_handle = doorbell_audio_event_handle; /* close audio event, because sram is not enough */
-    voice_cfg.event_handle = NULL;
-    voice_cfg.args = NULL;
-    db_device_info->voice_handle = bk_voice_init(&voice_cfg);
+    doorbell_audio_set_voc_cust_params(voice_cfg, AUD_SERVICE_DOORBELL_VOC);
+    bk_aud_debug_set_service_type(AUD_SERVICE_DOORBELL_VOC);
+
+    //voice_cfg->event_handle = doorbell_audio_event_handle; /* close audio event, because sram is not enough */
+    voice_cfg->event_handle = NULL;
+    voice_cfg->args = NULL;
+    db_device_info->voice_handle = bk_voice_init(voice_cfg);
     if (!db_device_info->voice_handle)
     {
         LOGE("voice init fail\n");
         goto error;
     }
 
+    bk_app_aud_get_service_handle((void *)db_device_info->voice_handle, AUD_SERVICE_DOORBELL_VOC);
+    set_app_aud_cust_service_handle((void *)db_device_info->voice_handle, AUD_SERVICE_DOORBELL_VOC);
+
     voice_read_cfg_t voice_read_cfg = VOICE_READ_CFG_DEFAULT();
     voice_read_cfg.voice_handle = db_device_info->voice_handle;
-    //voice_read_cfg.max_read_size = mic_sample_rate * 2 * 20 / 1000; //one frame size(20ms)
+//  voice_read_cfg.max_read_size = mic_sample_rate * 2 * 20 / 1000; //one frame size(20ms)
     voice_read_cfg.max_read_size = 1280;//mic_sample_rate * 2 * 20 * 10 / 1000; //one frame size(200ms)
     voice_read_cfg.voice_read_callback = doorbell_udp_voice_send_callback;
     voice_read_cfg.args = NULL;
@@ -952,6 +1035,12 @@ int doorbell_audio_turn_on(audio_parameters_t *parameters)
         doorbell_current_service->audio_state_changed(DB_TURN_ON);
     }
 
+    if (voice_cfg)
+    {
+        os_free(voice_cfg);
+        voice_cfg=NULL;
+    }
+
     return BK_OK;
 error:
     if (db_device_info->voice_read_handle)
@@ -986,6 +1075,12 @@ error:
     db_device_info->voice_read_handle = NULL;
     db_device_info->voice_write_handle  = NULL;
     db_device_info->voice_handle  = NULL;
+
+    if (voice_cfg)
+    {
+        os_free(voice_cfg);
+        voice_cfg=NULL;
+    }
 
     return BK_FAIL;
 }

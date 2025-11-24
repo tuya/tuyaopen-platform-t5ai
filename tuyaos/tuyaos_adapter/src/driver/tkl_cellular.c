@@ -1,12 +1,12 @@
 /**
- * @file tkl_cellular.h
- * @brief Common process - adapter the cellular api
- * @version 0.1
- * @date 2025-04-21
- *
- * @copyright Copyright 2020-2025 Tuya Inc. All Rights Reserved.
- *
- */
+* @file tkl_cellular.h
+* @brief Common process - adapter the cellular api
+* @version 0.1
+* @date 2025-04-21
+*
+* @copyright Copyright 2020-2025 Tuya Inc. All Rights Reserved.
+*
+*/
 #include <string.h>
 #include "tuya_cloud_types.h"
 #include "tuya_error_code.h"
@@ -206,5 +206,21 @@ OPERATE_RET tkl_cellular_get_rssi(char *rssi)
 #if CONFIG_BK_MODEM
     *rssi = dce_pdp_ctx.rssi;
 #endif
+    return OPRT_OK;
+}
+
+/**
+ * @brief  get the voltage of the cellular module
+ * 
+ * @param[out]   volt: voltage value
+ *
+ * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
+ */
+OPERATE_RET tkl_cellular_get_volt(UINT32_T *volt)
+{
+#if CONFIG_BK_MODEM
+    *volt = dce_pdp_ctx.volt;
+#endif
+
     return OPRT_OK;
 }

@@ -134,6 +134,7 @@ bk_err_t spi_hal_set_baud_rate(spi_hal_t *hal, uint32_t baud_rate)
 		spi_clk = CONFIG_SPI_MAX_BAUD_RATE;
 	}
 
+	// Modified by TUYA Start
 	if(baud_rate == SPI_BAUD_RATE_2M88) {
 		HAL_LOGI("spi select src_clk apll 98M\r\n");
 		sys_hal_apll_en(1);
@@ -183,6 +184,7 @@ bk_err_t spi_hal_set_baud_rate(spi_hal_t *hal, uint32_t baud_rate)
 		spi_ll_set_clk_div(hal->hw, clk_div);
 		return BK_OK;
 	}
+	// Modified by TUYA End
 
 #if (CONFIG_SYSTEM_CTRL)
 	if (baud_rate <= CONFIG_XTAL_FREQ) {

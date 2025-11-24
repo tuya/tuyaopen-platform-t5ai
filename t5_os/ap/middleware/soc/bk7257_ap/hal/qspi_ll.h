@@ -206,8 +206,7 @@ static inline void qspi_ll_set_cmd_d_data_line(qspi_hw_t *hw, qspi_wire_mode_t d
 	hw->cmd_d_cfg2.data_line = data_line;
 }
 
-//Modify by Tuya
-static inline void qspi_ll_set_cmd_d_data_length(qspi_hw_t *hw, uint32_t data_len)
+static inline void qspi_ll_set_cmd_d_data_length(qspi_hw_t *hw, qspi_wire_mode_t data_len)
 {
 	hw->cmd_d_cfg2.data_len = data_len;
 }

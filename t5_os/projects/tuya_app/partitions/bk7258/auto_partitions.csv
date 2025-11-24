@@ -4,8 +4,8 @@
 # easyflash_ap:beken AP some components use it
 #Name,Offset,Size,Type,Read,Write
 primary_bootloader,         ,   68k,    code,TRUE,FALSE
-primary_cp_app,             ,   1088k,  code,TRUE,FALSE
-primary_ap_app,             ,   4012k,  code,TRUE,FALSE
+primary_cp_app,             ,   1224k,  code,TRUE,FALSE
+primary_ap_app,             ,   3876k,  code,TRUE,FALSE
 ota,                        ,   1780K,  data,TRUE,TRUE
 ota_mgr,            0x6c9000,   8K,     data,TRUE,TRUE
 usr_config,         0x6cb000,   1024K,  data,TRUE,TRUE

@@ -60,13 +60,13 @@ extern void bk_ota_confirm_update_partition(ota_confirm_flag ota_confirm_val);
 #endif
 #endif
 
-#if defined(CONFIG_WIFI_AT_ENABLE) && defined(CONFIG_WIFI_ENABLE)
+#if defined(CONFIG_WIFI_AT_ENABLE) && defined(CONFIG_WIFI_ENABLE) 
 #include "wifi_at.h"
 #endif
-#if defined(CONFIG_BT_AT_ENABLE) && defined(CONFIG_BT)
+#if defined(CONFIG_BT_AT_ENABLE) && defined(CONFIG_BT) 
 #include "bk_at_bluetooth.h"
 #endif
-#if defined(CONFIG_NETIF_AT_ENABLE) && defined(CONFIG_WIFI_ENABLE)
+#if defined(CONFIG_NETIF_AT_ENABLE) && defined(CONFIG_WIFI_ENABLE) 
 #include "bk_at_netif.h"
 
 
@@ -140,7 +140,7 @@ static int app_wifi_init(void)
 #if CONFIG_WIFI_AT_ENABLE
 	wifi_at_cmd_init();
 #endif
-#if CONFIG_NETIF_AT_ENABLE
+#if CONFIG_NETIF_AT_ENABLE 
 	netif_at_cmd_init();
 #endif
 

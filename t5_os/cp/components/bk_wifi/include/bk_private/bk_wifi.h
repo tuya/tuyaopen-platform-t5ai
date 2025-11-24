@@ -428,6 +428,17 @@ uint8_t* wifi_netif_vif_to_mac(void *vif);
 int wifi_netif_vif_to_vifid(void *vif);
 
 /* bk_wifi_rw */
+
+/**
+ * @brief  Configure Wi-Fi error debug mode when Wi-Fi transmission errors occur.
+ *
+ * This API is used to enable Wi-Fi error debug mode for capturing complete dump
+ * information when Wi-Fi transmission issues like AC(x)_tx_dma_dead, PHY errors,
+ * or other Wi-Fi errors occur. This helps in analyzing and debugging Wi-Fi problems.
+ *
+ * @param  flag  set true to enable Wi-Fi error debug mode, false to disable.
+ */
+void bk_wifi_set_wifi_err_dbg(bool flag);
 int bk_wifi_sta_set_power(int power);
 int bk_wifi_ap_set_power(int power);
 uint32_t bk_wifi_get_mac_time(void);
@@ -473,7 +484,17 @@ int cmd_wlan_get_ps_status();
 #define WLAN_DEFAULT_MASK       "255.255.255.0"
 
 #if CONFIG_BRIDGE
+typedef enum {
+    BRIDGE_STATE_DISABLED = 0,
+    BRIDGE_STATE_DISABLING,
+    BRIDGE_STATE_ENABLING,
+    BRIDGE_STATE_ENABLED
+}bk_bridge_state_t;
+
 #define WLAN_ANY_IP         "0.0.0.0"
+bk_bridge_state_t bk_wifi_get_bridge_state(void);
+bk_err_t bk_wifi_sync_bridge_state(bk_bridge_state_t state);
+bk_err_t bk_wifi_check_client_mac_connected(uint8_t *mac);
 #endif
 
 void demo_scan_app_init(void);
@@ -634,7 +655,11 @@ void evm_bypass_mac_init(UINT32 frequency, INT32 band, UINT32 bandwidth);
 void evm_clear_ke_evt_mac_bit(void);
 void evm_set_ke_evt_mac_bit(void);
 void manual_cal_set_cc_backoff_flag(UINT8 enable);
+bk_err_t bk_wifi_csi_info_cb_register(bool enable);
 void bk_wifi_csi_info_cb(void * data);
+bk_err_t bk_wifi_bcn_cc_rxed_register_cb(const wifi_beacon_cc_rxed_t cc_cb, void *ctxt, bool enable);
+bk_err_t bk_wifi_bcn_cc_rxed_cb(uint8_t *cc, uint8_t cc_len);
+
 
 uint32_t evm_req_tx_for_ate(uint32_t frame_len);
 uint32_t hal_machw_frame_duration_ate(uint8_t bw, uint8_t modf, uint8_t rate, uint8_t long_preamble, uint8_t short_gi, uint16_t len);

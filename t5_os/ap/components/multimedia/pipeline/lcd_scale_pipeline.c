@@ -147,14 +147,14 @@ typedef struct {
 	mux_callback_t reset_cb;
 
 } scale_config_t;
+
 typedef struct {
 	beken_mutex_t lock;
 } scale_info_t;
-static scale_info_t *scale_info = NULL;
 
 
 #ifdef CONFIG_FREERTOS_SMP
-	static SPINLOCK_SECTION volatile spinlock_t scale_pipeline_spin_lock = SPIN_LOCK_INIT;
+static SPINLOCK_SECTION volatile spinlock_t scale_pipeline_spin_lock = SPIN_LOCK_INIT;
 #endif
 
 static inline uint32_t scale_pipeline_enter_critical()
@@ -179,6 +179,7 @@ static inline void scale_pipeline_exit_critical(uint32_t flags)
 
 
 static scale_config_t *scale_config = NULL;
+static scale_info_t *scale_info = NULL;
 
 static complex_buffer_t *scale_get_idle_buf(void)
 {
@@ -966,20 +967,19 @@ bk_err_t scale_task_open(lcd_scale_t *lcd_scale)
 {
 	int ret =BK_OK;
 
-	rtos_lock_mutex(&scale_info->lock);
 	if (scale_config != NULL && scale_config->task_running)
 	{
-		rtos_unlock_mutex(&scale_info->lock);
 		LOGE("%s, scale task have been opened!\r\n", __func__);
 		return ret;
 	}
-	rtos_unlock_mutex(&scale_info->lock);
 
+	rtos_lock_mutex(&scale_info->lock);
 	scale_config = (scale_config_t *)os_malloc(sizeof(scale_config_t));
 
 	if (scale_config == NULL)
 	{
 		LOGE("%s, malloc scale_config failed\r\n", __func__);
+		rtos_unlock_mutex(&scale_info->lock);
 		return BK_FAIL;
 	}
 
@@ -1092,6 +1092,8 @@ bk_err_t scale_task_open(lcd_scale_t *lcd_scale)
 
 	LOGD("%s complete\n", __func__);
 
+	rtos_unlock_mutex(&scale_info->lock);
+
 	return ret;
 error:
 
@@ -1108,6 +1110,8 @@ error:
 		os_free(scale_config);
 		scale_config = NULL;
 	}
+
+	rtos_unlock_mutex(&scale_info->lock);
 
 	return BK_FAIL;
 }
@@ -1138,20 +1142,14 @@ bk_err_t scale_task_close(void)
 {
 	LOGD("%s\n", __func__);
 
-	if (scale_info == NULL)
-		return BK_OK;
-
-	rtos_lock_mutex(&scale_info->lock);
-
 	if (scale_config == NULL || !scale_config->task_running)
 	{
-		rtos_unlock_mutex(&scale_info->lock);
 		LOGD("%s already close\n", __func__);
 		return BK_OK;
 	}
 
+	rtos_lock_mutex(&scale_info->lock);
 	scale_config->enable = false;
-	rtos_unlock_mutex(&scale_info->lock);
 
 	scale_task_stop();
 
@@ -1248,6 +1246,8 @@ bk_err_t scale_task_close(void)
 
 	LOGD("%s complete\n", __func__);
 
+	rtos_unlock_mutex(&scale_info->lock);
+
 	return BK_OK;
 }
 
@@ -1286,16 +1286,13 @@ bk_err_t bk_scale_encode_request(pipeline_encode_request_t *request, mux_callbac
 {
 	pipeline_encode_request_t *scale_request = NULL;
 
-	rtos_lock_mutex(&scale_info->lock);
-
 	if (scale_config == NULL || scale_config->enable == false)
 	{
-		rtos_unlock_mutex(&scale_info->lock);
 		LOGD("%s not open\n", __func__);
-		goto error;
+		return BK_FAIL;
 	}
 
-	rtos_unlock_mutex(&scale_info->lock);
+	rtos_lock_mutex(&scale_info->lock);
 
 	scale_request = (pipeline_encode_request_t *)os_malloc(sizeof(pipeline_encode_request_t));
 
@@ -1315,6 +1312,7 @@ bk_err_t bk_scale_encode_request(pipeline_encode_request_t *request, mux_callbac
 		goto error;
 	}
 
+	rtos_unlock_mutex(&scale_info->lock);
 
 	return BK_OK;
 
@@ -1332,6 +1330,7 @@ error:
 		scale_request = NULL;
 	}
 
+	rtos_unlock_mutex(&scale_info->lock);
 
 	LOGE("%s failed\n", __func__);
 

@@ -26,7 +26,6 @@ extern "C" {
  * @ingroup bk_api_adc
  * @{
  */
-
 #define BK_ERR_ADC_NOT_INIT                      (BK_ERR_ADC_BASE - 1) /**< ADC driver not init */
 #define BK_ERR_ADC_INVALID_CHAN                  (BK_ERR_ADC_BASE - 2) /**< ADC chan number is invalid */
 #define BK_ERR_ADC_BUSY                          (BK_ERR_ADC_BASE - 3) /**< ADC channel is busy */

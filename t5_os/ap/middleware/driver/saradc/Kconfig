@@ -2,6 +2,7 @@ menu "SARADC"
 	config SARADC
 		bool "Enable SARADC"
 		default y
+
 	config SARADC_CLIENT
 		bool "Enable SARADC client"
 		depends on SARADC
@@ -12,13 +13,14 @@ menu "SARADC"
 		depends on SARADC
 		default n
 
-    config SARADC_TEST
+	config SARADC_TEST
 		depends on SARADC
 		bool "Enable SARADC test"
 		default y
-  	config SARADC_EXAMPLE
+
+	config SARADC_EXAMPLE
 		depends on SARADC
 		bool "Enable SARADC example"
 		default n
-endmenu	
 
+endmenu

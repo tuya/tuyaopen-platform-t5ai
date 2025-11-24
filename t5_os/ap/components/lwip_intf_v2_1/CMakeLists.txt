@@ -12,6 +12,7 @@ list(APPEND incs
 	)
 
 	list(APPEND srcs
+	lwip-2.1.2/port/hwcsum.c
 	lwip-2.1.2/port/wlanif.c
 	lwip-2.1.2/port/net.c
 	lwip-2.1.2/port/sys_arch.c
@@ -24,7 +25,9 @@ list(APPEND incs
 	lwip-2.1.2/src/api/sockets.c
 	lwip-2.1.2/src/api/tcpip.c
 	lwip-2.1.2/src/apps/mdns/mdns.c
+	lwip-2.1.2/src/apps/ifaddrs/lwip_ifaddrs.c
 	lwip-2.1.2/src/apps/ping/ping.c
+	lwip-2.1.2/src/api/if_api.c
 	lwip-2.1.2/src/apps/tftp/tftp_server.c  # Modified by TUYA
 	lwip-2.1.2/src/core/def.c
 	lwip-2.1.2/src/core/dns.c
@@ -72,12 +75,35 @@ if (CONFIG_ETH)
 	lwip-2.1.2/port/ethernetif.c
 	)
 endif()
-
 if (CONFIG_BRIDGE)
 	list(APPEND srcs
 	lwip-2.1.2/src/netif/bridgeif.c
 	lwip-2.1.2/src/netif/bridgeif_fdb.c
 	)
+endif()
+if (CONFIG_PAN)
+	list(APPEND srcs
+	lwip-2.1.2/port/panif.c
+	)
+endif()
+# lwip apps
+if (CONFIG_LWIP_HTTPD)
+	list(APPEND srcs
+	lwip-2.1.2/src/apps/http/fs.c
+	lwip-2.1.2/src/apps/http/fsdata.c
+	lwip-2.1.2/src/apps/http/httpd.c
+	)
+endif()
+
+
+if (CONFIG_RIO)
+       list(APPEND incs
+               lwip-2.1.2/port/ip6_route_hook
+               )
+       list(APPEND srcs
+               lwip-2.1.2/port/ip6_route_hook/ip6_route_hook.c
+               lwip-2.1.2/port/ip6_route_hook/ip6_route_table.c
+               )
 endif()
 
 if(CONFIG_LWIP_PPP_SUPPORT)

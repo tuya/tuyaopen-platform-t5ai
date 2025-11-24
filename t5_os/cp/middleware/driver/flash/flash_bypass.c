@@ -494,45 +494,126 @@ static bk_err_t flash_bypass_op_read_and_check(uint8_t *tx_buf, uint32_t tx_len,
 	}
 
 	os_memset(err_buf, 0x00, rx_len);
+	os_memset(rx_buf1, 0xFF, rx_len); 
+	os_memset(rx_buf2, 0xFF, rx_len);
 
-	// read retry 3 times(default), until the read result consecutively twice are the same
+	uint8_t *ff_buf = (uint8_t *)os_malloc(rx_len);
+	if (!ff_buf) {
+		FLASH_BYPASS_LOGW("%s malloc ff_buf err\r\n", __func__);
+		ret = BK_FAIL;
+		goto read_check_exit;
+	}
+	os_memset(ff_buf, 0xFF, rx_len);
+
+	// read retry 5 times(default), until the read result consecutively twice are the same
+	bool read_success = false;
 	for (uint8_t i = 0; i < FLASH_BYPASS_OTP_READ_RETRY_MAX; i++) {
+		// Adaptive delay: increase delay with retry count to allow flash to stabilize
+		uint32_t base_delay_us = 5000; // Base delay increased from 2ms to 5ms
+		uint32_t retry_delay_us = base_delay_us + (i * 2000); // Add 2ms per retry
+		
+		// Wait for flash to be ready before read
+		bk_delay_us(1000);
 		ret1 = flash_bypass_op_read(tx_buf, tx_len, rx_buf1, rx_len);
-		bk_delay_us(1000);
+		bk_delay_us(retry_delay_us);
 		ret2 = flash_bypass_op_read(tx_buf, tx_len, rx_buf2, rx_len);
-		bk_delay_us(1000);
+		bk_delay_us(retry_delay_us);
 
 		// if flash_bypass_op_read ok, it will return ret >= 0
 		if ((ret1 < 0) || (ret2 < 0)) {
+			FLASH_BYPASS_LOGW("%s read failed, ret1=%d, ret2=%d, retry=%d\r\n", __func__, ret1, ret2, i);
 			continue;
 		}
 
-		if ((!flash_bypass_op_read_buf_can_be_zero_flag) &&
-		((os_memcmp(rx_buf1, err_buf, rx_len) == 0) || (os_memcmp(rx_buf2, err_buf, rx_len) == 0))) {
-			continue;
+		bool buf1_is_zero = (os_memcmp(rx_buf1, err_buf, rx_len) == 0);
+		bool buf2_is_zero = (os_memcmp(rx_buf2, err_buf, rx_len) == 0);
+
+		bool buf1_is_ff = (os_memcmp(rx_buf1, ff_buf, rx_len) == 0);
+		bool buf2_is_ff = (os_memcmp(rx_buf2, ff_buf, rx_len) == 0);
+
+		if (flash_bypass_op_read_buf_can_be_zero_flag) {
+			if ((buf1_is_zero && buf2_is_zero) || (buf1_is_ff && buf2_is_ff) ||
+				(buf1_is_zero && buf2_is_ff) || (buf1_is_ff && buf2_is_zero)) {
+				read_success = true;
+				FLASH_BYPASS_LOGV("%s read uninitialized OTP (all 0 or 0xFF), retry=%d\r\n", __func__, i);
+				break;
+			}
+		}
+
+		if (!flash_bypass_op_read_buf_can_be_zero_flag) {
+			if (buf1_is_ff && buf2_is_ff) {
+				read_success = true;
+				FLASH_BYPASS_LOGV("%s read erased OTP (all 0xFF), retry=%d\r\n", __func__, i);
+				break;
+			}
+			if (buf1_is_zero && buf2_is_zero) {
+				read_success = true;
+				FLASH_BYPASS_LOGV("%s read uninitialized OTP (all 0x00), retry=%d\r\n", __func__, i);
+				break;
+			}
+			if ((buf1_is_zero && buf2_is_ff) || (buf1_is_ff && buf2_is_zero)) {
+				read_success = true;
+				FLASH_BYPASS_LOGV("%s read uninitialized OTP (mixed 0x00/0xFF), retry=%d\r\n", __func__, i);
+				os_memcpy(rx_buf2, ff_buf, rx_len);
+				break;
+			}
 		}
 
 		if (os_memcmp(rx_buf1, rx_buf2, rx_len) == 0) {
+			read_success = true;
+			FLASH_BYPASS_LOGV("%s read success on retry=%d\r\n", __func__, i);
 			break;
+		}else{
+			FLASH_BYPASS_LOGW("%s read data inconsistent, retry=%d/%d, next delay=%dus\r\n", 
+				__func__, i+1, FLASH_BYPASS_OTP_READ_RETRY_MAX, retry_delay_us);
+			
+			// Try one more read with longer delay before giving up this attempt
+			if (i < FLASH_BYPASS_OTP_READ_RETRY_MAX - 1) {
+				bk_delay_us(retry_delay_us * 2); // Double delay before next retry
+			}
+			
+			if (flash_bypass_op_read_buf_can_be_zero_flag && (i == (FLASH_BYPASS_OTP_READ_RETRY_MAX - 1))) {
+				FLASH_BYPASS_LOGW("%s WRITE internal read: use first read result despite inconsistency\r\n", __func__);
+				read_success = true;
+				os_memcpy(rx_buf2, rx_buf1, rx_len);
+				break;
+			}			
 		}
 	}
 
-	if ((!flash_bypass_op_read_buf_can_be_zero_flag) &&
-		((os_memcmp(rx_buf1, err_buf, rx_len) == 0) || (os_memcmp(rx_buf2, err_buf, rx_len) == 0))) {
-		FLASH_BYPASS_LOGW("%s fail\r\n", __func__);
-		ret = BK_FAIL;
-		goto read_check_exit;
+	if (!read_success) {
+		if (flash_bypass_op_read_buf_can_be_zero_flag) {
+			FLASH_BYPASS_LOGW("%s WRITE internal read: all retries failed, use 0xFF as default\r\n", __func__);
+			os_memset(rx_buf2, 0xFF, rx_len);
+			read_success = true;
+		} else {
+			FLASH_BYPASS_LOGW("%s fail after %d retries\r\n", __func__, FLASH_BYPASS_OTP_READ_RETRY_MAX);
+			ret = BK_FAIL;
+			if (ff_buf) {
+				os_free(ff_buf);
+			}
+			goto read_check_exit;
+		}
 	}
 
-	if (os_memcmp(rx_buf1, rx_buf2, rx_len) != 0) {
-		FLASH_BYPASS_LOGW("%s fail\r\n", __func__);
-		ret = BK_FAIL;
-		goto read_check_exit;
+	if (!flash_bypass_op_read_buf_can_be_zero_flag) {
+		if (os_memcmp(rx_buf1, rx_buf2, rx_len) != 0) {
+			FLASH_BYPASS_LOGW("%s fail: data inconsistent\r\n", __func__);
+			ret = BK_FAIL;
+			if (ff_buf) {
+				os_free(ff_buf);
+			}
+			goto read_check_exit;
+		}
 	}
 
 	ret = BK_OK;
 
 	os_memcpy(rx_buf, rx_buf2, rx_len);
+
+	if (ff_buf) {
+		os_free(ff_buf);
+	}
 
 read_check_exit:
 	if (rx_buf1) {
@@ -901,10 +982,38 @@ static bk_err_t flash_bypass_otp_write(flash_bypass_otp_ctrl_t *otp_cfg)
 		os_memcpy(otp_write_cfg.write_buf, otp_temp_cfg->write_buf + i * FLASH_BYPASS_OTP_PAGE_LENGTH, FLASH_BYPASS_OTP_PAGE_LENGTH);
 		ret = flash_bypass_otp_write_without_read(&otp_write_cfg);
 		if (ret != BK_OK) {
-			FLASH_BYPASS_LOGW("%s fail\r\n", __func__);
+			FLASH_BYPASS_LOGW("%s fail at page %d\r\n", __func__, i);
 			ret = BK_FAIL;
 			goto otp_write_exit;
 		}
+	}
+
+	flash_bypass_otp_ctrl_t verify_cfg = {0};
+	verify_cfg.otp_idx = otp_cfg->otp_idx;
+	verify_cfg.addr_offset = otp_cfg->addr_offset;
+	verify_cfg.read_len = otp_cfg->write_len;
+	verify_cfg.read_buf = (uint8_t *)os_malloc(verify_cfg.read_len);
+	if (verify_cfg.read_buf == NULL) {
+		FLASH_BYPASS_LOGW("%s verify malloc err\r\n", __func__);
+		ret = BK_FAIL;
+		goto otp_write_exit;
+	}
+
+	ret = flash_bypass_otp_read(&verify_cfg, 0);
+	if (ret == BK_OK) {
+		if (os_memcmp(verify_cfg.read_buf, otp_cfg->write_buf, otp_cfg->write_len) != 0) {
+			FLASH_BYPASS_LOGW("%s verify fail: written data mismatch\r\n", __func__);
+			ret = BK_FAIL;
+		} else {
+			FLASH_BYPASS_LOGI("%s verify success\r\n", __func__);
+		}
+	} else {
+		FLASH_BYPASS_LOGW("%s verify read fail\r\n", __func__);
+		ret = BK_FAIL;
+	}
+
+	if (verify_cfg.read_buf) {
+		os_free(verify_cfg.read_buf);
 	}
 
 otp_write_exit:
@@ -1002,7 +1111,7 @@ bk_err_t flash_bypass_otp_operation(flash_bypass_otp_cmd_t cmd, flash_bypass_otp
 
 	switch(cmd) {
 		case FLASH_BYPASS_OTP_READ:
-			ret = flash_bypass_otp_read(otp_cfg, 1);
+			ret = flash_bypass_otp_read(otp_cfg, 0);
 			break;
 
 		case FLASH_BYPASS_OTP_EARSE:
@@ -1073,7 +1182,7 @@ void flash_bypass_init(void) {
 	gpio_dev_unmap(SPI0_LL_MISO_PIN);
 }
 
-__attribute__((section(".itcm_sec_code"))) void flash_bypass_quad_enable(void)
+__attribute__((section(".iram"))) void flash_bypass_quad_enable(void)
 {
 	uint32_t reg;
 	uint32_t reg_ctrl, reg_dat;
@@ -1152,7 +1261,7 @@ __attribute__((section(".itcm_sec_code"))) void flash_bypass_quad_enable(void)
 }
 
 
-__attribute__((section(".itcm_sec_code"))) void flash_bypass_quad_test(uint32_t quad_enable, uint32_t delay_cycle1, uint32_t delay_cycle2)
+__attribute__((section(".iram"))) void flash_bypass_quad_test(uint32_t quad_enable, uint32_t delay_cycle1, uint32_t delay_cycle2)
 {
 	uint32_t reg;
 	uint32_t reg_ctrl, reg_dat;

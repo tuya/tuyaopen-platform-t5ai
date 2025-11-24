@@ -875,6 +875,21 @@ typedef bk_err_t (*wifi_beacon_cc_rxed_t)(void *ctxt, uint8_t *cc, uint8_t cc_le
  */
 typedef bk_err_t (* wifi_get_vsie_cb_t)(void* vendor_ie, uint8_t frame_type);
 
+typedef enum {
+	BRIDGE_STATE_DISABLED = 0,
+    BRIDGE_STATE_DISABLING,
+	BRIDGE_STATE_ENABLING,
+	BRIDGE_STATE_ENABLED
+}bk_bridge_state_t;
+
+typedef struct{
+    char *bridge_ssid;
+    char *ext_sta_ssid;
+    char *key;
+    char *hostname;
+    int channel;
+}bk_bridge_config_t;
+
 #ifdef __cplusplus
 }
 #endif

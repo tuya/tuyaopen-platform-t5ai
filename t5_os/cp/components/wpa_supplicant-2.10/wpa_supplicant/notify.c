@@ -149,9 +149,7 @@ void wlan_store_fci(struct wpa_supplicant *wpa_s)
 	os_memset(&fci, 0, sizeof(fci));
 
 	//read the static ip param that obtained
-#if CONFIG_EASY_FLASH_FAST_CONNECT
-	bk_get_env_enhance("fast_connect_id", (void *)&pre_fci, sizeof(struct wlan_fast_connect_info));
-#endif
+	wlan_read_fast_connect_info(&pre_fci);
 
 	os_memcpy(fci.ip_addr, pre_fci.ip_addr, sizeof(pre_fci.ip_addr));
 	os_memcpy(fci.netmask, pre_fci.netmask, sizeof(pre_fci.netmask));
@@ -220,9 +218,7 @@ void wlan_store_fci(struct wpa_supplicant *wpa_s)
 	wpa_hexdump(MSG_DEBUG, "fci", &fci, sizeof(fci));
 
 	/* write fci to flash if previous fci is different with current */
-#if CONFIG_EASY_FLASH_FAST_CONNECT
-	bk_set_env_enhance("fast_connect_id", (void *)&fci, sizeof(struct wlan_fast_connect_info));
-#endif
+	wlan_write_fast_connect_info(&fci);
 
 out:
 	// #if CONFIG_WIFI_MFP_CONNECT_DEAUTH
@@ -233,7 +229,8 @@ out:
 }
 #endif
 
-#if BK_SUPPLICANT
+//#if BK_SUPPLICANT
+#if 0
 #define RATE_11B_1MBPS      0x02
 #define RATE_11B_2MBPS      0x04
 #define RATE_11B_5_5MBPS    0x0B
@@ -316,7 +313,7 @@ void wpas_notify_connected(struct wpa_supplicant *wpa_s)
 #if BK_SUPPLICANT
 		wlan_sta_bss_flush(0);
 		/* parse mac rates in the beacon frame and set 11b flags */
-		wpa_parse_mac_rates_ie(wpa_s);
+		//wpa_parse_mac_rates_ie(wpa_s);
 #endif
 #ifdef CONFIG_WPA_PSK_CACHE
 		wpa_psk_thread_lower_prio();  // stop_wpa_psk_cal_thread();

@@ -1,4 +1,4 @@
-// Copyright 2022-2023 Beken
+// Copyright 2025-2026 Beken
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,7 +20,7 @@
 #include "semphr.h"
 #include "task.h"
 #include <components/bk_audio/audio_streams/onboard_mic_stream.h>
-#include <components/bk_audio/audio_pipeline/audio_common.h>
+#include <components/bk_audio/audio_pipeline/audio_types.h>
 #include <components/bk_audio/audio_pipeline/audio_mem.h>
 #include <components/bk_audio/audio_pipeline/audio_error.h>
 #include <components/bk_audio/audio_pipeline/audio_port.h>
@@ -28,6 +28,8 @@
 #include <driver/aud_adc.h>
 #include <driver/dma.h>
 #include <driver/audio_ring_buff.h>
+#include <driver/flash.h>
+#include <driver/flash_types.h>
 
 
 #define TAG  "OB_MIC"
@@ -137,6 +139,32 @@ typedef struct onboard_mic_stream
 } onboard_mic_stream_t;
 
 static onboard_mic_stream_t *gl_onboard_mic = NULL;
+
+static void flash_op_notify_onboard_mic_stream_handler(uint32_t param, void *args)
+{
+    audio_element_handle_t onboard_mic_stream = (audio_element_handle_t)args;
+    if (!onboard_mic_stream)
+    {
+        return;
+    }
+    onboard_mic_stream_t *onboard_mic = (onboard_mic_stream_t *)audio_element_getdata(onboard_mic_stream);
+    if (onboard_mic && audio_element_get_state(onboard_mic_stream) == AEL_STATE_RUNNING)
+    {
+        if (param)
+        {
+            BK_LOGD(TAG, "%s, start earse or write flash, stop dma and adc \n", __func__);
+            bk_dma_stop(onboard_mic->mic_dma_id);
+            bk_aud_adc_stop();
+            ring_buffer_clear(&onboard_mic->mic_rb);
+        }
+        else
+        {
+            BK_LOGD(TAG, "%s, stop earse or write flash, start dma and adc \n", __func__);
+            bk_dma_start(onboard_mic->mic_dma_id);
+            bk_aud_adc_start();
+        }
+    }
+}
 
 static bk_err_t aud_adc_dma_deconfig(onboard_mic_stream_t *onboard_mic)
 {
@@ -471,6 +499,8 @@ static bk_err_t _onboard_mic_destroy(audio_element_handle_t self)
     audio_free(onboard_mic);
     onboard_mic = NULL;
 
+    mb_flash_unregister_op_onboard_mic_stream_notify();
+
     ONBOARD_MIC_DATA_COUNT_CLOSE();
     ONBOARD_MIC_DATA_DUMP_BY_UART_CLOSE();
 
@@ -591,6 +621,8 @@ audio_element_handle_t onboard_mic_stream_init(onboard_mic_stream_cfg_t *config)
     info.codec_fmt = BK_CODEC_TYPE_PCM;
     audio_element_setinfo(el, &info);
 
+    mb_flash_register_op_onboard_mic_stream_notify(flash_op_notify_onboard_mic_stream_handler, el);
+
     ONBOARD_MIC_DATA_COUNT_OPEN();
     ONBOARD_MIC_DATA_DUMP_BY_UART_OPEN();
 
@@ -632,7 +664,7 @@ bk_err_t onboard_mic_stream_set_digital_gain(audio_element_handle_t onboard_mic_
 
     if (onboard_mic->adc_cfg.dig_gain == gain)
     {
-        BK_LOGD(TAG, "not need updata onboard mic digital gain \n");
+        BK_LOGD(TAG, "not need update onboard mic digital gain \n");
         return BK_OK;
     }
 
@@ -643,7 +675,7 @@ bk_err_t onboard_mic_stream_set_digital_gain(audio_element_handle_t onboard_mic_
     }
     else
     {
-        BK_LOGE(TAG, "%s, line: %d, updata mic digital gain fail \n", __func__, __LINE__);
+        BK_LOGE(TAG, "%s, line: %d, update mic digital gain fail \n", __func__, __LINE__);
         return BK_FAIL;
     }
 
@@ -669,6 +701,65 @@ bk_err_t onboard_mic_stream_get_digital_gain(audio_element_handle_t onboard_mic_
     }
 
     *gain = onboard_mic->adc_cfg.dig_gain;
+
+    return BK_OK;
+}
+
+bk_err_t onboard_mic_stream_set_analog_gain(audio_element_handle_t onboard_mic_stream, uint8_t gain)
+{
+    onboard_mic_stream_t *onboard_mic = (onboard_mic_stream_t *)audio_element_getdata(onboard_mic_stream);
+
+    /* check param */
+    if (gain < 0 || gain > 0x3f)
+    {
+        BK_LOGE(TAG, "gain: %d is out of range: 0x00 ~ 0x3f \n", gain);
+        return BK_FAIL;
+    }
+
+    /* check param */
+    if (onboard_mic == NULL)
+    {
+        BK_LOGE(TAG, "%s, line: %d, onboard_mic is not init \n", __func__, __LINE__);
+        return BK_FAIL;
+    }
+
+    if (onboard_mic->adc_cfg.ana_gain == gain)
+    {
+        BK_LOGD(TAG, "not need update onboard mic analog gain \n");
+        return BK_OK;
+    }
+
+	if (BK_OK == bk_aud_set_ana_mic0_gain(gain))
+	{
+		onboard_mic->adc_cfg.ana_gain = gain;
+		audio_element_setdata(onboard_mic_stream, onboard_mic);
+	} else
+	{
+		BK_LOGE(TAG, "%s, line: %d, update mic analog gain fail \n", __func__, __LINE__);
+		return BK_FAIL;
+	}
+
+    return BK_OK;
+}
+
+bk_err_t onboard_mic_stream_get_analog_gain(audio_element_handle_t onboard_mic_stream, uint8_t *gain)
+{
+    onboard_mic_stream_t *onboard_mic = (onboard_mic_stream_t *)audio_element_getdata(onboard_mic_stream);
+    /* check param */
+    if (gain == NULL)
+    {
+        BK_LOGE(TAG, "%s, line: %d, gain is NULL\n", __func__, __LINE__);
+        return BK_FAIL;
+    }
+
+    /* check param */
+    if (onboard_mic == NULL)
+    {
+        BK_LOGE(TAG, "%s, line: %d, onboard_mic is not init \n", __func__, __LINE__);
+        return BK_FAIL;
+    }
+
+    *gain = onboard_mic->adc_cfg.ana_gain;
 
     return BK_OK;
 }

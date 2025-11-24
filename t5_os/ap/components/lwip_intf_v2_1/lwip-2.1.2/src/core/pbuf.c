@@ -325,6 +325,10 @@ pbuf_alloc(pbuf_layer layer, u16_t length, pbuf_type type)
       LWIP_ASSERT("pbuf_alloc: erroneous type", 0);
       return NULL;
   }
+#if CONFIG_BRIDGE
+  p->sn = 0; 
+  p->elfags = 0; 
+#endif
   LWIP_DEBUGF(PBUF_DEBUG | LWIP_DBG_TRACE, ("pbuf_alloc(length=%"U16_F") == %p\n", length, (void *)p));
 #if PBUF_LIFETIME_DBG
       p->tx_alc_tick = 0;
@@ -1138,6 +1142,83 @@ pbuf_copy(struct pbuf *p_to, const struct pbuf *p_from)
 
 /**
  * @ingroup pbuf
+ * Copy part or all of one packet buffer into another, to a specified offset.
+ *
+ * @note Only data in one packet is copied, no packet queue!
+ * @note Argument order is shared with pbuf_copy, but different than pbuf_copy_partial.
+ *
+ * @param p_to pbuf destination of the copy
+ * @param p_from pbuf source of the copy
+ * @param copy_len number of bytes to copy
+ * @param offset offset in destination pbuf where to copy to
+ *
+ * @return ERR_OK if copy_len bytes were copied
+ *         ERR_ARG if one of the pbufs is NULL or p_from is shorter than copy_len
+ *                 or p_to is not big enough to hold copy_len at offset
+ *         ERR_VAL if any of the pbufs are part of a queue
+ */
+err_t
+pbuf_copy_partial_pbuf(struct pbuf *p_to, const struct pbuf *p_from, u16_t copy_len, u16_t offset)
+{
+  size_t offset_to = offset, offset_from = 0, len;
+
+  LWIP_DEBUGF(PBUF_DEBUG | LWIP_DBG_TRACE, ("pbuf_copy_partial_pbuf(%p, %p, %"U16_F", %"U16_F")\n",
+              (const void *)p_to, (const void *)p_from, copy_len, offset));
+
+  /* is the copy_len in range? */
+  LWIP_ERROR("pbuf_copy_partial_pbuf: copy_len bigger than source", ((p_from != NULL) &&
+             (p_from->tot_len >= copy_len)), return ERR_ARG;);
+  /* is the target big enough to hold the source? */
+  LWIP_ERROR("pbuf_copy_partial_pbuf: target not big enough", ((p_to != NULL) &&
+             (p_to->tot_len >= (offset + copy_len))), return ERR_ARG;);
+
+  /* iterate through pbuf chain */
+  do {
+    /* copy one part of the original chain */
+    if ((p_to->len - offset_to) >= (p_from->len - offset_from)) {
+      /* complete current p_from fits into current p_to */
+      len = p_from->len - offset_from;
+    } else {
+      /* current p_from does not fit into current p_to */
+      len = p_to->len - offset_to;
+    }
+    len = LWIP_MIN(copy_len, len);
+    MEMCPY((u8_t *)p_to->payload + offset_to, (u8_t *)p_from->payload + offset_from, len);
+    offset_to += len;
+    offset_from += len;
+    copy_len -= len;
+    LWIP_ASSERT("offset_to <= p_to->len", offset_to <= p_to->len);
+    LWIP_ASSERT("offset_from <= p_from->len", offset_from <= p_from->len);
+    if (offset_from >= p_from->len) {
+      /* on to next p_from (if any) */
+      offset_from = 0;
+      p_from = p_from->next;
+      LWIP_ERROR("p_from != NULL", (p_from != NULL) || (copy_len == 0), return ERR_ARG;);
+    }
+    if (offset_to == p_to->len) {
+      /* on to next p_to (if any) */
+      offset_to = 0;
+      p_to = p_to->next;
+      LWIP_ERROR("p_to != NULL", (p_to != NULL) || (copy_len == 0), return ERR_ARG;);
+    }
+
+    if ((p_from != NULL) && (p_from->len == p_from->tot_len)) {
+      /* don't copy more than one packet! */
+      LWIP_ERROR("pbuf_copy_partial_pbuf() does not allow packet queues!",
+                 (p_from->next == NULL), return ERR_VAL;);
+    }
+    if ((p_to != NULL) && (p_to->len == p_to->tot_len)) {
+      /* don't copy more than one packet! */
+      LWIP_ERROR("pbuf_copy_partial_pbuf() does not allow packet queues!",
+                 (p_to->next == NULL), return ERR_VAL;);
+    }
+  } while (copy_len);
+  LWIP_DEBUGF(PBUF_DEBUG | LWIP_DBG_TRACE, ("pbuf_copy_partial_pbuf: copy complete.\n"));
+  return ERR_OK;
+}
+
+/**
+ * @ingroup pbuf
  * Copy (part of) the contents of a packet buffer
  * to an application supplied buffer.
  *
@@ -1436,6 +1517,7 @@ pbuf_clone(pbuf_layer layer, pbuf_type type, struct pbuf *p)
   if (q == NULL) {
     return NULL;
   }
+
   err = pbuf_copy(q, p);
   LWIP_UNUSED_ARG(err); /* in case of LWIP_NOASSERT */
   LWIP_ASSERT("pbuf_copy failed", err == ERR_OK);

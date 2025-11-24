@@ -44,7 +44,8 @@ OPERATE_RET tkl_thread_create(TKL_THREAD_HANDLE* thread,
 
     BaseType_t ret = 0;
 #if (CONFIG_FREERTOS_SMP)
-    ret = xTaskCreatePinnedToCore(func, name, stack_size / sizeof(portSTACK_TYPE), (void *const)arg, priority, (TaskHandle_t * const )thread, tskNO_AFFINITY);
+    // ret = xTaskCreatePinnedToCore(func, name, stack_size / sizeof(portSTACK_TYPE), (void *const)arg, priority, (TaskHandle_t * const )thread, tskNO_AFFINITY);
+    ret = xTaskCreateInPsram(func, name, stack_size / sizeof(portSTACK_TYPE), (void *const)arg, priority, (TaskHandle_t * const )thread, tskNO_AFFINITY);
 #else
     ret = xTaskCreate(func, name, stack_size / sizeof(portSTACK_TYPE), (void *const)arg, priority, (TaskHandle_t * const )thread);
 #endif

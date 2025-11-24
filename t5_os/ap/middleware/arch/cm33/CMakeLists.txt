@@ -10,6 +10,7 @@ if("${CONFIG_SOC_ARCH}" STREQUAL ${COMPONENT_NAME})
 
 	list(APPEND srcs
 		stack_base.c
+		trap_base_smp.c
 		arm.c
 		fpb.c
 		dwt.c
@@ -18,15 +19,12 @@ if("${CONFIG_SOC_ARCH}" STREQUAL ${COMPONENT_NAME})
 		arch_delay.c
 	)
 
-if(CONFIG_FREERTOS_SMP)
-    list(APPEND srcs
-        trap_base_smp.c
-    )
-else()
-    list(APPEND srcs
-    trap_base.c
-    )
+if(CONFIG_DUMP_TEST)
+	list(APPEND srcs
+		trap_test.c
+	)
 endif()
+
 
 if(CONFIG_MPU)
 	list(APPEND srcs

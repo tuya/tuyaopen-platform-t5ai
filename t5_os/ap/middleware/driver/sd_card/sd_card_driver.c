@@ -1024,7 +1024,7 @@ bk_err_t bk_sd_card_init(void)
 #endif
 	//init once and no release, after inited mutex lock, use it to replace disable_irq
 	if(s_mutex_sdcard == NULL) {
-		error_state = rtos_init_mutex(&s_mutex_sdcard);
+		error_state = rtos_init_recursive_mutex(&s_mutex_sdcard);
 		if (error_state != BK_OK) {
 			SD_CARD_LOGD("s_mutex_sdcard init failed\r\n");
 			rtos_exit_critical(int_level);
@@ -1033,13 +1033,13 @@ bk_err_t bk_sd_card_init(void)
 	}
 	rtos_exit_critical(int_level);
 
-	rtos_lock_mutex(&s_mutex_sdcard);
+	rtos_lock_recursive_mutex(&s_mutex_sdcard);
 #endif
 
 	if (s_sd_card_is_init) {
 		SD_CARD_LOGD("sd card has inited\r\n");
 #if CONFIG_SDIO_V2P0
-		rtos_unlock_mutex(&s_mutex_sdcard);
+		rtos_unlock_recursive_mutex(&s_mutex_sdcard);
 #endif
 		return BK_OK;
 	}
@@ -1081,7 +1081,7 @@ bk_err_t bk_sd_card_init(void)
 	if (error_state != BK_OK) {
 		bk_sdio_host_deinit();
 #if CONFIG_SDIO_V2P0
-		rtos_unlock_mutex(&s_mutex_sdcard);
+		rtos_unlock_recursive_mutex(&s_mutex_sdcard);
 #endif
 		return error_state;
 	}
@@ -1097,7 +1097,7 @@ bk_err_t bk_sd_card_init(void)
 	if (error_state != BK_OK) {
 		bk_sdio_host_deinit();
 #if CONFIG_SDIO_V2P0
-		rtos_unlock_mutex(&s_mutex_sdcard);
+		rtos_unlock_recursive_mutex(&s_mutex_sdcard);
 #endif
 		return error_state;
 	}
@@ -1111,7 +1111,7 @@ bk_err_t bk_sd_card_init(void)
 
 	s_sd_card_is_init = true;
 #if CONFIG_SDIO_V2P0
-	rtos_unlock_mutex(&s_mutex_sdcard);
+	rtos_unlock_recursive_mutex(&s_mutex_sdcard);
 #endif
 
 	return error_state;
@@ -1123,7 +1123,7 @@ bk_err_t bk_sd_card_deinit(void)
 
 #if CONFIG_SDIO_V2P0
 	if(s_mutex_sdcard) {
-		rtos_lock_mutex(&s_mutex_sdcard);
+		rtos_lock_recursive_mutex(&s_mutex_sdcard);
 	}
 	else {
 		SD_CARD_LOGD("lock no init\r\n");
@@ -1139,7 +1139,7 @@ bk_err_t bk_sd_card_deinit(void)
 	if (!s_sd_card_is_init) {
 		SD_CARD_LOGD("hasn't init\r\n");
 #if CONFIG_SDIO_V2P0
-		rtos_unlock_mutex(&s_mutex_sdcard);
+		rtos_unlock_recursive_mutex(&s_mutex_sdcard);
 #endif
 		return BK_FAIL;
 	}
@@ -1159,7 +1159,7 @@ bk_err_t bk_sd_card_deinit(void)
 	s_sd_card_is_init = false;
 
 #if CONFIG_SDIO_V2P0
-	rtos_unlock_mutex(&s_mutex_sdcard);
+	rtos_unlock_recursive_mutex(&s_mutex_sdcard);
 #endif
 
 	return BK_OK;
@@ -1362,7 +1362,7 @@ static sdcard_rw_state_t sd_card_check_continious_rw(sdcard_rw_ops_t ops, uint32
 					s_baked_state = SDCARD_RW_STATE_READING;
 				else if(ops == SDCARD_OPS_WRITE)
 					s_baked_state = SDCARD_RW_STATE_WRITING;
-				
+
 				s_baked_addr = addr + blk_cnt;
 			}
 
@@ -1394,7 +1394,7 @@ static sdcard_rw_state_t sd_card_check_continious_rw(sdcard_rw_ops_t ops, uint32
 					s_baked_state = SDCARD_RW_STATE_READING;
 				else if(ops == SDCARD_OPS_WRITE)
 					s_baked_state = SDCARD_RW_STATE_WRITING;
-				
+
 				s_baked_addr = addr + blk_cnt;
 			}
 
@@ -1425,10 +1425,20 @@ static sdcard_rw_state_t sd_card_check_continious_rw(sdcard_rw_ops_t ops, uint32
 
 	return current_state;
 }
-
 bk_err_t bk_sd_card_rw_sync(void)
 {
+    if(s_mutex_sdcard) {
+        rtos_lock_recursive_mutex(&s_mutex_sdcard);
+    }
+    else {
+        SD_CARD_LOGD("sd card lock no init\r\n");
+        return BK_FAIL;
+    }
+
 	sd_card_check_continious_rw(SDCARD_OPS_SYNC_RW, 0, 0);
+
+    rtos_unlock_recursive_mutex(&s_mutex_sdcard);
+
 	return BK_OK;
 }
 
@@ -1447,7 +1457,7 @@ bk_err_t bk_sd_card_write_blocks(const uint8_t *data, uint32_t block_addr, uint3
 #endif
 
 	if(s_mutex_sdcard) {
-		rtos_lock_mutex(&s_mutex_sdcard);
+		rtos_lock_recursive_mutex(&s_mutex_sdcard);
 	}
 	else {
 		SD_CARD_LOGD("sd card lock no init\r\n");
@@ -1461,7 +1471,7 @@ bk_err_t bk_sd_card_write_blocks(const uint8_t *data, uint32_t block_addr, uint3
 
 	if (!s_sd_card_is_init) {
 		SD_CARD_LOGW("SDCARD driver not init\r\n");
-		rtos_unlock_mutex(&s_mutex_sdcard);
+		rtos_unlock_recursive_mutex(&s_mutex_sdcard);
 		return BK_ERR_SDIO_HOST_NOT_INIT;
 	}
 
@@ -1471,7 +1481,7 @@ bk_err_t bk_sd_card_write_blocks(const uint8_t *data, uint32_t block_addr, uint3
 		error_state = bk_sdcard_wait_busy_to_idle(1000);
 		if (error_state != BK_OK) {
 			SD_CARD_LOGW("****sdcard is busy\r\n");
-			rtos_unlock_mutex(&s_mutex_sdcard);
+			rtos_unlock_recursive_mutex(&s_mutex_sdcard);
 			return error_state;
 		}
 
@@ -1488,7 +1498,7 @@ bk_err_t bk_sd_card_write_blocks(const uint8_t *data, uint32_t block_addr, uint3
 		//TODO:just use multi-block mode
 		error_state = sd_card_cmd_write_multiple_block(addr);
 		if (error_state != BK_OK) {
-			rtos_unlock_mutex(&s_mutex_sdcard);
+			rtos_unlock_recursive_mutex(&s_mutex_sdcard);
 			return error_state;
 		}
 
@@ -1522,7 +1532,7 @@ bk_err_t bk_sd_card_write_blocks(const uint8_t *data, uint32_t block_addr, uint3
 	s_sdcard_sw_status.write = 5;
 #endif
 
-	rtos_unlock_mutex(&s_mutex_sdcard);
+	rtos_unlock_recursive_mutex(&s_mutex_sdcard);
 
 	SD_CARD_LOGV("write[-]error_state=%d\r\n", error_state);
 
@@ -1536,7 +1546,7 @@ bk_err_t bk_sd_card_read_blocks(uint8_t *data, uint32_t block_addr, uint32_t blo
 	sdio_host_data_config_t data_config = {0};
 
 	if(s_mutex_sdcard) {
-		rtos_lock_mutex(&s_mutex_sdcard);
+		rtos_lock_recursive_mutex(&s_mutex_sdcard);
 	}
 	else {
 		SD_CARD_LOGD("sd card lock no init\r\n");
@@ -1550,7 +1560,7 @@ bk_err_t bk_sd_card_read_blocks(uint8_t *data, uint32_t block_addr, uint32_t blo
 
 	if (!s_sd_card_is_init) {
 		SD_CARD_LOGW("SDCARD driver not init\r\n");
-		rtos_unlock_mutex(&s_mutex_sdcard);
+		rtos_unlock_recursive_mutex(&s_mutex_sdcard);
 		return BK_ERR_SDIO_HOST_NOT_INIT;
 	}
 
@@ -1566,7 +1576,7 @@ bk_err_t bk_sd_card_read_blocks(uint8_t *data, uint32_t block_addr, uint32_t blo
 		error_state = bk_sdcard_wait_busy_to_idle(1000);
 		if (error_state != BK_OK) {
 			SD_CARD_LOGW("****sdcard is busy\r\n");
-			rtos_unlock_mutex(&s_mutex_sdcard);
+			rtos_unlock_recursive_mutex(&s_mutex_sdcard);
 			return error_state;
 		}
 
@@ -1597,7 +1607,7 @@ bk_err_t bk_sd_card_read_blocks(uint8_t *data, uint32_t block_addr, uint32_t blo
 		//TODO:just use multi-block mode
 		error_state = sd_card_cmd_read_multiple_block(addr);
 		if (error_state != BK_OK) {
-			rtos_unlock_mutex(&s_mutex_sdcard);
+			rtos_unlock_recursive_mutex(&s_mutex_sdcard);
 			return error_state;
 		}
 
@@ -1627,7 +1637,7 @@ bk_err_t bk_sd_card_read_blocks(uint8_t *data, uint32_t block_addr, uint32_t blo
 	s_sdcard_sw_status.write = 0;
 #endif
 
-	rtos_unlock_mutex(&s_mutex_sdcard);
+	rtos_unlock_recursive_mutex(&s_mutex_sdcard);
 
 #if (CONFIG_SDCARD_DEBUG_SUPPORT)
 	sdcard_dump_transfer_data(data, block_addr, block_num);

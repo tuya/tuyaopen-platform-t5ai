@@ -25,30 +25,29 @@
 
 #define LOCAL_TRACE    (1)
 
-#define SARADC_OPERATE_TIMEOUT         600
+#define SARADC_OPERATE_TIMEOUT         6000     // Modified by TUYA
 #define ADC_SAMPLE_CNT_DEFAULT         32
 
 static bool s_saradc_client_init = false;
 static uint32_t saradc_socket_handle = 0;
 static beken_mutex_t saradc_mutex = NULL;
 
-// CRC32 table for data integrity check
-
 static uint32_t calc_crc32(uint32_t crc, const uint8_t *buf, int len)
 {
-	uint8_t i;
-	while(len--){
-		crc ^=*buf++;
-		for(i = 8; i> 0; i--){
-             if(crc & 0x80){
-               crc = (crc << 1) ^ 0x31;
-			 }else {
-			   crc <<= 1;
-			 }
+    uint8_t i;
 
-		}
-	}
-	return crc;
+    while (len--) {
+        crc ^= *buf++;
+        for (i = 8; i > 0; i--) {
+            if (crc & 0x80) {
+                crc = (crc << 1) ^ 0x31;
+            } else {
+                crc <<= 1;
+            }
+        }
+    }
+
+    return crc;
 }
 
 bk_err_t bk_saradc_driver_init(void)
@@ -778,6 +777,136 @@ set_config_exit:
 	return ret_val;
 }
 
+bk_err_t bk_adc_chan_init_gpio(adc_chan_t chan)
+{
+	int ret_val = BK_FAIL;
+	int line_num;
+
+	if(bk_saradc_driver_init() != BK_OK)
+		return BK_FAIL;
+
+	saradc_cmd_t cmd_buff;
+
+	memset(&cmd_buff, 0, sizeof(cmd_buff));
+	cmd_buff.config.chan = chan;
+
+	rtos_lock_mutex(&saradc_mutex);
+
+	int ret = mb_ipc_send(saradc_socket_handle, SARADC_CMD_INIT_GPIO,
+		(u8 *)&cmd_buff, sizeof(cmd_buff), SARADC_OPERATE_TIMEOUT);
+
+	if(ret != 0)
+	{
+		line_num = __LINE__;
+		goto init_exit;
+	}
+
+	u8 user_cmd = INVALID_USER_CMD_ID;
+
+	memset(&cmd_buff, 0, sizeof(cmd_buff));
+
+	ret = mb_ipc_recv(saradc_socket_handle, &user_cmd, (u8 *)&cmd_buff,
+		sizeof(cmd_buff), SARADC_OPERATE_TIMEOUT);
+
+	if(ret != sizeof(cmd_buff))
+	{
+		line_num = __LINE__;
+		goto init_exit;
+	}
+
+	if(user_cmd != SARADC_CMD_INIT_GPIO)
+	{
+		line_num = __LINE__;
+		ret = user_cmd;
+		goto init_exit;
+	}
+
+	if(cmd_buff.ret_status != BK_OK)
+	{
+		line_num = __LINE__;
+		ret = cmd_buff.ret_status;
+		goto init_exit;
+	}
+
+	ret_val = BK_OK;
+
+init_exit:
+
+	rtos_unlock_mutex(&saradc_mutex);
+
+#if LOCAL_TRACE
+	if(ret_val != BK_OK)
+		BK_LOGI(TAG, "%s @%d, data=%d.\r\n", __FUNCTION__, line_num, ret);
+#endif
+
+	return ret_val;
+}
+
+bk_err_t bk_adc_chan_deinit_gpio(adc_chan_t chan)
+{
+	int ret_val = BK_FAIL;
+	int line_num;
+
+	if(bk_saradc_driver_init() != BK_OK)
+		return BK_FAIL;
+
+	saradc_cmd_t cmd_buff;
+
+	memset(&cmd_buff, 0, sizeof(cmd_buff));
+	cmd_buff.config.chan = chan;
+
+	rtos_lock_mutex(&saradc_mutex);
+
+	int ret = mb_ipc_send(saradc_socket_handle, SARADC_CMD_DEINIT_GPIO,
+		(u8 *)&cmd_buff, sizeof(cmd_buff), SARADC_OPERATE_TIMEOUT);
+
+	if(ret != 0)
+	{
+		line_num = __LINE__;
+		goto deinit_exit;
+	}
+
+	u8 user_cmd = INVALID_USER_CMD_ID;
+
+	memset(&cmd_buff, 0, sizeof(cmd_buff));
+
+	ret = mb_ipc_recv(saradc_socket_handle, &user_cmd, (u8 *)&cmd_buff,
+		sizeof(cmd_buff), SARADC_OPERATE_TIMEOUT);
+
+	if(ret != sizeof(cmd_buff))
+	{
+		line_num = __LINE__;
+		goto deinit_exit;
+	}
+
+	if(user_cmd != SARADC_CMD_DEINIT_GPIO)
+	{
+		line_num = __LINE__;
+		ret = user_cmd;
+		goto deinit_exit;
+	}
+
+	if(cmd_buff.ret_status != BK_OK)
+	{
+		line_num = __LINE__;
+		ret = cmd_buff.ret_status;
+		goto deinit_exit;
+	}
+
+	ret_val = BK_OK;
+
+deinit_exit:
+
+	rtos_unlock_mutex(&saradc_mutex);
+
+#if LOCAL_TRACE
+	if(ret_val != BK_OK)
+		BK_LOGI(TAG, "%s @%d, data=%d.\r\n", __FUNCTION__, line_num, ret);
+#endif
+
+	return ret_val;
+}
+
 bk_err_t bk_adc_en(void)
 {
 	int ret_val = BK_FAIL;
@@ -1059,12 +1188,13 @@ set_channel_exit:
 
 #if LOCAL_TRACE
 	if(ret_val != BK_OK)
-		// BK_LOGI(TAG, "%s @%d, data=%d.\r\n", __FUNCTION__, line_num, ret);
+		BK_LOGI(TAG, "%s @%d, data=%d.\r\n", __FUNCTION__, line_num, ret);
 #endif
 
 	return ret_val;
 }
 
+#if 0// not supported
 bk_err_t bk_adc_set_mode(adc_mode_t adc_mode)
 {
 	int ret_val = BK_FAIL;
@@ -1650,6 +1780,7 @@ register_isr_exit:
 
 	return ret_val;
 }
+#endif
 
 UINT16 bk_adc_data_calculate(UINT16 adc_val, UINT8 adc_chan)
 {

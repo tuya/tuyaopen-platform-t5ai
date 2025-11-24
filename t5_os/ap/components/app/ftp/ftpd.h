@@ -34,6 +34,12 @@
 #ifndef __FTPD_H__
 #define __FTPD_H__
 
+#define FTPD_COMMON_PORT      0x1020
+
+
+bk_err_t ftpd_server_init(void);
+void ftpd_server_deinit(void);
+
 void ftpd_start(void);
 void ftpd_stop(void);
 #endif				/* __FTPD_H__ */

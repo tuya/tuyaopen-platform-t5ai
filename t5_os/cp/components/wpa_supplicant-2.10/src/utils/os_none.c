@@ -16,7 +16,6 @@
 
 #include "includes.h"
 #include "utils/os.h"
-#include <time.h>
 #include <components/system.h>
 #ifdef IEEE8021X_EAPOL
 #include "xfile.h"

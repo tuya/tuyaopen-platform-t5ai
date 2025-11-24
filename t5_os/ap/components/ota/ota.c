@@ -13,7 +13,7 @@
 #include "driver/flash_partition.h"
 #endif
 #include "common/bk_err.h"
-#include "bk_private/bk_ota_private.h" 
+#include "bk_private/bk_ota_private.h"
 
 #ifdef CONFIG_HTTP_AB_PARTITION
 #define OTA_DEBUG_TEST                    (0)
@@ -132,21 +132,24 @@ void bk_ota_confirm_update_partition(ota_confirm_flag ota_confirm_val)
     bk_flash_read_bytes((bk_ptr->partition_start_addr + 8) ,(uint8_t *)&last_exec_flag, sizeof(u8));
     OTA_LOGD("bk_ptr->partition_start_addr:0x%x,last_exec_flag:0x%x\r\n",bk_ptr->partition_start_addr,last_exec_flag);
 
-    if(last_exec_flag != ota_confirm_val)
-    {
-        ota_write_flash(BK_PARTITION_OTA_FINA_EXECUTIVE, ota_confirm_val,8);
+	if(last_exec_flag == 1)	//only after do ota , do double check 
+	{
+		if(last_exec_flag != ota_confirm_val)
+		{
+			ota_write_flash(BK_PARTITION_OTA_FINA_EXECUTIVE, ota_confirm_val,8);
 
-        if(ota_confirm_val == CONFIRM_EXEC_A)
-        {
-            ota_exec_flag = EXEX_A_PART;
-            ota_write_flash(BK_PARTITION_OTA_FINA_EXECUTIVE, ota_exec_flag, 0);
-        }
-        else if(ota_confirm_val == CONFIRM_EXEC_B)
-        {
-            ota_exec_flag = EXEC_B_PART;
-            ota_write_flash(BK_PARTITION_OTA_FINA_EXECUTIVE, ota_exec_flag, 0);
-        }
-    }
+			if(ota_confirm_val == CONFIRM_EXEC_A)
+			{
+				ota_exec_flag = EXEX_A_PART;
+				ota_write_flash(BK_PARTITION_OTA_FINA_EXECUTIVE, ota_exec_flag, 0);
+			}
+			else if(ota_confirm_val == CONFIRM_EXEC_B)
+			{
+				ota_exec_flag = EXEC_B_PART;
+				ota_write_flash(BK_PARTITION_OTA_FINA_EXECUTIVE, ota_exec_flag, 0);
+			}
+		}
+	}
 }
 
 static callback_func update_state_cb = NULL;

@@ -4,11 +4,4 @@ set(OVERRIDE_COMPILE_OPTIONS
     "-mfloat-abi=hard"
     "-mcmse"
     "-fstack-protector"
-    "-ffunction-sections"
-    "-fdata-sections"
-)
-
-set(OVERRIDE_LINK_OPTIONS
-    "-Os"
-
 )

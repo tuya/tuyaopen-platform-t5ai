@@ -482,6 +482,7 @@ bk_err_t frame_buffer_list_node_deinit(frame_list_node_t *node)
         {
             fb_info->main = NULL;
         }
+
         os_free(tmp_node->node);
         tmp_node->node = NULL;
         os_free(tmp_node);
@@ -493,16 +494,39 @@ bk_err_t frame_buffer_list_node_deinit(frame_list_node_t *node)
     return BK_OK;
 }
 
-bk_err_t frame_buffer_list_node_invalid(frame_list_node_t *node)
+bk_err_t frame_buffer_list_node_clear(frame_list_node_t *node)
 {
+    frame_node_t *tmp = NULL;
+    LIST_HEADER_T *pos, *n;
+
     if (node == NULL)
     {
-        LOGW("%s, %d node NULL\n", __func__, __LINE__);
         return BK_OK;
     }
 
-    node->invalid = true;
-    LOGW("%s, %d, node:%p\n", __func__, __LINE__, node);
+    uint32_t flag = fb_enter_critical();
+
+    if (!list_empty(&node->ready))
+    {
+        list_for_each_safe(pos, n, &node->ready)
+        {
+            tmp = list_entry(pos, frame_node_t, list);
+            if (tmp != NULL && tmp->read_mask == 0)
+            {
+#ifdef CONFIG_PSRAM
+                if (tmp->frame)
+                {
+                    frame_buffer_encode_free(tmp->frame);
+                    tmp->frame = NULL;
+                }
+#endif
+                list_del(pos);
+                list_add_tail(&tmp->list, &node->free);
+            }
+        }
+    }
+
+    fb_exit_critical(flag);
 
     return BK_OK;
 }
@@ -1040,12 +1064,6 @@ void frame_buffer_fb_read_free(frame_list_node_t *node, frame_buffer_t *frame, f
                 LOGV("%s, mask:%x, read-free:%x-%x\n", __func__, curr_node->register_mask, f_node->read_mask, f_node->free_mask);
             }
         }
-
-//        if (curr_node->trigger)
-//        {
-//            curr_node->trigger = false;
-//            rtos_set_semaphore(&curr_node->read_sem);
-//        }
     }
     else
     {

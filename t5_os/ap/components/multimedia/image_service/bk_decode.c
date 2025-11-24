@@ -17,7 +17,6 @@
 #include "yuv_encode.h"
 #include "sw_decode.h"
 
-
 #define TAG "lcd_dec"
 
 #define LOGI(...) BK_LOGI(TAG, ##__VA_ARGS__)

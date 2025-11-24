@@ -82,7 +82,13 @@ static void cli_flash_cmd(char *pcWriteBuffer, int xWriteBufferLen, int argc, ch
 	} else if (os_strcmp(argv[1], "set_line") == 0) {
 		/*enable FLASH_QUAD_ENABLE first*/
 		uint16_t line_mode = os_strtoul(argv[2], NULL, 16);
-		bk_flash_set_line_mode(line_mode);
+		if (line_mode == 2) {
+			bk_flash_power_saving_enter();
+			CLI_LOGI("switch to 2 line.\r\n");
+		} else {
+			bk_flash_power_saving_exit();
+			CLI_LOGI("switch to 4 line.\r\n");
+		}
 		msg = CLI_CMD_RSP_SUCCEED;
 	} else if (os_strcmp(argv[1], "mutex_test") == 0) {
 		extern void flash_svr_test_task(void * param);

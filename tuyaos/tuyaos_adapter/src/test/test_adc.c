@@ -8,6 +8,9 @@
 #include "cli.h"
 #include "cli_tuya_test.h"
 
+#include "FreeRTOS.h"
+#include "task.h"
+
 #include "bk_saradc.h"
 #include <driver/adc.h>
 #include "adc_statis.h"
@@ -17,8 +20,51 @@
 #include "tkl_adc.h"
 #include "tkl_pinmux.h"
 
+
+static TaskHandle_t __test_adc_thread = NULL;
+static void __test_tuya_adc(void *arg)
+{
+#define ADC_CHAN_NUM    2
+#define ADC_CONV_TIMES  8
+
+    uint8_t chan_list[ADC_CHAN_NUM] = {24,25};
+    TUYA_ADC_BASE_CFG_T tkl_cfg;
+
+    memset(&tkl_cfg, 0, sizeof(tkl_cfg));
+
+    INT32_T adc_chan1 = tkl_io_pin_to_func(24, TUYA_IO_TYPE_ADC);
+    INT32_T adc_chan2 = tkl_io_pin_to_func(25, TUYA_IO_TYPE_ADC);
+
+    tkl_cfg.ch_list.data = BIT(adc_chan1 & 0xFF);
+    tkl_cfg.ch_list.data |= BIT(adc_chan2 & 0xFF);
+
+    tkl_cfg.ch_nums = ADC_CHAN_NUM;
+    tkl_cfg.type = TUYA_ADC_INNER_SAMPLE_VOL;
+    tkl_cfg.width = 12;
+    tkl_cfg.mode = TUYA_ADC_CONTINUOUS;
+    tkl_cfg.conv_cnt = ADC_CONV_TIMES;
+    tkl_adc_init(0, &tkl_cfg);
+
+    INT32_T buffer[ADC_CHAN_NUM][ADC_CONV_TIMES] = {0};
+
+    while (1) {
+        memset(buffer, 0, sizeof(buffer));
+
+        tkl_adc_read_voltage(0, (INT32_T *)buffer, ADC_CHAN_NUM * ADC_CONV_TIMES);
+
+        for (int i = 0; i < ADC_CHAN_NUM; i++) {
+            bk_printf("ch: %2d, %4d, %4d, %4d, %4d, %4d, %4d, %4d, %4d\r\n", chan_list[i],
+                    buffer[i][0], buffer[i][1], buffer[i][2], buffer[i][3],
+                    buffer[i][4], buffer[i][5], buffer[i][6], buffer[i][7]);
+        }
+
+        tkl_system_sleep(10);
+    }
+}
+
 void cli_adc_cmd(char *pcWriteBuffer, int xWriteBufferLen, int argc, char **argv)
 {
+#if 0
 #define ADC_CHAN_NUM    5
 #define ADC_CONV_TIMES  8
 
@@ -69,6 +115,8 @@ void cli_adc_cmd(char *pcWriteBuffer, int xWriteBufferLen, int argc, char **argv
     //     bk_printf("\r\n");
     // }
     // bk_printf("\r\n");
+#endif
+    xTaskCreate(__test_tuya_adc, "tadc", 4096, NULL, 5, &__test_adc_thread);
 }
 
 

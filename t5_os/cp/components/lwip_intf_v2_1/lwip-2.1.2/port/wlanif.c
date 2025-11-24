@@ -67,7 +67,10 @@
 
 #include "bk_drv_model.h"
 #include <os/mem.h>
-
+#ifdef CONFIG_BRIDGE
+#include "bridgeif.h"
+#include "rwnx_config.h"
+#endif
 #include <os/os.h>
 
 /* Define those to better describe your network interface. */
@@ -80,6 +83,7 @@
 #ifdef CONFIG_WIFI_VNET_CONTROLLER
 #include "controller_wifi_if.h"
 #endif
+
 //TODO should use registered callback here!!!
 extern int ke_l2_packet_tx(unsigned char *buf, int len, int flag);
 extern int bmsg_tx_sender(struct pbuf *p, uint32_t vif_idx);
@@ -87,7 +91,7 @@ extern int bmsg_tx_sender(struct pbuf *p, uint32_t vif_idx);
 extern int bmsg_special_tx_sender(struct pbuf *p, uint32_t vif_idx);
 #endif
 /* Forward declarations. */
-void ethernetif_input(int iface, struct pbuf *p);
+void ethernetif_input(int iface, struct pbuf *p, uint8_t dst_idx);
 
 /**
  * In this function, the hardware should be initialized.
@@ -201,7 +205,7 @@ static inline int is_broadcast_mac_addr(const u8 *a)
  * @param netif the lwip network interface structure for this ethernetif
  */
 void
-ethernetif_input(int iface, struct pbuf *p)
+ethernetif_input(int iface, struct pbuf *p, uint8_t dst_idx)
 {
     struct eth_hdr *ethhdr;
 	struct netif *netif;
@@ -211,7 +215,6 @@ ethernetif_input(int iface, struct pbuf *p)
 		pbuf_free(p);
 		return;
 	}
-
 	vif = wifi_netif_vifid_to_vif(iface);
 	netif = (struct netif *)wifi_netif_get_vif_private_data(vif);
 	if(!netif) {
@@ -223,19 +226,64 @@ ethernetif_input(int iface, struct pbuf *p)
 
     /* points to packet payload, which starts with an Ethernet header */
     ethhdr = p->payload;
-
     if( (memcmp(netif->hwaddr,ethhdr->src.addr,NETIF_MAX_HWADDR_LEN)==0) && (htons(ethhdr->type) !=ETHTYPE_ARP) )
     {
         LWIP_DEBUGF(ETHARP_DEBUG ,("ethernet_input frame is my send,drop it\r\n"));
         pbuf_free(p);
         return;
     }
+
+#if CONFIG_BRIDGE
+    /* need to forward */
+    if (wifi_netif_vif_to_netif_type(vif) == NETIF_IF_AP) {
+        // If dest sta is known, or packet is multicast, forward this packet
+        if ((ethhdr->dest.addr[0] & 1) || dst_idx != 0xff) {
+            // check if is arp request to us, doesn't need to forward
+            struct pbuf *q;
+
+            // unicast frame, check da staidx
+            // for softap+ap, if sta under softap sends packets to router,
+            // dst_idx will be valid, and packets will be forwarded in our
+            // softap bss.
+            if (!(ethhdr->dest.addr[0] & 1) && dst_idx < NX_REMOTE_STA_MAX) {
+                void *sta = sta_mgmt_get_entry(dst_idx);
+                // if STA doesn't belong to this vif
+                if (mac_sta_mgmt_get_inst_nbr(sta) != mac_vif_mgmt_get_index(vif)) {
+                    goto process;
+                }
+            }
+
+            if (ethhdr->type == PP_HTONS(ETHTYPE_ARP)) {
+                struct etharp_hdr *hdr = (struct etharp_hdr *)(ethhdr + 1);
+                if (hdr->opcode != PP_HTONS(ARP_REQUEST))
+                    goto forward;
+
+                if (!memcmp(&hdr->dipaddr, &netif->ip_addr, 4)) {
+                    // BK_LOGD(NULL, "DIP TO SOFTAP\n");
+                    goto process;
+                }
+            }
+forward:
+            q = pbuf_clone(PBUF_RAW_TX, PBUF_RAM, p);
+            if (q != NULL) {
+                low_level_output(netif, q);
+                pbuf_free(q);
+            } else {
+                LWIP_LOGE("alloc pbuf failed, don't forward\r\n");
+            }
+        }
+    }
+
+process:
+#endif
 #ifdef CONFIG_WIFI_VNET_CONTROLLER
-	if(false == cif_rx_local_packet_check(&p,ethhdr,vif))
+	if(false == cif_rx_local_packet_check(&p,ethhdr,vif,dst_idx))
 	{
 		return;
 	}
 #endif
+
+#if !CONFIG_BRIDGE
 	/* need to forward*/
 	if (wifi_netif_vif_to_netif_type(vif) == NETIF_IF_AP) {
 		if (((!is_broadcast_mac_addr(ethhdr->dest.addr) &&
@@ -250,6 +298,7 @@ ethernetif_input(int iface, struct pbuf *p)
 					LWIP_LOGD("alloc pbuf failed, dont forward\r\n");
 		}
 	}
+#endif
 
     switch (htons(ethhdr->type))
     {

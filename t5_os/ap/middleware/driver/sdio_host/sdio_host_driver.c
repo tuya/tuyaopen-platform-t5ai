@@ -180,12 +180,15 @@ static void sdio_host_init_gpio_tuya(void)
 	/* sdio host clk */
 	bk_gpio_pull_up(sdio_host_gpio_map_table[SDIO_HOST_GPIO_CLK_INDEX].gpio_id);
 	bk_gpio_set_capacity(sdio_host_gpio_map_table[SDIO_HOST_GPIO_CLK_INDEX].gpio_id, 3);
+	bk_printf("GPIO_SDIO_CKL_PUIN :%d\r\n", sdio_host_gpio_map_table[SDIO_HOST_GPIO_CLK_INDEX].gpio_id);
 	/* sdio host cmd */
 	bk_gpio_pull_up(sdio_host_gpio_map_table[SDIO_HOST_GPIO_CMD_INDEX].gpio_id);
 	bk_gpio_set_capacity(sdio_host_gpio_map_table[SDIO_HOST_GPIO_CMD_INDEX].gpio_id, 3);
+	bk_printf("GPIO_SDIO_CMD_PUIN :%d\r\n", sdio_host_gpio_map_table[SDIO_HOST_GPIO_CMD_INDEX].gpio_id);
 	/* sdio host data0 */
 	bk_gpio_pull_up(sdio_host_gpio_map_table[SDIO_HOST_GPIO_DATA0_INDEX].gpio_id);
 	bk_gpio_set_capacity(sdio_host_gpio_map_table[SDIO_HOST_GPIO_DATA0_INDEX].gpio_id, 3);
+	bk_printf("GPIO_SDIO_DATA0_PUIN :%d\r\n", sdio_host_gpio_map_table[SDIO_HOST_GPIO_DATA0_INDEX].gpio_id);
 
 #if CONFIG_SDIO_4LINES_EN
 	/* sdio host data1,data2,data3 */

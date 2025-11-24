@@ -53,64 +53,6 @@ __IRAM_SEC bk_err_t wdt_hal_init_wdt(wdt_hal_t *hal, uint32_t timeout)
 	return BK_OK;
 }
 
-#if (CONFIG_SOC_BK7256XX)
-void wdt_hal_close(void)
-{
-        REG_WRITE(SOC_AON_WDT_REG_BASE, 0x5A0000);
-        REG_WRITE(SOC_AON_WDT_REG_BASE, 0xA50000);
-
-        REG_WRITE(SOC_WDT_REG_BASE, 0x5A0000);
-        REG_WRITE(SOC_WDT_REG_BASE, 0xA50000);
-}
-
-void wdt_hal_force_feed(void)
-{
-        REG_WRITE(SOC_AON_WDT_REG_BASE, 0x5AFFFC);
-        REG_WRITE(SOC_AON_WDT_REG_BASE, 0xA5FFFC);
-
-        REG_WRITE(SOC_WDT_REG_BASE, 0x5AFFF0);
-        REG_WRITE(SOC_WDT_REG_BASE, 0xA5FFF0);
-}
-
-static inline void wdt_hal_close_unused(wdt_unit_t id)
-{
-        if (id == AON_WDT_ID) {
-                // use aon_wdt, close nmi_wdt
-                REG_WRITE(SOC_WDT_REG_BASE, 0x5A0000);
-                REG_WRITE(SOC_WDT_REG_BASE, 0xA50000);
-        } else {
-                // use nmi_wdt, close aon_wdt
-                REG_WRITE(SOC_AON_WDT_REG_BASE, 0x5A0000);
-                REG_WRITE(SOC_AON_WDT_REG_BASE, 0xA50000);
-        }
-}
-
-static inline void wdt_hal_nmi_reboot() {
-        set_reboot_tag(REBOOT_TAG_REQ);
-        set_nmi_vector();
-        aon_pmu_drv_wdt_change_not_rosc_clk();
-        aon_pmu_drv_wdt_rst_dev_enable();
-
-        REG_WRITE(SOC_WDT_REG_BASE, 0x5A000A);
-        REG_WRITE(SOC_WDT_REG_BASE, 0xA5000A);
-}
-
-void wdt_hal_force_reboot(void)
-{
-#if CONFIG_DEBUG_VERSION || CONFIG_NMI_WDT_EN
-        wdt_hal_nmi_reboot();
-#else
-        if (aon_pmu_hal_is_chipid_later_than_version_C())
-        {
-                REG_WRITE(SOC_AON_WDT_REG_BASE, 0x5A000A);
-                REG_WRITE(SOC_AON_WDT_REG_BASE, 0xA5000A);
-        } else {
-                wdt_hal_nmi_reboot();
-        }
-#endif //#if CONFIG_DEBUG_VERSION
-}
-
-#endif
 
 #if (CONFIG_SOC_BK7236XX) || (CONFIG_SOC_BK7239XX) || (CONFIG_SOC_BK7286XX)
 __attribute__((section(".itcm_sec_code"))) void wdt_hal_close(void)

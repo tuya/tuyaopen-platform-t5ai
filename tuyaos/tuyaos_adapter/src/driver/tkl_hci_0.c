@@ -93,13 +93,16 @@ OPERATE_RET tkl_hci_deinit(VOID)
 OPERATE_RET tkl_hci_reset(VOID)
 {
 #if TKL_DEBUG == 1
-    bk_printf("trace cpu%d %s %d\n", CONFIG_CPU_INDEX, __func__, __LINE__);
+    bk_printf("--- trace hci, in %d %s %d\n", CONFIG_CPU_INDEX, __func__, __LINE__);
 #endif
 
     bk_bluetooth_deinit();
     tkl_system_sleep(100);
     bk_bluetooth_init();
 
+#if TKL_DEBUG == 1
+    bk_printf("--- trace hci, out %d %s %d\n", CONFIG_CPU_INDEX, __func__, __LINE__);
+#endif
     return OPRT_OK;
 }
 
@@ -111,7 +114,7 @@ OPERATE_RET tkl_hci_cmd_packet_send(CONST UCHAR_T *p_buf, USHORT_T buf_len)
     tkl_data_dump(0, __FILE__,  __LINE__, "hci data", 64, p_buf, buf_len);
     bk_printf("<====================\n");
 #elif TKL_DEBUG == 1
-    bk_printf("trace cpu%d %s %d\n", CONFIG_CPU_INDEX, __func__, __LINE__);
+    bk_printf("--- trace hci, in %d %s %d\n", CONFIG_CPU_INDEX, __func__, __LINE__);
 #endif
     if (!bk_bluetooth_get_status()) {
         return OPRT_COM_ERROR;
@@ -119,12 +122,18 @@ OPERATE_RET tkl_hci_cmd_packet_send(CONST UCHAR_T *p_buf, USHORT_T buf_len)
 
     ble_err_t ret = 0;
     ret = bk_ble_hci_to_controller(BK_BLE_HCI_TYPE_CMD, (uint8_t *)p_buf, buf_len);
-    if(ret == BK_ERR_BLE_SUCCESS) {
-        return OPRT_OK;
-    } else {
-        return OPRT_COM_ERROR;
-    }
 
+#if TKL_DEBUG == 1
+    bk_printf("--- trace hci, out %d %s %d\n", CONFIG_CPU_INDEX, __func__, __LINE__);
+#endif
+
+    return (ret == BK_ERR_BLE_SUCCESS)? OPRT_OK: OPRT_COM_ERROR;
+
+//    if(ret == BK_ERR_BLE_SUCCESS) {
+//        return OPRT_OK;
+//    } else {
+//        return OPRT_COM_ERROR;
+//    }
 }
 
 
@@ -140,16 +149,23 @@ OPERATE_RET tkl_hci_acl_packet_send(CONST UCHAR_T *p_buf, USHORT_T buf_len)
     tkl_data_dump(0, __FILE__,  __LINE__, "hci data", 64, p_buf, buf_len);
     bk_printf("<====================\n");
 #elif TKL_DEBUG == 1
-    bk_printf("trace cpu%d %s %d\n", CONFIG_CPU_INDEX, __func__, __LINE__);
+    bk_printf("--- trace hci, in %d %s %d\n", CONFIG_CPU_INDEX, __func__, __LINE__);
 #endif
 
     ble_err_t ret = 0;
     ret = bk_ble_hci_to_controller(BK_BLE_HCI_TYPE_ACL, (uint8_t *)p_buf, buf_len);
-    if(ret == BK_ERR_BLE_SUCCESS) {
-        return OPRT_OK;
-    } else {
-        return OPRT_COM_ERROR;
-    }
+
+#if TKL_DEBUG == 1
+    bk_printf("--- trace hci, out %d %s %d\n", CONFIG_CPU_INDEX, __func__, __LINE__);
+#endif
+
+    return (ret == BK_ERR_BLE_SUCCESS)? OPRT_OK: OPRT_COM_ERROR;
+
+//     if(ret == BK_ERR_BLE_SUCCESS) {
+//         return OPRT_OK;
+//     } else {
+//         return OPRT_COM_ERROR;
+//     }
 }
 
 static ble_err_t _ble_hci_evt_to_host_cb(uint8_t *buf, uint16_t len)
@@ -167,10 +183,15 @@ static ble_err_t _ble_hci_evt_to_host_cb(uint8_t *buf, uint16_t len)
     tkl_data_dump(0, __FILE__,  __LINE__, "hci data", 64, buf, len);
     bk_printf("cpu 0: <====================\n");
 #elif TKL_DEBUG == 1
-    bk_printf("trace cpu%d %s %d\n", CONFIG_CPU_INDEX, __func__, __LINE__);
+    bk_printf("--- trace hci, in %d %s %d\n", CONFIG_CPU_INDEX, __func__, __LINE__);
 #endif
 
     OPERATE_RET ret = tuya_ipc_send_sync(&hci_msg);
+
+#if TKL_DEBUG == 1
+    bk_printf("--- trace hci, out %d %s %d\n", CONFIG_CPU_INDEX, __func__, __LINE__);
+#endif
+
     if(ret)
         return ret;
 
@@ -192,10 +213,15 @@ static ble_err_t _ble_hci_acl_to_host_cb(uint8_t *buf, uint16_t len)
     tkl_data_dump(0, __FILE__,  __LINE__, "hci data", 64, buf, len);
     bk_printf("cpu 0: <====================\n");
 #elif TKL_DEBUG == 1
-    bk_printf("trace cpu%d %s %d\n", CONFIG_CPU_INDEX, __func__, __LINE__);
+    bk_printf("--- trace hci, in %d %s %d\n", CONFIG_CPU_INDEX, __func__, __LINE__);
 #endif
 
     OPERATE_RET ret = tuya_ipc_send_sync(&hci_msg);
+
+#if TKL_DEBUG == 1
+    bk_printf("--- trace hci, out %d %s %d\n", CONFIG_CPU_INDEX, __func__, __LINE__);
+#endif
+
     if(ret)
         return ret;
 
@@ -206,16 +232,23 @@ static ble_err_t _ble_hci_acl_to_host_cb(uint8_t *buf, uint16_t len)
 OPERATE_RET tkl_hci_callback_register(CONST TKL_HCI_FUNC_CB hci_evt_cb, CONST TKL_HCI_FUNC_CB acl_pkt_cb)
 {
 #if TKL_DEBUG == 1
-    bk_printf("trace cpu%d %s %d\n", CONFIG_CPU_INDEX, __func__, __LINE__);
+    bk_printf("--- trace hci, in %d %s %d\n", CONFIG_CPU_INDEX, __func__, __LINE__);
 #endif
 
     ble_err_t ret = 0;
     ret = bk_ble_reg_hci_recv_callback(_ble_hci_evt_to_host_cb, _ble_hci_acl_to_host_cb);
-    if(ret == BK_ERR_BLE_SUCCESS) {
-        return OPRT_OK;
-    } else {
-        return OPRT_COM_ERROR;
-    }
+
+#if TKL_DEBUG == 1
+    bk_printf("--- trace hci, out %d %s %d\n", CONFIG_CPU_INDEX, __func__, __LINE__);
+#endif
+
+    return (ret == BK_ERR_BLE_SUCCESS)? OPRT_OK: OPRT_COM_ERROR;
+
+//     if(ret == BK_ERR_BLE_SUCCESS) {
+//         return OPRT_OK;
+//     } else {
+//         return OPRT_COM_ERROR;
+//     }
 }
 
 #endif

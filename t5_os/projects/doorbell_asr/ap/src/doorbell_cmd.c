@@ -336,6 +336,11 @@ void doorbell_transmission_cmd_recive_callback(db_channel_t *channel, uint16_t s
             doorbell_video_transfer_turn_on();
 
             doorbell_transmission_event_report(channel, cmd.opcode, ret & 0xFF, EVT_FLAGS_COMPLETE);
+
+#if (CONFIG_ASR_SERVICE_WITH_MIC)
+            extern int doorbell_asr_turn_off(void);
+            doorbell_asr_turn_off();
+#endif
         }
         break;
 
@@ -345,6 +350,11 @@ void doorbell_transmission_cmd_recive_callback(db_channel_t *channel, uint16_t s
             int ret = doorbell_camera_turn_off();
 
             doorbell_transmission_event_report(channel, cmd.opcode, ret & 0xFF, EVT_FLAGS_COMPLETE);
+
+#if (CONFIG_ASR_SERVICE_WITH_MIC)
+            extern int doorbell_asr_turn_on(void);
+            doorbell_asr_turn_on();
+#endif
         }
         break;
 
@@ -365,7 +375,10 @@ void doorbell_transmission_cmd_recive_callback(db_channel_t *channel, uint16_t s
             STREAM_TO_UINT8(parameters.rmt_recoder_fmt, p);
             STREAM_TO_UINT8(parameters.rmt_player_fmt, p);
 
-
+#if (CONFIG_ASR_SERVICE_WITH_MIC)
+            extern int doorbell_asr_turn_off(void);
+            doorbell_asr_turn_off();
+#endif
             int ret = doorbell_audio_turn_on(&parameters);
 
             doorbell_transmission_event_report(channel, cmd.opcode, ret & 0xFF, EVT_FLAGS_COMPLETE);
@@ -377,8 +390,12 @@ void doorbell_transmission_cmd_recive_callback(db_channel_t *channel, uint16_t s
             LOGD("DBCMD_SET_AUDIO_TURN_OFF\n");
 
             int ret = doorbell_audio_turn_off();
-
             doorbell_transmission_event_report(channel, cmd.opcode, ret & 0xFF, EVT_FLAGS_COMPLETE);
+
+#if (CONFIG_ASR_SERVICE_WITH_MIC)
+            extern int doorbell_asr_turn_on(void);
+            doorbell_asr_turn_on();
+#endif
         }
         break;
 

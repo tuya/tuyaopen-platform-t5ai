@@ -88,7 +88,6 @@ saradc_calibrate_val saradc_val = {
 static volatile spinlock_t adc_spin_lock = SPIN_LOCK_INIT;
 #endif // CONFIG_FREERTOS_SMP
 
-
 adc_config_t g_adc_cfg = {0};
 
 extern bk_err_t mb_saradc_ipc_init(void);
@@ -194,12 +193,18 @@ static bk_err_t adc_chan_init_common(adc_chan_t chan)
 	sys_drv_sadc_pwr_up();
 	adc_enable_block();
 	adc_hal_init(&s_adc.hal);
-	adc_init_gpio(chan);
+	//adc_init_gpio(chan);
 	adc_hal_sel_channel(&s_adc.hal, chan);
 
 	s_adc.chan_init_bits |= BIT(chan);
 
 	return ret;
+}
+
+bk_err_t bk_adc_chan_init_gpio(adc_chan_t chan)
+{
+	adc_init_gpio(chan);
+	return BK_OK;
 }
 
 static bk_err_t adc_chan_deinit_common(adc_chan_t chan)
@@ -212,6 +217,12 @@ static bk_err_t adc_chan_deinit_common(adc_chan_t chan)
 	adc_flush();
 
 	sys_drv_sadc_pwr_down();
+	//adc_deinit_gpio(chan);
+	return BK_OK;
+}
+
+bk_err_t bk_adc_chan_deinit_gpio(adc_chan_t chan)
+{
 	adc_deinit_gpio(chan);
 	return BK_OK;
 }
@@ -275,6 +286,7 @@ bk_err_t bk_adc_driver_init(void)
 	if (s_adc_driver_is_init) {
 		return BK_OK;
 	}
+
 	extern bk_err_t mb_saradc_ipc_init(void);
 	ret = mb_saradc_ipc_init();
 	if(ret != BK_OK)
@@ -291,6 +303,7 @@ bk_err_t bk_adc_driver_init(void)
 		BK_LOGE("adc_driver", "saradc svr create failed %d.\r\n", ret);
 	}
 #endif
+
 	os_memset(&s_adc, 0, sizeof(s_adc));
 	os_memset(&g_adc_cfg, 0, sizeof(g_adc_cfg));
 
@@ -345,11 +358,12 @@ bk_err_t bk_adc_driver_init(void)
 
 bk_err_t bk_adc_acquire(void)
 {
-	int ret = 0;
+    int ret = 0;
     if(!s_adc_driver_is_init)
     {
         return BK_FAIL;
     }
+
     ADC_LOGV("acquire\n");
     ret = rtos_lock_mutex(&s_adc_dev.adc_mutex);
     mb_saradc_op_prepare();
@@ -387,7 +401,8 @@ bk_err_t bk_adc_driver_deinit(void)
 	s_adc_buf.buf = NULL;
 	s_adc_buf.size = 0;
 
-    os_memset(&g_adc_cfg, 0, sizeof(g_adc_cfg));
+	os_memset(&g_adc_cfg, 0, sizeof(g_adc_cfg));
+
 	s_adc_driver_is_init = false;
 
 	return BK_OK;
@@ -655,6 +670,7 @@ bk_err_t bk_adc_get_config(uint32 adc_ch, adc_config_t **config)
     if (adc_ch != g_adc_cfg.chan) {
         return BK_ERR_ADC_CHAN_NOT_INIT;
     }
+
     *config = &g_adc_cfg;
     return BK_OK;
 }
@@ -800,22 +816,22 @@ bk_err_t bk_adc_unregister_isr_iot_callback(void)
 
 bk_err_t bk_adc_en(void)
 {
-	if(adc_hal_check_adc_busy(&s_adc.hal))
-    {   
+    if(adc_hal_check_adc_busy(&s_adc.hal))
+    {
         BK_LOGD(NULL,"adc_start:adc busy\n");
-		return BK_ERR_ADC_BUSY;
+        return BK_ERR_ADC_BUSY;
     }
 
-	adc_hal_start_commom(&s_adc.hal);
+    adc_hal_start_commom(&s_adc.hal);
 
-	int ret = rtos_get_semaphore(&(s_adc_dev.adc_read_sema), 1000);
-	if(ret != kNoErr)
-    {   
+    int ret = rtos_get_semaphore(&(s_adc_dev.adc_read_sema), 1000);
+    if(ret != kNoErr)
+    {
         BK_LOGD(NULL,"adc_start:rtos_get_semaphore fail\n");
-		return BK_ERR_ADC_GET_READ_SEMA;
+        return BK_ERR_ADC_GET_READ_SEMA;
     }
 
-	return BK_OK;
+    return BK_OK;
 }
 
 void saradc_config_param_init_for_temp(saradc_desc_t* adc_config)
@@ -838,16 +854,14 @@ float saradc_calculate(UINT16 adc_val)
 {
     float practic_voltage;
 
-
     /* (adc_val - low) / (practic_voltage - 1Volt) = (high - low) / 1Volt */
     /* practic_voltage = (adc_val - low) / (high - low) + 1Volt */
     practic_voltage = (float)(adc_val - saradc_val.low);
     practic_voltage = (practic_voltage / (float)(saradc_val.high - saradc_val.low)) + 1;
 
-
-	if (practic_voltage < 0) {
-		practic_voltage = 0.0f;
-	}
+    if (practic_voltage < 0) {
+        practic_voltage = 0.0f;
+    }
 
     return practic_voltage;
 }
@@ -860,7 +874,7 @@ float bk_adc_data_calculate(UINT16 adc_val, UINT8 adc_chan)
     // CH0: 0:1/7 1:1/5 2:1/3 3:1/2
     if (adc_chan == ADC_0)
     {
-       switch (g_adc_cfg.vol_div)
+        switch (g_adc_cfg.vol_div)
         {
             case ADC_VOL_DIV_7:
                 adc_val = adc_val * 7 / 3;
@@ -903,7 +917,6 @@ float bk_adc_data_calculate(UINT16 adc_val, UINT8 adc_chan)
     {
         cali_value = saradc_calculate(adc_val);
     }
-
     return cali_value;
 }
 

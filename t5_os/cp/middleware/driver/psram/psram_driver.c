@@ -279,7 +279,7 @@ start_init:
 	}
 
 	bk_delay_us(1000);
-	bk_psram_set_clk(PSRAM_120M);
+	psram_hal_set_default_clk();
 
 	MEM_STATIC_LOGD("%s, %x-%x\r\n", __func__, actual_id, chip_id);
 

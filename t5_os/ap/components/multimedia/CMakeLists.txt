@@ -77,13 +77,11 @@ if (CONFIG_MEDIA_PIPELINE)
 	)
 endif()
 
-#if (CONFIG_MEDIA_MAJOR)
 if (CONFIG_MEDIA_BT_AUDIO)
 	list(APPEND srcs
 		bt/bt_audio_act.c
 	)
 endif()
-#endif()
 
 if (CONFIG_SOC_SMP)
 list(APPEND srcs 
@@ -100,4 +98,4 @@ endif()
 
 list(APPEND srcs core/media_mem_share.c)
 
-armino_component_register(SRCS "${srcs}" INCLUDE_DIRS "${incs}" PRIV_REQUIRES bk_cli lvgl  unity media_utils bk_draw_blend display_service bk_dvp bk_uvc avdk_utils bk_vfs tuyaos_adapter)     # Modified by TUYA
+armino_component_register(SRCS "${srcs}" INCLUDE_DIRS "${incs}" PRIV_REQUIRES bk_cli lvgl unity media_utils bk_draw_blend display_service bk_dvp bk_uvc avdk_utils bk_vfs)

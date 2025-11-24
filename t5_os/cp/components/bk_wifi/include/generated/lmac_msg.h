@@ -377,7 +377,7 @@ void ke_evt_core_scheduler(void);
 #endif
 ///Maximum number of scan results that can be stored.
 #ifndef MAX_BSS_LIST
-#define MAX_BSS_LIST            32//SCANU_MAX_RESULTS
+#define MAX_BSS_LIST            64//SCANU_MAX_RESULTS
 #endif
 /// Invalid value for some octet parameters reserved for the future
 #define PHY_UNUSED           0xFF
@@ -2621,6 +2621,57 @@ struct apm_probe_client_ind
     bool client_present;
     /// Unique ID as returned in @ref APM_PROBE_CLIENT_CFM
     uint32_t probe_id;
+};
+/// Messages that are logically related to the task.
+
+/// Messages that are logically related to the task.
+enum ftm_msg_tag
+{
+    /// Request to start the FTM Measurements
+    FTM_START_REQ = KE_FIRST_MSG(TASK_FTM),
+    /// Confirmation of the FTM start.
+    FTM_START_CFM,
+    /// Message sent once the requested measurements have been done
+    FTM_DONE_IND,
+    /// Request Measurement to the peer STA
+    FTM_MEASUREMENT_REQ,
+    /// Timeout message for procedures requiring a response from the peer STA
+    FTM_PEER_RSP_TIMEOUT_IND,
+    /// Request for closing the session after last measurement
+    FTM_CLOSE_SESSION_REQ,
+    #if NX_FAKE_FTM_RSP
+    FTM_AP_MEASUREMENT,
+    #endif
+};
+/// Messages that are logically related to the task.
+
+/// Structure containing the parameters of the @ref FTM_START_REQ message.
+struct ftm_start_req
+{
+    /// Index of the VIF for which the FTM is started
+    uint8_t vif_idx;
+    /// Number of FTMs per Burst
+    uint8_t ftm_per_burst;
+    /// Number of FTM responders on which we do the measurements
+    uint8_t nb_ftm_rsp;
+};
+
+/// Structure containing the parameters of the @ref FTM_START_CFM message.
+struct ftm_start_cfm
+{
+    /// Status of the FTM starting procedure
+    uint8_t status;
+    /// Index of the VIF for which the FTM is started
+    uint8_t vif_idx;
+};
+
+/// Structure containing the parameters of the @ref FTM_DONE_IND message.
+struct ftm_done_ind
+{
+    /// Index of the VIF for which the FTM is started
+    uint8_t vif_idx;
+    /// Results
+    struct mac_ftm_results results;
 };
 /// Local capability flags
 enum

@@ -67,7 +67,10 @@
 
 #include "bk_drv_model.h"
 #include <os/mem.h>
-
+#ifdef CONFIG_BRIDGE
+#include "bridgeif.h"
+//#include "rwnx_config.h"
+#endif
 #include <os/os.h>
 #include "net.h"
 #ifdef CONFIG_WIFI_VNET_CONTROLLER
@@ -92,19 +95,8 @@ extern int bmsg_special_tx_sender(struct pbuf *p, uint32_t vif_idx);
 #ifdef CONFIG_WIFI_VNET_CONTROLLER
 #include "wdrv_tx.h"
 #include "wdrv_main.h"
-//void ethernetif_input(struct netif *netif, struct pbuf *p);
-void ethernetif_input(int iface, struct pbuf *p);
-#else
-void ethernetif_input(int iface, struct pbuf *p);
 #endif
-
-// Modified by TUYA Start
-#if CONFIG_ENABLE_TUYA_LWIP
-#include "tuya_cloud_types.h"
-#include "tkl_lwip.h"
-OPERATE_RET tkl_ethernetif_output(TKL_NETIF_HANDLE netif, TKL_PBUF_HANDLE p);
-#endif // CONFIG_ENABLE_TUYA_LWIP
-// Modified by TUYA End
+void ethernetif_input(int iface, struct pbuf *p, uint8_t dst_idx);
 
 /**
  * In this function, the hardware should be initialized.
@@ -142,13 +134,9 @@ static void low_level_init(struct netif *netif)
 #endif /* LWIP_NETIF_HOSTNAME */
 
     /* set MAC hardware address length */
-// Modified by TUYA Start
-#if CONFIG_ENABLE_TUYA_LWIP
-    bk_printf("low level init\r\n");
-    bk_printf("mac %2x:%2x:%2x:%2x:%2x:%2x\r\n", macptr[0], macptr[1], macptr[2],
+    LWIP_LOGV("enter low level!\r\n");
+    LWIP_LOGV("mac %2x:%2x:%2x:%2x:%2x:%2x\r\n", macptr[0], macptr[1], macptr[2],
                  macptr[3], macptr[4], macptr[5]);
-#endif // CONFIG_ENABLE_TUYA_LWIP
-// Modified by TUYA End
 
     netif->hwaddr_len = ETHARP_HWADDR_LEN;
     memcpy(netif->hwaddr, macptr, ETHARP_HWADDR_LEN);
@@ -156,7 +144,11 @@ static void low_level_init(struct netif *netif)
     netif->mtu = 1500;
     /* device capabilities */
     /* don't set NETIF_FLAG_ETHARP if this device is not an ethernet one */
+#if !CONFIG_BRIDGE
     netif->flags = NETIF_FLAG_BROADCAST | NETIF_FLAG_ETHARP | NETIF_FLAG_LINK_UP;
+#else
+	netif->flags = NETIF_FLAG_BROADCAST | NETIF_FLAG_ETHARP | NETIF_FLAG_ETHERNET | NETIF_FLAG_LINK_UP;
+#endif
  #ifdef LWIP_IGMP
     netif->flags |= NETIF_FLAG_IGMP;
  #endif
@@ -297,7 +289,7 @@ static inline int is_broadcast_mac_addr(const u8 *a)
 
 #ifdef CONFIG_WIFI_VNET_CONTROLLER
 //void ethernetif_input(struct netif *netif, struct pbuf *p)
-void ethernetif_input(int iface, struct pbuf *p)
+void ethernetif_input(int iface, struct pbuf *p, uint8_t dst_idx)
 {
     struct eth_hdr *ethhdr;
     struct netif *netif = NULL;
@@ -331,14 +323,40 @@ void ethernetif_input(int iface, struct pbuf *p)
 
     /* points to packet payload, which starts with an Ethernet header */
     ethhdr = p->payload;
+#if CONFIG_BRIDGE
+    /* need to forward */
+    if (iface == 1) {
+        // If dest sta is known, or packet is multicast, forward this packet
+        if ((ethhdr->dest.addr[0] & 1) || dst_idx != 0xff) {
+            // check if is arp request to us, doesn't need to forward
+            struct pbuf *q;
 
+            if (ethhdr->type == PP_HTONS(ETHTYPE_ARP)) {
+                bridgeif_port_t *port;
+				extern u8_t bridgeif_netif_client_id;
+                if (bridgeif_netif_client_id != 0xff) {
+                    port = (bridgeif_port_t *)netif_get_client_data(netif, bridgeif_netif_client_id);
+                    if (!port || !port->bridge || !port->bridge->netif) {
+                        q = pbuf_clone(PBUF_RAW_TX, PBUF_RAM, p);
+                        if (q != NULL) {
+                            low_level_output(netif, q);
+                            pbuf_free(q);
+                        } else {
+                            LWIP_LOGE("alloc pbuf failed, don't forward\r\n");
+                        }
+                    }
+                }
+            }
+        }
+    }
+#else
     if( (memcmp(netif->hwaddr,ethhdr->src.addr,NETIF_MAX_HWADDR_LEN)==0) && (htons(ethhdr->type) !=ETHTYPE_ARP) )
     {
         LWIP_DEBUGF(ETHARP_DEBUG ,("ethernet_input frame is my send,drop it\r\n"));
         pbuf_free(p);
         return;
     }
-    
+#endif
     switch (htons(ethhdr->type))
     {
         /* IP or ARP packet? */
@@ -486,27 +504,14 @@ wlanif_init(struct netif *netif)
      */
     NETIF_INIT_SNMP(netif, snmp_ifType_ethernet_csmacd, 10000000);
 
-// Modified by TUYA Start
-#if CONFIG_ENABLE_TUYA_LWIP
-    // Modified by TUYA Start
-    // netif->name[0] = IFNAME0;
-    // netif->name[1] = IFNAME1;
-    // Modified by TUYA End
-#endif // CONFIG_ENABLE_TUYA_LWIP
-// Modified by TUYA End
+    netif->name[0] = IFNAME0;
+    netif->name[1] = IFNAME1;
     /* We directly use etharp_output() here to save a function call.
      * You can instead declare your own function an call etharp_output()
      * from it if you have to do some checks before sending (e.g. if link
      * is available...) */
     netif->output = etharp_output;
-	
-// Modified by TUYA Start
-#if CONFIG_ENABLE_TUYA_LWIP
-    netif->linkoutput = tkl_ethernetif_output;
-#else
-	netif->linkoutput = low_level_output;
-#endif // CONFIG_ENABLE_TUYA_LWIP
-// Modified by TUYA End
+    netif->linkoutput = low_level_output;
 #ifdef CONFIG_IPV6
     netif->output_ip6 = ethip6_output;
 #endif

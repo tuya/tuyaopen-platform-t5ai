@@ -14,10 +14,10 @@ if (CONFIG_ADK_COUNT_UTIL)
 	)
 endif()
 
-if (CONFIG_ADK_TFCARD_UTIL)
+if (CONFIG_ADK_VFS_UTIL)
 	list(APPEND srcs
-		tfcard_util.c
+		vfs_util.c
 	)
 endif()
 
-armino_component_register(SRCS "${srcs}" INCLUDE_DIRS "${incs}" PRIV_REQUIRES bk_common)
+armino_component_register(SRCS "${srcs}" INCLUDE_DIRS "${incs}" PRIV_REQUIRES bk_common bk_vfs)

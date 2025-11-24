@@ -1,4 +1,4 @@
-// Copyright 2022-2023 Beken
+// Copyright 2025-2026 Beken
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,7 +18,7 @@
 #include "FreeRTOS.h"
 #include "task.h"
 #include <components/bk_audio/audio_decoders/mp3_decoder.h>
-#include <components/bk_audio/audio_pipeline/audio_common.h>
+#include <components/bk_audio/audio_pipeline/audio_types.h>
 #include <components/bk_audio/audio_pipeline/audio_mem.h>
 #include <components/bk_audio/audio_pipeline/audio_error.h>
 #include <components/bk_audio/audio_pipeline/audio_element.h>
@@ -222,10 +222,44 @@ static int _mp3_decoder_process(audio_element_handle_t self, char *in_buffer, in
 __retry:
     if (mp3_dec->main_buff_remain_size < mp3_dec->main_buff_size)
     {
-        os_memmove(mp3_dec->main_buff, mp3_dec->main_buff_readptr, mp3_dec->main_buff_remain_size);
-        r_size = audio_element_input(self, (char *)(mp3_dec->main_buff + mp3_dec->main_buff_remain_size), mp3_dec->main_buff_size - mp3_dec->main_buff_remain_size);
-        mp3_dec->main_buff_remain_size = mp3_dec->main_buff_remain_size + r_size;
+        if (mp3_dec->main_buff_remain_size > 0)
+        {
+            os_memmove(mp3_dec->main_buff, mp3_dec->main_buff_readptr, mp3_dec->main_buff_remain_size);
+        }
         mp3_dec->main_buff_readptr = mp3_dec->main_buff;
+        r_size = audio_element_input(self, (char *)(mp3_dec->main_buff + mp3_dec->main_buff_remain_size), mp3_dec->main_buff_size - mp3_dec->main_buff_remain_size);
+        /* Check r_size value */
+        if (r_size >= 0)
+        {
+            mp3_dec->main_buff_remain_size = mp3_dec->main_buff_remain_size + r_size;
+            //mp3_dec->main_buff_readptr = mp3_dec->main_buff;
+        }
+        else
+        {
+            if (r_size == AEL_IO_TIMEOUT)
+            {
+                BK_LOGE(TAG, "[%s] read mp3 data timeout, retry, r_size: %d \n", audio_element_get_tag(self), r_size);
+                goto __retry;
+            }
+            else if (r_size == AEL_IO_DONE || r_size == AEL_IO_OK)
+            {
+                /* Data reading is complete. Use the remaining MP3 data for decoding. */
+                //nothing todo
+                BK_LOGD(TAG, "[%s] Data reading is complete. \n", audio_element_get_tag(self));
+                BK_LOGD(TAG, "[%s] main_buff_remain_size: %d \n", audio_element_get_tag(self), mp3_dec->main_buff_remain_size);
+            }
+            else
+            {
+                /* stop mp3 decode */
+                return r_size;
+            }
+        }
+    }
+
+    if (mp3_dec->main_buff_remain_size == 0)
+    {
+        /* the remaining data is empty, return AEL_IO_DONE and stop mp3 decoder */
+        return r_size;
     }
 
     uint32_t offset = MP3FindSyncWord(mp3_dec->main_buff_readptr, mp3_dec->main_buff_remain_size);
@@ -250,16 +284,35 @@ __retry:
             else
             {
                 BK_LOGE(TAG, "[%s] check_mp3_sync_word fail \n", audio_element_get_tag(self));
-                return 0;
+                return AEL_PROCESS_FAIL;
+                /* check sync word fail, read data  */
+                //goto __retry;
             }
         }
 
         ret = MP3Decode(mp3_dec->dec_handle, &mp3_dec->main_buff_readptr, (int *)&mp3_dec->main_buff_remain_size, mp3_dec->out_pcm_buff, 0);
         if (ret != ERR_MP3_NONE)
         {
-            BK_LOGE(TAG, "MP3Decode failed, code is %d \n", ret);
-            return 0;
-            //r_size = AEL_PROCESS_FAIL;
+            switch (ret)
+            {
+                case ERR_MP3_INDATA_UNDERFLOW:
+                    BK_LOGW(TAG, "ERR_MP3_INDATA_UNDERFLOW.\n");
+                    mp3_dec->main_buff_remain_size = 0;
+                    goto __retry;
+                    break;
+
+                case ERR_MP3_MAINDATA_UNDERFLOW:
+                    /* do nothing - next call to decode will provide more mainData */
+                    BK_LOGW(TAG, "ERR_MP3_MAINDATA_UNDERFLOW.\n");
+                    goto __retry;
+                    break;
+
+                default:
+                    BK_LOGE(TAG, "MP3Decode failed, code is %d \n", ret);
+                    BK_LOGW(TAG, "main_buff_remain_size: %d \n", mp3_dec->main_buff_remain_size);
+                    return AEL_PROCESS_FAIL;
+                    break;
+            }
         }
         else
         {
@@ -288,6 +341,7 @@ __retry:
     {
         w_size = r_size;
     }
+
     return w_size;
 }
 
@@ -329,11 +383,14 @@ audio_element_handle_t mp3_decoder_init(mp3_decoder_cfg_t *config)
     cfg.destroy = _mp3_decoder_destroy;
     cfg.read = NULL;
     cfg.write = NULL;
+    cfg.in_type = PORT_TYPE_RB;
+    cfg.out_type = PORT_TYPE_RB;
     cfg.task_stack = config->task_stack;
     cfg.task_prio = config->task_prio;
     cfg.task_core = config->task_core;
-    cfg.out_block_size = config->out_rb_size;
-    cfg.buffer_len = cfg.out_block_size;
+    cfg.out_block_size = config->out_block_size;
+    cfg.out_block_num = config->out_block_num;
+    cfg.buffer_len = config->main_buff_size;
     cfg.tag = "mp3_decoder";
 
     mp3_dec->main_buff_size = config->main_buff_size;

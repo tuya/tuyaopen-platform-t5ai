@@ -47,17 +47,6 @@ bk_err_t bk_flash_driver_init(void);
 bk_err_t bk_flash_driver_deinit(void);
 
 /**
- * @brief     Set flash line mode
- *
- * @param line_mode flash line mode
- *
- * @return
- *    - BK_OK: succeed
- *    - others: other errors.
- */
-bk_err_t bk_flash_set_line_mode(flash_line_mode_t line_mode);
-
-/**
  * @brief     Get flash coutinuous read mode
  *
  * @return flash coutinuous read mode
@@ -375,13 +364,72 @@ bk_err_t mb_flash_register_op_notify(void * notify_cb);
  */
 bk_err_t mb_flash_unregister_op_notify(void * notify_cb);
 
+/**
+ * @brief  register a callback to be called when flash is busy waiting.
+ * @param wait_cb:If flash is writing/erasing, it will block all of other applications.
+ *                But maybe the application can't be blocked when flash is writing/erasing.
+ *                So the application should register this wait_cb to flash.
+ *                When flash is writing/erasing, it will call this wait_cb
+ *
+ * @return
+ *    - BK_OK: succeed
+ *    - others: registered too many(>4) wait_cb to flash.
+ */
+bk_err_t mb_flash_register_op_camera_notify(void * notify_cb);
 
-bk_err_t mb_flash_register_op_dvp_notify(void * notify_cb);
+/**
+ * @brief  unregister the wait_cb from flash waiting.
+ *
+ * @return
+ *    - BK_OK: succeed
+ *    - others: The wait_cb isn't registered to flash.
+ */
+bk_err_t mb_flash_unregister_op_camera_notify(void);
+
+/**
+ * @brief  unregister the wait_cb from flash waiting.
+ *
+ * @return
+ *    - BK_OK: succeed
+ *    - others: The wait_cb isn't registered to flash.
+ */
+bk_err_t mb_flash_unregister_op_onboard_mic_stream_notify(void);
 
 
-bk_err_t mb_flash_unregister_op_dvp_notify(void * notify_cb);
+/**
+ * @brief  register a callback to be called when flash is busy waiting.
+ * @param notify_cb:If flash is writing/erasing, it will block all of other applications.
+ *                But maybe the application can't be blocked when flash is writing/erasing.
+ *                So the application should register this notify_cb to flash.
+ *                When flash is writing/erasing, it will call this notify_cb
+ * @param args: the arguments to pass to notify_cb
+ *
+ * @return
+ *    - BK_OK: succeed
+ *    - others: registered too many(>4) notify_cb to flash.
+ */
+bk_err_t mb_flash_register_op_onboard_mic_stream_notify(void * notify_cb, void *args);
 
 uint32_t flash_get_excute_enable();
+
+/**
+ * @brief     Set flash 2 line mode
+ *
+ * @return
+ *    - BK_OK: succeed
+ *    - others: other errors.
+ */
+bk_err_t bk_flash_power_saving_enter(void);
+
+/**
+ * @brief     Set flash 4 line mode
+ *
+ * @return
+ *    - BK_OK: succeed
+ *    - others: other errors.
+ */
+bk_err_t bk_flash_power_saving_exit(void);
+
 
 #ifdef __cplusplus
 }

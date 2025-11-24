@@ -30,6 +30,7 @@ typedef struct {
     OPERATE_RET (*get_ipv6)                 (NW_IP_TYPE type, NW_IP_S *ip);
     OPERATE_RET (*get_mac)                  (NW_MAC_S *mac);
     OPERATE_RET (*set_mac)                  (CONST NW_MAC_S *mac);
+    OPERATE_RET (*mf_ping_test)             (CONST CHAR_T *ip, CONST UINT32_T cnt, CONST UINT32_T size);
 } TKL_WIRED_DESC_T;
 
 /**

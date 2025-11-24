@@ -23,8 +23,6 @@ uint8_t *media_dtcm_share_buff = &share_buff[0];
 uint8_t *media_dtcm_share_buff = NULL;
 #endif
 
-// #if (CONFIG_MEDIA_MAJOR)
-
 #ifdef CONFIG_BT_REUSE_MEDIA_MEMORY
 __attribute__((section(".bt_spec_data"), aligned(0x10))) uint8_t media_share_buf = 0;
 uint8_t *media_bt_share_buffer = &media_share_buf;

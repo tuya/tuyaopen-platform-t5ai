@@ -1,0 +1,12 @@
+menu "Adk::Audio_decoders::Wav_decoder"
+	config ADK_WAV_DECODER
+		depends on ADK
+		bool "Enable Audio WAV Decoder"
+		default y
+
+	config ADK_WAV_DECODER_TEST
+		depends on ADK_WAV_DECODER && ADK_ARRAY_STREAM && ADK_ONBOARD_SPEAKER_STREAM
+		bool "Enable Audio Wav Decoder test"
+		default y
+
+endmenu

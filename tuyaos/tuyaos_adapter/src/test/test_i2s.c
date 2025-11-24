@@ -29,9 +29,10 @@
 #define TEST_I2S_SEND   1
 
 #define TEST_AUDIO_DELAY    10
-#define TEST_AUDIO_DATA_LEN_PER_SECOND  (TEST_AUDIO_SAMPLE_RATE * TEST_AUDIO_SAMPLE_BITS * 4 / 8 / 50)
+#define TEST_AUDIO_DATA_LEN_PER_SECOND  (TEST_AUDIO_SAMPLE_RATE * TEST_AUDIO_SAMPLE_BITS * 2 / 8 / 50)
 
 static uint8_t direct = 0;
+static uint8_t port = 0;
 static struct ringbuffer i2s_rb;
 static TaskHandle_t __audio_i2s_play_thread = NULL;
 static TKL_SEM_HANDLE __test_i2s_play_close_sem = NULL;
@@ -3001,13 +3002,13 @@ static void __test_audio_init(TKL_FRAME_PUT_CB cb)
     config.spk_gpio_polarity= 0;     // sample
     config.sample = TEST_AUDIO_SAMPLE_RATE;     // sample
     config.datebits = TEST_AUDIO_SAMPLE_BITS;   // datebit
-    config.channel = 1;                         // channel num
+    config.channel = 2;                         // channel num
     config.codectype = TKL_CODEC_AUDIO_PCM;     // codec type
     config.fps = 25;                            // frame per second，suggest 25
     config.mic_volume = 0x2d;
     config.spk_volume = 0x2d;
 
-    config.spk_gpio = 28;
+    config.spk_gpio = 27;
 
     config.put_cb = NULL;
 
@@ -3031,21 +3032,27 @@ static void __test_media_i2s_play(void *arg)
     TKL_AUDIO_FRAME_INFO_T frame_info;
     TUYA_I2S_BASE_CFG_T i2s_cfg;
     int ret = 0;
+
+    if (direct == TEST_I2S_RECV)
+    {
     i2s_cfg.mode = TUYA_I2S_MODE_SLAVE | TUYA_I2S_MODE_RX;
+    }else{
+    i2s_cfg.mode = TUYA_I2S_MODE_MASTER | TUYA_I2S_MODE_TX;
+    }
     i2s_cfg.communication_format = I2S_COMM_FORMAT_STAND_I2S;
     i2s_cfg.channel_format = TUYA_I2S_CHANNEL_FMT_RIGHT_LEFT;
     i2s_cfg.bits_per_sample = TUYA_I2S_BITS_PER_SAMPLE_16BIT;
     i2s_cfg.mclk = 0;
-    i2s_cfg.sample_rate = 2;
+    i2s_cfg.sample_rate = 4;
     i2s_cfg.i2s_dma_flags = 1;
 
-    uint8_t *buffer = tkl_system_psram_malloc(TEST_AUDIO_DATA_LEN_PER_SECOND);
+    uint8_t *buffer = tkl_system_psram_malloc(TEST_AUDIO_DATA_LEN_PER_SECOND * 2);
     if (buffer == NULL) {
         bk_printf("spk buffer malloc failed\r\n");
         return;
     }
-
-    ret = tkl_i2s_init(TUYA_I2S_NUM_2,  &i2s_cfg);
+    bk_printf("port %d dir %d\n", port, direct);
+    ret = tkl_i2s_init(port,  &i2s_cfg);
     if(OPRT_OK != ret) {
         bk_printf("i2s_init fail %d\r\n", __LINE__);
         return;
@@ -3055,33 +3062,41 @@ static void __test_media_i2s_play(void *arg)
     {
         if (direct == TEST_I2S_SEND)
         {
-            ret = tkl_i2s_send(TUYA_I2S_NUM_2, PCM_SPK16000, TEST_AUDIO_DATA_LEN_PER_SECOND);
+            for (int i = 0; i < TEST_AUDIO_DATA_LEN_PER_SECOND; i++)
+            {
+                // bk_printf("%x %x %x %x\r\n", buffer[i], buffer[i+1], buffer[i+2], buffer[i+3]);
+                buffer[i] = i;
+            }
+            ret = tkl_i2s_send(port, buffer, TEST_AUDIO_DATA_LEN_PER_SECOND);
             if( ret < 0) {
-                bk_printf("i2s_recv fail %d\r\n", __LINE__);
+                bk_printf("i2s_send fail %d\r\n", __LINE__);
                 return;
             }
+            bk_printf("i2s_send complete \r\n");
         }
         else
         {
-            ret = tkl_i2s_recv(TUYA_I2S_NUM_2, buffer, TEST_AUDIO_DATA_LEN_PER_SECOND);
+            ret = tkl_i2s_recv(port, buffer, TEST_AUDIO_DATA_LEN_PER_SECOND * 2);
             if( ret < 0) {
                 bk_printf("i2s_recv fail %d\r\n", __LINE__);
                 return;
             }
-            bk_printf("i2s_recv start %x %x %x %x\r\n", buffer[0], buffer[1], buffer[2], buffer[3]);
-            // copy_audio_data(buffer,buffer,TEST_AUDIO_DATA_LEN_PER_SECOND);
+            // bk_printf("i2s_recv start %x %x %x %x\r\n", buffer[0], buffer[1], buffer[2], buffer[3]);
+            // for (int i = 0; i < TEST_AUDIO_DATA_LEN_PER_SECOND; i+=4)
+            // {
+            //     bk_printf("%x %x %x %x\r\n", buffer[i], buffer[i+1], buffer[i+2], buffer[i+3]);
+            // }
+            copy_audio_data(buffer,buffer,ret);
             frame_info.pbuf = buffer;
-            frame_info.used_size = TEST_AUDIO_DATA_LEN_PER_SECOND;
+            frame_info.used_size = ret / 2;
             tkl_ao_put_frame(0, 0, NULL, &frame_info);
         }
         
         
     }
     bk_printf("i2s_recv end %d\r\n", __LINE__);
-    tkl_i2s_deinit(2);
+    tkl_i2s_deinit(port);
     bk_printf("i2s_recv end %d\r\n", __LINE__);
-    tkl_system_psram_free(buffer);
-    buffer = NULL;
     tkl_semaphore_post(__test_i2s_play_close_sem);
 
     return;
@@ -3111,7 +3126,9 @@ static void __test_media_stop_i2s_play(void)
     tkl_semaphore_release(__test_i2s_play_close_sem);
     vTaskDelete(__audio_i2s_play_thread);
 
-    __test_audio_deinit();
+    // tkl_system_psram_free(buffer);
+    // buffer = NULL;
+    // __test_audio_deinit();
 
     bk_printf("i2s play stop\r\n");
 }
@@ -3136,16 +3153,26 @@ void cli_tuya_i2s_cmd(char *pcWriteBuffer, int xWriteBufferLen, int argc, char *
 
     if (!os_strcmp(argv[1], "open")) {
         //lpmgr_register(TY_LP_KEEP_ALIVE);
+        if (!os_strcmp(argv[2], "send")) {
+            direct = TEST_I2S_SEND;
+        } else if (!os_strcmp(argv[2], "recv")) {
+            direct = TEST_I2S_RECV;
+        } else {
+            bk_printf("error %d, %s\r\n", __LINE__, argv[2]);
+            return;
+        }
+        if (!os_strcmp(argv[3], "0")) {
+            port = 0;
+        }  else if (!os_strcmp(argv[3], "1")) {
+            port = 1;
+        }   else if (!os_strcmp(argv[3], "2")) {
+            port = 2;
+        } else {
+            bk_printf("error %d, %s\r\n", __LINE__, argv[3]);
+        }
         __test_media_open_i2s();
     }
-    if (!os_strcmp(argv[2], "send")) {
-        direct = TEST_I2S_SEND;
-    } else if (!os_strcmp(argv[2], "recv")) {
-        direct = TEST_I2S_RECV;
-    } else {
-        bk_printf("error %d, %s\r\n", __LINE__, argv[3]);
-        return;
-    }
+
     if (!os_strcmp(argv[1], "close")) {
         __test_media_stop_i2s_play();
     } else {

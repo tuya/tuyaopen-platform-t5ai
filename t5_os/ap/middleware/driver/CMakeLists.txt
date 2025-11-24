@@ -503,5 +503,5 @@ endif()
 armino_component_register(SRCS "${srcs}"
 	INCLUDE_DIRS "${incs}"
 	REQUIRES cm33
-	PRIV_REQUIRES bk_log easy_flash cmsis os_source bk_usb part_table unity avdk_utils
-)
+	PRIV_REQUIRES bk_log easy_flash cmsis os_source bk_usb part_table unity avdk_utils bk_wifi tuyaos_adapter
+) # Modified by TUYA

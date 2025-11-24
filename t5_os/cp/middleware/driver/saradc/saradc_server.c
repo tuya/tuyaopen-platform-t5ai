@@ -47,22 +47,22 @@ static u8 s_saradc_svr_init = 0;
 static rtos_event_ext_t  saradc_svr_event;
 static u16 saradc_buff[32];
 
-// CRC32 table for data integrity check
 static uint32_t calc_crc32(uint32_t crc, const uint8_t *buf, int len)
 {
-	uint8_t i;
-	while(len--){
-		crc ^=*buf++;
-		for(i = 8; i> 0; i--){
-             if(crc & 0x80){
-               crc = (crc << 1) ^ 0x31;
-			 }else {
-			   crc <<= 1;
-			 }
+    uint8_t i;
 
-		}
-	}
-	return crc;
+    while (len--) {
+        crc ^= *buf++;
+        for (i = 8; i > 0; i--) {
+            if (crc & 0x80) {
+                crc = (crc << 1) ^ 0x31;
+            } else {
+                crc <<= 1;
+            }
+        }
+    }
+
+    return crc;
 }
 
 static void saradc_error_handler(u32 handle, u8 user_cmd)
@@ -275,6 +275,30 @@ static void saradc_data_calculate_handler(u32 handle, saradc_cmd_t *cmd_buff)
 		TRACE_I(TAG, "0x%x, adc calculate: %d, %d.\r\n", handle, cmd_buff->ret_status, ret_val);
 }
 
+static void saradc_chan_init_gpio_handler(u32 handle, saradc_cmd_t *cmd_buff)
+{
+	cmd_buff->ret_status = bk_adc_chan_init_gpio(cmd_buff->config.chan);
+	int ret_val = mb_ipc_send(handle, SARADC_CMD_INIT_GPIO, (u8 *)cmd_buff, sizeof(saradc_cmd_t), SARADC_SVR_WAIT_TIME);
+	if(ret_val != 0)
+		TRACE_I(TAG, "0x%x, deinit adc chan gpio%d: %d, %d.\r\n", handle, cmd_buff->config.chan, cmd_buff->ret_status, ret_val);
+}
+
+static void saradc_chan_deinit_gpio_handler(u32 handle, saradc_cmd_t *cmd_buff)
+{
+	cmd_buff->ret_status = bk_adc_chan_deinit_gpio(cmd_buff->config.chan);
+	int ret_val = mb_ipc_send(handle, SARADC_CMD_DEINIT_GPIO, (u8 *)cmd_buff, sizeof(saradc_cmd_t), SARADC_SVR_WAIT_TIME);
+	if(ret_val != 0)
+		TRACE_I(TAG, "0x%x, deinit adc chan gpio%d: %d, %d.\r\n", handle, cmd_buff->config.chan, cmd_buff->ret_status, ret_val);
+}
+
+static void saradc_set_chan_handler(u32 handle, saradc_cmd_t *cmd_buff)
+{
+	cmd_buff->ret_status = bk_adc_set_channel(cmd_buff->config.chan);
+	int ret_val = mb_ipc_send(handle, SARADC_CMD_SET_CHANNEL, (u8 *)cmd_buff, sizeof(saradc_cmd_t), SARADC_SVR_WAIT_TIME);
+	if(ret_val != 0)
+		TRACE_I(TAG, "0x%x, deinit adc chan gpio%d: %d, %d.\r\n", handle, cmd_buff->config.chan, cmd_buff->ret_status, ret_val);
+}
+
 static void saradc_cmd_handler(u32 handle, u8 connect_id)
 {
 	saradc_cmd_t cmd_buff;
@@ -359,6 +383,18 @@ static void saradc_cmd_handler(u32 handle, u8 connect_id)
 
 		case SARADC_CMD_DATA_CALCULATE:
 			saradc_data_calculate_handler(handle, &cmd_buff);
+			break;
+
+		case SARADC_CMD_INIT_GPIO:
+			saradc_chan_init_gpio_handler(handle, &cmd_buff);
+			break;
+
+		case SARADC_CMD_DEINIT_GPIO:
+			saradc_chan_deinit_gpio_handler(handle, &cmd_buff);
+			break;
+
+		case SARADC_CMD_SET_CHANNEL:
+			saradc_set_chan_handler(handle, &cmd_buff);
 			break;
 
 		default:

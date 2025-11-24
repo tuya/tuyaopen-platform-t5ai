@@ -191,8 +191,12 @@ static unsigned int make_response(char *msg, enum dhcp_message_type type)
 	hdr->ciaddr = 0;
 	hdr->yiaddr = (type == DHCP_MESSAGE_ACK) ? dhcps.client_ip : 0;
 	hdr->yiaddr = (type == DHCP_MESSAGE_OFFER) ?
-	    next_yiaddr() : hdr->yiaddr;
+	next_yiaddr() : hdr->yiaddr;
+#ifndef CONFIG_FUZZ_TEST
 	hdr->siaddr = 0;
+#else
+	hdr->siaddr = dhcps.my_ip;
+#endif
 	hdr->riaddr = 0;
 	offset += sizeof(struct bootp_header);
 
@@ -235,10 +239,10 @@ static unsigned int make_response(char *msg, enum dhcp_message_type type)
 #if !IP_NAPT
 		write_u32(opt->value, dhcps.router_ip);
 #else
-		if (sta_dns)
-			write_u32(opt->value, ip4_addr_get_u32(ip_2_ip4(sta_dns)));
-		else
+		if(!sta_dns)
 			write_u32(opt->value, dhcps.router_ip);
+		else
+			write_u32(opt->value, ip4_addr_get_u32(ip_2_ip4(sta_dns)));
 #endif
 	}
 	else
@@ -500,7 +504,9 @@ static int process_dhcp_message(char *msg, int len)
                 if(++retry == 1)
                     break;
             }
+#ifndef CONFIG_FUZZ_TEST
             etharp_remove_static_entry((ip4_addr_t *)&dst_ip);
+#endif
         }
 
         dhcp_d("this pkt resp is broadcast\r\n");

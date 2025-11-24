@@ -60,13 +60,17 @@ BOOL_T ble_init_flag = FALSE;
 OPERATE_RET tkl_hci_init(VOID)
 {
 #if TKL_DEBUG == 1
-    bk_printf("trace cpu%d %s %d\n", CONFIG_CPU_INDEX, __func__, __LINE__);
+    bk_printf("--- trace hci, in %d %s %d\n", CONFIG_CPU_INDEX, __func__, __LINE__);
 #endif
     struct ipc_msg_s hci_msg;
     memset(&hci_msg, 0, sizeof(struct ipc_msg_s));
     hci_msg.type = TKL_IPC_TYPE_HCI;
     hci_msg.subtype = TKL_IPC_TYPE_HCI_INIT;
     OPERATE_RET ret = tuya_ipc_send_sync(&hci_msg);
+
+#if TKL_DEBUG == 1
+    bk_printf("--- trace hci, out %d %s %d\n", CONFIG_CPU_INDEX, __func__, __LINE__);
+#endif
     if(ret)
         return ret;
 
@@ -77,13 +81,17 @@ OPERATE_RET tkl_hci_init(VOID)
 OPERATE_RET tkl_hci_deinit(VOID)
 {
 #if TKL_DEBUG == 1
-    bk_printf("trace cpu%d %s %d\n", CONFIG_CPU_INDEX, __func__, __LINE__);
+    bk_printf("--- trace hci, in %d %s %d\n", CONFIG_CPU_INDEX, __func__, __LINE__);
 #endif
     struct ipc_msg_s hci_msg;
     memset(&hci_msg, 0, sizeof(struct ipc_msg_s));
     hci_msg.type = TKL_IPC_TYPE_HCI;
     hci_msg.subtype = TKL_IPC_TYPE_HCI_DEINIT;
     OPERATE_RET ret = tuya_ipc_send_sync(&hci_msg);
+
+#if TKL_DEBUG == 1
+    bk_printf("--- trace hci, out %d %s %d\n", CONFIG_CPU_INDEX, __func__, __LINE__);
+#endif
     if(ret)
         return ret;
 
@@ -94,14 +102,17 @@ OPERATE_RET tkl_hci_deinit(VOID)
 OPERATE_RET tkl_hci_reset(VOID)
 {
 #if TKL_DEBUG == 1
-    bk_printf("trace cpu%d %s %d\n", CONFIG_CPU_INDEX, __func__, __LINE__);
+    bk_printf("--- trace hci, in %d %s %d\n", CONFIG_CPU_INDEX, __func__, __LINE__);
 #endif
-
     struct ipc_msg_s hci_msg;
     memset(&hci_msg, 0, sizeof(struct ipc_msg_s));
     hci_msg.type = TKL_IPC_TYPE_HCI;
     hci_msg.subtype = TKL_IPC_TYPE_HCI_RESET;
     OPERATE_RET ret = tuya_ipc_send_sync(&hci_msg);
+
+#if TKL_DEBUG == 1
+    bk_printf("--- trace hci, out %d %s %d\n", CONFIG_CPU_INDEX, __func__, __LINE__);
+#endif
     if(ret)
         return ret;
 
@@ -111,9 +122,8 @@ OPERATE_RET tkl_hci_reset(VOID)
 OPERATE_RET tkl_hci_cmd_packet_send(CONST UCHAR_T *p_buf, USHORT_T buf_len)
 {
 #if TKL_DEBUG == 1
-    bk_printf("trace cpu%d %s %d\n", CONFIG_CPU_INDEX, __func__, __LINE__);
+    bk_printf("--- trace hci, in %d %s %d\n", CONFIG_CPU_INDEX, __func__, __LINE__);
 #endif
-
     struct ipc_msg_s hci_msg;
     memset(&hci_msg, 0, sizeof(struct ipc_msg_s));
     hci_msg.type = TKL_IPC_TYPE_HCI;
@@ -126,12 +136,14 @@ OPERATE_RET tkl_hci_cmd_packet_send(CONST UCHAR_T *p_buf, USHORT_T buf_len)
     bk_printf("====================>\n");
     tkl_data_dump(0, __FILE__,  __LINE__, "hci data", 64, p_buf, buf_len);
     bk_printf("<====================\n");
-#elif TKL_DEBUG == 1
-    bk_printf("trace cpu%d %s %d\n", CONFIG_CPU_INDEX, __func__, __LINE__);
 #endif
 
 
     OPERATE_RET ret = tuya_ipc_send_sync(&hci_msg);//这里这么做的前提是，cpu0 ble数据发送是同步的或者做了一层数据拷贝
+                                                   //
+#if TKL_DEBUG == 1
+    bk_printf("--- trace hci, out %d %s %d\n", CONFIG_CPU_INDEX, __func__, __LINE__);
+#endif
     if(ret)
         return ret;
 
@@ -143,7 +155,7 @@ OPERATE_RET tkl_hci_cmd_packet_send(CONST UCHAR_T *p_buf, USHORT_T buf_len)
 OPERATE_RET tkl_hci_acl_packet_send(CONST UCHAR_T *p_buf, USHORT_T buf_len)
 {
 #if TKL_DEBUG == 1
-    bk_printf("trace cpu%d %s %d\n", CONFIG_CPU_INDEX, __func__, __LINE__);
+    bk_printf("--- trace hci, in %d %s %d\n", CONFIG_CPU_INDEX, __func__, __LINE__);
 #endif
 
     struct ipc_msg_s hci_msg;
@@ -158,11 +170,12 @@ OPERATE_RET tkl_hci_acl_packet_send(CONST UCHAR_T *p_buf, USHORT_T buf_len)
     bk_printf("====================>\n");
     tkl_data_dump(0, __FILE__,  __LINE__, "hci data", 64, p_buf, buf_len);
     bk_printf("<====================\n");
-#elif TKL_DEBUG == 1
-    bk_printf("trace cpu%d %s %d\n", CONFIG_CPU_INDEX, __func__, __LINE__);
 #endif
 
     OPERATE_RET ret = tuya_ipc_send_sync(&hci_msg); //这里这么做的前提是，cpu0 ble数据发送是同步的或者做了一层数据拷贝
+#if TKL_DEBUG == 1
+    bk_printf("--- trace hci, out %d %s %d\n", CONFIG_CPU_INDEX, __func__, __LINE__);
+#endif
     if(ret)
         return ret;
 
@@ -179,7 +192,7 @@ static int _ble_hci_evt_to_host_cb(uint8_t *buf, uint16_t len)
     tkl_data_dump(0, __FILE__,  __LINE__, "hci data", 64, buf, len);
     bk_printf("<====================\n");
 #elif TKL_DEBUG == 1
-    bk_printf("trace cpu%d %s %d\n", CONFIG_CPU_INDEX, __func__, __LINE__);
+    bk_printf("--- trace hci, in %d %s %d\n", CONFIG_CPU_INDEX, __func__, __LINE__);
 #endif
 
     if(s_evt_cb) {
@@ -188,6 +201,9 @@ static int _ble_hci_evt_to_host_cb(uint8_t *buf, uint16_t len)
         bk_printf("s_evt_cb = NULL!  error!!!");
     }
 
+#if TKL_DEBUG == 1
+    bk_printf("--- trace hci, out %d %s %d\n", CONFIG_CPU_INDEX, __func__, __LINE__);
+#endif
     return OPRT_OK;
 }
 
@@ -200,7 +216,7 @@ static int _ble_hci_acl_to_host_cb(uint8_t *buf, uint16_t len)
     tkl_data_dump(0, __FILE__,  __LINE__, "hci data", 64, buf, len);
     bk_printf("<====================\n");
 #elif TKL_DEBUG == 1
-    bk_printf("trace cpu%d %s %d\n", CONFIG_CPU_INDEX, __func__, __LINE__);
+    bk_printf("--- trace hci, in %d %s %d\n", CONFIG_CPU_INDEX, __func__, __LINE__);
 #endif
 
     if(s_acl_cb) {
@@ -209,6 +225,9 @@ static int _ble_hci_acl_to_host_cb(uint8_t *buf, uint16_t len)
         bk_printf("s_acl_cb = NULL!  error!!!");
     }
 
+#if TKL_DEBUG == 1
+    bk_printf("--- trace hci, out %d %s %d\n", CONFIG_CPU_INDEX, __func__, __LINE__);
+#endif
     return OPRT_OK;
 }
 
@@ -216,7 +235,7 @@ static int _ble_hci_acl_to_host_cb(uint8_t *buf, uint16_t len)
 OPERATE_RET tkl_hci_callback_register(CONST TKL_HCI_FUNC_CB hci_evt_cb, CONST TKL_HCI_FUNC_CB acl_pkt_cb)
 {
 #if TKL_DEBUG == 1
-    bk_printf("trace cpu%d %s %d\n", CONFIG_CPU_INDEX, __func__, __LINE__);
+    bk_printf("--- trace hci, in %d %s %d\n", CONFIG_CPU_INDEX, __func__, __LINE__);
 #endif
 
     s_evt_cb = hci_evt_cb;
@@ -227,6 +246,10 @@ OPERATE_RET tkl_hci_callback_register(CONST TKL_HCI_FUNC_CB hci_evt_cb, CONST TK
     hci_msg.type = TKL_IPC_TYPE_HCI;
     hci_msg.subtype = TKL_IPC_TYPE_HCI_REG_CALLBACK;
     OPERATE_RET ret = tuya_ipc_send_sync(&hci_msg);
+
+#if TKL_DEBUG == 1
+    bk_printf("--- trace hci, out %d %s %d\n", CONFIG_CPU_INDEX, __func__, __LINE__);
+#endif
     if(ret)
         return ret;
 

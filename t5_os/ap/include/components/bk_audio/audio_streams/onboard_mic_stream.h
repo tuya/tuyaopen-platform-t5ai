@@ -1,4 +1,4 @@
-// Copyright 2022-2023 Beken
+// Copyright 2025-2026 Beken
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,6 +17,7 @@
 #define _ONBOARD_MIC_STREAM_H_
 
 #include <components/bk_audio/audio_pipeline/audio_element.h>
+#include <components/audio_param_ctrl.h>
 #include <driver/aud_adc_types.h>
 
 
@@ -135,7 +136,9 @@ typedef struct
 #define ONBOARD_MIC_STREAM_TASK_CORE           (1)
 #define ONBOARD_MIC_STREAM_TASK_PRIO           (3)
 
-#define ONBOARD_MIC_ADC_STREAM_CFG_DEFAULT() {              \
+#define ONBOARD_MIC_ADC_STREAM_CFG_DEFAULT() DEFAULT_ONBOARD_MIC_ADC_STREAM_CONFIG()
+
+#define DEFAULT_ONBOARD_MIC_ADC_STREAM_CONFIG() {           \
     .adc_cfg = {                                            \
                    .chl_num = 1,                            \
                    .bits = 16,                              \
@@ -189,6 +192,29 @@ bk_err_t onboard_mic_stream_set_digital_gain(audio_element_handle_t onboard_mic_
  */
 bk_err_t onboard_mic_stream_get_digital_gain(audio_element_handle_t onboard_mic_stream, uint8_t *gain);
 
+/**
+ * @brief      Update onboard mic stream analog gain.
+ *
+ * @param[in]      onboard_mic_stream  element handle
+ * @param[in]      gain  mic analog gain, range: 0x00 ~ 0x3f
+ *
+ * @return         Result
+ *                 - BK_OK: success
+ *                 - other: failed
+ */
+bk_err_t onboard_mic_stream_set_analog_gain(audio_element_handle_t onboard_mic_stream, uint8_t gain);
+
+/**
+ * @brief      Get onboard mic stream analog gain.
+ *
+ * @param[in]      onboard_mic_stream  element handle
+ * @param[in,out]  gain  mic analog gain
+ *
+ * @return         Result
+ *                 - BK_OK: success
+ *                 - other: failed
+ */
+bk_err_t onboard_mic_stream_get_analog_gain(audio_element_handle_t onboard_mic_stream, uint8_t *gain);
 
 #ifdef __cplusplus
 }

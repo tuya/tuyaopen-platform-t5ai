@@ -177,7 +177,8 @@ static void bk_printf_port_ext_internel(int block_mode, int level, char *tag, co
 
 	if(s_printf_sync == 0)
 	{
-		shell_log_out_port(block_mode, level, prefix_str, fmt, args);
+		shell_log_out_port(block_mode, level, NULL, fmt, args);        // Modified by TUYA
+		// shell_log_out_port(block_mode, level, prefix_str, fmt, args);
 	}
 	else
 	{

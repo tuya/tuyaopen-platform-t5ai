@@ -38,6 +38,7 @@
 #include "net.h"
 #include "lwip/netif.h"
 #endif
+
 general_param_t *g_wlan_general_param = NULL;
 ap_param_t *g_ap_param_ptr = NULL;
 sta_param_t *g_sta_param_ptr = NULL;
@@ -378,7 +379,10 @@ bk_err_t bk_wifi_ap_start(void)
 
 #if CONFIG_LWIP
     //TODO move to event handler
-    uap_ip_start();
+#if CONFIG_BRIDGE
+	if (bk_wifi_get_bridge_state() == BRIDGE_STATE_DISABLED)
+#endif
+		uap_ip_start();
 #endif
 
     wifi_set_state_bit(WIFI_AP_STARTED_BIT);
@@ -479,6 +483,7 @@ bk_err_t bk_wifi_ap_set_config(const wifi_ap_config_t *ap_config)
     netif_ip4_config_t ip4_config = {0};
     void *buffer_to_ipc = NULL;
     uint32_t len = sizeof(wifi_ap_config_t);
+    uint32_t len_ip4_config = sizeof(netif_ip4_config_t);
 
     WDRV_LOGD("ap configuring\n");
 
@@ -489,12 +494,28 @@ bk_err_t bk_wifi_ap_set_config(const wifi_ap_config_t *ap_config)
 
     BK_RETURN_ON_ERR(bk_netif_set_ip4_config(NETIF_IF_AP, &ip4_config));
 
+    buffer_to_ipc = os_malloc(len_ip4_config);
+    if (!buffer_to_ipc)
+    {
+        WIFI_LOGE("%s malloc failed\r\n", __func__);
+        return BK_ERR_NO_MEM;
+    }
+    os_memcpy(buffer_to_ipc, &ip4_config, len_ip4_config);
+    ret = wifi_send_com_api_cmd(AP_NETIF_IP4_CONFIG, 1, (uint32_t)buffer_to_ipc);
+    if (ret != BK_OK)
+    {
+        WDRV_LOGE("%s set ap netif ip4 config failed, ret=%d\n", __func__, ret);
+        return ret;
+    }
+    os_free(buffer_to_ipc);
+
 #if 0
     if (!wifi_is_inited()) {
         WDRV_LOGD("set ap config fail, wifi not init\n");
         return BK_ERR_WIFI_NOT_INIT;
     }
 #endif
+
     ret = wifi_ap_validate_config(ap_config);
     if (ret != BK_OK)
         return ret;
@@ -702,6 +723,33 @@ bk_err_t bk_wifi_set_country(const wifi_country_t *country)
     return ret;
 }
 
+bk_err_t bk_wifi_get_country(wifi_country_t *country)
+{
+    bk_err_t ret = BK_OK;
+    void *buffer_to_ipc = NULL;
+    uint32_t len = sizeof(wifi_country_t);
+
+    if (country == NULL) {
+        WIFI_LOGE("%s failed, invalid input param\r\n", __func__);
+        return BK_ERR_NO_MEM;
+    }
+
+    buffer_to_ipc = os_malloc(len);
+    if (!buffer_to_ipc)
+    {
+        WIFI_LOGE("%s malloc failed\r\n", __func__);
+        return BK_ERR_NO_MEM;
+    }
+
+    ret = wifi_send_com_api_cmd(WIFI_GET_COUNTRY, 1, (uint32_t)buffer_to_ipc);
+
+    os_memcpy(country, buffer_to_ipc, len);
+    os_free(buffer_to_ipc);
+
+    return ret;
+
+}
+
 bk_err_t bk_wifi_get_listen_interval(uint8_t *listen_interval)
 {
     bk_err_t ret = BK_OK;
@@ -760,6 +808,15 @@ bk_err_t bk_wifi_set_bcn_loss_time(uint8_t wait_cnt, uint8_t wake_cnt)
     return ret;
 }
 
+bk_err_t bk_wifi_set_bcn_miss_time(uint8_t bcnmiss_time)
+{
+    bk_err_t ret = BK_OK;
+
+    ret = wifi_send_com_api_cmd(STA_SET_BCN_MISS_TIME, 1, bcnmiss_time);
+
+    return ret;
+}
+
 bk_err_t bk_wifi_sta_get_linkstate_with_reason(wifi_linkstate_reason_t *info)
 {
     bk_err_t ret = BK_OK;
@@ -782,6 +839,28 @@ bk_err_t bk_wifi_sta_get_linkstate_with_reason(wifi_linkstate_reason_t *info)
 
     os_memcpy(info, buffer_to_ipc, len);
     os_free(buffer_to_ipc);
+
+    return ret;
+}
+
+bk_err_t bk_wifi_get_support_wifi_mode(uint8_t* support_mode)
+{
+    bk_err_t ret = BK_OK;
+    void *buffer_to_ipc = NULL;
+
+    buffer_to_ipc = os_malloc(1);
+    if (!buffer_to_ipc)
+    {
+        WIFI_LOGE("%s malloc failed\r\n", __func__);
+        return BK_ERR_NO_MEM;
+    }
+
+    ret = wifi_send_com_api_cmd(WIFI_GET_SUPPORT_MODE, 1, (uint32_t)buffer_to_ipc);
+
+    *support_mode = *(uint8_t *)buffer_to_ipc;
+    os_free(buffer_to_ipc);
+
+    WIFI_LOGD("%s: %d \n", __func__, *support_mode);
 
     return ret;
 }
@@ -825,6 +904,37 @@ bk_err_t bk_scan_country_code(uint8_t *country_code, int *len)
     os_free(buffer_to_ipc_1);
 
     return ret;
+}
+
+static wifi_beacon_cc_rxed_t g_scan_cc_rxed_cb = NULL;
+void *g_scan_cc_ctxt = NULL;
+bk_err_t bk_wifi_bcn_cc_rxed_register_cb(const wifi_beacon_cc_rxed_t cc_cb, void *ctxt)
+{
+    bk_err_t ret = BK_OK;
+    bool enable = (cc_cb == NULL)? false: true;
+
+    g_scan_cc_rxed_cb = cc_cb;
+    g_scan_cc_ctxt = ctxt;
+
+    ret = wifi_send_com_api_cmd(WIFI_GET_BCN_CC, 1, enable);
+
+    return ret;
+}
+
+bk_err_t bk_wifi_bcn_cc_rxed_cb(void *data, uint16_t len)
+{
+    uint8_t *cc;
+    uint8_t cc_len = len;
+
+    cc = os_malloc(cc_len);
+    os_memcpy(cc, (uint8_t *)data, cc_len);
+
+    if (g_scan_cc_rxed_cb)
+        g_scan_cc_rxed_cb(g_scan_cc_ctxt, cc, cc_len);
+
+    os_free(cc);
+
+    return 0;
 }
 
 bk_err_t bk_wifi_sta_connect(void)
@@ -948,6 +1058,7 @@ bk_err_t bk_wifi_sta_get_config(wifi_sta_config_t *config)
         return BK_ERR_NO_MEM;
     }
 
+    os_memset(buffer_to_ipc, 0, len);   // Modified by TUYA
     ret = wifi_send_com_api_cmd(STA_GET_CONFIG, 1, (uint32_t)buffer_to_ipc);
 
     os_memcpy(config, buffer_to_ipc, len);
@@ -968,23 +1079,23 @@ bk_err_t bk_wifi_sta_pm_disable(void)
 
 int demo_sta_app_init(char *oob_ssid, char *connect_key)
 {
-	wifi_sta_config_t sta_config = {0};
-	int len;
+    wifi_sta_config_t sta_config = {0};
+    int len;
 
-	len = os_strlen(oob_ssid);
-	if (SSID_MAX_LEN < len) {
-		WIFI_LOGD("ssid name more than 32 Bytes\r\n");
-		return BK_FAIL;
-	}
+    len = os_strlen(oob_ssid);
+    if (SSID_MAX_LEN < len) {
+        WIFI_LOGD("ssid name more than 32 Bytes\r\n");
+        return BK_FAIL;
+    }
 
-	os_strcpy(sta_config.ssid, oob_ssid);
-	if (connect_key)
-		os_strcpy(sta_config.password, connect_key);
+    os_strcpy(sta_config.ssid, oob_ssid);
+    if (connect_key)
+        os_strcpy(sta_config.password, connect_key);
 
-	WIFI_LOGD("ssid:%s key:%s\r\n", sta_config.ssid, sta_config.password);
-	BK_LOG_ON_ERR(bk_wifi_sta_set_config(&sta_config));
-	BK_LOG_ON_ERR(bk_wifi_sta_start());
-	return BK_OK;
+    WIFI_LOGD("ssid:%s key:%s\r\n", sta_config.ssid, sta_config.password);
+    BK_LOG_ON_ERR(bk_wifi_sta_set_config(&sta_config));
+    BK_LOG_ON_ERR(bk_wifi_sta_start());
+    return BK_OK;
 }
 
 bk_err_t bk_wifi_monitor_start(void)
@@ -1176,42 +1287,42 @@ _free_and_exit:
 
 static const char *wifi_sec_type_string_api(wifi_security_t security)
 {
-	switch (security) {
-	case WIFI_SECURITY_NONE:
-		return "NONE";
-	case WIFI_SECURITY_WEP:
-		return "WEP";
-	case WIFI_SECURITY_WPA_TKIP:
-		return "WPA-TKIP";
-	case WIFI_SECURITY_WPA_AES:
-		return "WPA-AES";
-	case WIFI_SECURITY_WPA_MIXED:
-		return "WPA-MIX";
-	case WIFI_SECURITY_WPA2_TKIP:
-		return "WPA2-TKIP";
-	case WIFI_SECURITY_WPA2_AES:
-		return "WPA2-AES";
-	case WIFI_SECURITY_WPA2_MIXED:
-		return "WPA2-MIX";
-	case WIFI_SECURITY_WPA3_SAE:
-		return "WPA3-SAE";
-	case WIFI_SECURITY_WPA3_WPA2_MIXED:
-		return "WPA3-WPA2-MIX";
-	case WIFI_SECURITY_EAP:
-		return "EAP";
-	case WIFI_SECURITY_OWE:
-		return "OWE";
-	case WIFI_SECURITY_AUTO:
-		return "AUTO";
+    switch (security) {
+    case WIFI_SECURITY_NONE:
+        return "NONE";
+    case WIFI_SECURITY_WEP:
+        return "WEP";
+    case WIFI_SECURITY_WPA_TKIP:
+        return "WPA-TKIP";
+    case WIFI_SECURITY_WPA_AES:
+        return "WPA-AES";
+    case WIFI_SECURITY_WPA_MIXED:
+        return "WPA-MIX";
+    case WIFI_SECURITY_WPA2_TKIP:
+        return "WPA2-TKIP";
+    case WIFI_SECURITY_WPA2_AES:
+        return "WPA2-AES";
+    case WIFI_SECURITY_WPA2_MIXED:
+        return "WPA2-MIX";
+    case WIFI_SECURITY_WPA3_SAE:
+        return "WPA3-SAE";
+    case WIFI_SECURITY_WPA3_WPA2_MIXED:
+        return "WPA3-WPA2-MIX";
+    case WIFI_SECURITY_EAP:
+        return "EAP";
+    case WIFI_SECURITY_OWE:
+        return "OWE";
+    case WIFI_SECURITY_AUTO:
+        return "AUTO";
 #ifdef CONFIG_WAPI_SUPPORT
-	case WIFI_SECURITY_TYPE_WAPI_PSK:
-		return "WAPI_PSK";
-	case WIFI_SECURITY_TYPE_WAPI_CERT:
-		return "WAPI_CERT";
+    case WIFI_SECURITY_TYPE_WAPI_PSK:
+        return "WAPI_PSK";
+    case WIFI_SECURITY_TYPE_WAPI_CERT:
+        return "WAPI_CERT";
 #endif
-	default:
-		return "UNKNOWN";
-	}
+    default:
+        return "UNKNOWN";
+    }
 }
 
 static void wifi_scan_dump_ap(const wifi_scan_ap_info_t *ap)
@@ -1308,7 +1419,7 @@ bk_err_t bk_wifi_monitor_register_cb(const wifi_monitor_cb_t monitor_cb)
 
 wifi_monitor_cb_t bk_wifi_monitor_get_cb(void)
 {
-	return s_monitor_ap_cb;
+    return s_monitor_ap_cb;
 }
 
 bk_err_t bk_wifi_monitor_register_ind(uint8_t * msg_payload)
@@ -1358,7 +1469,7 @@ bk_err_t bk_wifi_filter_register_cb(const wifi_filter_cb_t filter_cb)
 
 wifi_filter_cb_t bk_wifi_filter_get_cb(void)
 {
-	return s_filter_ap_cb;
+    return s_filter_ap_cb;
 }
 bk_err_t bk_wifi_filter_register_ind(uint8_t * msg_payload)
 {
@@ -1403,7 +1514,6 @@ bk_err_t bk_wifi_send_arp_set_rate_req(uint16_t arp_tx_rate)
     return wifi_send_com_api_cmd(SEND_ARP_SET_RATE_REQ, 1, arp_tx_rate);
 }
 
-
 bk_err_t bk_wifi_get_status(wifi_status_t *status)
 {
     bk_err_t ret = BK_OK;
@@ -1430,3 +1540,431 @@ bk_err_t bk_wifi_get_status(wifi_status_t *status)
     return ret;
 }
 
+bk_err_t bk_wifi_set_block_bcmc_en(uint8_t config)
+{
+    bk_err_t ret = BK_OK;
+
+    ret = wifi_send_com_api_cmd(WIFI_SET_BLOCK_BCMC_EN, 1, config);
+
+    return ret;
+}
+
+bool bk_wifi_get_block_bcmc_en(void)
+{
+    void *buffer_to_ipc = NULL;
+    bool bcmcm_en;
+
+    buffer_to_ipc = os_malloc(1);
+
+    wifi_send_com_api_cmd(WIFI_GET_BLOCK_BCMC_EN, 1, (uint32_t)buffer_to_ipc);
+
+    bcmcm_en = *(bool *)buffer_to_ipc;
+    os_free(buffer_to_ipc);
+
+    return bcmcm_en;
+}
+
+bk_err_t bk_wifi_ftm_start(const wifi_ftm_config_t *config, wifi_ftm_results_t *ftm_results)
+{
+    bk_err_t ret = BK_OK;
+    void *buffer_to_ipc_1 = NULL;
+    void *buffer_to_ipc_2 = NULL;
+    uint32_t len1 = sizeof(wifi_ftm_config_t);
+    uint32_t len2 = sizeof(wifi_ftm_results_t);
+
+    if ((config == NULL) || (ftm_results == NULL)) {
+        WIFI_LOGE("%s failed, invalid pointer\r\n", __func__);
+        return BK_ERR_NO_MEM;
+    }
+
+    buffer_to_ipc_1 = os_malloc(len1);
+    buffer_to_ipc_2 = os_malloc(len2);
+    if (!buffer_to_ipc_1 || !buffer_to_ipc_2)
+    {
+        WIFI_LOGE("%s malloc failed\r\n", __func__);
+        return BK_ERR_NO_MEM;
+    }
+
+    ret = wifi_send_com_api_cmd(FTM_START, 2, (uint32_t)buffer_to_ipc_1, (uint32_t)buffer_to_ipc_2);
+
+    os_memcpy(ftm_results, buffer_to_ipc_2, len2);
+    os_free(buffer_to_ipc_1);
+    os_free(buffer_to_ipc_2);
+
+    return ret;
+}
+
+bk_err_t bk_wifi_ftm_dump_result(const wifi_ftm_results_t *ftm_results)
+{
+    if (!ftm_results) {
+        WIFI_LOGD("ftm doesn't found responser\n");
+        return BK_OK;
+    }
+
+    if ((ftm_results->nb_ftm_rsp > 0) && (!ftm_results->rsp)) {
+        WIFI_LOGE("ftm responser number is %d, but responser info is NULL\n", ftm_results->nb_ftm_rsp);
+        return BK_ERR_PARAM;
+    }
+
+    WIFI_LOGD("ftm found %d responser\n", ftm_results->nb_ftm_rsp);
+
+    for (int i = 0; i < ftm_results->nb_ftm_rsp; i++) {
+        WIFI_LOGD("The distance to " WIFI_MAC_FORMAT " is %.2f meters, rtt is %d nSec \n",
+            WIFI_MAC_STR(ftm_results->rsp[i].bssid), ftm_results->rsp[i].distance, ftm_results->rsp[i].rtt);
+        rtos_delay_milliseconds(10);
+    }
+
+    WIFI_LOG_RAW("\n");
+
+    return BK_OK;
+}
+
+bk_err_t bk_wifi_ftm_free_result(wifi_ftm_results_t *ftm_results)
+{
+    bk_err_t ret = BK_OK;
+    void *buffer_to_ipc = NULL;
+    uint32_t len = sizeof(wifi_ftm_results_t);
+
+    if (ftm_results == NULL) {
+        WIFI_LOGE("%s failed, invalid pointer\r\n", __func__);
+        return BK_ERR_NO_MEM;
+    }
+
+    if (ftm_results->rsp == NULL)
+    {
+        WIFI_LOGE("%s no need to free, num %d\r\n", __func__, ftm_results->nb_ftm_rsp);
+        return BK_OK;
+    }
+
+    buffer_to_ipc = os_malloc(len);
+
+    os_memcpy(buffer_to_ipc, ftm_results, len);
+    ret = wifi_send_com_api_cmd(FTM_FREE_RESULT, 1, (uint32_t)buffer_to_ipc);
+
+    os_free(buffer_to_ipc);
+
+    return ret;
+}
+
+
+bk_err_t bk_wifi_csi_alg_config(double thres1)
+{
+    bk_err_t ret = BK_OK;
+    void *buffer_to_ipc = NULL;
+    uint8_t len = sizeof(double);
+
+    buffer_to_ipc = os_malloc(len);
+    if (!buffer_to_ipc)
+    {
+        WIFI_LOGE("%s malloc failed\r\n", __func__);
+        return BK_ERR_NO_MEM;
+    }
+
+    os_memcpy(buffer_to_ipc, &thres1, len);
+    ret = wifi_send_com_api_cmd(CSI_ALG_CONFIG, 1, (uint32_t)buffer_to_ipc);
+
+    os_free(buffer_to_ipc);
+
+    return ret;
+
+}
+
+bk_err_t bk_wifi_csi_start_req(uint8_t csi_work_type,uint8_t csi_work_mode,uint8_t csi_work_identity,uint8_t csi_data_format,
+                               uint32_t csi_data_interval,uint32_t delay)
+{
+    bk_err_t ret = BK_OK;
+
+    ret = wifi_send_com_api_cmd(CSI_START, 6, csi_work_type, csi_work_mode, csi_work_identity,
+                                csi_data_format, csi_data_interval, delay);
+
+    return ret;
+}
+
+bk_err_t bk_wifi_csi_stop_req(void)
+{
+    bk_err_t ret = BK_OK;
+
+    ret = wifi_send_com_api_cmd(CSI_STOP, 0);
+
+    return ret;
+}
+
+bk_err_t bk_wifi_csi_static_param_reset_req(uint8_t update_cali_mode,uint32_t cali_cnt)
+{
+    bk_err_t ret = BK_OK;
+
+    ret = wifi_send_com_api_cmd(CSI_STATIC_PARAM_RESET, 2, update_cali_mode, cali_cnt);
+
+    return ret;
+}
+
+wifi_csi_cb_t g_wifi_csi_info_handler = NULL;
+void bk_wifi_csi_info_cb_register(wifi_csi_cb_t cb)
+{
+    bool enable = (cb == NULL)? false: true;
+
+    g_wifi_csi_info_handler = cb;
+
+    wifi_send_com_api_cmd(CSI_INFO_GET, 1, enable);
+
+    return;
+}
+
+void bk_wifi_csi_info_cb(void *data)
+{
+    struct wifi_csi_info_t *info;
+    uint16_t len = sizeof(struct wifi_csi_info_t);
+
+    info = os_malloc(len);
+    os_memcpy(info, (uint8_t *)data, len);
+
+    if(g_wifi_csi_info_handler)
+        g_wifi_csi_info_handler(info);
+
+    os_free(info);
+}
+
+
+bk_err_t bk_wifi_csi_demo_turn_on_light(uint8_t color, bool flicker)
+{
+    bk_err_t ret = BK_OK;
+
+    ret = wifi_send_com_api_cmd(CSI_DEMO_LIGHT, 2, color, flicker);
+
+    return ret;
+}
+
+#if CONFIG_BRIDGE
+bk_err_t bk_wifi_check_client_mac_connected(uint8_t *mac)
+{
+    void *buffer_to_ipc = NULL;
+    bk_err_t ret = BK_OK;
+
+    buffer_to_ipc = os_malloc(WIFI_MAC_LEN);
+    if (!buffer_to_ipc)
+    {
+        WIFI_LOGE("%s malloc failed\r\n", __func__);
+        return BK_ERR_NO_MEM;
+    }
+    os_memcpy(buffer_to_ipc, mac, WIFI_MAC_LEN);
+    ret = wifi_send_com_api_cmd(CHECK_CLIENT_MAC_CONNECTED, 1, (uint32_t)buffer_to_ipc);
+    os_free(buffer_to_ipc);
+    return ret;
+}
+
+#include "netif/bridgeif.h"
+#include "lwip/netifapi.h"
+#include "lwip/inet.h"
+
+static bk_bridge_state_t bridge_state = BRIDGE_STATE_DISABLED;
+bk_bridge_config_t bridge_config = {0};
+
+/*private apis for beken bridge start*/
+bk_bridge_state_t bk_wifi_get_bridge_state(void)
+{
+    return bridge_state;
+}
+
+bk_err_t bk_wifi_sync_bridge_state(bk_bridge_state_t br_state)
+{
+    void *buffer_to_ipc = NULL;
+
+    buffer_to_ipc = os_malloc(sizeof(bk_bridge_state_t));
+    if (!buffer_to_ipc)
+    {
+        WIFI_LOGE("%s malloc failed\r\n", __func__);
+        return BK_ERR_NO_MEM;
+    }
+    *((bk_bridge_state_t *)buffer_to_ipc) = br_state;
+    wifi_send_com_api_cmd(SET_BRIDGE_SYNC_STATE, 1, (uint32_t)buffer_to_ipc);
+    os_free(buffer_to_ipc);
+    return BK_OK;
+}
+
+bk_err_t bk_wifi_save_bridge_config(bk_bridge_config_t *br_config)
+{
+    if (br_config == NULL) {
+        WIFI_LOGE("%s failed, invalid pointer\r\n", __func__);
+        return BK_FAIL;
+    }
+    if (bridge_config.bridge_ssid) {
+        os_free(bridge_config.bridge_ssid);
+    }
+    bridge_config.bridge_ssid = os_strdup(br_config->bridge_ssid);
+    if (bridge_config.ext_sta_ssid) {
+        os_free(bridge_config.ext_sta_ssid);
+    }
+    bridge_config.ext_sta_ssid = os_strdup(br_config->ext_sta_ssid);
+    if (bridge_config.key) {
+        os_free(bridge_config.key);
+    }
+    bridge_config.key = os_strdup(br_config->key);
+    if (bridge_config.hostname) {
+        os_free(bridge_config.hostname);
+    }
+    bridge_config.hostname = os_strdup(br_config->hostname);
+    bridge_config.channel = br_config->channel;
+    return BK_OK;
+}
+
+static beken_thread_t br_start_thread_internal;
+void bk_br_start_internal(void* data)
+{
+    int len, key_len = 0;
+    uint8_t mac[6] = {0};
+    bridgeif_initdata_t mybr_initdata = {0};
+    netif_ip4_config_t ip4_config = {0};
+    ip4_addr_t my_ip, my_gw, my_mask;
+    wifi_link_status_t link_status = {0};
+    wifi_ap_config_t ap_config = {0};//WIFI_DEFAULT_AP_CONFIG();
+    wifi_link_status_t link_sta_status = {0};
+
+    WIFI_LOGI("bk_wifi_start_softap_for_bridge, ssid: %s, key: %s, channel: %d, hostname: %s, state: %d\r\n",
+            bridge_config.bridge_ssid, bridge_config.key, bridge_config.channel, bridge_config.hostname, bridge_state);
+    if (bridge_state == BRIDGE_STATE_ENABLING) {
+        /*confige bridgeif and add sta to bridgeif*/
+        bk_wifi_sta_get_mac(mac);
+        os_memcpy(((struct netif *)net_get_br_handle())->hwaddr, mac, 6);
+        os_memcpy(&mybr_initdata.ethaddr, mac, 6);
+        mybr_initdata.max_fdb_dynamic_entries = 64;
+        mybr_initdata.max_fdb_static_entries = 4;
+        mybr_initdata.max_ports = 16;
+        bk_netif_get_ip4_config(NETIF_IF_STA, &ip4_config);
+        inet_aton((char *)&ip4_config.ip, &my_ip);
+        inet_aton((char *)&ip4_config.gateway, &my_gw);
+        inet_aton((char *)&ip4_config.mask, &my_mask);
+        // set STA interface IP to 0.0.0.0
+        //netifapi_netif_set_addr((struct netif *)net_get_sta_handle(), NULL, NULL, NULL);
+        netifapi_netif_add((struct netif *)net_get_br_handle(), &my_ip, &my_mask, &my_gw,
+                            &mybr_initdata, bridgeif_init, netif_input);
+        bridgeif_add_port((struct netif *)net_get_br_handle(), (struct netif *)net_get_sta_handle());
+        if (bridge_config.hostname) {
+            netif_set_hostname((struct netif *)net_get_sta_handle(), bridge_config.hostname);
+        } else {
+            netif_set_hostname((struct netif *)net_get_sta_handle(), "Beken_Bridge");
+        }
+        bk_wifi_sta_get_link_status(&link_status);
+        //start softap
+        len = os_strlen(bridge_config.bridge_ssid);
+        if (bridge_config.key)
+            key_len = os_strlen(bridge_config.key);
+        if (SSID_MAX_LEN < len) {
+            WIFI_LOGE("ssid name more than 32 Bytes\r\n");
+            return;
+        }
+        if (0 == len) {
+            WIFI_LOGE("ssid name must not be null\r\n");
+            return;
+        }
+        if (8 > key_len)
+            WIFI_LOGE("key less than 8 Bytes, the security will be set NONE\r\n");
+        if (64 < key_len) {
+            WIFI_LOGE("key more than 64 Bytes\r\n");
+            return;
+        }
+        os_strcpy(ip4_config.ip, WLAN_ANY_IP);
+        os_strcpy(ip4_config.mask, WLAN_ANY_IP);
+        os_strcpy(ip4_config.gateway, WLAN_ANY_IP);
+        os_strcpy(ip4_config.dns, WLAN_ANY_IP);
+        bk_netif_set_ip4_config(NETIF_IF_AP, &ip4_config);
+        os_strcpy(ap_config.ssid, bridge_config.bridge_ssid);
+        os_memset(&link_sta_status, 0x0, sizeof(link_sta_status));
+        bk_wifi_sta_get_link_status(&link_sta_status);
+        if (link_sta_status.security == WIFI_SECURITY_NONE) { 
+            // do not set the key for softap
+        } else if (bridge_config.key) {
+            os_strcpy(ap_config.password, bridge_config.key);
+        }
+        ap_config.security = link_sta_status.security;
+        //bridge vendor IEs is optional
+        //os_memcpy(ap_config.vsie, "\xdd\x07\xc8\x47\x8c\x01\x00\x00\x00", 9); //bridge vise set to 1
+        //ap_config.vsie_len = 9;
+        WIFI_LOGD("ssid:%s  key:%s\r\n", ap_config.ssid, ap_config.password);
+        bk_wifi_ap_set_config(&ap_config);
+        bk_wifi_ap_start();
+        bridgeif_add_port((struct netif *)net_get_br_handle(), (struct netif *)net_get_uap_handle());
+        netifapi_netif_set_default(net_get_br_handle());
+        netifapi_netif_set_up((struct netif *)net_get_br_handle());
+        bridge_set_ip_start_flag(true);
+        bridge_state = BRIDGE_STATE_ENABLED;
+        bk_wifi_sync_bridge_state(BRIDGE_STATE_ENABLED);
+    }
+    rtos_delete_thread(NULL);
+}
+
+bk_err_t bk_wifi_start_softap_for_bridge(void)
+{
+    bk_err_t ret = BK_OK;
+    ret = rtos_create_thread(&br_start_thread_internal,
+        BEKEN_APPLICATION_PRIORITY,
+        "br_start_thread_internal",
+        (beken_thread_function_t)bk_br_start_internal,
+        4*1024,
+        0);
+    if (br_start_thread_internal == NULL) {
+        WIFI_LOGE("create thread failed\r\n");
+        ret = BK_FAIL;
+    }
+    return ret;
+}
+
+void bk_wifi_switch_bridge_to_sta(void)
+{
+    if (bridge_state == BRIDGE_STATE_ENABLED ||
+        bridge_state == BRIDGE_STATE_ENABLING) {
+        bridge_state = BRIDGE_STATE_DISABLING;
+        bridge_ip_stop();
+        /*just stop softap, station still work*/
+        netifapi_netif_set_default(net_get_sta_handle());
+        bridge_set_ip_start_flag(false);
+        bk_wifi_ap_stop();
+        bridge_state = BRIDGE_STATE_DISABLED;
+        bk_wifi_sync_bridge_state(BRIDGE_STATE_DISABLED);
+    }
+}
+/*private apis for beken bridge end*/
+
+bk_err_t bk_bridge_stop(void)
+{
+    if (bridge_state > BRIDGE_STATE_DISABLING) {
+        bridge_state = BRIDGE_STATE_DISABLING;
+        bk_wifi_sync_bridge_state(BRIDGE_STATE_DISABLING);
+        if(bk_wifi_sta_stop())
+            BK_LOGD(NULL, "bridge stop sta fail\r\n");
+        if(bk_wifi_ap_stop())
+            BK_LOGD(NULL, "bridge stop ap fail\r\n");
+        bridge_ip_stop();
+        bridge_state = BRIDGE_STATE_DISABLED;
+        bk_wifi_sync_bridge_state(BRIDGE_STATE_DISABLED);
+    }
+    return BK_OK;
+}
+
+bk_err_t bk_bridge_start(bk_bridge_config_t *br_config)
+{
+    wifi_sta_config_t sta_config = {0};
+    int len = 0;
+
+    bk_bridge_stop();
+    bridge_state = BRIDGE_STATE_ENABLING;
+    bk_wifi_sync_bridge_state(BRIDGE_STATE_ENABLING);
+    bk_wifi_save_bridge_config(br_config);
+    //start sta
+    len = os_strlen(br_config->ext_sta_ssid);
+    if (33 < len) {
+        LWIP_LOGD("ssid name more than 32 Bytes\r\n");
+        return BK_FAIL;
+    }
+
+    os_strcpy(sta_config.ssid, br_config->ext_sta_ssid);
+    if (br_config->key)
+        os_strcpy(sta_config.password, br_config->key);
+
+    LWIP_LOGD("ssid:%s key:%s\r\n", sta_config.ssid, sta_config.password);
+    BK_LOG_ON_ERR(bk_wifi_sta_set_config(&sta_config));
+    BK_LOG_ON_ERR(bk_wifi_sta_start());
+    //left process in wdrv_cntrl.c
+
+    return BK_OK;
+}
+#endif

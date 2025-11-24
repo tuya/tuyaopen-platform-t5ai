@@ -54,10 +54,26 @@
 #define IP_FORWARD                      0
 #endif
 
+#ifdef CONFIG_IP_FORWARD_ALLOW_TX_ON_RX_NETIF
+#define IP_FORWARD_ALLOW_TX_ON_RX_NETIF    1
+#else
+#define IP_FORWARD_ALLOW_TX_ON_RX_NETIF    0
+#endif
+
+#if CONFIG_BK_DHCP_RELEASE_TIME
+#define BK_DHCP_RELEASE_TIME CONFIG_BK_DHCP_RELEASE_TIME
+#endif
+
 #ifdef CONFIG_IP_NAPT
 #define IP_NAPT                         1
 #else
 #define IP_NAPT                         0
+#endif
+
+#ifdef CONFIG_LWIP_NETBUF_RECVINFO
+#define LWIP_NETBUF_RECVINFO		1
+#else
+#define LWIP_NETBUF_RECVINFO		0
 #endif
 
 #define TCPIP_THREAD_NAME               "tcp/ip"
@@ -370,9 +386,12 @@ u32_t beken_random(void);
 
 #if CONFIG_BRIDGE
 #if !defined LWIP_NUM_NETIF_CLIENT_DATA
-#define LWIP_NUM_NETIF_CLIENT_DATA      3
+#define LWIP_NUM_NETIF_CLIENT_DATA      1
 #endif
 #endif
+
+
+
 
 /*
    ------------------------------------
@@ -611,9 +630,12 @@ The STM32F107 allows computing and verifying the IP, UDP, TCP and ICMP checksums
 
 #define TCP_MSL (TCP_TMR_INTERVAL)
 
+#define ICMP_ERR_RATELIMIT                 CONFIG_ICMP_ERR_RATELIMIT
+#define ICMP_ERR_RATE_THRESHOLD            CONFIG_ICMP_ERR_RATE_THRESHOLD
+
 #define LWIP_COMPAT_MUTEX_ALLOWED       (1)
 
-// #define LWIP_DONT_PROVIDE_BYTEORDER_FUNCTIONS
+#define LWIP_DONT_PROVIDE_BYTEORDER_FUNCTIONS
 
 #define ETHARP_SUPPORT_STATIC_ENTRIES   1
 
@@ -628,8 +650,11 @@ The STM32F107 allows computing and verifying the IP, UDP, TCP and ICMP checksums
 #define LWIP_LOGE(...) BK_LOGE(LWIP_TAG, ##__VA_ARGS__)
 #define LWIP_LOGD(...) BK_LOGD(LWIP_TAG, ##__VA_ARGS__)
 #define LWIP_LOGV(...) BK_LOGV(LWIP_TAG, ##__VA_ARGS__)
-#if 0
+
+#ifdef CONFIG_RIO
 #define LWIP_HOOK_FILENAME              "lwip_hooks.h"
+#endif
+#if 0
 #define LWIP_HOOK_IP4_ROUTE_SRC         ip4_route_src_hook
 #endif
 #define BK_IP4_ROUTE                    1
@@ -641,5 +666,20 @@ The STM32F107 allows computing and verifying the IP, UDP, TCP and ICMP checksums
 #define BK_LWIP_DEBUG 1
 #endif
 
+/* lwip apps opts */
+/* if web resources are located at rom, let lwip copies to ram, else eth/wifi mac phy will dma error */
+#define HTTP_IS_DATA_VOLATILE(hs) \
+({ \
+  extern uint32_t _stext, _etext; \
+  u8_t __api_flags = (hs->file >= (const char *)(&_stext) && \
+    hs->file <= (const char *)(&_etext)) ? TCP_WRITE_FLAG_COPY : 0; \
+  __api_flags; \
+})
+
+#ifdef CONFIG_LWIP_HW_IP_CHECKSUM
+uint16_t hw_ipcksum_standard_chksum(const void *dataptr, int len);
+#define LWIP_CHKSUM hw_ipcksum_standard_chksum
+#define LWIP_CHKSUM_ALGORITHM 2
+#endif
 #endif /* __LWIPOPTS_H__ */
 

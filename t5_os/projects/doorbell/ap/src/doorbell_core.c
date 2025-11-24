@@ -8,7 +8,6 @@
 #include <components/netif.h>
 
 
-//#include "ble_boarding.h"
 #include "doorbell_comm.h"
 #include "doorbell_sdp.h"
 #include "doorbell_cmd.h"
@@ -19,7 +18,6 @@
 #include "doorbell_tcp_service.h"
 #include "doorbell_boarding.h"
 #include "components/bluetooth/bk_dm_bluetooth.h"
-#include "cli.h"
 
 #define LOGI(...) BK_LOGI(TAG, ##__VA_ARGS__)
 #define LOGW(...) BK_LOGW(TAG, ##__VA_ARGS__)

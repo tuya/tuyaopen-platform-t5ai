@@ -1,10 +1,5 @@
 #include "pbuf.h"
 
-
-#if CONFIG_ENABLE_TUYA_LWIP
-#include "stdbool.h" // Modified by TUYA
-#endif // CONFIG_ENABLE_TUYA_LWIP
-
 /**
  * @ingroup pbuf
  * Concatenate two pbufs (each may be a pbuf chain) and take over
@@ -20,14 +15,11 @@
  * @see pbuf_chain()
  * If Wi-Fi is disable, make this function is NULL
  */
-// Modified by TUYA
-#if !CONFIG_ENABLE_TUYA_LWIP
 void
 pbuf_cat(struct pbuf *h, struct pbuf *t)
 {
- 	return;
+	return;
 }
-#endif // CONFIG_ENABLE_TUYA_LWIP
 
 /**
  * Security Check Interface : To check the contents of hostids
@@ -39,8 +31,6 @@ mem_sanity_check(void *mem)
 	return true;
 }
 
-// Modified by TUYA Start
-#if !CONFIG_ENABLE_TUYA_LWIP
 /**
  * Convert an u16_t from host- to network byte order.
  *
@@ -103,5 +93,3 @@ u8_t
 pbuf_free(struct pbuf *p) {
 	return 0;
 }
-#endif
-// Modified by TUYA End

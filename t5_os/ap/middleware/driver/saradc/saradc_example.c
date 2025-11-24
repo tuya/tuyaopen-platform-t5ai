@@ -36,7 +36,7 @@
  * 8. Release ADC resource
  * 9. Deinitialize SARADC driver
  */
-void saradc_example(UINT8 adc_chan)
+uint16_t saradc_example(UINT8 adc_chan)
 {
     bk_err_t ret;
     adc_config_t adc_config;
@@ -48,7 +48,7 @@ void saradc_example(UINT8 adc_chan)
     if (ret != BK_OK) {
         BK_LOGI(TAG, "ADC acquire failed: %d\r\n", ret);
         bk_adc_release();
-        return;
+        return cali_value;
     }
 
     // Configure ADC parameters
@@ -69,7 +69,7 @@ void saradc_example(UINT8 adc_chan)
         BK_LOGI(TAG, "ADC init failed: %d\r\n", ret);
         bk_adc_deinit(adc_chan);
         bk_adc_release();
-        return;
+        return cali_value;
     }
 
     ret = bk_adc_set_config(&adc_config);
@@ -77,7 +77,7 @@ void saradc_example(UINT8 adc_chan)
         BK_LOGI(TAG, "ADC set config failed: %d\r\n", ret);
         bk_adc_deinit(adc_chan);
         bk_adc_release();
-        return;
+        return cali_value;
     }
 
     bk_adc_enable_bypass_clalibration();
@@ -85,7 +85,7 @@ void saradc_example(UINT8 adc_chan)
         BK_LOGI(TAG, "ADC bypass cali failed: %d\r\n", ret);
         bk_adc_deinit(adc_chan);
         bk_adc_release();
-        return;
+        return cali_value;
     }
 
     // Step 4: Start ADC conversion
@@ -95,7 +95,7 @@ void saradc_example(UINT8 adc_chan)
         bk_adc_stop();
         bk_adc_deinit(adc_chan);
         bk_adc_release();
-        return;
+        return cali_value;
     }
 
     // Step 5: Read ADC data
@@ -105,7 +105,7 @@ void saradc_example(UINT8 adc_chan)
         bk_adc_stop();
         bk_adc_deinit(adc_chan);
         bk_adc_release();
-        return;
+        return cali_value;
     }
 
     cali_value = bk_adc_data_calculate(adc_data, adc_chan);
@@ -132,8 +132,24 @@ void saradc_example(UINT8 adc_chan)
         //BK_LOGD(TAG, "ADC resource released\r\n");
     }
 
-    return;
+    return cali_value;
 }
 
+uint16_t saradc_test(UINT8 adc_chan)
+{
+    uint16_t cali_value = 0;
+
+     // Before using the ADC functionality, the GPIO pin must be mapped to ADC mode.
+     // This mapping needs to be done only once, and the GPIO must remain dedicated to ADC functionality afterward.
+    bk_adc_chan_init_gpio(adc_chan);
+
+
+    cali_value = saradc_example(adc_chan);
+
+
+    bk_adc_chan_deinit_gpio(adc_chan);
+
+    return cali_value;
+}
 
 // eof

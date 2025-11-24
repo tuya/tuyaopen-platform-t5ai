@@ -15,7 +15,7 @@
 #include "FreeRTOS.h"
 #include "task.h"
 #include <components/bk_audio/audio_pipeline/audio_event_iface.h>
-#include <components/bk_audio/audio_pipeline/audio_common.h>
+#include <components/bk_audio/audio_pipeline/audio_types.h>
 #include <components/bk_audio/audio_pipeline/audio_mem.h>
 #include <os/os.h>
 

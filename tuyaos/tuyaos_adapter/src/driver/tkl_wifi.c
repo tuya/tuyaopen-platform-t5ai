@@ -175,6 +175,7 @@ static int scan_cb(void *arg, event_module_t event_module,
     uint32_t thread_id = (uint32_t)arg;
     wifi_event_scan_done_t *event_data = _event_data;
 
+    bk_printf("%s\r\n", __func__);
     if(scanHandle) {
         tkl_semaphore_post(scanHandle);
     }
@@ -247,13 +248,12 @@ static OPERATE_RET tkl_wifi_all_ap_scan(AP_IF_S **ap_ary, unsigned int *num)
         return ret;
     }
 
-    bk_event_register_cb(EVENT_MOD_WIFI, EVENT_WIFI_SCAN_DONE,
-            scan_cb, NULL);
+    bk_event_register_cb(EVENT_MOD_WIFI, EVENT_WIFI_SCAN_DONE, scan_cb, NULL);
 
     extern bk_err_t bk_wifi_scan_start(const wifi_scan_config_t *scan_config);
     BK_LOG_ON_ERR(bk_wifi_scan_start(NULL));
 
-    // ret = tkl_semaphore_wait(scanHandle, semaphore_timeout);
+    ret = tkl_semaphore_wait(scanHandle, semaphore_timeout);
     tkl_semaphore_release(scanHandle);
     scanHandle = NULL;
     if (ret !=  OPRT_OK) {
@@ -261,7 +261,7 @@ static OPERATE_RET tkl_wifi_all_ap_scan(AP_IF_S **ap_ary, unsigned int *num)
     }
 
     bk_printf("wait scan complete\r\n");
-    tkl_system_sleep(3000);
+    // tkl_system_sleep(3000);
 
     if ((bk_wifi_scan_get_result(&scan_result) != 0) || (0 == scan_result.ap_num)) {
         bk_printf("scan err\r\n");
@@ -306,17 +306,14 @@ static OPERATE_RET tkl_wifi_all_ap_scan(AP_IF_S **ap_ary, unsigned int *num)
 
     *ap_ary = array;
     *num = scan_cnt & 0xff;
-    // if (scan_result.aps != NULL) {
-    //     tkl_system_free(scan_result.aps);
-    // }
+
+    // bk_wifi_scan_free_result(&scan_result);
 
     return  OPRT_OK;
 
 SCAN_ERR:
-    // if (scan_result.aps != NULL) {
-    //     tkl_system_free(scan_result.aps);
-    //     scan_result.aps = NULL;
-    // }
+
+    // bk_wifi_scan_free_result(&scan_result);
 
     if(array) {
         tkl_system_free(array);
@@ -356,10 +353,10 @@ OPERATE_RET tkl_wifi_scan_ap(CONST SCHAR_T *ssid, AP_IF_S **ap_ary, UINT_T *num)
     AP_IF_S *array = NULL;
     OPERATE_RET ret;
     INT_T i = 0, j = 0, ssid_len;
-    wifi_scan_result_t apList;
+    wifi_scan_result_t scan_result = {0};
     UINT_T semaphore_timeout = 5000;  //ms
 
-    tkl_system_memset(&apList, 0, sizeof(wifi_scan_result_t));
+    tkl_system_memset(&scan_result, 0, sizeof(wifi_scan_result_t));
 
     if((NULL == ssid) || (NULL == ap_ary) ||  NULL != scanHandle) {
         return OPRT_OS_ADAPTER_INVALID_PARM;
@@ -370,26 +367,33 @@ OPERATE_RET tkl_wifi_scan_ap(CONST SCHAR_T *ssid, AP_IF_S **ap_ary, UINT_T *num)
         return ret;
     }
 
-    bk_event_register_cb(EVENT_MOD_WIFI, EVENT_WIFI_SCAN_DONE,
-            scan_cb, rtos_get_current_thread());
+    bk_event_register_cb(EVENT_MOD_WIFI, EVENT_WIFI_SCAN_DONE, scan_cb, NULL);
     wifi_scan_config_t scan_config = {0};
     strncpy(scan_config.ssid, (char*)ssid, WIFI_SSID_STR_LEN);
+
+    bk_printf("scan %s\r\n", scan_config.ssid);
+
+    extern bk_err_t bk_wifi_scan_start(const wifi_scan_config_t *scan_config);
     BK_LOG_ON_ERR(bk_wifi_scan_start(&scan_config));
+    bk_printf("---trace scan %s %d\r\n", __func__, __LINE__);
 
     ret = tkl_semaphore_wait(scanHandle,semaphore_timeout);
     tkl_semaphore_release(scanHandle);
     scanHandle = NULL;
 
+    bk_printf("---trace scan %s %d\r\n", __func__, __LINE__);
     if (ret !=  OPRT_OK) {
         //bk_printf("scan wait sem error\r\n");
         return ret;
     }
 
-    if ((bk_wifi_scan_get_result(&apList) != 0) || (0 == apList.ap_num)) {
+    bk_printf("---trace scan %s %d\r\n", __func__, __LINE__);
+    if ((bk_wifi_scan_get_result(&scan_result) != 0) || (0 == scan_result.ap_num)) {
         bk_printf("scan err\r\n");
         goto SCAN_ERR;
     }
 
+    bk_printf("---trace scan %s %d, scan_result.ap_num: %d\r\n", __func__, __LINE__, scan_result.ap_num);
     array = (AP_IF_S *)tkl_system_malloc(sizeof(AP_IF_S));
     if(NULL == array) {
         goto SCAN_ERR;
@@ -398,28 +402,28 @@ OPERATE_RET tkl_wifi_scan_ap(CONST SCHAR_T *ssid, AP_IF_S **ap_ary, UINT_T *num)
     tkl_system_memset(array, 0, sizeof(AP_IF_S));
     array->rssi = -100;
 
-    for (i = 0; i < apList.ap_num ; i++) {
+    for (i = 0; i < scan_result.ap_num ; i++) {
         /* skip non-matched ssid */
-        if (os_strcmp(apList.aps[i].ssid, (char *)ssid))
+        if (os_strcmp(scan_result.aps[i].ssid, (char *)ssid))
             continue;
 
         /* found */
-        if (apList.aps[i].rssi < array->rssi) { /* rssi 信号强度比较 */
+        if (scan_result.aps[i].rssi < array->rssi) { /* rssi 信号强度比较 */
             continue;
         }
 
-        array->security = _bk_wifi_security_to_ty(apList.aps[i].security);
-        array->channel = apList.aps[i].channel;
-        array->rssi = apList.aps[i].rssi;
-        os_memcpy(array->bssid, apList.aps[i].bssid, 6);
+        array->security = _bk_wifi_security_to_ty(scan_result.aps[i].security);
+        array->channel = scan_result.aps[i].channel;
+        array->rssi = scan_result.aps[i].rssi;
+        os_memcpy(array->bssid, scan_result.aps[i].bssid, 6);
 
-        ssid_len = os_strlen(apList.aps[i].ssid);
+        ssid_len = os_strlen(scan_result.aps[i].ssid);
         if (ssid_len > WIFI_SSID_LEN) {
             ssid_len = WIFI_SSID_LEN;
         }
 
         memset(array->ssid, 0, ssid_len);
-        os_strncpy((char *)array->ssid, apList.aps[i].ssid, ssid_len);
+        os_strncpy((char *)array->ssid, scan_result.aps[i].ssid, ssid_len);
         array->s_len = ssid_len;
 
         j++;
@@ -429,18 +433,14 @@ OPERATE_RET tkl_wifi_scan_ap(CONST SCHAR_T *ssid, AP_IF_S **ap_ary, UINT_T *num)
         goto SCAN_ERR;
     }
     *ap_ary = array;
-    if (apList.aps != NULL) {
-        tkl_system_free(apList.aps);
-    }
+    *num = 1;
+
+    // bk_wifi_scan_free_result(&scan_result);
 
     return OPRT_OK;
 
 SCAN_ERR:
-    if (apList.aps != NULL) {
-        tkl_system_free(apList.aps);
-        apList.aps = NULL;
-    }
-
+    // bk_wifi_scan_free_result(&scan_result);
     if (array) {
         tkl_system_free(array);
         array = NULL;
@@ -525,10 +525,10 @@ OPERATE_RET tkl_wifi_start_ap(CONST WF_AP_CFG_IF_S *cfg)
         tkl_system_memcpy((char *)wApConfig.ssid, cfg->ssid, cfg->s_len);
         tkl_system_memcpy((char *)wApConfig.password, cfg->passwd, cfg->p_len);
 
-        os_strcpy((char *)wIp4_config.ip, cfg->ip.ip);
-        os_strcpy((char *)wIp4_config.mask, cfg->ip.mask);
-        os_strcpy((char *)wIp4_config.gateway, cfg->ip.gw);
-        os_strcpy((char *)wIp4_config.dns, cfg->ip.gw);
+        os_strncpy((char *)wIp4_config.ip, cfg->ip.ip, 16);
+        os_strncpy((char *)wIp4_config.mask, cfg->ip.mask, 16);
+        os_strncpy((char *)wIp4_config.gateway, cfg->ip.gw, 16);
+        os_strncpy((char *)wIp4_config.dns, cfg->ip.gw, 16);
 
         bk_printf("ssid:%s, key:%s, channel: %d\r\n", wApConfig.ssid, wApConfig.password, wApConfig.channel);
         BK_LOG_ON_ERR(bk_netif_set_ip4_config(NETIF_IF_AP, &wIp4_config));
@@ -699,9 +699,9 @@ OPERATE_RET tkl_wifi_get_ip(CONST WF_IF_E wf, NW_IP_S *ip)
 
     if (OPRT_OK == ret) {
         ret = bk_netif_get_ip4_config(iface, &wIp4Config);
-        os_strcpy(ip->ip, wIp4Config.ip);
-        os_strcpy(ip->mask, wIp4Config.mask);
-        os_strcpy(ip->gw, wIp4Config.gateway);
+        os_strncpy(ip->ip, wIp4Config.ip, 16);
+        os_strncpy(ip->mask, wIp4Config.mask, 16);
+        os_strncpy(ip->gw, wIp4Config.gateway, 16);
     }
 
     return ret;
@@ -858,12 +858,12 @@ OPERATE_RET tkl_wifi_get_work_mode(WF_WK_MD_E *mode)
  * @param[out]      fast_ap_info
  * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
  */
+static wifi_sta_config_t sta_cfg;
 OPERATE_RET tkl_wifi_get_connected_ap_info(FAST_WF_CONNECTED_AP_INFO_T **fast_ap_info)
 {
 	int ret;
 	struct wlan_fast_connect_info *fci;
 	FAST_WF_CONNECTED_AP_INFO_T *ap_info = NULL;
-	wifi_sta_config_t sta_cfg;
 
 	if (!fast_ap_info)
 		return OPRT_COM_ERROR;
@@ -1005,7 +1005,7 @@ OPERATE_RET tkl_wifi_get_country_code(UCHAR_T *ccode)
 
     int len = 0;
     bk_err_t ret = bk_scan_country_code(country_code, &len);
-    if(ret != 0) {
+    if(ret == 0) {
         strncpy((char *)ccode, (char *)country_code, 2);
         return OPRT_OK;
     }
@@ -1107,7 +1107,7 @@ int _wifi_event_cb(void *arg, event_module_t event_module,
         // etharp_remove_all_static();
         if(sta_disconnected->disconnect_reason == 0)
             break;
-
+        dhcp_stop(net_get_sta_handle());
         if(tkl_get_lp_flag()) {
             _bk_rtc_wakeup_register(1000);  //由于默认设置cpu是处于sleep模式， 当资源释放后进入idle线程，cpu就会进入睡眠。需要先设置rtc唤醒，否则再不能唤醒cpu，导致程序异常
             if(!ble_init_flag) {  //当 tuyaos 没有初始化使用蓝牙时候，进低功耗前需要先把 ble ctrl 资源释放掉
@@ -1155,13 +1155,6 @@ int _netif_event_cb(void *arg, event_module_t event_module,
 					   int event_id, void *event_data)
 {
     bk_printf("_netif_event_cb %d\r\n", event_id);
-    
-    netif_event_got_ip4_t *pri_data = (netif_event_got_ip4_t *)event_data;
-    if (pri_data->netif_if != NETIF_IF_STA) {
-        bk_printf("netif_if not wifi: %d\r\n", pri_data->netif_if);
-        return 0;
-    }
-
 	switch (event_id) {
 	case EVENT_NETIF_GOT_IP4:
         bk_printf("WFE_CONNECTED %d\r\n", event_id);
@@ -1191,17 +1184,21 @@ int _netif_event_cb(void *arg, event_module_t event_module,
  * @param[in]      fast_ap_info
  * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
  */
+static wifi_sta_config_t fast_connect_config = WIFI_DEFAULT_STA_CONFIG();
 OPERATE_RET tkl_wifi_station_fast_connect(CONST FAST_WF_CONNECTED_AP_INFO_T *fast_ap_info)
 {
     int ret = OPRT_COM_ERROR;
 	struct wlan_fast_connect_info *fci;
-	wifi_sta_config_t sta_config = WIFI_DEFAULT_STA_CONFIG();
 
-	if (!fast_ap_info)
+    if (!fast_ap_info) {
+        bk_printf("ap info is null\r\n");
 		return ret;
+    }
 
-	if (fast_ap_info->len != sizeof(struct wlan_fast_connect_info))
+    if (fast_ap_info->len != sizeof(struct wlan_fast_connect_info)) {
+        bk_printf("ap info len error: %d %d\r\n", fast_ap_info->len, sizeof(struct wlan_fast_connect_info));
 		return ret;
+    }
 
     if(wifi_event_init) {
         wifi_event_init = 0;
@@ -1212,35 +1209,34 @@ OPERATE_RET tkl_wifi_station_fast_connect(CONST FAST_WF_CONNECTED_AP_INFO_T *fas
 	fci = (struct wlan_fast_connect_info *)fast_ap_info->data;
 	//__fast_connect_ap_info_dump("last connected ap info", fci);
 
-	os_memcpy(sta_config.ssid, fci->ssid, sizeof(sta_config.ssid));
-	os_memcpy(sta_config.password, fci->pwd, sizeof(sta_config.password));
-	os_memcpy(sta_config.bssid, fci->bssid, sizeof(sta_config.bssid));
-	sta_config.security = fci->security;
-	sta_config.channel = fci->channel;
-	os_memcpy(sta_config.psk, fci->psk, sizeof(sta_config.psk));
-	os_memcpy(sta_config.ip_addr, fci->ip_addr, sizeof(sta_config.ip_addr));
-	os_memcpy(sta_config.netmask, fci->netmask, sizeof(sta_config.netmask));
-	os_memcpy(sta_config.gw, fci->gw, sizeof(sta_config.gw));
-	os_memcpy(sta_config.dns1, fci->dns1, sizeof(sta_config.dns1));
-	sta_config.pmf = fci->pmf;
-	os_memcpy(sta_config.tk, fci->tk, sizeof(sta_config.tk));
-	sta_config.is_not_support_auto_fci = 1;
-	sta_config.is_user_fast_connect = 1;
+	os_memcpy(fast_connect_config.ssid, fci->ssid, sizeof(fast_connect_config.ssid));
+	os_memcpy(fast_connect_config.password, fci->pwd, sizeof(fast_connect_config.password));
+	os_memcpy(fast_connect_config.bssid, fci->bssid, sizeof(fast_connect_config.bssid));
+	fast_connect_config.security = fci->security;
+	fast_connect_config.channel = fci->channel;
+	os_memcpy(fast_connect_config.psk, fci->psk, sizeof(fast_connect_config.psk));
+	os_memcpy(fast_connect_config.ip_addr, fci->ip_addr, sizeof(fast_connect_config.ip_addr));
+	os_memcpy(fast_connect_config.netmask, fci->netmask, sizeof(fast_connect_config.netmask));
+	os_memcpy(fast_connect_config.gw, fci->gw, sizeof(fast_connect_config.gw));
+	os_memcpy(fast_connect_config.dns1, fci->dns1, sizeof(fast_connect_config.dns1));
+	fast_connect_config.pmf = fci->pmf;
+	os_memcpy(fast_connect_config.tk, fci->tk, sizeof(fast_connect_config.tk));
+	fast_connect_config.is_not_support_auto_fci = 1;
+	fast_connect_config.is_user_fast_connect = 1;
 
-    // sta_config.auto_reconnect_count = 1;
-    // sta_config.disable_auto_reconnect_after_disconnect = true;
-    sta_config.auto_reconnect_count = 1;
-    sta_config.disable_auto_reconnect_after_disconnect = false;
+    fast_connect_config.auto_reconnect_count = 1;
+    fast_connect_config.disable_auto_reconnect_after_disconnect = true;
 
-    bk_printf("%s, ssid: %s\r\n", __func__, sta_config.ssid);
+    bk_printf("%s, ssid: %s\r\n", __func__, fast_connect_config.ssid);
 
-    BK_LOG_ON_ERR(bk_wifi_sta_set_config(&sta_config));
+    BK_LOG_ON_ERR(bk_wifi_sta_set_config(&fast_connect_config));
 	ret = bk_wifi_sta_start();
 
     if(tkl_get_lp_flag()) {
         if(!lp_wifi_cfg_flag) {
             lp_wifi_cfg_flag = 1;
             bk_printf("Wi-Fi low power configuration settings\r\n");
+            bk_wifi_send_listen_interval_req(10);
             bk_wifi_capa_config(WIFI_CAPA_ID_TX_AMPDU_EN, 0);
             bk_wifi_send_bcn_loss_int_req(BEACON_LOSS_INTERVAL, BEACON_LOSS_REPEAT_NUM);
             bk_wifi_set_bcn_recv_win(BEACON_REV_DEF_WIN, BEACON_REV_CURR_MAX_WIN, BEACON_REV_STEP_WIN);
@@ -1278,12 +1274,12 @@ OPERATE_RET tkl_wifi_station_connect(CONST SCHAR_T *ssid, CONST SCHAR_T *passwd)
         bk_event_register_cb(EVENT_MOD_NETIF, EVENT_ID_ALL, _netif_event_cb, NULL);
     }
 
-    os_strcpy((char *)sta_config.ssid, (const char *)ssid);
-    os_strcpy((char *)sta_config.password, (const char *)passwd);
+    os_strncpy((char *)sta_config.ssid, (const char *)ssid, WIFI_SSID_STR_LEN);
+    os_strncpy((char *)sta_config.password, (const char *)passwd, WIFI_PASSWORD_LEN);
     sta_config.is_user_fast_connect = 0;
     sta_config.is_not_support_auto_fci = 1;
     sta_config.auto_reconnect_count = 1;
-    sta_config.disable_auto_reconnect_after_disconnect = false;
+    sta_config.disable_auto_reconnect_after_disconnect = true;
 
     BK_LOG_ON_ERR(bk_wifi_sta_set_config(&sta_config));
     ret = bk_wifi_sta_start();
@@ -1292,6 +1288,7 @@ OPERATE_RET tkl_wifi_station_connect(CONST SCHAR_T *ssid, CONST SCHAR_T *passwd)
         if(!lp_wifi_cfg_flag) {
             lp_wifi_cfg_flag = 1;
             bk_printf("Wi-Fi low power configuration settings !!!!\r\n");
+            bk_wifi_send_listen_interval_req(10);
             bk_wifi_capa_config(WIFI_CAPA_ID_TX_AMPDU_EN, 0);
             bk_wifi_send_bcn_loss_int_req(BEACON_LOSS_INTERVAL, BEACON_LOSS_REPEAT_NUM);
             bk_wifi_set_bcn_recv_win(BEACON_REV_DEF_WIN, BEACON_REV_CURR_MAX_WIN, BEACON_REV_STEP_WIN);

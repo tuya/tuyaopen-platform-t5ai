@@ -142,7 +142,7 @@ bk_err_t sys_hal_core_bus_clock_ctrl(uint32_t cksel_core, uint32_t ckdiv_core,ui
 #define sys_hal_set_cpu1_rxevt_sel(param)     sys_ll_set_cpu1_int_halt_clk_op_cpu1_rxevt_sel(param)
 #define sys_hal_set_cpu2_rxevt_sel(param)     sys_ll_set_cpu2_int_halt_clk_op_cpu2_rxevt_sel(param)
 #endif
-
+bk_err_t sys_hal_set_vdddig_h_vol(uint32_t vol_value);
 /*low power feature end*/
 uint32 sys_hal_get_chip_id(void);
 uint32 sys_hal_get_device_id(void);
@@ -3271,6 +3271,7 @@ void sys_hal_set_ana_reg19_cp2ctrl(sys_hw_t *hw, uint32_t value);
 
 #endif
 
+void sys_hal_set_ana_reg_spi_latch1v(uint32_t v);
 void sys_hal_set_ana_trxt_tst_enable(uint32_t value);
 void sys_hal_set_ana_scal_en(uint32_t value);
 void sys_hal_set_ana_gadc_buf_ictrl(uint32_t value);

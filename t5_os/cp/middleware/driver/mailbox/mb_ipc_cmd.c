@@ -675,7 +675,7 @@ static u32 ipc_cmd_handler(ipc_chnl_cb_t *chnl_cb, mb_chnl_ack_t *ack_buf)
 				shell_set_log_cpu(SHELL_MAX_CPU_CNT);
 				shell_log_flush();
 				#endif
-				bk_reboot();
+				bk_wdt_force_reboot();
 			}
 			break;
 
