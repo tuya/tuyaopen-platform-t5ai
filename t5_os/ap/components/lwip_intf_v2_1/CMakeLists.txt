@@ -86,6 +86,11 @@ if (CONFIG_PAN)
 	lwip-2.1.2/port/panif.c
 	)
 endif()
+if (CONFIG_BK_MODEM)
+	list(APPEND srcs
+	lwip-2.1.2/port/modemif.c
+	)
+endif()
 # lwip apps
 if (CONFIG_LWIP_HTTPD)
 	list(APPEND srcs

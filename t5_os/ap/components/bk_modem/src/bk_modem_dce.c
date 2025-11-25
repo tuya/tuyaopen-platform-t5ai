@@ -77,3 +77,55 @@ bool bk_modem_dce_exit_flight_mode(void)
 {
     return (BK_OK == bk_modem_at_cfun(1));
 }
+
+/// ec own at cmd
+bool bk_modem_dce_ec_check_nat(void)
+{
+    return (BK_OK == bk_modem_ec_at_check_nat());
+}
+
+bool bk_modem_dce_ec_close_rndis(void)
+{
+    return (BK_OK == bk_modem_ec_at_close_rndis());
+}
+
+bool bk_modem_dce_ec_open_datapath(void)
+{
+    return (BK_OK == bk_modem_ec_at_open_datapath());
+}
+
+bool bk_modem_dce_ec_set_nat(void)
+{
+    return (BK_OK == bk_modem_ec_at_set_nat());
+}
+
+bool bk_modem_dce_ec_rst(void)
+{
+    return (BK_OK == bk_modem_ec_at_rst());
+}
+
+bool bk_modem_dce_get_ati(void)
+{
+    return (BK_OK == bk_modem_at_get_ati());
+}
+
+bool bk_modem_dce_get_cgsn(void)
+{
+    return (BK_OK == bk_modem_at_get_cgsn());
+}
+
+bool bk_modem_dce_get_cfsn(void)
+{
+    return (BK_OK == bk_modem_at_get_cfsn());
+}
+
+bool bk_modem_dce_get_cfun(void)
+{
+    return (BK_OK == bk_modem_at_get_cfun());
+}
+
+bool bk_mode_dce_get_cgmr(void)
+{
+    return (BK_OK == bk_modem_at_get_cgmr());
+}
+

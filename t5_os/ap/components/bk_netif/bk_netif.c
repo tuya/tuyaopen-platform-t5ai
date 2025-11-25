@@ -153,6 +153,14 @@ bk_err_t bk_netif_get_ip4_config(netif_if_t ifx, netif_ip4_config_t *ip4_config)
 	} else if (ifx == NETIF_IF_PAN) {
 		net_get_if_addr(&addr, net_get_pan_handle());
 #endif
+#if CONFIG_LWIP_PPP_SUPPORT
+	} else if (ifx == NETIF_IF_PPP) {
+		net_get_if_addr(&addr, net_get_ppp_netif_handle());
+#endif
+#if CONFIG_BK_MODEM
+	} else if (ifx == NETIF_IF_MODEM) {
+		net_get_if_addr(&addr, net_get_modem_handle());
+#endif
 	} else {
 		return BK_ERR_NETIF_IF;
 	}
@@ -161,6 +169,10 @@ bk_err_t bk_netif_get_ip4_config(netif_if_t ifx, netif_ip4_config_t *ip4_config)
 	os_strcpy(ip4_config->mask, inet_ntoa(addr.ipv4.netmask));
 	os_strcpy(ip4_config->gateway, inet_ntoa(addr.ipv4.gw));
 	os_strcpy(ip4_config->dns, inet_ntoa(addr.ipv4.dns1));
+
+    bk_printf("--- trace ip: %s, mask: %s, gw: %s, dns: %s\r\n",
+            ip4_config->ip, ip4_config->mask,
+            ip4_config->gateway, ip4_config->dns);
 
 	return BK_OK;
 }

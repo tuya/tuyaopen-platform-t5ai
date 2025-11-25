@@ -18,7 +18,7 @@ extern "C" {
  *    - BK_OK: succeed
  *    - others: other errors.
  */
-bk_err_t bk_modem_init(void);
+bk_err_t bk_modem_init(uint8_t comm_proto, uint8_t comm_if);
 
 /**
  * @brief     Modem Driver uninstallation

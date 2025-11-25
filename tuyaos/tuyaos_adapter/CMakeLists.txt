@@ -79,6 +79,7 @@ set(srcs
     src/driver/tkl_watchdog.c
     src/driver/tkl_ipc.c
     src/misc/tuya_tkl_ipc.c
+    include/init/src/tkl_init_cellular.c
     include/init/src/tkl_init_system.c
 )
 
@@ -197,7 +198,7 @@ endif()
 if ("$ENV{ARMINO_SOC}" STREQUAL "bk7258")
     set(priv_requires_list bk_common bk_log bk_cli lwip_intf_v2_1 os_source)
 elseif ("$ENV{ARMINO_SOC}" STREQUAL "bk7258_ap")
-    set(priv_requires_list bk_common bk_log bk_cli lwip_intf_v2_1 os_source lvgl display_service bk_vfs multimedia media_service bk_draw_blend bk_usb audio_record audio_play bk_modem)
+    set(priv_requires_list bk_common bk_modem bk_log bk_cli lwip_intf_v2_1 os_source lvgl display_service bk_vfs multimedia media_service bk_draw_blend bk_usb audio_record audio_play)
 else()
     message(FATAL_ERROR soc:"$ENV{ARMINO_SOC}" is not valid!)
 endif() # CONFIG_CPU_INDEX

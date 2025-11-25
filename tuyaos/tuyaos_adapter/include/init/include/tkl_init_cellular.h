@@ -31,6 +31,11 @@ typedef struct {
     OPERATE_RET (*get_ccid)                 (CHAR_T *ccid);
     OPERATE_RET (*get_rssi)                 (CHAR_T *rssi);
     OPERATE_RET (*get_volt)                 (UINT32_T *volt);
+    OPERATE_RET (*get_imei)                 (CHAR_T *imei);
+    OPERATE_RET (*get_sn)                   (CHAR_T *sn);
+    OPERATE_RET (*get_sw_ver)               (CHAR_T *ver);
+    OPERATE_RET (*mf_test_start)            (TKL_CELLULAR_BASE_CFG_T *cfg);
+    OPERATE_RET (*mf_test_stop)             (VOID);
 } TKL_CELLULAR_DESC_T;
 
 /**

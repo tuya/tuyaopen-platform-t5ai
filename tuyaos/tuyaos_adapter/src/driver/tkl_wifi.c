@@ -1155,6 +1155,13 @@ int _netif_event_cb(void *arg, event_module_t event_module,
 					   int event_id, void *event_data)
 {
     bk_printf("_netif_event_cb %d\r\n", event_id);
+
+    netif_event_got_ip4_t *pri_data = (netif_event_got_ip4_t *)event_data;
+    if (pri_data->netif_if != NETIF_IF_STA) {
+        bk_printf("netif_if not wifi: %d\r\n", pri_data->netif_if);
+        return 0;
+    }
+
 	switch (event_id) {
 	case EVENT_NETIF_GOT_IP4:
         bk_printf("WFE_CONNECTED %d\r\n", event_id);
