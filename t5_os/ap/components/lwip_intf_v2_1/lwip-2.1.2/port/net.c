@@ -42,6 +42,10 @@
 #if CONFIG_PAN
 #include "panif.h"
 #endif
+#if CONFIG_BK_MODEM
+#include "modemif.h"
+#include <components/event.h>
+#endif
 #ifdef CONFIG_WIFI_VNET_CONTROLLER
 #include "wdrv_cntrl.h"
 #include "wifi_api.h"
@@ -100,6 +104,15 @@ struct ipv4_config pan_ip_settings = {
 	.gw = 0,
 	.netmask = 0,
 	.dns1 = 0,
+#endif
+
+#if CONFIG_BK_MODEM
+struct ipv4_config modem_ip_settings = {
+	.addr_type = ADDR_TYPE_STATIC,
+	.address = 0xc0a80a02, //192.168.10.2
+	.gw = 0xc0a80a02,      //192.168.10.2
+	.netmask = 0xffffff00, //255.255.255.0
+	.dns1 = 0xc0a80a02,    //192.168.10.2
 	.dns2 = 0,
 };
 #endif
@@ -115,6 +128,9 @@ static bool bridge_ip_start_flag = false;
 #endif
 #if CONFIG_PAN
 static bool pan_ip_start_flag = false;
+#endif
+#if CONFIG_BK_MODEM
+static bool modem_ip_start_flag = false;
 #endif
 
 #ifdef CONFIG_IPV6
@@ -159,6 +175,9 @@ static struct iface g_pan = {{0}, .name = "pan"};
 #if CONFIG_LWIP_PPP_SUPPORT
 static struct iface g_ppp = {{0}, .name = "ppp"};
 #endif
+#if CONFIG_BK_MODEM
+static struct iface g_modem = {{0}, .name = "modem"};
+#endif
 net_sta_ipup_cb_fn sta_ipup_cb = NULL;
 
 extern void *net_get_sta_handle(void);
@@ -174,6 +193,9 @@ extern void net_configure_dns(struct iface *, struct wlan_ip_config *ip);
 bk_err_t bk_wifi_get_ip_status(IPStatusTypedef *outNetpara, WiFi_Interface inInterface);
 #if CONFIG_PAN
 int net_pan_add_netif(uint8_t *mac);
+#endif
+#if CONFIG_BK_MODEM
+int net_modem_add_netif(uint8_t *mac);
 #endif
 
 #ifdef CONFIG_IPV6
@@ -282,6 +304,32 @@ void net_pan_init(void)
 
 	bk_pan_get_mac((uint8_t *)pan_mac);
 	net_pan_add_netif(pan_mac);
+}
+#endif
+
+#if CONFIG_BK_MODEM
+bk_err_t bk_modem_get_mac(uint8_t *mac)
+{
+	if (!mac)
+		return BK_ERR_NULL_PARAM;
+
+	//bk_get_mac(mac, MAC_TYPE_BASE);
+	//mac[5] += 3;
+	mac[0] = 0xC8;
+	mac[1] = 0x47;
+	mac[2] = 0x8C;
+	mac[3] = 0x00;
+	mac[4] = 0x00;
+	mac[5] = 0x00;
+	return BK_OK;
+}
+
+void net_modem_init(void)
+{
+	uint8_t modem_mac[ETH_ALEN];
+
+	bk_modem_get_mac((uint8_t *)modem_mac);
+	net_modem_add_netif(modem_mac);
 }
 #endif
 
@@ -428,6 +476,16 @@ static void wm_netif_status_callback(struct netif *n)
 
 #endif // CONFIG_WIFI_ENABLE
 				}
+#ifdef CONFIG_BK_MODEM
+				 else if (n == &g_modem.netif) {
+					modem_netif_notify_got_ip();
+				}
+#endif
+#ifdef CONFIG_PAN
+				 else if (n == &g_pan.netif) {
+					pan_netif_notify_got_ip();
+				}
+#endif
 #ifdef CONFIG_ETH
 			} else if (n == &g_mlan.netif) {
 				// Ethernet DHCP handler, clear ps prevent
@@ -520,6 +578,13 @@ void *net_get_pan_handle(void)
 }
 #endif
 
+#if CONFIG_BK_MODEM
+void *net_get_modem_handle(void)
+{
+	return &g_modem.netif;
+}
+#endif
+
 #if CONFIG_LWIP_PPP_SUPPORT
 #include "ppp/ppp.h"
 void *net_get_ppp_netif_handle(void)
@@ -579,7 +644,7 @@ void net_interface_dhcp_stop(void *intrfc_handle)
 void sta_ip_down(void)
 {
 	if (sta_ip_start_flag) {
-		LWIP_LOGD("sta ip down\r\n");
+		LWIP_LOGI("sta ip down\r\n");
 
 		sta_ip_start_flag = false;
 
@@ -598,7 +663,7 @@ void sta_ip_down(void)
 void sta_ip_start(void)
 {
 	if (!sta_ip_start_flag) {
-		LWIP_LOGD("sta ip start\r\n");
+		LWIP_LOGI("sta ip start\r\n");
 		sta_ip_start_flag = true;
 		net_configure_address(&sta_ip_settings, net_get_sta_handle());
 		return;
@@ -689,6 +754,59 @@ uint32_t pan_ip_is_start(void)
 void pan_set_default_netif(void)
 {
 	netifapi_netif_set_default(net_get_pan_handle());
+}
+
+void pan_ip_down(void)
+{
+	if (pan_ip_start_flag) {
+		LWIP_LOGI("bt_pan ip down\r\n");
+
+		pan_ip_start_flag = false;
+
+		netif_set_status_callback(&g_pan.netif, NULL);
+		netifapi_dhcp_stop(&g_pan.netif);
+		netifapi_netif_set_down(&g_pan.netif);
+	}
+}
+#endif
+
+#if CONFIG_BK_MODEM
+void modem_set_ip_start_flag(bool enable)
+{
+	modem_ip_start_flag = enable;
+}
+
+void modem_ip_start(void)
+{
+	if(!modem_ip_start_flag) {
+		LWIP_LOGD("modem ip start \r\n");
+		modem_ip_start_flag = true;
+		net_configure_address(&modem_ip_settings, net_get_modem_handle());
+		return;
+	}
+}
+
+uint32_t modem_ip_is_start(void)
+{
+	return modem_ip_start_flag;
+}
+
+void modem_set_default_netif(void)
+{
+	netifapi_netif_set_default(net_get_modem_handle());
+}
+
+void modem_ip_down(void)
+{
+	if (modem_ip_start_flag) {
+		LWIP_LOGI("modem ip down\r\n");
+
+		modem_ip_start_flag = false;
+
+		netif_set_status_callback(&g_modem.netif, NULL);
+		//netifapi_dhcp_stop(&g_modem.netif);
+		netifapi_netif_set_down(&g_modem.netif);
+	}
 }
 #endif
 
@@ -977,6 +1095,11 @@ int net_configure_address(struct ipv4_config *addr, void *intrfc_handle)
 		up_iface = 1;
 		pan_set_default_netif();
 #endif
+#ifdef CONFIG_BK_MODEM
+	} else if (if_handle == &g_modem) {
+		up_iface = 1;
+		modem_set_default_netif();
+#endif
 	} else {
 		// softap IP up, start dhcp server;
 		dhcp_server_start(net_get_uap_handle());
@@ -1004,6 +1127,9 @@ int net_get_if_addr(struct wlan_ip_config *addr, void *intrfc_handle)
 #endif
 #ifdef CONFIG_PAN
 			|| if_handle == &g_pan
+#endif
+#ifdef CONFIG_BK_MODEM
+			|| if_handle == &g_modem
 #endif
 #if CONFIG_LWIP_PPP_SUPPORT
 			|| if_handle == &g_ppp
@@ -1240,6 +1366,76 @@ int net_pan_add_netif(uint8_t *mac)
 	NETIF_SET_CHECKSUM_CTRL(&pan_if->netif, NETIF_CHECKSUM_DISABLE_ALL);
 
 	return ERR_OK;
+}
+
+int net_pan_remove_netif(void)
+{
+	err_t err = netifapi_netif_remove(&g_pan.netif);
+
+	if (err != ERR_OK) {
+		LWIP_LOGE("remove pan netif, failed(%d)\n", err);
+		return err;
+	}
+
+	return ERR_OK;
+}
+
+void pan_netif_notify_got_ip(void)
+{
+	/* post event PAN_GOT_IP4 */
+	netif_event_got_ip4_t event_data = {0};
+	event_data.netif_if = NETIF_IF_PAN;
+
+	BK_LOG_ON_ERR(bk_event_post(EVENT_MOD_NETIF, EVENT_NETIF_GOT_IP4,
+								&event_data, sizeof(event_data), BEKEN_NEVER_TIMEOUT));
+}
+#endif
+
+#if CONFIG_BK_MODEM
+int net_modem_add_netif(uint8_t *mac)
+{
+	struct iface *modem_if = &g_modem;
+	err_t err;
+
+	ip_addr_set_ip4_u32(&modem_if->ipaddr, INADDR_ANY);
+	err = netifapi_netif_add(&modem_if->netif,
+		ip_2_ip4(&modem_if->ipaddr),
+		ip_2_ip4(&modem_if->ipaddr),
+		ip_2_ip4(&modem_if->ipaddr),
+		NULL,
+		modem_netif_init,
+		tcpip_input);
+
+	if (err) {
+		LWIP_LOGE("net_modem_add_netif failed(%d)\n", err);
+		return err;
+	}
+
+	/* disable SW checksum calculation ? */
+	NETIF_SET_CHECKSUM_CTRL(&modem_if->netif, NETIF_CHECKSUM_DISABLE_ALL);
+
+	return ERR_OK;
+}
+int net_modem_remove_netif(void)
+{
+	err_t err = netifapi_netif_remove(&g_modem.netif);
+
+	if (err != ERR_OK) {
+		LWIP_LOGE("remove modem netif, failed(%d)\n", err);
+		return err;
+	}
+
+	return ERR_OK;
+}
+
+void modem_netif_notify_got_ip(void)
+{
+	/* post event PAN_GOT_IP4 */
+	netif_event_got_ip4_t event_data = {0};
+	event_data.netif_if = NETIF_IF_MODEM;
+
+	BK_LOG_ON_ERR(bk_event_post(EVENT_MOD_NETIF, EVENT_NETIF_GOT_IP4,
+								&event_data, sizeof(event_data), BEKEN_NEVER_TIMEOUT));
 }
 #endif
 
@@ -1480,4 +1676,18 @@ int host_wlan_remove_sap_netif(void)
 
 #endif
 
+void bk_netif_add_dns_server(uint8_t idx, const char* szIpv4)
+{
+    ip_addr_t ipaddr;
+    ipaddr_aton(szIpv4, &ipaddr);
+    if (ipaddr_aton(szIpv4, &ipaddr))
+    {
+        LWIP_LOGI("idx:(%d)dns:(%s)",idx,szIpv4);
+        dns_setserver(idx, &ipaddr);
+    }
+    else
+    {
+        LWIP_LOGI("idx:(%d)dns:(%s)",idx,szIpv4);
+    }
+}
 

@@ -154,4 +154,4 @@ if (CONFIG_ATE_TEST)
 		)
 endif() # CONFIG_ATE
 
-armino_component_register(SRCS "${srcs}" INCLUDE_DIRS "${incs}" PRIV_REQUIRES bk_common driver)
+armino_component_register(SRCS "${srcs}" INCLUDE_DIRS "${incs}" PRIV_REQUIRES bk_modem bk_common driver)

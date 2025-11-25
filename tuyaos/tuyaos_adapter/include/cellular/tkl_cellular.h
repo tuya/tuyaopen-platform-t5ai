@@ -28,12 +28,16 @@ typedef enum {
 #define TKL_CELLULAR_USER_PASSWD_LEN 32
 #define TKL_CELLULAR_DIAL_UP_CMD_LEN 32
 
+#define TKL_CELLULAR_IMEI_LEN       15
+#define TKL_CELLULAR_SN_LEN         10
+#define TKL_CELLULAR_SW_VER_LEN     22
+
 typedef struct
 {
-    char apn[TKL_CELLULAR_APN_LEN+1];                               ///< Access Point Name
-//  char username[TKL_CELLULAR_USER_NAME_LEN+1];                    ///< User Name
-//  char password[TKL_CELLULAR_USER_PASSWD_LEN+1];                  ///< User Password
-//  char dial_up_phone_num[TKL_CELLULAR_DIAL_UP_CMD_LEN+1];         ///< dial-up phone number
+    CHAR_T apn[TKL_CELLULAR_APN_LEN+1];                               ///< Access Point Name
+//  CHAR_T username[TKL_CELLULAR_USER_NAME_LEN+1];                    ///< User Name
+//  CHAR_T password[TKL_CELLULAR_USER_PASSWD_LEN+1];                  ///< User Password
+//  CHAR_T dial_up_phone_num[TKL_CELLULAR_DIAL_UP_CMD_LEN+1];         ///< dial-up phone number
 }TKL_CELLULAR_BASE_CFG_T;
 
 /**
@@ -116,6 +120,49 @@ OPERATE_RET tkl_cellular_get_rssi(CHAR_T *rssi);
  * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
  */
 OPERATE_RET tkl_cellular_get_volt(UINT32_T *volt);
+
+/**
+ * @brief  get the IMEI of the cellular module
+ * 
+ * @param[out]   imei: IMEI value
+ *
+ * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
+ */
+OPERATE_RET tkl_cellular_get_imei(CHAR_T *imei);
+
+/**
+ * @brief  get the Serial Number of the cellular module
+ * 
+ * @param[out]   sn: Serial Number
+ *
+ * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
+ */
+OPERATE_RET tkl_cellular_get_sn(CHAR_T *sn);
+
+/**
+ * @brief  get the Software version of the cellular module
+ * 
+ * @param[out]   ver: Software version
+ *
+ * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
+ */
+OPERATE_RET tkl_cellular_get_sw_ver(CHAR_T *ver);
+
+/**
+ * @brief  start cellular mf test
+ *
+ * @param[in]   cfg: the configure for cellular mf test
+ * 
+ * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
+ */
+OPERATE_RET tkl_cellular_mf_test_start(TKL_CELLULAR_BASE_CFG_T *cfg);
+
+/**
+ * @brief  stop cellular mf test
+ *
+ * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
+ */
+OPERATE_RET tkl_cellular_mf_test_stop(VOID);
 
 #ifdef __cplusplus
 } // extern "C"

@@ -18,6 +18,9 @@ CONST TKL_CELLULAR_DESC_T c_cellular_desc = {
     .get_ccid           = tkl_cellular_get_ccid,
     .get_rssi           = tkl_cellular_get_rssi,
     .get_volt           = tkl_cellular_get_volt,
+    .get_imei           = tkl_cellular_get_imei,
+    .get_sn             = tkl_cellular_get_sn,
+    .get_sw_ver         = tkl_cellular_get_sw_ver,
 };
 
 /**

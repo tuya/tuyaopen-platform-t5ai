@@ -20,8 +20,7 @@ extern VOID_T tkl_system_psram_free(VOID_T* ptr);
 
 extern void bk_printf(const char *fmt, ...);
 
-STATIC BOOL_T s_psram_malloc_force = 0;
-
+STATIC BOOL_T s_psram_malloc_force = FALSE;
 VOID_T tkl_system_psram_malloc_force_set(BOOL_T enable)
 {
     s_psram_malloc_force = enable;

@@ -45,6 +45,20 @@ extern void pan_ip_start(void);
 extern void pan_set_ip_start_flag(bool enable);
 extern uint32_t pan_ip_is_start(void);
 bk_err_t bk_pan_get_mac(uint8_t *mac);
+extern void pan_netif_notify_got_ip(void);
+extern void pan_ip_down(void);
+int net_pan_remove_netif(void);
+#endif
+#if CONFIG_BK_MODEM
+extern void net_modem_init(void);
+extern void *net_get_modem_handle(void);
+extern void modem_ip_start(void);
+extern void modem_set_ip_start_flag(bool enable);
+extern uint32_t modem_ip_is_start(void);
+bk_err_t bk_modem_get_mac(uint8_t *mac);
+extern void modem_ip_down(void);
+extern int net_modem_remove_netif(void);
+extern void modem_netif_notify_got_ip(void);
 #endif
 #ifdef CONFIG_WIFI_VNET_CONTROLLER
 int host_wlan_add_netif(uint8_t *mac);
@@ -57,6 +71,10 @@ void *net_get_ppp_pcb_handle(void);
 void net_set_ppp_pcb_handle(void *ppp);  
 uint32_t ppp_ip_is_start(void);
 #endif
+#if LWIP_NETIF_LOOPBACK
+void bk_netif_trigger_loopnetif_msg(void);
+#endif
+void bk_netif_add_dns_server(uint8_t idx, const char* szIpv4);
 #ifdef __cplusplus
 }
 #endif
