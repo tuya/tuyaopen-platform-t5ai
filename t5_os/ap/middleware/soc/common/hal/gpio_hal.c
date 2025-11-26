@@ -216,7 +216,6 @@ bk_err_t gpio_hal_func_map(gpio_hal_t *hal, gpio_id_t gpio_id, gpio_dev_t dev)
 		}
 	}
 
-	bk_printf("gpio_id=%d, dev=%d\r\n", gpio_id, dev);
 	// set gpio as second function mode
 	gpio_hal_output_enable(hal, gpio_id, 0);
 	gpio_hal_input_enable(hal, gpio_id, 0);
