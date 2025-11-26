@@ -212,8 +212,9 @@ armino_component_register(
 #add tuya lib
 if ("${CONFIG_CPU_INDEX}" STREQUAL "1")
 
-# platform/t5ai/tuyaos/tuyaos_adapter/include/vad/lib/libvad.a
-target_link_libraries(${COMPONENT_LIB} INTERFACE "$ENV{ARMINO_PATH}/../../tuyaos/tuyaos_adapter/include/vad/lib/libvad.a")
+# platform/t5ai/tuyaos/tuyaos_adapter/include/vad/lib/libtal_audio_subsys.a
+target_link_libraries(${COMPONENT_LIB} INTERFACE "$ENV{ARMINO_PATH}/../../tuyaos/tuyaos_adapter/include/vad/lib/libtal_audio_subsys.a")
+
 # platform/t5ai/tuyaos/tuyaos_adapter/include/asr/wanson_asr/libasrfst.a
 target_link_libraries(${COMPONENT_LIB} INTERFACE "$ENV{ARMINO_PATH}/../../tuyaos/tuyaos_adapter/include/asr/libtutuClear/libtutuClear.a")
 # platform/t5ai/tuyaos/tuyaos_adapter/src/misc/mftest/libtal_mftest.a

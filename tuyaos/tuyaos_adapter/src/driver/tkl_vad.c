@@ -4,263 +4,147 @@
  * @date 2025-04-16
  */
 
-#include <os/os.h>
-#include <os/mem.h>
-#include "lib/vad.h"
-
+#include "tkl_audio.h"
 #include "tkl_memory.h"
 #include "tkl_queue.h"
 #include "tkl_thread.h"
-#include "tkl_vad.h"
 #include "tkl_system.h"
+#include "tkl_vad.h"
+
+#include "tkl_output.h"
 
 /***********************************************************
 ************************macro define************************
 ***********************************************************/
-#define VAD_INPUT_BUFF_NUM     10
-#define MSG_COUNT              20
-#define DURATION_PER_FRAME     20 /*20ms*/
-
-// ADC底层用的是20ms的帧长
-#define FRAME_COUNT_PER_SECOND (1000 / DURATION_PER_FRAME)
+#define AEC_VAD_FRAME_SIZE     (640) // 20ms 16kHz 16bit mono
 
 /***********************************************************
 ***********************typedef define***********************
 ***********************************************************/
-typedef uint8_t TKL_VAD_MSG_CMD_E;
-#define VAD_MSG_CMD_START         0
-#define VAD_MSG_CMD_DATA          1
-#define VAD_MSG_CMD_CANCLE        2
-#define VAD_MSG_CMD_DEINIT        3
-
-typedef struct {
-    TKL_QUEUE_HANDLE  msg_queue;
-    uint8_t          *buffer;
-    uint32_t          frame_len;
-    
-    int               vad_start_ms;
-    int               vad_end_ms;
-    int               vad_silence_ms;
-    int               frame_duration_ms;
-    uint16_t          sample_rate;
-    uint16_t          channel;
-    float             scale;
-
-
-    bool              is_vad_work;
-    TKL_VAD_STATUS_T  vad_state;
-    bool              is_vad_silence;
-
-}TKL_VAD_INFO_T;
-
-typedef struct {
-	TKL_VAD_MSG_CMD_E cmd;
-	uint32_t          data_len;
-	uint8_t          *data_buf;
-}TKL_VAD_MSG_T;
-
-
 
 /***********************************************************
 ********************function declaration********************
 ***********************************************************/
+extern void *speex_aes_create(int framesize);
+extern void speex_aes_destory(void *obj);
+extern int speex_aes_process(void *obj, short *mic, short *ref, short *aec);
+extern float speex_get_param(void *obj, float *out, short *linearout);
 
-
+extern void *rnn_vad_create();
+extern void rnn_vad_destroy(void *obj);
+extern void rnn_vad_start(void *obj);
+extern void rnn_vad_stop(void *obj);
+extern float rnn_vad_process(void *obj, short *x);
 /***********************************************************
 ***********************variable define**********************
 ***********************************************************/
-static TKL_VAD_INFO_T *sg_p_vad_info = NULL;
-static TKL_THREAD_HANDLE sg_vad_thread_handle = NULL;
-static bool is_vad_init = false;
+static void *__s_speex_aec_handle = NULL;
+static void *__s_rnn_vad_handle = NULL;
+static uint16_t *__s_linearaec = NULL;
+static uint32_t __s_frame_size = 0;
+static TKL_VAD_STATUS_T __s_aec_vad_flag = TKL_VAD_STATUS_NONE;
+
 /***********************************************************
 ***********************function define**********************
 ***********************************************************/
-static void __tkl_vad_send_msg(TKL_VAD_MSG_CMD_E cmd, uint8_t *data, uint32_t len)
+static OPERATE_RET __tkl_aec_vad_process(int16_t *mic_data, int16_t *ref_data, int16_t *out_data)
 {
-    TKL_VAD_MSG_T msg;
+    OPERATE_RET rt = OPRT_OK;
 
-    msg.cmd = cmd;
-    msg.data_buf = data;
-    msg.data_len = len;
-
-    tkl_queue_post(sg_p_vad_info->msg_queue, &msg, 0);
-}
-
-static void __tkl_vad_task(void *arg)
-{
-    TKL_VAD_MSG_T msg;
-    OPERATE_RET ret;
-
-    while(1) {
-        ret = tkl_queue_fetch(sg_p_vad_info->msg_queue, &msg, TKL_QUEUE_WAIT_FROEVER);
-        if(ret != OPRT_OK) {
-            continue;
-        }
-
-        switch(msg.cmd) {
-            case VAD_MSG_CMD_START:
-                if (false == sg_p_vad_info->is_vad_work) {
-                    wb_vad_deinit();
-                    wb_vad_enter(sg_p_vad_info->vad_start_ms, sg_p_vad_info->vad_end_ms, sg_p_vad_info->frame_len, sg_p_vad_info->vad_silence_ms); // vad start
-                    os_printf("---vad_enter:%d---\r\n", sg_p_vad_info->frame_len);
-                }
-                sg_p_vad_info->is_vad_work = true;
-            break;
-            case VAD_MSG_CMD_DATA: {
-                int ret = 0;
-
-                if (true == sg_p_vad_info->is_vad_work) {
-                    ret = wb_vad_entry((char *) msg.data_buf, msg.data_len, sg_p_vad_info->scale); /*vad process*/
-                    if (ret == 1) {
-                        sg_p_vad_info->vad_state = TKL_VAD_STATUS_SPEECH;
-                        os_printf("------------vad start----------\r\n");
-                    }else if (ret == 2) {
-                        sg_p_vad_info->vad_state = TKL_VAD_STATUS_NONE;
-                        sg_p_vad_info->is_vad_work = false;
-                        __tkl_vad_send_msg(VAD_MSG_CMD_START, NULL, 0);
-                        os_printf("------------vad end----------\r\n");
-                    }else if (ret == 3) {
-                        sg_p_vad_info->is_vad_silence = true;
-                        os_printf("------------silence----------\r\n");
-                    }
-                }
-            }
-            break;
-            case VAD_MSG_CMD_CANCLE:
-                wb_vad_deinit();
-                sg_p_vad_info->vad_state = TKL_VAD_STATUS_NONE;
-                sg_p_vad_info->is_vad_work = false;
-                os_printf("----vad cancel---\r\n");
-            break;
-            case VAD_MSG_CMD_DEINIT: {
-                wb_vad_deinit();
-                os_free(sg_p_vad_info->buffer);
-                tkl_queue_free(sg_p_vad_info->msg_queue);
-                os_free(sg_p_vad_info);
-                TKL_THREAD_HANDLE tmp_thrd = sg_vad_thread_handle;
-                sg_vad_thread_handle = NULL;
-                tkl_thread_release(tmp_thrd);
-                return;
-            }
-            break;
-            default:
-            break;
-        }
+    if (mic_data == NULL || ref_data == NULL || out_data == NULL) {
+        tkl_log_output("Invalid parameter: mic_data, ref_data, or out_data is NULL\r\n");
+        return OPRT_INVALID_PARM;
     }
-}
 
+    if (__s_speex_aec_handle) {
+        speex_aes_process(__s_speex_aec_handle, (short*)mic_data, (short*)ref_data, (short*)out_data);
+    }
+
+    if (__s_speex_aec_handle && __s_rnn_vad_handle && __s_linearaec) {
+        int has_vad = (int)rnn_vad_process(__s_rnn_vad_handle, (short *)out_data);
+        if (has_vad && __s_aec_vad_flag != TKL_VAD_STATUS_SPEECH) {
+            // tkl_log_output("################ [vad start] ################\r\n");
+            __s_aec_vad_flag = TKL_VAD_STATUS_SPEECH;
+        } else if (!has_vad && __s_aec_vad_flag != TKL_VAD_STATUS_NONE) {
+            // tkl_log_output("################ [vad stop] ################\r\n");
+            __s_aec_vad_flag = TKL_VAD_STATUS_NONE;
+        } 
+
+        speex_get_param(__s_speex_aec_handle, NULL, (short*)__s_linearaec);
+    }
+
+    return rt;
+}
 
 OPERATE_RET tkl_vad_init(TKL_VAD_CONFIG_T *config)
 {
-    OPERATE_RET ret;
+    OPERATE_RET rt = OPRT_OK;
 
     if(NULL == config) {
         return OPRT_INVALID_PARM;
     }
 
-    if(true == is_vad_init) {
-        return OPRT_OK;
+    if (__s_speex_aec_handle == NULL) {
+        __s_speex_aec_handle = speex_aes_create(AEC_VAD_FRAME_SIZE / 2);
+        if (__s_speex_aec_handle == NULL) {
+            tkl_log_output("__s_speex_aec_handle create failed\r\n");
+            goto __err_exit;
+        }
     }
 
-    sg_p_vad_info = (TKL_VAD_INFO_T *)os_malloc(sizeof(TKL_VAD_INFO_T));
-    if (NULL == sg_p_vad_info) {
-        return OPRT_MALLOC_FAILED;
-    }
-    memset(sg_p_vad_info, 0x00, sizeof(TKL_VAD_INFO_T));
-
-    sg_p_vad_info->vad_silence_ms    = 0;
-    sg_p_vad_info->vad_start_ms      = config->speech_min_ms;
-    sg_p_vad_info->vad_end_ms        = config->noise_min_ms;
-    sg_p_vad_info->sample_rate       = config->sample_rate;
-    sg_p_vad_info->channel           = config->channel_num;
-    sg_p_vad_info->frame_duration_ms = config->frame_duration_ms;
-    sg_p_vad_info->scale             = config->scale;
-    if(0 == sg_p_vad_info->scale) {
-        sg_p_vad_info->scale = 0;
+    if (__s_rnn_vad_handle == NULL) {
+        __s_rnn_vad_handle = rnn_vad_create();
+        if (__s_rnn_vad_handle == NULL) {
+            tkl_log_output("__s_rnn_vad_handle create failed\r\n");
+            goto __err_exit;
+        }
     }
 
-    sg_p_vad_info->frame_len = (sg_p_vad_info->sample_rate / FRAME_COUNT_PER_SECOND) * 2 * sg_p_vad_info->channel;
-
-    ret = tkl_queue_create_init(&sg_p_vad_info->msg_queue, sizeof(TKL_VAD_MSG_T), MSG_COUNT);
-    if (ret != OPRT_OK) {
-        os_free(sg_p_vad_info);
-        sg_p_vad_info = NULL;
-        return ret;
+    if (__s_linearaec == NULL) {
+#ifdef ENABLE_EXT_RAM
+        __s_linearaec = tkl_system_psram_malloc(AEC_VAD_FRAME_SIZE * 2);
+        if (NULL == __s_linearaec) {
+            tkl_log_output("__s_linearaec psram malloc failed\r\n");
+            goto __err_exit;
+        }
+#else   
+        __s_linearaec = tkl_system_malloc(AEC_VAD_FRAME_SIZE * 2);
+        if (NULL == __s_linearaec) {
+            tkl_log_output("__s_linearaec malloc failed\r\n");
+            goto __err_exit;
+        }
+#endif
     }
 
-    // NOTE: vad_buffer这里的帧长是mic回调过来的帧长，是10ms的帧长，所以要除以2。而底层的ADC采样的帧长是20ms
-    sg_p_vad_info->buffer = os_malloc(sg_p_vad_info->frame_len/ 2 * VAD_INPUT_BUFF_NUM);
-    if (sg_p_vad_info->buffer  == NULL) {
-        return OPRT_MALLOC_FAILED;
-    }
-
-    ret = tkl_thread_create(&sg_vad_thread_handle, "vad", 4096, 5, __tkl_vad_task, NULL);
-    if (ret != OPRT_OK) {
-        os_free(sg_p_vad_info);
-        sg_p_vad_info = NULL;
-        os_free(sg_p_vad_info->buffer);
-        sg_p_vad_info->buffer = NULL;
-        return ret;
-    }
-
-    is_vad_init = true;
+    __s_frame_size = AEC_VAD_FRAME_SIZE;
+    tkl_ai_set_vad_aec_algorithm(__tkl_aec_vad_process);
 
     return OPRT_OK;
+
+__err_exit:
+    tkl_vad_deinit();
+    return rt;
 }
 
 OPERATE_RET tkl_vad_feed(uint8_t *data, uint32_t len)
 {
-    static uint8_t frame_index = 0;
-
-    if(NULL == data || 0 == len) {
-        return OPRT_INVALID_PARM;
-    }
-
-    if(false == is_vad_init) {
-        bk_printf("vad not init\n");
-        return OPRT_COM_ERROR;
-    }
-
-    if (true == sg_p_vad_info->is_vad_work) {
-        os_memcpy((void *)sg_p_vad_info->buffer + frame_index * len, data, len);
-        frame_index++;
-        if ((frame_index & 0x01) == 0) {
-            __tkl_vad_send_msg(VAD_MSG_CMD_DATA, sg_p_vad_info->buffer + (frame_index >> 1) * len, len << 1);
-        }
-
-        if (frame_index >= VAD_INPUT_BUFF_NUM)
-            frame_index = 0;
-    }
-    else {
-        frame_index = 0;
-    }
+    // Nothing to do
+    // T5 vad feed is called in _aec_v3_algorithm_process() function in
+    // platform/T5AI/t5_os/ap/components/bk_audio/audio_algorithms/aec_v3_algorithm/aec_v3_algorithm.c
 
     return OPRT_OK;
 }
 
 TKL_VAD_STATUS_T tkl_vad_get_status(void)
 {
-    if(false == is_vad_init) {
-        return TKL_VAD_STATUS_NONE;
-    }
-
-    return sg_p_vad_info->vad_state;
+    return __s_aec_vad_flag;
 }
 
 OPERATE_RET tkl_vad_start(void)
 {
-    if(false == is_vad_init) {
-        return OPRT_COM_ERROR;
-    }
-
-    if(true == sg_p_vad_info->is_vad_work) {
-        return OPRT_OK;
-    }
-
-    __tkl_vad_send_msg(VAD_MSG_CMD_START, NULL, 0);
-
-    while (false == sg_p_vad_info->is_vad_work) {
-        tkl_system_sleep(10);
+    __s_aec_vad_flag = TKL_VAD_STATUS_NONE;
+    if (__s_rnn_vad_handle) {
+        rnn_vad_start(__s_rnn_vad_handle);
     }
 
     return OPRT_OK;
@@ -268,18 +152,9 @@ OPERATE_RET tkl_vad_start(void)
 
 OPERATE_RET tkl_vad_stop(void)
 {
-    if(false == is_vad_init) {
-        return OPRT_COM_ERROR;
-    }
-
-    if(false == sg_p_vad_info->is_vad_work) {
-        return OPRT_OK;
-    }
-
-    __tkl_vad_send_msg(VAD_MSG_CMD_CANCLE, NULL, 0);
-
-    while (sg_p_vad_info->is_vad_work) {
-        tkl_system_sleep(10);
+    __s_aec_vad_flag = TKL_VAD_STATUS_NONE;
+    if (__s_rnn_vad_handle) {
+        rnn_vad_stop(__s_rnn_vad_handle);
     }
 
     return OPRT_OK;
@@ -287,12 +162,28 @@ OPERATE_RET tkl_vad_stop(void)
 
 OPERATE_RET tkl_vad_deinit(void)
 {
-    if(false == is_vad_init) {
-        return OPRT_COM_ERROR;
+    tkl_ai_set_vad_aec_algorithm(NULL);
+
+    if (__s_linearaec) {
+#ifdef ENABLE_EXT_RAM
+        tkl_system_psram_free(__s_linearaec);
+#else
+        tkl_system_free(__s_linearaec);
+#endif
+        __s_linearaec = NULL;
     }
 
-    is_vad_init = false;
-    __tkl_vad_send_msg(VAD_MSG_CMD_DEINIT, NULL, 0);
+    if (__s_rnn_vad_handle) {
+        rnn_vad_destroy(__s_rnn_vad_handle);
+        __s_rnn_vad_handle = NULL;
+    }
+
+    if (__s_speex_aec_handle) {
+        speex_aes_destory(__s_speex_aec_handle);
+        __s_speex_aec_handle = NULL;
+    }
+
+    __s_frame_size = 0;
 
     return OPRT_OK;
 }
