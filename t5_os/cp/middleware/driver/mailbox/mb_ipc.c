@@ -1837,7 +1837,7 @@ int mb_ipc_get_recv_data_len(u32 handle)
 	}
 }
 
-u8 mb_ipc_get_recv_user_cmd(u32 handle)
+u8 mb_ipc_get_user_cmd(u32 handle)
 {
 	mb_ipc_socket_t * ipc_socket = get_socket_from_handle(handle);
 

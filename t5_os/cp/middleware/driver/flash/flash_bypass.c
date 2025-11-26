@@ -10,6 +10,9 @@
 #include <soc/soc.h>
 #include "flash_driver.h"
 #include "flash_hal.h"
+#if CONFIG_INT_WDT
+#include <driver/wdt.h>
+#endif
 
 #if CONFIG_SOC_BK7236XX
 #define SPI_R_0X2(_id)  (SPI_R_BASE(_id) + 2 * 0x04)
@@ -21,6 +24,8 @@ __attribute__((section(".iram"))) int flash_bypass_op_write(uint8_t *op_code, ui
 	uint32_t int_status = 0;
 	int exceptional_flag = 0;
 	uint32_t reg_sys_clk_en_0xc, reg_sys_clk_sel_0xa;
+	uint32_t timeout_count = 0;
+	const uint32_t MAX_TIMEOUT_COUNT = 1000000;
 
 	int_status =  rtos_disable_int();
 
@@ -39,9 +44,17 @@ __attribute__((section(".iram"))) int flash_bypass_op_write(uint8_t *op_code, ui
 	/*step 3, config spi master*/
 	/*     3.1 clear spi fifo content*/
 	reg = REG_READ(SPI_R_INT_STATUS(0));
+	timeout_count = 0;
 	while (reg & SPI_STATUS_RXFIFO_RD_READY) {
 		REG_READ(SPI_R_DATA(0));
 		reg = REG_READ(SPI_R_INT_STATUS(0));
+
+		timeout_count++;
+		if (timeout_count > MAX_TIMEOUT_COUNT) {
+			reg = REG_READ(SPI_R_INT_STATUS(0));
+			REG_WRITE(SPI_R_INT_STATUS(0), reg);
+			break;
+		}		
 	}
 	/*     3.2 disable spi block, and backup */
 	reg_sys_clk_en_0xc = reg = REG_READ(SYS_R_ADD_X(0xc));
@@ -83,6 +96,7 @@ __attribute__((section(".iram"))) int flash_bypass_op_write(uint8_t *op_code, ui
 	reg = 0xC00100; // spien  msten  spi_clk=1---13M
 	REG_WRITE(SPI_R_CTRL(0), reg);
 
+	for(volatile int k=0; k<200; k++);
 	/*step 4, gpio(14/15/16/17) are set as high-impedance state or input state */
 
 	/*step 5, switch flash interface to spi
@@ -104,20 +118,37 @@ __attribute__((section(".iram"))) int flash_bypass_op_write(uint8_t *op_code, ui
 		reg |= (SPI_CFG_TX_EN | SPI_CFG_TX_FIN_INT_EN);
 		REG_WRITE(SPI_R_CFG(0), reg);
 
-		/*      6.2:write tx fifo*/
+		for(volatile int k=0; k<500; k++);
+
+		// read status register twice, ensure the latest hardware status
 		reg = REG_READ(SPI_R_INT_STATUS(0));
-		if (reg & SPI_STATUS_TXFIFO_WR_READY)
+		reg = REG_READ(SPI_R_INT_STATUS(0));
+
+		if (reg & SPI_STATUS_TXFIFO_WR_READY) {
 			REG_WRITE(SPI_R_DATA(0), *op_code);
-		else {
-			exceptional_flag = -1;
-			goto wr_exceptional;
-		}
+			for(volatile int m=0; m<50; m++);
+		} else {
+ 			exceptional_flag = -1;
+ 			goto wr_exceptional;
+ 		}
 
 		/*      6.3:waiting for TXFIFO_EMPTY interrupt*/
+		// wait for a short time before waiting for the interrupt, ensure the data has been written to the FIFO
+		for(volatile int k=0; k<200; k++);
+
+		timeout_count = 0;		
 		while (1) {
+			// read status register twice, ensure the latest hardware status
+			reg = REG_READ(SPI_R_INT_STATUS(0));
 			reg = REG_READ(SPI_R_INT_STATUS(0));
 			if (reg & SPI_STATUS_TX_FINISH_INT)
 				break;
+
+			timeout_count++;
+			if (timeout_count > MAX_TIMEOUT_COUNT) {
+				exceptional_flag = -3;
+				goto wr_exceptional;
+			}				
 		}
 
 		/*      6.4:release cs*/
@@ -128,9 +159,16 @@ __attribute__((section(".iram"))) int flash_bypass_op_write(uint8_t *op_code, ui
 
 		// cler stat and fifo
 		reg = REG_READ(SPI_R_INT_STATUS(0));
+		timeout_count = 0;
 		while (reg & SPI_STATUS_RXFIFO_RD_READY) {
 			REG_READ(SPI_R_DATA(0));
 			reg = REG_READ(SPI_R_INT_STATUS(0));
+			timeout_count++;
+			if (timeout_count > MAX_TIMEOUT_COUNT) {
+				reg = REG_READ(SPI_R_INT_STATUS(0));
+				REG_WRITE(SPI_R_INT_STATUS(0), reg);
+				break;
+			}			
 		}
 		reg = REG_READ(SPI_R_INT_STATUS(0));
 		REG_WRITE(SPI_R_INT_STATUS(0), reg);
@@ -153,10 +191,16 @@ __attribute__((section(".iram"))) int flash_bypass_op_write(uint8_t *op_code, ui
 
 	/*      7.2:write tx fifo*/
 	// write tx first
+	// add delay after writing the configuration register, ensure the configuration takes effect, especially after CPU frequency switching
+	// use volatile loop to ensure the compiler does not optimize away the delay, increase the delay time to ensure the configuration stability
+	for(volatile int k=0; k<500; k++);
+
 	for (int i = 0, wait = 0; i < tx_len; ) {
+		// read status register twice, ensure the latest hardware status
+		reg = REG_READ(SPI_R_INT_STATUS(0));
 		reg = REG_READ(SPI_R_INT_STATUS(0));
 		if ((reg & SPI_STATUS_TXFIFO_WR_READY) == 0) {
-			for(volatile int j=0; j<500; j++);
+			for(volatile int j=0; j<2000; j++);
 			wait++;
 			if(wait > 100) {
 				exceptional_flag = -2;
@@ -165,15 +209,29 @@ __attribute__((section(".iram"))) int flash_bypass_op_write(uint8_t *op_code, ui
 		} else {
 			wait = 0;
 			REG_WRITE(SPI_R_DATA(0), tx_buf[i]);
+			// add delay after writing the data to the FIFO, ensure the data is stable
+			for(volatile int m=0; m<50; m++);			
 			i++;
 		}
 	}
 
 	/*      7.3:waiting for TXFIFO_EMPTY interrupt*/
+	// wait for a short time before waiting for the interrupt, ensure all data has been written to the FIFO
+	for(volatile int k=0; k<200; k++);
+
+	timeout_count = 0;	
 	while (1) {
+		// read status register twice, ensure the latest hardware status
+		reg = REG_READ(SPI_R_INT_STATUS(0));
 		reg = REG_READ(SPI_R_INT_STATUS(0));
 		if (reg & SPI_STATUS_TX_FINISH_INT)
 			break;
+
+		timeout_count++;
+		if (timeout_count > MAX_TIMEOUT_COUNT) {
+			exceptional_flag = -3;
+			goto wr_exceptional;
+		}			
 	}
 
 	/*      7.4:release cs*/
@@ -185,9 +243,17 @@ __attribute__((section(".iram"))) int flash_bypass_op_write(uint8_t *op_code, ui
 
 	// cler stat and fifo
 	reg = REG_READ(SPI_R_INT_STATUS(0));
+	timeout_count = 0;
 	while (reg & SPI_STATUS_RXFIFO_RD_READY) {
 		REG_READ(SPI_R_DATA(0));
 		reg = REG_READ(SPI_R_INT_STATUS(0));
+
+		timeout_count++;
+		if (timeout_count > MAX_TIMEOUT_COUNT) {
+			reg = REG_READ(SPI_R_INT_STATUS(0));
+			REG_WRITE(SPI_R_INT_STATUS(0), reg);
+			break;
+		}		
 	}
 	reg = REG_READ(SPI_R_INT_STATUS(0));
 	REG_WRITE(SPI_R_INT_STATUS(0), reg);
@@ -213,6 +279,9 @@ wr_exceptional:
 	REG_WRITE(SPI_R_CFG(0), reg_cfg);
 	REG_WRITE(SPI_R_0X2(0), reg_0x2);
 
+	//restore reg_cksel_core and reg_ckdiv_core
+	//REG_WRITE(SYS_R_ADD_X(0x8), (backup_reg & ~(0x30)) | (reg_cksel_core << 4) | (reg_ckdiv_core << 0));
+
 	/*step 11, enable interrupt*/
 	rtos_enable_int(int_status);
 
@@ -228,6 +297,8 @@ __attribute__((section(".iram"))) int flash_bypass_op_read(uint8_t *tx_buf, uint
 	uint32_t int_status = 0;
 	int exceptional_flag = 0;
 	uint32_t reg_sys_clk_en_0xc, reg_sys_clk_sel_0xa;
+	uint32_t timeout_count = 0;
+	const uint32_t MAX_TIMEOUT_COUNT = 1000000;	
 
 	int_status =  rtos_disable_int();
 
@@ -246,9 +317,17 @@ __attribute__((section(".iram"))) int flash_bypass_op_read(uint8_t *tx_buf, uint
 	/*step 3, config spi master*/
 	/*     3.1 clear spi fifo content*/
 	reg = REG_READ(SPI_R_INT_STATUS(0));
+	timeout_count = 0;
 	while (reg & SPI_STATUS_RXFIFO_RD_READY) {
 		REG_READ(SPI_R_DATA(0));
 		reg = REG_READ(SPI_R_INT_STATUS(0));
+
+		timeout_count++;
+		if (timeout_count > MAX_TIMEOUT_COUNT) {
+			reg = REG_READ(SPI_R_INT_STATUS(0));
+			REG_WRITE(SPI_R_INT_STATUS(0), reg);
+			break;
+		}		
 	}
 	/*     3.2 disable spi block, and backup */
 	reg_sys_clk_en_0xc = reg = REG_READ(SYS_R_ADD_X(0xc));
@@ -289,6 +368,8 @@ __attribute__((section(".iram"))) int flash_bypass_op_read(uint8_t *tx_buf, uint
 	// set to spi config directly
 	reg = 0xC00100; // spien  msten  spi_clk=1---13M
 	REG_WRITE(SPI_R_CTRL(0), reg);
+	// add delay after writing the configuration register, ensure the configuration takes effect, especially after CPU frequency switching
+	for(volatile int k=0; k<200; k++);	
 
 	/*step 4, gpio(14/15/16/17) are set as high-impedance state or input state */
 
@@ -320,21 +401,30 @@ __attribute__((section(".iram"))) int flash_bypass_op_read(uint8_t *tx_buf, uint
 
 	/*      7.2:write tx fifo*/
 	// write tx first
+	// add delay after writing the configuration register, ensure the configuration takes effect, especially after CPU frequency switching
+	// increase the delay time to ensure the configuration stability
+	for(volatile int k=0; k<500; k++);	
 	int tx_cnt = 0;
 	int rx_cnt = 0;
 	int wait = 0;
 	for (int i = 0; i < tx_len; ) {
+		// read status register twice, ensure the latest hardware status
+		reg = REG_READ(SPI_R_INT_STATUS(0));
 		reg = REG_READ(SPI_R_INT_STATUS(0));
 		if ((reg & SPI_STATUS_TXFIFO_WR_READY) == 0) {
-			for(int j=0; j<500; j++);
+			for(int j=0; j<2000; j++);
 			wait++;
 			if(wait > 100) {
-				exceptional_flag = -1;
+				//restore reg_cksel_core and reg_ckdiv_core
+				//REG_WRITE(SYS_R_ADD_X(0x8), (backup_reg & ~(0x30)) | (reg_cksel_core << 4) | (reg_ckdiv_core << 0));
+ 				exceptional_flag = -1;
 				goto wr_exceptional;
 			}
 		} else {
 			wait = 0;
 			REG_WRITE(SPI_R_DATA(0), tx_buf[i]);
+			// add delay after writing the data to the FIFO, ensure the data is stable
+			for(volatile int m=0; m<50; m++);			
 			i++;
 		}
 
@@ -355,9 +445,11 @@ __attribute__((section(".iram"))) int flash_bypass_op_read(uint8_t *tx_buf, uint
 	// read rx, send 0xff
 	wait = 0;
 	for (int i = 0; i < rx_len; ) {
+		// read status register twice, ensure the latest hardware status
+		reg = REG_READ(SPI_R_INT_STATUS(0));
 		reg = REG_READ(SPI_R_INT_STATUS(0));
 		if ((reg & SPI_STATUS_TXFIFO_WR_READY) == 0) {
-			for(int j=0; j<500; j++);
+			for(int j=0; j<2000; j++);
 			wait++;
 			if(wait > 100) {
 				exceptional_flag = -2;
@@ -366,6 +458,8 @@ __attribute__((section(".iram"))) int flash_bypass_op_read(uint8_t *tx_buf, uint
 		} else {
 			wait = 0;
 			REG_WRITE(SPI_R_DATA(0), 0xff);
+			// add delay after writing the data to the FIFO, ensure the data is stable
+			for(volatile int m=0; m<50; m++);			
 			i++;
 		}
 
@@ -384,7 +478,13 @@ __attribute__((section(".iram"))) int flash_bypass_op_read(uint8_t *tx_buf, uint
 	}
 
 	/*      7.3:waiting for TXFIFO_EMPTY interrupt*/
+	// wait for a short time before waiting for the interrupt, ensure all data has been written to the FIFO
+	for(volatile int k=0; k<200; k++);
+
+	timeout_count = 0;	
 	while (1) {
+		// read status register twice, ensure the latest hardware status
+		reg = REG_READ(SPI_R_INT_STATUS(0));
 		reg = REG_READ(SPI_R_INT_STATUS(0));
 		if (reg & SPI_STATUS_TX_FINISH_INT)
 			break;
@@ -397,6 +497,13 @@ __attribute__((section(".iram"))) int flash_bypass_op_read(uint8_t *tx_buf, uint
 				rx_cnt++;
 			}
 		}
+
+		timeout_count++;
+		if (timeout_count > MAX_TIMEOUT_COUNT) {
+			exceptional_flag = -3;
+			goto wr_exceptional;
+		}			
+		
 	}
 
 	wait = 0;
@@ -412,7 +519,7 @@ __attribute__((section(".iram"))) int flash_bypass_op_read(uint8_t *tx_buf, uint
 
 			wait = 0;
 		} else {
-			for(int j=0; j<500; j++);
+			for(int j=0; j<2000; j++);
 			wait++;
 			if(wait > 100) {
 				break;
@@ -434,9 +541,17 @@ wr_exceptional:
 
 	// cler stat and fifo
 	reg = REG_READ(SPI_R_INT_STATUS(0));
+	timeout_count = 0;
 	while (reg & SPI_STATUS_RXFIFO_RD_READY) {
 		REG_READ(SPI_R_DATA(0));
 		reg = REG_READ(SPI_R_INT_STATUS(0));
+
+		timeout_count++;
+		if (timeout_count > MAX_TIMEOUT_COUNT) {
+			reg = REG_READ(SPI_R_INT_STATUS(0));
+			REG_WRITE(SPI_R_INT_STATUS(0), reg);
+			break;
+		}		
 	}
 	reg = REG_READ(SPI_R_INT_STATUS(0));
 	REG_WRITE(SPI_R_INT_STATUS(0), reg);
@@ -494,9 +609,10 @@ static bk_err_t flash_bypass_op_read_and_check(uint8_t *tx_buf, uint32_t tx_len,
 	}
 
 	os_memset(err_buf, 0x00, rx_len);
-	os_memset(rx_buf1, 0xFF, rx_len); 
+	os_memset(rx_buf1, 0xFF, rx_len);
 	os_memset(rx_buf2, 0xFF, rx_len);
 
+	// read retry 3 times(default), until the read result consecutively twice are the same
 	uint8_t *ff_buf = (uint8_t *)os_malloc(rx_len);
 	if (!ff_buf) {
 		FLASH_BYPASS_LOGW("%s malloc ff_buf err\r\n", __func__);
@@ -505,24 +621,26 @@ static bk_err_t flash_bypass_op_read_and_check(uint8_t *tx_buf, uint32_t tx_len,
 	}
 	os_memset(ff_buf, 0xFF, rx_len);
 
-	// read retry 5 times(default), until the read result consecutively twice are the same
+	// read retry multiple times(default), until the read result consecutively twice are the same
+	// add delay time, ensure the flash operation is completed before reading
 	bool read_success = false;
 	for (uint8_t i = 0; i < FLASH_BYPASS_OTP_READ_RETRY_MAX; i++) {
-		// Adaptive delay: increase delay with retry count to allow flash to stabilize
-		uint32_t base_delay_us = 5000; // Base delay increased from 2ms to 5ms
-		uint32_t retry_delay_us = base_delay_us + (i * 2000); // Add 2ms per retry
-		
-		// Wait for flash to be ready before read
-		bk_delay_us(1000);
+		// add delay before each retry, give the flash hardware more stable time
+		if (i > 0) {
+			bk_delay_us(10000);  // 10ms delay between retries
+		}
+
 		ret1 = flash_bypass_op_read(tx_buf, tx_len, rx_buf1, rx_len);
-		bk_delay_us(retry_delay_us);
+		// add delay between two reads, ensure the first read is completed
+		bk_delay_us(5000);  // 5ms delay between two reads
+		ret1 = flash_bypass_op_read(tx_buf, tx_len, rx_buf1, rx_len);
+		bk_delay_us(5000); 
 		ret2 = flash_bypass_op_read(tx_buf, tx_len, rx_buf2, rx_len);
-		bk_delay_us(retry_delay_us);
 
 		// if flash_bypass_op_read ok, it will return ret >= 0
 		if ((ret1 < 0) || (ret2 < 0)) {
-			FLASH_BYPASS_LOGW("%s read failed, ret1=%d, ret2=%d, retry=%d\r\n", __func__, ret1, ret2, i);
-			continue;
+			FLASH_BYPASS_LOGW("%s read operation failed (not data inconsistent), ret1=%d, ret2=%d, retry=%d\r\n", __func__, ret1, ret2, i);
+ 			continue;
 		}
 
 		bool buf1_is_zero = (os_memcmp(rx_buf1, err_buf, rx_len) == 0);
@@ -561,19 +679,23 @@ static bk_err_t flash_bypass_op_read_and_check(uint8_t *tx_buf, uint32_t tx_len,
 
 		if (os_memcmp(rx_buf1, rx_buf2, rx_len) == 0) {
 			read_success = true;
-			FLASH_BYPASS_LOGV("%s read success on retry=%d\r\n", __func__, i);
+			if (i > 0) {
+				FLASH_BYPASS_LOGI("%s read data consistent after %d retries\r\n", __func__, i);
+			}			
 			break;
-		}else{
-			FLASH_BYPASS_LOGW("%s read data inconsistent, retry=%d/%d, next delay=%dus\r\n", 
-				__func__, i+1, FLASH_BYPASS_OTP_READ_RETRY_MAX, retry_delay_us);
-			
-			// Try one more read with longer delay before giving up this attempt
-			if (i < FLASH_BYPASS_OTP_READ_RETRY_MAX - 1) {
-				bk_delay_us(retry_delay_us * 2); // Double delay before next retry
+		} else {
+			// output more detailed error information, help to distinguish between read failure and data inconsistency
+			uint32_t diff_count = 0;
+			for (uint32_t j = 0; j < rx_len && j < 16; j++) {  // ֻ���ǰ16�ֽڵĲ���
+				if (rx_buf1[j] != rx_buf2[j]) {
+					diff_count++;
+				}
 			}
-			
+			FLASH_BYPASS_LOGW("%s read data inconsistent (timing issue?), retry=%d, diff_bytes=%d/%d\r\n",
+				__func__, i, diff_count, (rx_len < 16) ? rx_len : 16);
+
 			if (flash_bypass_op_read_buf_can_be_zero_flag && (i == (FLASH_BYPASS_OTP_READ_RETRY_MAX - 1))) {
-				FLASH_BYPASS_LOGW("%s WRITE internal read: use first read result despite inconsistency\r\n", __func__);
+				FLASH_BYPASS_LOGW("%s WRITE internal read: use first read result despite inconsistency (may be timing issue)\r\n", __func__);
 				read_success = true;
 				os_memcpy(rx_buf2, rx_buf1, rx_len);
 				break;
@@ -583,11 +705,12 @@ static bk_err_t flash_bypass_op_read_and_check(uint8_t *tx_buf, uint32_t tx_len,
 
 	if (!read_success) {
 		if (flash_bypass_op_read_buf_can_be_zero_flag) {
-			FLASH_BYPASS_LOGW("%s WRITE internal read: all retries failed, use 0xFF as default\r\n", __func__);
+			FLASH_BYPASS_LOGW("%s WRITE internal read: all retries failed (likely timing issue, not write failure), use 0xFF as default\r\n", __func__);
 			os_memset(rx_buf2, 0xFF, rx_len);
 			read_success = true;
 		} else {
-			FLASH_BYPASS_LOGW("%s fail after %d retries\r\n", __func__, FLASH_BYPASS_OTP_READ_RETRY_MAX);
+			FLASH_BYPASS_LOGW("%s fail after %d retries (read data inconsistent, may be timing issue, not operation failure)\r\n",
+				__func__, FLASH_BYPASS_OTP_READ_RETRY_MAX);
 			ret = BK_FAIL;
 			if (ff_buf) {
 				os_free(ff_buf);
@@ -613,7 +736,7 @@ static bk_err_t flash_bypass_op_read_and_check(uint8_t *tx_buf, uint32_t tx_len,
 
 	if (ff_buf) {
 		os_free(ff_buf);
-	}
+	}	
 
 read_check_exit:
 	if (rx_buf1) {
@@ -905,14 +1028,30 @@ static bk_err_t flash_bypass_otp_write_without_read(flash_bypass_otp_ctrl_t *otp
 	tx_buf[3] = (otp_addr >>  0) & 0xff;
 	os_memcpy(tx_buf + CMD_FLASH_BYPASS_OTP_WRITE_HEAD_LEN, otp_cfg->write_buf, otp_cfg->write_len);
 
-	flash_bypass_wait_work_in_progress_end();
-	ret = flash_bypass_op_write(&op_code, tx_buf, tx_len);
-	if (ret != 0) {
-		FLASH_BYPASS_LOGW("%s fail\r\n", __func__);
-		ret = BK_FAIL;
-		goto write_exit;
+	// write retry mechanism, retry FLASH_BYPASS_OTP_WRITE_RETRY_MAX times(default 3)
+	for (uint8_t retry = 0; retry < FLASH_BYPASS_OTP_WRITE_RETRY_MAX; retry++) {
+		flash_bypass_wait_work_in_progress_end();
+		ret = flash_bypass_op_write(&op_code, tx_buf, tx_len);
+		if (ret == 0) {
+			// write success
+			flash_bypass_wait_work_in_progress_end();
+			break;
+		} else {
+			FLASH_BYPASS_LOGW("%s write failed, retry=%d\r\n", __func__, retry);
+			if (retry < FLASH_BYPASS_OTP_WRITE_RETRY_MAX - 1) {
+				// wait a bit before retry
+				bk_delay_us(5000);  // 5ms delay before retry
+			}
+		}
 	}
-	flash_bypass_wait_work_in_progress_end();
+
+	if (ret != 0) {
+		FLASH_BYPASS_LOGW("%s write operation fail after %d retries (actual write failure, not read issue)\r\n",
+			__func__, FLASH_BYPASS_OTP_WRITE_RETRY_MAX);
+		ret = BK_FAIL;
+	} else {
+		flash_bypass_wait_work_in_progress_end();
+	}
 
 write_exit:
 	if (tx_buf) {
@@ -940,8 +1079,8 @@ static bk_err_t flash_bypass_otp_write(flash_bypass_otp_ctrl_t *otp_cfg)
 	}
 	ret = flash_bypass_otp_read(otp_read_cfg, 0);
 	if (ret != BK_OK) {
-		FLASH_BYPASS_LOGW("%s fail\r\n", __func__);
-		ret = BK_FAIL;
+		FLASH_BYPASS_LOGW("%s STEP1 fail: read OTP failed (read verification issue, not write failure)\r\n", __func__);
+ 		ret = BK_FAIL;
 		goto otp_write_exit;
 	}
 
@@ -949,8 +1088,8 @@ static bk_err_t flash_bypass_otp_write(flash_bypass_otp_ctrl_t *otp_cfg)
 	flash_bypass_otp_ctrl_t *otp_earse_cfg = &otp_op_cfg;
 	ret = flash_bypass_otp_earse_and_check(otp_earse_cfg);
 	if (ret != BK_OK) {
-		FLASH_BYPASS_LOGW("%s fail\r\n", __func__);
-		ret = BK_FAIL;
+			FLASH_BYPASS_LOGW("%s fail\r\n", __func__);
+ 			ret = BK_FAIL;
 		goto otp_write_exit;
 	}
 
@@ -982,8 +1121,8 @@ static bk_err_t flash_bypass_otp_write(flash_bypass_otp_ctrl_t *otp_cfg)
 		os_memcpy(otp_write_cfg.write_buf, otp_temp_cfg->write_buf + i * FLASH_BYPASS_OTP_PAGE_LENGTH, FLASH_BYPASS_OTP_PAGE_LENGTH);
 		ret = flash_bypass_otp_write_without_read(&otp_write_cfg);
 		if (ret != BK_OK) {
-			FLASH_BYPASS_LOGW("%s fail at page %d\r\n", __func__, i);
-			ret = BK_FAIL;
+			FLASH_BYPASS_LOGW("%s STEP4 fail: write operation failed at page %d (actual write failure)\r\n", __func__, i);
+ 			ret = BK_FAIL;
 			goto otp_write_exit;
 		}
 	}
@@ -1002,13 +1141,13 @@ static bk_err_t flash_bypass_otp_write(flash_bypass_otp_ctrl_t *otp_cfg)
 	ret = flash_bypass_otp_read(&verify_cfg, 0);
 	if (ret == BK_OK) {
 		if (os_memcmp(verify_cfg.read_buf, otp_cfg->write_buf, otp_cfg->write_len) != 0) {
-			FLASH_BYPASS_LOGW("%s verify fail: written data mismatch\r\n", __func__);
+			FLASH_BYPASS_LOGW("%s verify fail: written data mismatch (may be read timing issue, not write failure)\r\n", __func__);
 			ret = BK_FAIL;
 		} else {
 			FLASH_BYPASS_LOGI("%s verify success\r\n", __func__);
 		}
 	} else {
-		FLASH_BYPASS_LOGW("%s verify read fail\r\n", __func__);
+		FLASH_BYPASS_LOGW("%s verify read fail (read verification issue, write may have succeeded)\r\n", __func__);
 		ret = BK_FAIL;
 	}
 

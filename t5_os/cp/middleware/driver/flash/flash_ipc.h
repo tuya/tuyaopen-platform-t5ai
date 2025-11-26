@@ -38,12 +38,10 @@ typedef struct {
 	uint16_t read_len;
 	uint16_t write_len;
 	int16_t  ret_status;
-	uint8_t *buf;
 } flash_bypass_otp_ipc_cmd_t;
 
 #define FLASH_IPC_BYPASS_OTP_SIZE  1024  
 #endif
-
 #endif //_FLASH_IPC_H_
 // eof
 

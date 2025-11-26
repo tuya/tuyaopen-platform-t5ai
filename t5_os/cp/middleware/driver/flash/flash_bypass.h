@@ -103,6 +103,7 @@ __attribute__((section(".itcm_sec_code"))) void flash_bypass_quad_test(uint32_t 
 
 #define FLASH_BYPASS_OTP_READ_RETRY_MAX        (5)
 #define FLASH_BYPASS_OTP_EARSE_RETRY_MAX       (3)
+#define FLASH_BYPASS_OTP_WRITE_RETRY_MAX       (10)
 #define FLASH_BYPASS_OTP_LOCK_RETRY_MAX        (3)
 
 typedef enum

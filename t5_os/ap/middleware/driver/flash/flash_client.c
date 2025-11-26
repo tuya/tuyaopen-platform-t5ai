@@ -604,7 +604,7 @@ bk_err_t bk_flash_erase_fast(uint32_t erase_off, uint32_t len)
 
 #if !LOCAL_TRACE
 	(void)line_num;
-#endif
+#endif	
 
 	if(bk_flash_driver_init() != BK_OK)
 		return BK_FAIL;
@@ -674,7 +674,7 @@ erase_fast_exit:
 #if CONFIG_FLASH_BYPASS_OTP_OPERATION && (CONFIG_CPU_CNT > 1)
 
 #ifndef FLASH_BYPASS_OTP_IPC_RETRY_MAX
-#define FLASH_BYPASS_OTP_IPC_RETRY_MAX 8
+#define FLASH_BYPASS_OTP_IPC_RETRY_MAX 3
 #endif
 
 bk_err_t flash_bypass_otp_operation(flash_bypass_otp_cmd_t cmd, flash_bypass_otp_ctrl_t *param)
@@ -712,23 +712,50 @@ bk_err_t flash_bypass_otp_operation(flash_bypass_otp_cmd_t cmd, flash_bypass_otp
 				return BK_FAIL;
 			}
 			memcpy(data_buff, param->write_buf, data_len);
-			ipc_cmd.buf = data_buff;
 		}
 
 		rtos_lock_mutex(&flash_mutex);
 
 		mb_ipc_recv(flash_socket_handle, NULL, NULL, 0, 0);  // discard all data
 
-		ret = mb_ipc_send(flash_socket_handle, FLASH_CMD_BYPASS_OTP_OPERATION,
+		if(cmd == FLASH_BYPASS_OTP_WRITE && data_buff != NULL && data_len > 0)
+		{
+			uint32_t total_len = sizeof(ipc_cmd) + data_len;
+			uint8_t *combined_buff = (uint8_t *)os_malloc(total_len);
+			if(combined_buff == NULL)
+			{
+				line_num = __LINE__;
+				ret = BK_FAIL;
+				goto bypass_otp_exit;
+			}
+
+			memcpy(combined_buff, &ipc_cmd, sizeof(ipc_cmd));
+			memcpy(combined_buff + sizeof(ipc_cmd), data_buff, data_len);
+
+			ret = mb_ipc_send(flash_socket_handle, FLASH_CMD_BYPASS_OTP_OPERATION,
+				combined_buff, total_len, FLASH_OPERATE_TIMEOUT);
+
+			os_free(combined_buff);
+
+			if(ret != 0)
+			{
+				line_num = __LINE__;
+				goto bypass_otp_exit;
+			}
+		}
+		else
+		{
+			ret = mb_ipc_send(flash_socket_handle, FLASH_CMD_BYPASS_OTP_OPERATION,
 				(u8 *)&ipc_cmd, sizeof(ipc_cmd), FLASH_OPERATE_TIMEOUT);
 
-		if(ret != 0) {
-			line_num = __LINE__;
-			goto bypass_otp_exit;
+			if(ret != 0)
+			{
+				line_num = __LINE__;
+				goto bypass_otp_exit;
+			}
 		}
 
 		u8 user_cmd = INVALID_USER_CMD_ID;
-
 		memset(&ipc_cmd, 0, sizeof(ipc_cmd));
 
 		ret = mb_ipc_recv(flash_socket_handle, &user_cmd, (u8 *)&ipc_cmd,
