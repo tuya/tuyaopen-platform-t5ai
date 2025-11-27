@@ -6,7 +6,7 @@
  *
  */
 
-#include "driver/dma.h"
+#include "tuya_dma.h"
 #include "tkl_qspi.h"
 #include <driver/qspi.h>
 #include <sdkconfig.h>
@@ -96,24 +96,16 @@ static uint8_t dma_id_to_port(dma_id_t dma_id)
 
 static void lcd_qspi_dma_finish_isr(dma_id_t dma_id)
 {
-    uint32_t value = 0;
-
     uint8_t port = dma_id_to_port(dma_id);
     if(port == 0xFF) {
         bk_printf("qspi irq port not right\r\n");
         return;
     }
-
-    value = bk_dma_get_repeat_wr_pause(qspi_infos[port].lcd_qspi_dma_id);
-    if (value) {
-        media_debug->isr_lcd++;
-        bk_dma_stop(qspi_infos[port].lcd_qspi_dma_id);
-        // up report
-        if (qspi_infos[port].cb) {
-            qspi_infos[port].cb(port, TUYA_QSPI_EVENT_TX);
-        }
-        bk_lcd_qspi_quad_write_stops(port);
+    // up report
+    if (qspi_infos[port].cb) {
+        qspi_infos[port].cb(port, TUYA_QSPI_EVENT_TX);
     }
+    bk_lcd_qspi_quad_write_stops(port);
 }
 
 // rx isr callback
@@ -137,28 +129,38 @@ static void qspi_rx_callback_dispatch(TUYA_QSPI_NUM_E id, void *param)
 static bk_err_t lcd_qspi_dma_common_init(uint8_t port)
 {
     bk_err_t ret = BK_OK;
-
-// up report
-    // if (lcd_qspi_semaphore == NULL) {
-    //     ret = rtos_init_semaphore(&lcd_qspi_semaphore, 1);
-    //     if (ret != kNoErr) {
-    //         bk_printf("lcd qspi semaphore init failed.\r\n");
-    //         return BK_FAIL;
-    //     }
-    // }
-
-    ret = bk_dma_driver_init();
+	TKL_DMA_CONFIG_T dma_config = {0};
+	dma_config.mode = DMA_WORK_MODE_REPEAT;
+	dma_config.src.dev = DMA_DEV_DTCM;
+	dma_config.src.width = TKL_DMA_DATA_WIDTH_32BITS;
+	dma_config.dst.width = TKL_DMA_DATA_WIDTH_32BITS;
+	dma_config.src.addr_inc_en = TKL_DMA_ADDR_INC_ENABLE;
+	dma_config.src.addr_loop_en = TKL_DMA_ADDR_LOOP_ENABLE;
+    dma_config.src.brust_len = BURST_LEN_INC16;
+    dma_config.dst.addr_inc_en = TKL_DMA_ADDR_INC_ENABLE;
+    dma_config.dst.addr_loop_en = TKL_DMA_ADDR_LOOP_ENABLE;
+    dma_config.dst.brust_len = BURST_LEN_INC16;
+    if (port == TUYA_QSPI_NUM_0) {
+	    dma_config.dst.start_addr = LCD_QSPI0_DATA_ADDR;
+    } else if (port == TUYA_QSPI_NUM_1) {
+	    dma_config.dst.start_addr = LCD_QSPI1_DATA_ADDR;
+    } else {
+        bk_printf("unsupported lcd qspi id\r\n");
+        return BK_FAIL;
+    }
+	dma_config.dst.dev = DMA_DEV_DTCM;
+    dma_config.dev_id = DMA_DEV_DTCM;
+    ret = tkl_dma_init(&qspi_infos[port].lcd_qspi_dma_id, &dma_config);
     if (ret != BK_OK) {
         bk_printf("dma driver init failed!\r\n");
         return BK_FAIL;
     }
 
-    qspi_infos[port].lcd_qspi_dma_id = bk_dma_alloc(DMA_DEV_DTCM);
     if ((qspi_infos[port].lcd_qspi_dma_id < DMA_ID_0) || (qspi_infos[port].lcd_qspi_dma_id >= DMA_ID_MAX)) {
         bk_printf("lcd qspi dma malloc failed!\r\n");
         return BK_FAIL;
     }
-
+    tkl_dma_register_isr(qspi_infos[port].lcd_qspi_dma_id, lcd_qspi_dma_finish_isr);
 #if (CONFIG_SPE)
     bk_dma_set_src_sec_attr(qspi_infos[port].lcd_qspi_dma_id, DMA_ATTR_SEC);
     bk_dma_set_dest_sec_attr(qspi_infos[port].lcd_qspi_dma_id, DMA_ATTR_SEC);
@@ -173,26 +175,7 @@ static bk_err_t lcd_qspi_dma_common_init(uint8_t port)
 
 static bk_err_t lcd_qspi_common_deinit(uint8_t port)
 {
-    // bk_err_t ret = BK_OK;
-    // up report
-    // if (lcd_qspi_semaphore)
-    // {
-    //     ret = rtos_deinit_semaphore(&lcd_qspi_semaphore);
-    //     if (ret != kNoErr) {
-    //         bk_printf("lcd qspi semaphore deinit failed.\r\n");
-    //         return BK_FAIL;
-    //     }
-    //     lcd_qspi_semaphore = NULL;
-    // }
-
-
-#if (CONFIG_SOC_BK7256XX)
-    bk_dma2d_driver_deinit();
-#elif CONFIG_SOC_BK7236XX
-    bk_dma_free(DMA_DEV_DTCM, qspi_infos[port].lcd_qspi_dma_id);
-    BK_LOG_ON_ERR(bk_dma_driver_deinit());
-#endif
-
+    BK_LOG_ON_ERR(tkl_dma_deinit(qspi_infos[port].lcd_qspi_dma_id));
     return BK_OK;
 }
 
@@ -512,9 +495,9 @@ static void qspi_clock_enable(qspi_id_t id)
 
     //  if (bk_qspi_driver_deinit() != BK_OK)
     //     return OPRT_COM_ERROR;
-    // lcd_qspi_common_deinit(port);
-
-    bk_dma_free(DMA_DEV_DTCM, qspi_infos[port].lcd_qspi_dma_id);
+    if (qspi_infos[port].is_send_use_dma == TRUE) {
+        lcd_qspi_common_deinit(port);
+    }
     //  if(bk_qspi_deinit(port) != BK_OK)
     //     return OPRT_COM_ERROR;
 
@@ -622,79 +605,12 @@ bk_err_t bk_lcd_qspi_quad_write_stops(qspi_id_t qspi_id)
             qspi_infos[port].cb(port, TUYA_QSPI_EVENT_TX);
         }
         return ret;
-    }
-
-    // bk_printf("tkl_qspi_send size:%d,  dma_repeat_once_len:%d, is_send_use_dma:%d \r\n", size, qspi_infos[port].dma_repeat_once_len, qspi_infos[port].is_send_use_dma);
-    if ((size > 256) && (qspi_infos[port].dma_repeat_once_len == 0) && (qspi_infos[port].is_send_use_dma == TRUE)) {
-        qspi_infos[port].dma_repeat_once_len = lcd_qspi_get_dma_repeat_once_len(size);
-        // bk_printf("tkl dma_repeat_once_len = %d\r\n", qspi_infos[port].dma_repeat_once_len);
-        bk_dma_set_transfer_len(qspi_infos[port].lcd_qspi_dma_id, qspi_infos[port].dma_repeat_once_len);
-        if (port == TUYA_QSPI_NUM_0) {
-            dma_set_dst_pause_addr(qspi_infos[port].lcd_qspi_dma_id, LCD_QSPI0_DATA_ADDR + size);
-        } else if (port == TUYA_QSPI_NUM_1) {
-            dma_set_dst_pause_addr(qspi_infos[port].lcd_qspi_dma_id, LCD_QSPI1_DATA_ADDR + size);
-        } else {
-            bk_printf("unsupported lcd qspi id\r\n");
-            return BK_FAIL;
-        }
-    }
-
-    if ((size > 256) && (qspi_infos[port].is_send_use_dma == TRUE) && (qspi_infos[port].dma_repeat_once_len > 0)) {
-        if (port == TUYA_QSPI_NUM_0) {
-            bk_dma_stateless_judgment_configuration((void *)LCD_QSPI0_DATA_ADDR, (void *)data, size, qspi_infos[port].lcd_qspi_dma_id, (void *)lcd_qspi_dma_finish_isr);
-        } else if (port == TUYA_QSPI_NUM_1) {
-            bk_dma_stateless_judgment_configuration((void *)LCD_QSPI1_DATA_ADDR, (void *)data, size, qspi_infos[port].lcd_qspi_dma_id, (void *)lcd_qspi_dma_finish_isr);
-        } else {
-            bk_printf("unsupported lcd qspi id\r\n");
-            return BK_FAIL;
-        }
-
-        dma_set_src_pause_addr(qspi_infos[port].lcd_qspi_dma_id, (uint32_t)data + size);
-
-        // if (device->qspi->refresh_method == TUYA_QSPI_LCD_REFRESH_BY_LINE) {
-        //     for (uint16_t i = 0; i < device->qspi->refresh_config.vsw; i++) {
-        //         bk_lcd_qspi_send_cmd(port, device->qspi->reg_write_cmd, device->qspi->refresh_config.vsync_cmd, NULL, 0);
-        //         bk_delay_us(40);
-        //     }
-
-        //     for (uint16_t i = 0; i < device->qspi->refresh_config.hfp; i++) {
-        //         bk_lcd_qspi_send_cmd(port, device->qspi->reg_write_cmd, device->qspi->refresh_config.hsync_cmd, NULL, 0);
-        //         bk_delay_us(40);
-        //     }
-
-        //     qspi_hal_clear_lcd_head(&s_tkl_qspi[port].hal, 1);
-        //     qspi_hal_clear_lcd_head(&s_tkl_qspi[port].hal, 0);
-        //     bk_lcd_qspi_quad_write_start(port, device->qspi->pixel_write_config, 0);
-        //     bk_dma_start(lcd_qspi_dma_id);
-
-        //     ret = rtos_get_semaphore(&lcd_qspi_semaphore, 3000);
-        //     if (ret != kNoErr) {
-        //         bk_printf("ret = %d, lcd qspi get semaphore failed!\r\n", ret);
-        //         return BK_FAIL;
-        //     }
-        //     bk_delay_us(5);
-        //     bk_lcd_qspi_quad_write_stop(port);
-
-        //     for (uint16_t i = 0; i < device->qspi->refresh_config.hbp; i++) {
-        //         bk_lcd_qspi_send_cmd(port, device->qspi->reg_write_cmd, device->qspi->refresh_config.hsync_cmd, NULL, 0);
-        //         bk_delay_us(40);
-        //     }
-        // } else if (device->qspi->refresh_method == LCD_QSPI_REFRESH_BY_FRAME) {
+    } else {
+        if ((qspi_infos[port].is_send_use_dma == TRUE)) {
             bk_lcd_qspi_quad_write_starts(port);
-            bk_dma_start(qspi_infos[port].lcd_qspi_dma_id);
-
-            // up report
-            // ret = rtos_get_semaphore(&lcd_qspi_semaphore, 3000);
-            // if (ret != kNoErr) {
-            //     bk_printf("ret = %d, lcd qspi get semaphore failed!\r\n", ret);
-            //     return BK_FAIL;
-            // }
+            tkl_dma_write(qspi_infos[port].lcd_qspi_dma_id, (void *)data, size);
             bk_delay_us(5);
-            // bk_lcd_qspi_quad_write_stops(port);
-        // } else {
-        //     bk_printf("invalid lcd qspi refresh method\r\n");
-        //     return BK_FAIL;
-        // }
+        }
     }
     return OPRT_OK;
  }
