@@ -16,6 +16,7 @@
 #include <components/log.h>
 #include "transfer_act.h"
 #include "media_utils.h"
+#include "frame_buffer.h"
 
 #define TAG "trs_app"
 
@@ -76,6 +77,13 @@ static void transfer_app_task_entry(beken_thread_arg_t data)
             if (transfer_info->stream == NULL)
             {
                 LOGD("%s, stream:%p\n", __func__, stream);
+                transfer_info->stream = stream;
+                frame_buffer_fb_register(transfer_info->stream, MODULE_WIFI);
+            }
+
+            if (transfer_info->stream != stream)
+            {
+                frame_buffer_fb_deregister(transfer_info->stream, MODULE_WIFI);
                 transfer_info->stream = stream;
                 frame_buffer_fb_register(transfer_info->stream, MODULE_WIFI);
             }

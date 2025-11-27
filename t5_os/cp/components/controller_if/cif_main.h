@@ -100,7 +100,7 @@ enum BK_CMD_TYPE
     BK_CMD_SET_AUTOCONNECT     = 0xA,
     BK_CMD_SET_MEDIA_MODE      = 0xB,
     BK_CMD_SET_MEDIA_QUALITY   = 0xC,
-    BK_CMD_SET_COEX_CSA         = 0xF,
+    BK_CMD_SET_COEX_CSA        = 0xF,
 
     //Debug info section
     BK_INTERFACE_DEBUG_CMD     = 0x110,
@@ -136,6 +136,8 @@ enum BK_EVENT_TYPE
     BK_EVT_STOP_AP_IND          = 0x6,
     BK_EVT_SCAN_WIFI_IND        = 0x7,
     BK_EVT_WIFI_FAIL_IND        = 0x8,
+    BK_EVT_BCN_CC_RXED          = 0x9,
+    BK_EVT_CSI_INFO_IND         = 0xA,
 
     // BLE event
     // BK_EVT_BLE_XX            = 0x101
@@ -239,7 +241,8 @@ enum data_path_special_type
 struct common_header
 {
     uint16_t length;//sdio whole buffer length(include common header)
-    uint8_t type;
+    uint8_t type:4;
+    uint8_t dst_index:4;//station index connected to bk softap
     uint8_t need_free:1;//tx data addr flag, this addr need be freed.
     uint8_t is_buf_bank:1;
     uint8_t vif_idx:2;

@@ -6,329 +6,360 @@
 #include "tkl_fs.h"
 #include "tkl_dma2d.h"
 #include "tal_semaphore.h"
+#include "tal_mutex.h"
 
+/***********************************************************
+*************************micro define***********************
+***********************************************************/
+#define CAMERA_WIDTH            (480)
+#define CAMERA_HEIGHT           (480)
+#define RGB565_PIXEL_SIZE       (2)
+
+#define TUYA_MEDIA_MOUNT_POINT          "/sdcard"
+#define TUYA_H264_RECORD_FILE           "h264_record.h264"
+#define TUYA_MAX_FILE_SIZE_LIMITED      (4 * 1024 * 1024 * 1024)
+#define TUYA_H264_DATA_LEN_PER_FRAME    (256 * 1024) 
+#define TUYA_H264_FILE_SIZE_LIMITED     (TUYA_MAX_FILE_SIZE_LIMITED - TUYA_H264_DATA_LEN_PER_FRAME)
+
+/***********************************************************
+***********************typedef define***********************
+***********************************************************/
 typedef enum {
-    TO_DISPLAY = 0,
-    TO_H264,
-    TO_JPEG,
-    TO_H264_DISPLAY,
-    TO_JPEG_DISPLAY,
-} TUYA_DVP_USEAGE_T;
+    H264_TEST_DRIVER_TURN_OFF,
+    H264_TEST_DRIVER_TURNING_OFF,
+    H264_TEST_DRIVER_TURNING_ON,
+    H264_TEST_DRIVER_TURN_ON,
+} H264_TEST_DRIVER_STATUS;
 
-VOID_T test_dma2d_irq_cb(TUYA_DMA2D_IRQ_E type, VOID_T *args)
-{
-    SEM_HANDLE test_sem = (SEM_HANDLE *)args;
-    if (test_sem)
-        tal_semaphore_post(test_sem);
-}
+/***********************************************************
+***********************variable define**********************
+***********************************************************/
+extern ty_display_device_s lcd_rgb_ili9488_device;
+extern TUYA_DVP_SENSOR_CFG_T dvp_sensor_gc2145_cfg;
 
-#define SYF_MEDIA_MOUNT_POINT "/sdcard"
-#define SYF_H264_RECORD_FILE    "h264_record.h264"
-#define SYF_MAX_FILE_SIZE_LIMITED    (4 * 1024 * 1024 * 1024)
-#define SYF_H264_DATA_LEN_PER_FRAME  (256 * 1024)  // 实测数据，要根据摄像头设置
-#define SYF_H264_FILE_SIZE_LIMITED   (SYF_MAX_FILE_SIZE_LIMITED - SYF_H264_DATA_LEN_PER_FRAME)
+STATIC TUYA_DVP_DEVICE_T *cur_dvp_device = NULL;
+STATIC TY_DISPLAY_HANDLE cur_lcd_device = NULL;
+STATIC USHORT_T *lcd_buf = NULL;
+STATIC TKL_DMA2D_FRAME_INFO_T in_frame = {0};
+STATIC TKL_DMA2D_FRAME_INFO_T out_frame = {0};
+STATIC SEM_HANDLE dma2d_sem = NULL;
 
-THREAD_HANDLE g_thread_handle_base;
-THREAD_HANDLE g_thread_handle_encode;
+STATIC VOID dvp_frame_handle(TUYA_DVP_FRAME_MANAGE_T *output_frame);
 
-ty_display_cfg cfg0 = 
-{
-    .rgb_cfg = 
-    {
+STATIC ty_frame_buffer_t lcd_frame = {
+    .type = TYPE_PSRAM, 
+    .fmt = TY_PIXEL_FMT_RGB565, 
+    .width =CAMERA_WIDTH, .height = CAMERA_HEIGHT, 
+    .free_cb = NULL, 
+    .len = CAMERA_WIDTH * CAMERA_HEIGHT * RGB565_PIXEL_SIZE
+};
+
+STATIC ty_display_cfg cfg0 = {
+    .rgb_cfg = {
         .spi_clk = TUYA_GPIO_NUM_49,
         .spi_csx = TUYA_GPIO_NUM_48,
         .spi_sda = TUYA_GPIO_NUM_50,
 
-        .power_ctrl = 
-        {
-            .pin = TUYA_GPIO_NUM_MAX,
+        .power_ctrl = {
+        .pin = TUYA_GPIO_NUM_MAX,
         },
 
-        .reset = 
-        {
-            .pin = TUYA_GPIO_NUM_53,
+        .reset = {
+        .pin = TUYA_GPIO_NUM_53,
         },
 
-        .bl = 
-        {
-            .pin = TUYA_GPIO_NUM_9,
-            .active_level = TUYA_GPIO_LEVEL_HIGH
+        .bl = {
+        .pin = TUYA_GPIO_NUM_9,
+        .active_level = TUYA_GPIO_LEVEL_HIGH
         },
     }
 };
 
-extern ty_display_device_s rgb_ili9488_device;
-
-TUYA_DVP_USR_CFG_T dvp_gc2145_usr_cfg = 
-{
-    .base_cfg = 
-    {
+STATIC TUYA_DVP_USR_CFG_T dvp_gc2145_usr_cfg = {
+    .dvp_cfg = {
         .fps = 20,
-        .width = 480,
-        .height = 480,
-        .output_mode = TUYA_DVP_OUTPUT_H264_YUV422_BOTH,
+        .width = CAMERA_WIDTH,
+        .height = CAMERA_HEIGHT,
+        .output_mode = TUYA_CAMERA_OUTPUT_H264_YUV422_BOTH,
     },
 
-    .pin_cfg = 
-    {
-        .dvp_i2c_clk = 
-        {
+    .pin_cfg = {
+        .dvp_i2c_clk = {
             .pin = TUYA_GPIO_NUM_13,
         },
-        .dvp_i2c_sda = 
-        {
+        .dvp_i2c_sda = {
             .pin = TUYA_GPIO_NUM_15,
         },
-        .dvp_rst_ctrl = 
-        {
+        .dvp_rst_ctrl = {
             .pin = TUYA_GPIO_NUM_51,
-            .active_level = TUYA_GPIO_LEVEL_HIGH,
+            .active_level = TUYA_GPIO_LEVEL_LOW,
         },
-        .dvp_pwr_ctrl = 
-        {
+        .dvp_pwr_ctrl = {
             .pin = TUYA_GPIO_NUM_MAX,
         },
         .dvp_i2c_idx = TUYA_I2C_NUM_1,
     },
+
+    .dvp_frame_handle = dvp_frame_handle,
 };
-extern TUYA_DVP_SENSOR_CFG_T dvp_sensor_gc2145_cfg;
 
-extern void *bk_psram_frame_buffer_malloc(uint8_t type, uint32_t size);
+STATIC TUYA_FILE h264_file = NULL;
+STATIC UINT8_T is_first_frame = true;
+STATIC CHAR_T fp[128] = {'\0'};
 
-void test_display_task(void *args)
+STATIC volatile H264_TEST_DRIVER_STATUS h264_test_status = H264_TEST_DRIVER_TURN_OFF;
+STATIC MUTEX_HANDLE h264_mutex = NULL;
+
+/***********************************************************
+***********************function define**********************
+***********************************************************/
+STATIC VOID_T __dma2d_irq_cb(TUYA_DMA2D_IRQ_E type, VOID_T *args)
 {
-    TY_DISPLAY_HANDLE test_lcd_dev = tal_display_open(&rgb_ili9488_device, &cfg0);  
-    tal_display_bl_open(test_lcd_dev);
-
-    USHORT_T *dvp_frame_buff1 = tkl_system_psram_malloc(480 * 480 * 2);
-    USHORT_T *dvp_frame_buff2 = tkl_system_psram_malloc(480 * 480 * 2);
-    USHORT_T *lcd_frame_buff1 = tkl_system_psram_malloc(480 * 480 * 2);
-    USHORT_T *lcd_frame_buff2 = tkl_system_psram_malloc(480 * 480 * 2);
-    if(NULL == dvp_frame_buff1 || NULL == dvp_frame_buff1 || NULL == lcd_frame_buff1 || NULL == lcd_frame_buff2) 
+    if (args)
     {
-        TAL_PR_ERR("malloc failed");
-        return;
-    }
-
-    SEM_HANDLE test_sem;
-
-    tal_semaphore_create_init(&test_sem, 0, 1);
-    
-    void *tmp_arg = (void *)(&test_sem);
-    TUYA_DMA2D_BASE_CFG_T dma2d_cfg = {.cb = test_dma2d_irq_cb, .arg=tmp_arg};
-    tkl_dma2d_init(&dma2d_cfg);
-
-    ty_frame_buffer_t ty_frame_buff1 = {.type = 1, .fmt = 0, .width =480, .height = 480, .free_cb = NULL, .len = 480 * 480 * 2, .frame = lcd_frame_buff1};
-
-    TUYA_DVP_FRAME_MANAGE_T obj_frame1 = {.frame_fmt = TUYA_FRAME_FMT_YUV422, .data = dvp_frame_buff1};
-
-    ty_frame_buffer_t ty_frame_buff2 = {.type = 1, .fmt = 0, .width =480, .height = 480, .free_cb = NULL, .len = 480 * 480 * 2, .frame = lcd_frame_buff2};
-
-    TUYA_DVP_FRAME_MANAGE_T obj_frame2 = {.frame_fmt = TUYA_FRAME_FMT_YUV422, .data = dvp_frame_buff2};
-
-    TKL_DMA2D_FRAME_INFO_T in_frame = {.type = TUYA_FRAME_FMT_YUV422, .width = 480, .height = 480};
-    TKL_DMA2D_FRAME_INFO_T out_frame = {.type = TUYA_FRAME_FMT_RGB565, .width = 480, .height = 480};
-
-    uint16_t cnt = 0;
-    while(1) 
-    {
-        if (cnt++ % 2 == 0)
-        {
-            uint8_t ret = tal_dvp_frame_get(&obj_frame1);
-            if (ret)
-                continue;
-
-            in_frame.pbuf = dvp_frame_buff1;
-
-            out_frame.pbuf = lcd_frame_buff1;
-
-            tkl_dma2d_convert(&in_frame, &out_frame);
-
-            tal_semaphore_wait_forever(test_sem);
-
-            tal_display_flush(test_lcd_dev, &ty_frame_buff1);
-        }
-        else
-        {
-            uint8_t ret = tal_dvp_frame_get(&obj_frame2);
-            if (ret)
-                continue;
-
-            in_frame.pbuf = dvp_frame_buff2;
-
-            out_frame.pbuf = lcd_frame_buff2;
-
-            tkl_dma2d_convert(&in_frame, &out_frame);
-
-            tal_semaphore_wait_forever(test_sem);
-
-            tal_display_flush(test_lcd_dev, &ty_frame_buff2);
-        }
+        SEM_HANDLE tmp_sem = (SEM_HANDLE *)args;
+        tal_semaphore_post(tmp_sem);
     }
 }
 
-void test_h264_task(void *args)
+STATIC VOID_T to_lcd_func(TUYA_DVP_FRAME_MANAGE_T *output_frame)
 {
-    USHORT_T *p_frame_buff = tkl_system_psram_malloc(480 * 480);
-    if(NULL == p_frame_buff) 
-    {
-        TAL_PR_ERR("malloc failed");
+    if (!cur_lcd_device)
         return;
+
+    in_frame.type = TUYA_FRAME_FMT_YUV422;
+    in_frame.width = CAMERA_WIDTH;
+    in_frame.height = CAMERA_HEIGHT;
+    in_frame.axis.x_axis = 0;
+    in_frame.axis.y_axis = 0;
+    in_frame.width_cp = 0;
+    in_frame.height_cp = 0;
+    in_frame.pbuf = output_frame->data;
+
+    out_frame.type = TUYA_FRAME_FMT_RGB565;
+    out_frame.width = CAMERA_WIDTH;
+    out_frame.height = CAMERA_HEIGHT;
+    out_frame.axis.x_axis = 0;
+    out_frame.axis.y_axis = 0;
+    out_frame.width_cp = 0;
+    out_frame.height_cp = 0;
+    out_frame.pbuf = lcd_buf;
+
+    tkl_dma2d_convert(&in_frame, &out_frame);
+
+    tal_semaphore_wait_forever(dma2d_sem);
+
+    lcd_frame.frame =  lcd_buf;
+
+    tal_display_flush(cur_lcd_device, &lcd_frame);
+}
+
+VOID_T to_sdcard_func(TUYA_DVP_FRAME_MANAGE_T *output_frame)
+{
+    if (h264_test_status != H264_TEST_DRIVER_TURN_ON)
+        return;
+
+    if (is_first_frame && output_frame->is_i_frame == false)
+        return;
+
+    is_first_frame = false;
+    tal_mutex_lock(h264_mutex);
+    tkl_fwrite(output_frame->data, output_frame->data_len, h264_file);
+    tkl_fsync((INT_T)h264_file);
+
+    UINT32_T size = tkl_ftell(h264_file) & 0xFFFFFFFF;
+    if (size > TUYA_H264_FILE_SIZE_LIMITED) {
+        tkl_fclose(h264_file);
+
+        memset(fp, 0, 128);
+        UINT32_T tick = tkl_system_get_tick_count() & 0xffffffff;
+        snprintf(fp, sizeof(fp), "%s/%u-%s", TUYA_MEDIA_MOUNT_POINT, tick, TUYA_H264_RECORD_FILE);
+        tkl_log_output("%s, open new file\r\n", __func__);
+
+        h264_file = tkl_fopen(fp, "w+");
+        if (h264_file == NULL) {
+            bk_printf("h264 test error, open new failed\r\n");
+            tal_mutex_unlock(h264_mutex);
+            return;
+        }
     }
+    tal_mutex_unlock(h264_mutex);
+}
 
-    int ret = test_fs_mount(SYF_MEDIA_MOUNT_POINT, DEV_SDCARD);
-
-    char fp[128] = {'\0'};
-    uint32_t tick = tkl_system_get_tick_count() & 0xffffffff;
-    snprintf(fp, sizeof(fp), "%s/%u-%s", SYF_MEDIA_MOUNT_POINT, tick, SYF_H264_RECORD_FILE);
-
-    TUYA_FILE h264_file = tkl_fopen(fp, "w+");
-    if (h264_file == NULL) 
+STATIC VOID dvp_frame_handle(TUYA_DVP_FRAME_MANAGE_T *output_frame)
+{
+    TUYA_FRAME_FMT_E fmt = output_frame->frame_fmt;
+    switch (fmt)
     {
-        test_fs_unmount(SYF_MEDIA_MOUNT_POINT);
-        bk_printf("h264 test error, open %s failed\r\n", SYF_H264_RECORD_FILE);
-        return;
-    } 
-
-    TUYA_DVP_FRAME_MANAGE_T obj_frame = {.frame_fmt = TUYA_FRAME_FMT_H264, .data = p_frame_buff};
-    while(1) 
-    {
-        uint8_t ret = tal_dvp_frame_get(&obj_frame);
-        if (ret)
-            continue;
-        if (h264_file) 
-        {
-            tkl_fwrite(obj_frame.data, obj_frame.data_len, h264_file);
-            tkl_fsync((int)h264_file);
-        }
-
-        uint32_t size = tkl_ftell(h264_file) & 0xFFFFFFFF;
-        if (size > SYF_H264_FILE_SIZE_LIMITED) 
-        {
-            tkl_fclose(h264_file);
-
-            char fp[128] = {'\0'};
-            uint32_t tick = tkl_system_get_tick_count() & 0xffffffff;
-            snprintf(fp, sizeof(fp), "%s/%u-%s", SYF_MEDIA_MOUNT_POINT, tick, SYF_H264_RECORD_FILE);
-            bk_printf("%s, open new file\r\n", __func__);
-
-            h264_file = tkl_fopen(fp, "w+");
-            if (h264_file == NULL) 
-            {
-                bk_printf("h264 test error, open new failed\r\n");
-                return -1;
-            }
-        }
+    case TUYA_FRAME_FMT_YUV422:
+        /* code */
+        to_lcd_func(output_frame);
+        break;
+    case TUYA_FRAME_FMT_H264:
+        /* code */
+        to_sdcard_func(output_frame);
+        break;
+    default:
+        break;
     }
 }
 
-
-#define SYF_JEPG_RECORD_FILE    "jpeg_record.mjpeg"
-#define SYF_JPEG_DATA_LEN_PER_FRAME  (256 * 1024)  // 实测数据，要根据摄像头设置
-#define SYF_JPEG_FILE_SIZE_LIMITED   (SYF_MAX_FILE_SIZE_LIMITED - SYF_JPEG_DATA_LEN_PER_FRAME)
-
-void test_jpeg_task(void *args)
+STATIC VOID __test_driver_dvp_release()
 {
-    USHORT_T *p_frame_buff2 = tkl_system_psram_malloc(480 * 480 * 2);
-    if(NULL == p_frame_buff2) 
+    if (cur_dvp_device)
     {
-        TAL_PR_ERR("malloc failed");
-        return;
+        tal_dvp_deinit(cur_dvp_device);
+        cur_dvp_device = NULL;
     }
 
-    bk_printf("frame_buf addr : %p  %p *****..**8\r\n", p_frame_buff2);
-
-    int ret = test_fs_mount(SYF_MEDIA_MOUNT_POINT, DEV_SDCARD);
-
-    char fp[128] = {'\0'};
-    uint32_t tick = tkl_system_get_tick_count() & 0xffffffff;
-    snprintf(fp, sizeof(fp), "%s/%u-%s", SYF_MEDIA_MOUNT_POINT, tick, SYF_JEPG_RECORD_FILE);
-
-    TUYA_FILE h264_file = tkl_fopen(fp, "w+");
-    if (h264_file == NULL) 
+    if (cur_lcd_device)
     {
-        test_fs_unmount(SYF_MEDIA_MOUNT_POINT);
-        bk_printf("h264 test error, open %s failed\r\n", SYF_JEPG_RECORD_FILE);
-        return;
-    } 
-
-    TUYA_DVP_FRAME_MANAGE_T obj_frame = {.frame_fmt = TUYA_FRAME_FMT_JPEG, .data = p_frame_buff2};
-
-    UINT32_T cnt = 0;
-    while(1) 
-    {
-        uint8_t ret = tal_dvp_frame_get(&obj_frame);
-
-        if (h264_file) 
-        {
-            tkl_fwrite(obj_frame.data, obj_frame.data_len, h264_file);
-            tkl_fsync((int)h264_file);
-        }
-
-        uint32_t size = tkl_ftell(h264_file) & 0xFFFFFFFF;
-        if (size > SYF_JPEG_FILE_SIZE_LIMITED) 
-        {
-            tkl_fclose(h264_file);
-
-            char fp[128] = {'\0'};
-            uint32_t tick = tkl_system_get_tick_count() & 0xffffffff;
-            snprintf(fp, sizeof(fp), "%s/%u-%s", SYF_MEDIA_MOUNT_POINT, tick, SYF_JEPG_RECORD_FILE);
-            bk_printf("%s, open new file\r\n", __func__);
-
-            h264_file = tkl_fopen(fp, "w+");
-            if (h264_file == NULL) 
-            {
-                bk_printf("h264 test error, open new failed\r\n");
-                return -1;
-            }
-        }
-    }
-}
-
-void test_custom_dvp_open(int usage)
-{
-    switch (usage)
-    {
-    case TO_DISPLAY:
-        dvp_gc2145_usr_cfg.base_cfg.output_mode = TUYA_DVP_OUTPUT_YUV422;
-        break;
-    case TO_H264:
-        dvp_gc2145_usr_cfg.base_cfg.output_mode = TUYA_DVP_OUTPUT_H264;
-        break;
-    case TO_JPEG:
-        dvp_gc2145_usr_cfg.base_cfg.output_mode = TUYA_DVP_OUTPUT_JPEG;
-        break;
-    case TO_H264_DISPLAY:
-        dvp_gc2145_usr_cfg.base_cfg.output_mode = TUYA_DVP_OUTPUT_H264_YUV422_BOTH;
-        break;
-    case TO_JPEG_DISPLAY:
-        dvp_gc2145_usr_cfg.base_cfg.output_mode = TUYA_DVP_OUTPUT_JPEG_YUV422_BOTH;
-        break;
+        tal_display_close(cur_lcd_device);
+        cur_lcd_device = NULL;
     }
 
-    if (usage == TO_DISPLAY || usage == TO_H264_DISPLAY || usage == TO_JPEG_DISPLAY)
+    if (dma2d_sem)
     {
-        THREAD_CFG_T thread_cfg = {4096, THREAD_PRIO_2, "dvp_test"};
-        tal_thread_create_and_start(&g_thread_handle_base, NULL, NULL, test_display_task, NULL, &thread_cfg);
+        tal_semaphore_release(dma2d_sem);
+        dma2d_sem = NULL;
     }
 
-    if (usage == TO_H264_DISPLAY || usage == TO_H264)
+    if (lcd_buf)
     {
-        THREAD_CFG_T thread_cfg1 = {4096, THREAD_PRIO_1, "h264_test"};
-        tal_thread_create_and_start(&g_thread_handle_encode, NULL, NULL, test_h264_task, NULL, &thread_cfg1);
-
-        dvp_gc2145_usr_cfg.base_cfg.output_mode = TUYA_DVP_OUTPUT_H264_YUV422_BOTH;
+        tkl_system_psram_free(lcd_buf);
+        lcd_buf = NULL;
     }
 
-    if (usage == TO_JPEG_DISPLAY || usage == TO_JPEG)
-    {
-        THREAD_CFG_T thread_cfg1 = {4096, THREAD_PRIO_1, "jpeg_test"};
-        tal_thread_create_and_start(&g_thread_handle_encode, NULL, NULL, test_jpeg_task, NULL, &thread_cfg1);
-
-        dvp_gc2145_usr_cfg.base_cfg.output_mode = TUYA_DVP_OUTPUT_JPEG_YUV422_BOTH;
-    }
-
-    TUYA_DVP_DEVICE_T *dvp_device = tal_dvp_init(&dvp_sensor_gc2145_cfg, &dvp_gc2145_usr_cfg);
+    tkl_dma2d_deinit();
 
     return;
 }
+
+VOID_T test_driver_dvp_open(VOID_T)
+{
+    if (cur_dvp_device)
+        return;
+
+    TUYA_DVP_DEVICE_T *dvp_device = tal_dvp_init(&dvp_sensor_gc2145_cfg, &dvp_gc2145_usr_cfg);
+    if (!dvp_device)
+        goto failed;
+
+    TY_DISPLAY_HANDLE lcd_device = tal_display_open(&lcd_rgb_ili9488_device, &cfg0);
+    if (!lcd_device)
+        goto failed;
+    tal_display_bl_open(lcd_device);
+
+    lcd_buf = tkl_system_psram_malloc(CAMERA_WIDTH * CAMERA_HEIGHT * RGB565_PIXEL_SIZE);
+    if (!lcd_buf)
+        goto failed;
+
+    tal_semaphore_create_init(&dma2d_sem, 0, 1);
+    if (!dma2d_sem)
+        goto failed;
+
+    VOID_T *tmp_arg = (VOID_T *)(&dma2d_sem);
+    TUYA_DMA2D_BASE_CFG_T dma2d_cfg = {.cb = __dma2d_irq_cb, .arg=tmp_arg};
+    tkl_dma2d_init(&dma2d_cfg);
+
+    cur_dvp_device = dvp_device;
+    cur_lcd_device = lcd_device;
+
+    return;
+
+failed:
+    __test_driver_dvp_release();
+
+    return;
+}
+
+VOID_T test_driver_dvp_close(VOID_T)
+{
+    __test_driver_dvp_release();
+}
+
+
+VOID_T test_media_h264_open(VOID_T)
+{
+    if (h264_test_status != H264_TEST_DRIVER_TURN_OFF)
+    {
+        bk_printf("h264 test is already started\r\n");
+        return;
+    }
+    h264_test_status = H264_TEST_DRIVER_TURNING_ON;
+
+    OPERATE_RET ret = tal_mutex_create_init(&h264_mutex);
+    if (ret)
+        goto exit;
+
+    ret = tkl_fs_mount(TUYA_MEDIA_MOUNT_POINT, DEV_SDCARD);
+    if (ret)
+        goto exit;
+
+    UINT32_T tick = tkl_system_get_tick_count() & 0xffffffff;
+    snprintf(fp, sizeof(fp), "%s/%u-%s", TUYA_MEDIA_MOUNT_POINT, tick, TUYA_H264_RECORD_FILE);
+
+    h264_file = tkl_fopen(fp, "w+");
+    if (!h264_file)
+        goto exit;
+
+    h264_test_status = H264_TEST_DRIVER_TURN_ON;
+    is_first_frame = true;
+
+    return;
+
+exit:
+    if (h264_mutex)
+    {
+        tal_mutex_release(h264_mutex);
+        h264_mutex = NULL;
+    }
+    tkl_fs_unmount(TUYA_MEDIA_MOUNT_POINT);
+    h264_test_status = H264_TEST_DRIVER_TURN_OFF;
+
+    return;
+}
+
+VOID_T test_media_h264_close(VOID_T)
+{
+    if (h264_test_status != H264_TEST_DRIVER_TURN_ON)
+    {
+        bk_printf("h264 test is already stopped\r\n");
+        return;
+    }
+    h264_test_status = H264_TEST_DRIVER_TURNING_OFF;
+
+    tal_mutex_lock(h264_mutex);
+    tkl_fclose(h264_file);
+    h264_file = NULL;
+    tal_mutex_unlock(h264_mutex);
+
+    if (h264_mutex)
+    {
+        tal_mutex_release(h264_mutex);
+        h264_mutex = NULL;
+    }
+    tkl_fs_unmount(TUYA_MEDIA_MOUNT_POINT);
+    h264_test_status = H264_TEST_DRIVER_TURN_OFF;
+}
+
+
+void cli_dvp_cmd(char *pcWriteBuffer, int xWriteBufferLen, int argc, char **argv)
+{
+    if (argc == 1) {
+        bk_printf("no parameter\r\n");
+        return;
+    }
+    for (int i = 0; i < argc; i++) {
+        bk_printf("argv[%d]: %s\r\n", i, argv[i]);
+    }
+
+    if (!strcmp("open", argv[1]))
+        test_driver_dvp_open();
+    else if (!strcmp("close", argv[1]))
+        test_driver_dvp_close();
+    else if (!strcmp("start_w", argv[1]))
+        test_media_h264_open();
+    else if (!strcmp("stop_w", argv[1]))
+        test_media_h264_close();
+}
+

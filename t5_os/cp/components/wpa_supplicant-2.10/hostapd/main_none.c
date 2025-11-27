@@ -213,6 +213,13 @@ struct hostapd_config *hostapd_config_read(const char *fname)
 			wpa_printf(MSG_ERROR, "%s OOM\n", __func__);
 			errors++;
 		}
+#if CONFIG_BRIDGE
+		bss->assocresp_elements = wpabuf_alloc_copy(g_ap_param_ptr->vsie, g_ap_param_ptr->vsie_len);
+		if (!bss->assocresp_elements) {
+			wpa_printf(MSG_ERROR, "%s OOM\n", __func__);
+			errors++;
+		}
+#endif
 	}
 #endif
 

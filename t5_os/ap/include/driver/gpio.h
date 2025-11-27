@@ -68,8 +68,12 @@ bk_err_t bk_gpio_driver_deinit(void);
  *            Before re-use a GPIO, the owner can call bk_gpio_get_value
  *            and bakup it, after re-used finish, it call bk_gpio_set_value
  *            to restore the prevous value.
+ * @return
+ *    - BK_OK: succeed
+ *    - BK_ERR_GPIO_CHAN_ID: invalid GPIO channel
+ *    - others: other errors.
  */
-void bk_gpio_set_value(gpio_id_t id, uint32_t v);
+bk_err_t bk_gpio_set_value(gpio_id_t id, uint32_t v);
 
 
 /**

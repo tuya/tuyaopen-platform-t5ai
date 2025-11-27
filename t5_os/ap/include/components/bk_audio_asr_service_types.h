@@ -3,13 +3,15 @@
 #include <components/bk_audio/audio_streams/raw_stream.h>
 
 #include <components/bk_audio/audio_algorithms/rsp_algorithm.h>
-#include "avdk_types.h"
+#include <components/bk_audio/audio_pipeline/audio_types.h>
 
 #include <components/bk_audio/audio_pipeline/audio_pipeline.h>
 #include <components/bk_audio/audio_pipeline/audio_mem.h>
 #include <components/bk_audio/audio_pipeline/audio_thread.h>
 #include <components/bk_audio/audio_pipeline/rb_port.h>
 #include <components/bk_audio/audio_streams/raw_stream.h>
+#include <components/bk_audio/audio_streams/onboard_mic_stream.h>
+#include <components/bk_audio/audio_streams/uac_mic_stream.h>
 
 #ifdef  __cplusplus
 extern "C" {
@@ -44,6 +46,13 @@ typedef bk_err_t (*asr_event_handle)(asr_evt_t, void *, void *);
 
 typedef struct
 {
+    mic_type_t              mic_type;
+    union
+    {
+        onboard_mic_stream_cfg_t    onboard_mic_cfg;
+        uac_mic_stream_cfg_t        uac_mic_cfg;
+    } mic_cfg;
+
     uint32_t                read_pool_size;     /*!< the size(byte) of pool save mic data that has been encode */
 
 	bool asr_en;
@@ -61,7 +70,7 @@ typedef struct
 struct asr
 {
     audio_element_handle_t  mic_str;            /**< mic stream handle */
-
+    mic_type_t              mic_type;           /**< onboard mic or uac mic */
     bool                    asr_en;            /**< asr enable handle */
     bool                    asr_rsp_en;        /**< the asr src need to resample */
     audio_pipeline_handle_t asr_pipeline;
@@ -83,6 +92,25 @@ struct asr
 typedef struct asr * asr_handle_t;
 
 #define ASR_BY_ONBOARD_MIC_SPK_CFG_DEFAULT() {                  \
+    .mic_type = MIC_TYPE_ONBOARD,                               \
+    .mic_cfg.onboard_mic_cfg = {                                \
+        .adc_cfg = {                                            \
+           .chl_num = 1,                                        \
+           .bits = 16,                                          \
+           .sample_rate = 8000,                                 \
+           .dig_gain = 0x28,                                    \
+           .ana_gain = 0x8,                                     \
+           .mode = AUD_ADC_MODE_DIFFEN,                         \
+           .clk_src = AUD_CLK_XTAL,                             \
+        },                                                      \
+        .frame_size = 320,                                      \
+        .out_block_size = 320,                                  \
+        .out_block_num = 2,                                     \
+        .multi_out_port_num = 0,                                \
+        .task_stack = ONBOARD_MIC_STREAM_TASK_STACK,            \
+        .task_core = ONBOARD_MIC_STREAM_TASK_CORE,              \
+        .task_prio = ONBOARD_SPEAKER_STREAM_TASK_PRIO,          \
+    },                                                          \
     .asr_en = 0,                                                \
     .asr_rsp_en = 0,                                            \
     .asr_sample_rate = 16000,                                   \
@@ -108,6 +136,22 @@ typedef struct asr * asr_handle_t;
 }
 
 #define ASR_BY_UAC_MIC_SPK_CFG_DEFAULT() {                     \
+    .mic_type = MIC_TYPE_UAC,                                  \
+    .mic_cfg.uac_mic_cfg = {                                   \
+        .port_index = USB_HUB_PORT_1,                          \
+        .format = AUDIO_FORMAT_PCM,                            \
+        .chl_num = 1,                                          \
+        .bits = 16,                                            \
+        .samp_rate = 8000,                                     \
+        .frame_size = 320,                                     \
+        .out_block_size = 320,                                 \
+        .out_block_num = 1,                                    \
+        .auto_connect = true,                                  \
+        .multi_out_port_num = 0,                               \
+        .task_stack = UAC_MIC_STREAM_TASK_STACK,               \
+        .task_core = UAC_MIC_STREAM_TASK_CORE,                 \
+        .task_prio = UAC_MIC_STREAM_TASK_PRIO,                 \
+    },                                                         \
     .asr_en = 0,                                               \
     .asr_rsp_en = 0,                                           \
     .asr_sample_rate = 16000,                                  \

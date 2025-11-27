@@ -18,7 +18,7 @@
 #define GD5F_PAGE_READ                  0x13 /* Array read          3       0       0     */
 #define GD5F_READ_FROM_CACHE            0x03 /* Output cache data
                                               *  on SO                              1-2112 */
-#define GD5F_QUAD_READ_FROM_CACHE       0xEB /* Output cache data   2       1
+#define GD5F_QUAD_READ_FROM_CACHE       0xeB /* Output cache data   2       1
                                               *  on SIO 0/1/2/3                     1-2112 */
 
 #define GD5F_READ_ID                    0x9F /* Read device ID      0       1       2      */
@@ -68,6 +68,16 @@
 #define FLASH_PROTECT_NONE_DATA    0
 #define DELAY_CYCLE    (5)
 
+static uint32_t swap_24(uint32_t value) {
+    return ((value & 0xFF0000) >> 16) | 
+           (value & 0x00FF00)         |
+           ((value & 0x0000FF) << 16);
+}
+
+static uint16_t swap_16(uint16_t value) {
+    return ((value & 0xFF00) >> 8) | ((value & 0x00FF) << 8);
+}
+
 static OPERATE_RET flash_gd5f1g_read_status(MTD_QSPI_CFG_T *cfg, UINT_T cmd, UINT_T addr, UINT_T addr_len)
 {
     OPERATE_RET ret = OPRT_OK;
@@ -75,14 +85,18 @@ static OPERATE_RET flash_gd5f1g_read_status(MTD_QSPI_CFG_T *cfg, UINT_T cmd, UIN
     TUYA_QSPI_CMD_T reg_cmd = {0};
 
     reg_cmd.op = TUYA_QSPI_READ;
-    reg_cmd.cmd = cmd;
+    reg_cmd.cmd[0] = cmd;
+    reg_cmd.cmd_size = 1;
     reg_cmd.cmd_lines = TUYA_QSPI_1WIRE;
-    reg_cmd.addr = addr;
+
+    memcpy(reg_cmd.addr, &addr, sizeof(UINT_T));
+
     reg_cmd.addr_size = addr_len;
-    reg_cmd.data_len = sizeof(UINT8_T);
+    reg_cmd.data_size = sizeof(UINT8_T);
     reg_cmd.addr_lines = TUYA_QSPI_1WIRE;
     reg_cmd.data_lines = TUYA_QSPI_1WIRE;
     reg_cmd.dummy_cycle = 0;
+    reg_cmd.data = &status;
     //????????flash???dummy???????
 
     ret = tkl_qspi_comand(cfg->port, &reg_cmd);
@@ -90,11 +104,11 @@ static OPERATE_RET flash_gd5f1g_read_status(MTD_QSPI_CFG_T *cfg, UINT_T cmd, UIN
     {
         return OPRT_COM_ERROR;
     }
-    ret = tkl_qspi_recv(cfg->port, &status, sizeof(UINT8_T));
-    if (ret != 0)
-    {
-        return OPRT_COM_ERROR;
-    }
+    // ret = tkl_qspi_recv(cfg->port, &status, sizeof(UINT8_T));
+    // if (ret != 0)
+    // {
+    //     return OPRT_COM_ERROR;
+    // }
 
     return status;
 }
@@ -119,12 +133,15 @@ static OPERATE_RET flash_gd5f1g_write_status(MTD_QSPI_CFG_T *cfg, UINT_T cmd, UI
     TUYA_QSPI_CMD_T reg_cmd = {0};
 
     reg_cmd.op = TUYA_QSPI_WRITE;
-    reg_cmd.cmd = cmd;
+    reg_cmd.cmd[0] = cmd;
+    reg_cmd.cmd_size = 1;
     reg_cmd.cmd_lines = TUYA_QSPI_1WIRE;
-    reg_cmd.addr = addr;
+
+    memcpy(reg_cmd.addr, &addr, sizeof(UINT_T));
+
     reg_cmd.addr_size = addr_len;
     reg_cmd.addr_lines = 0;
-    reg_cmd.data_len = 0;
+    reg_cmd.data_size = 0;
     reg_cmd.data_lines = 0;
     ret = tkl_qspi_comand(cfg->port, &reg_cmd);
     if (ret != 0)
@@ -139,6 +156,7 @@ static INT32_T flash_gd5f1g_nor_set_protect_none(MTD_QSPI_CFG_T *cfg)
 {
     UINT8_T status_reg_data = 0;
 
+    bk_printf("-----------%s %d----------\n", __func__, __LINE__);
     status_reg_data = flash_gd5f1g_read_status(cfg, GD5F_GET_FEATURE, GD5F_STATUS, 1) & 0xff;
     UINT8_T clean_bits = ~(GD5F_BP_BP0 | GD5F_BP_BP1 | GD5F_BP_BP2);
     status_reg_data &= clean_bits;
@@ -154,7 +172,7 @@ static INT32_T flash_gd5f1g_init(MTD_QSPI_CFG_T *cfg)
     //????????????????flash????????
     INT32_T ret = OPRT_OK;
     UINT_T status_reg_data = 0;
-
+    bk_printf("-----------%s %d----------\n", __func__, __LINE__);
     status_reg_data = (UINT8_T)flash_gd5f1g_read_status(cfg, GD5F_GET_FEATURE, GD5F_SECURE_OTP, 1);
     if ((status_reg_data & GD5F_SOTP_QE) == 0) {
         status_reg_data |= GD5F_SOTP_QE;
@@ -180,7 +198,7 @@ static INT32_T flash_gd5f1g_deinit(MTD_QSPI_CFG_T *cfg)
     return ret;
 }
 
-// ?????Flash?õô
+// ?????Flash?ï¿½ï¿½
 MTD_DEVICE_T gd5f1g_flash_cfg = {
     .name = "gd5f1g",
     .type = MTD_NAND,
@@ -189,60 +207,69 @@ MTD_DEVICE_T gd5f1g_flash_cfg = {
         .sector_size = 0,
     	.block_size = GD5F_BLOCK_SIZE,
         .total_size = 128 * 1024 * 1024,
-        .oob_size = 128,
+        .oob_size = 0,
         .interface = MTD_IF_QSPI,
         .qspi_dev = {
             .cmd_set = {
                 .read_id = {
                     .command = GD5F_READ_ID,        // ??ID??? (e.g., 0x9F)
                     .addr_size = 1,
+                    .addr_lines = TUYA_QSPI_1WIRE,
                     .wire_lines = TUYA_QSPI_1WIRE,
                     .dummy = 0,
                 },
                 .quad_read_data = {
                     .command = GD5F_QUAD_READ_FROM_CACHE,      // ????????? (e.g., 0x03)
                     .addr_size = 2,
+                    .addr_lines = TUYA_QSPI_4WIRE,
                     .wire_lines = TUYA_QSPI_4WIRE,
                     .dummy = 4,
                 },
                 .quad_read_cache = {
                     .command = GD5F_PAGE_READ,
                     .addr_size = 3,
+                    .addr_lines = TUYA_QSPI_1WIRE,
                     .wire_lines = TUYA_QSPI_1WIRE,
                     .dummy = 0,
                 },
                 .quad_program_cache = {
                     .command = GD5F_QUAD_PROGRAM_LOAD_RANDOM,
                     .addr_size = 2,
+                    .addr_lines = TUYA_QSPI_1WIRE,
                     .wire_lines = TUYA_QSPI_4WIRE,
                     .dummy = 0,
                 },
                 .quad_page_program = {
                     .command = GD5F_PROGRAM_EXECUTE,
                     .addr_size = 3,
+                    .addr_lines = TUYA_QSPI_1WIRE,
                     .wire_lines = TUYA_QSPI_1WIRE,
                     .dummy = 0,
                 },
                 .sector_erase = {
                     .command = 0,
                     .addr_size = 0,
+                    .addr_lines = TUYA_QSPI_1WIRE,
                     .wire_lines = TUYA_QSPI_1WIRE,
                 },
                 .block_erase = {
                     .command = GD5F_BLOCK_ERASE,
                     .addr_size = 3,
+                    .addr_lines = TUYA_QSPI_1WIRE,
                     .wire_lines = TUYA_QSPI_1WIRE,
                     .dummy = 0,
                 },
                 .write_enable = {
                     .command = GD5F_WRITE_ENABLE,
                     .addr_size = 0,
+                    .addr_lines = TUYA_QSPI_1WIRE,
                     .wire_lines = TUYA_QSPI_1WIRE,
                     .dummy = 0,
                 },
                 .write_disable = {
                     .command = GD5F_WRITE_DISABLE,
                     .addr_size = 0,
+                    .addr_lines = TUYA_QSPI_1WIRE,
                     .wire_lines = TUYA_QSPI_1WIRE,
                     .dummy = 0,
                 },
@@ -250,8 +277,8 @@ MTD_DEVICE_T gd5f1g_flash_cfg = {
             .qspi = {
                 .role = TUYA_QSPI_ROLE_MASTER,
                 .mode = TUYA_QSPI_MODE0,
-                .baudrate = 104000000,
-                .is_dma = 0,
+                .freq_hz = 104000000,
+                .use_dma = 0,
             },
             .ops = {
                 .init = flash_gd5f1g_init,

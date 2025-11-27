@@ -294,6 +294,8 @@ enum BK_EVENT_TYPE
     BK_EVT_STOP_AP_IND          = 0x6,
     BK_EVT_SCAN_WIFI_IND        = 0x7,
     BK_EVT_WIFI_FAIL_IND        = 0x8,
+    BK_EVT_BCN_CC_RXED          = 0x9,
+    BK_EVT_CSI_INFO_IND         = 0xA,
 
     // BLE event
     // BK_EVT_BLE_XX            = 0x101
@@ -403,6 +405,9 @@ int bk_wdrv_customer_transfer(uint16_t cmd_id, uint8_t * data, uint16_t len);
 void wdrv_notify_sta_disconnected(void *data, uint16_t len);
 void wdrv_notify_sap_sta_connected(void);
 void wdrv_notify_sap_sta_disconnected(void);
+bk_err_t bk_wifi_bcn_cc_rxed_cb(void *data, uint16_t len);
+void bk_wifi_csi_info_cb(void *data);
+
 
 FUNC_1PARAM_PTR bk_wlan_get_status_cb(void);
 void wifi_netif_call_status_cb_when_sta_got_ip(void);

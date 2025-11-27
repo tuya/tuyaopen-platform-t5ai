@@ -236,10 +236,10 @@ static inline void bk_psram_word_memcpy(void *dst_t, void *src_t, unsigned int l
  *
  * This API to get psram heap init flag:
  *   - init: true:init ;false:uninit
- * 
+ *
  * @return
  *  heap_init_flag
- * 
+ *
  */
 bool bk_psram_heap_init_flag_get();
 /**
@@ -341,6 +341,7 @@ bk_err_t bk_psram_memread(uint8_t *start_addr, uint8_t *data_buf, uint32_t len);
  * @param clk:80/120/160/240
  *
  * @attation 1. current only support 80/120/160
+ * @attation 2. Recommended default PSRAM clock: 120 MHz
  *
  * @return
  *    - BK_OK: succeed

@@ -358,6 +358,7 @@ uint32_t sys_drv_aud_audpll_en(uint32_t value);
 uint32_t sys_drv_aud_aud_en(uint32_t value);
 uint32_t sys_drv_aud_dac_drv_en(uint32_t value);
 uint32_t sys_drv_aud_dac_bias_en(uint32_t value);
+uint32_t sys_drv_aud_dac_work_mode_set(uint32_t value);
 uint32_t sys_drv_aud_bias_en(uint32_t value);
 uint32_t sys_drv_aud_dacr_en(uint32_t value);
 uint32_t sys_drv_aud_dacl_en(uint32_t value);

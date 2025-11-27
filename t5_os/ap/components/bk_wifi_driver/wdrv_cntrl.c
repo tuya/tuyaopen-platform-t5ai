@@ -162,6 +162,9 @@ void wdrv_notify_sta_disconnected(void *data, uint16_t len)
     /* post event */
     WDRV_LOGV("sta disconnect reason %d,local %d\n",
     sta_disconnected.disconnect_reason, sta_disconnected.local_generated);
+#if CONFIG_BRIDGE
+    bk_wifi_switch_bridge_to_sta();
+#endif
     BK_LOG_ON_ERR(bk_event_post(EVENT_MOD_WIFI, EVENT_WIFI_STA_DISCONNECTED,
                              &sta_disconnected, sizeof(sta_disconnected), BEKEN_NEVER_TIMEOUT));
 }
@@ -182,6 +185,10 @@ void wdrv_notify_sap_sta_disconnected(void)
     /* post evevnt EVENT_WIFI_AP_DISCONNECTED */
     os_memset(&ap_disconnected, 0, sizeof(ap_disconnected));
     os_memcpy(ap_disconnected.mac, wdrv_host_env.ap_assoc_sta_addr_ind.sub_sta_addr, ETH_ALEN);
+#if CONFIG_BRIDGE
+extern void bk_bridge_event_hapd_sta_disconnected(uint8_t *mac);
+    bk_bridge_event_hapd_sta_disconnected(ap_disconnected.mac);
+#endif
     BK_LOG_ON_ERR(bk_event_post(EVENT_MOD_WIFI, EVENT_WIFI_AP_DISCONNECTED,
                                 &ap_disconnected, sizeof(ap_disconnected), BEKEN_NEVER_TIMEOUT));
 }
@@ -236,7 +243,9 @@ void wdrv_notify_sta_got_ip(void)
     /* post event GOT_IP4 */
     netif_event_got_ip4_t event_data = {0};
     event_data.netif_if = NETIF_IF_STA;
-
+#if CONFIG_BRIDGE
+    bk_wifi_start_softap_for_bridge();
+#endif
     BK_LOG_ON_ERR(bk_event_post(EVENT_MOD_NETIF, EVENT_NETIF_GOT_IP4,
                                 &event_data, sizeof(event_data), BEKEN_NEVER_TIMEOUT));
 }
@@ -351,7 +360,7 @@ void wdrv_rx_handle_wifi_api_event(wdrv_rx_msg *msg)
 }
 void wdrv_rx_handle_wifi_cntrl_event(wdrv_rx_msg *msg)
 {
-    WDRV_LOGD("%s,%d\n",__func__,__LINE__);
+    WDRV_LOGD("%s,%d,%d\n",__func__,__LINE__,msg->id);
     //int loop_idx = 0;
     switch(msg->id) {
         case BK_EVT_CONNECT_IND:
@@ -430,6 +439,11 @@ void wdrv_rx_handle_wifi_cntrl_event(wdrv_rx_msg *msg)
             wdrv_host_env.ap_status_cfm.status = CONTROLLER_AP_CLOSE;
             wdrv_host_env.wlan_mode = WIFI_MODE_IDLE;
             WDRV_LOGV("MCU-AP-STATE: stop AP success\n");
+            break;
+        case BK_EVT_BCN_CC_RXED:
+            bk_wifi_bcn_cc_rxed_cb(msg->param, msg->param_len);
+        case BK_EVT_CSI_INFO_IND:
+            bk_wifi_csi_info_cb(msg->param);
             break;
         default:
             WDRV_LOGD("%s msg %x invaild\n", __func__, msg->id);

@@ -5,4 +5,12 @@ menu "Bk_Phy"
 		bool "Enable voltage detect"
 		default n
 
+	config PHY_SERVER
+		bool "Enable PHY server"
+		default y
+
+	config PHY_MB
+		bool "Enable PHY mailbox"
+		default y
+
 endmenu

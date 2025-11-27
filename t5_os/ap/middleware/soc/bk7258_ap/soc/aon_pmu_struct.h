@@ -28,10 +28,10 @@ typedef volatile union {
 		uint32_t fast_boot                :  1; /**<bit[1 : 1] */
 		uint32_t ota_finish               :  1; /**<bit[2 : 2] */
 		uint32_t bl2_deep_sleep           :  1; /**<bit[3 : 3] */
-		uint32_t reserved_bit_4_11        :  8; /**<bit[4 : 11] */
+		uint32_t reset_reason_cp          :  8; /**<bit[4 : 11] */
 		uint32_t gpio_retention_bitmap    :  8; /**<bit[12 : 19] */
 		uint32_t reset_count              :  4 ;/**<bit[20 : 23] */
-		uint32_t reset_reason             :  7; /**<bit[24 : 30] */
+		uint32_t reset_reason_ap          :  7; /**<bit[24 : 30] */
 		uint32_t gpio_sleep               :  1; /**<bit[31 : 31] */
 	};
 	uint32_t v;

@@ -63,6 +63,8 @@ struct bk_file_ops {
 
 	int (*mkdir)	(struct bk_filesystem *fs, const char *pathname);
 	int (*rmdir)	(struct bk_filesystem *fs, const char *pathname);
+	off_t (*ftell)	(struct bk_file *file);
+	int (*feof)	(struct bk_file *file);
 };
 
 #define BK_FILE_MAGIC 0xADCB

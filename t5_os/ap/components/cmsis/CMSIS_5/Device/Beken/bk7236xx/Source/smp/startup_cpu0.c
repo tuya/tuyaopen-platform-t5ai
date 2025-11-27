@@ -429,40 +429,6 @@ __STATIC_FORCEINLINE void dump_system_info(uint32_t rr, uint32_t lr, uint32_t sp
 	while(1);\
 }
 
-void user_nmi_handler(uint32_t lr, uint32_t sp)
-{
-#if CONFIG_DEBUG_VERSION || CONFIG_DUMP_ENABLE
-
-	if(arch_is_enter_exception())
-	{
-		//For nmi wdt reset
-		aon_pmu_drv_wdt_change_not_rosc_clk();
-		aon_pmu_drv_wdt_rst_dev_enable();
-		while(1);
-	}
-
-	arch_set_enter_exception();
-
-	if(REBOOT_TAG_REQ == get_reboot_tag()) {
-		while(1);
-	}
-
-	bk_wdt_feed();
-
-	dump_system_info(RESET_SOURCE_NMI_WDT, lr, sp);
-
-#else // nmi wdt without system info dump
-
-	if(REBOOT_TAG_REQ != get_reboot_tag()) {
-		bk_misc_set_reset_reason(RESET_SOURCE_NMI_WDT);
-	}
-
-	aon_pmu_drv_wdt_change_not_rosc_clk();
-	aon_pmu_drv_wdt_rst_dev_enable();
-	while(1);
-
-#endif // CONFIG_DEBUG_VERSION || CONFIG_DUMP_ENABLE
-}
 
 /*----------------------------------------------------------------------------
   Hard Fault Handler
@@ -472,18 +438,13 @@ __attribute__((naked)) void HardFault_Handler(void)
 	dump_fault_info(RESET_SOURCE_HARD_FAULT);
 }
 
-__attribute__((naked, section(".itcm_cpu0")))
-void NMI_Handler(void)
+/*----------------------------------------------------------------------------
+  AP should not trigger NMI Handler
+ *----------------------------------------------------------------------------*/
+__attribute__((naked)) void NMI_Handler(void)
 {
-	uint32_t lr = __get_LR();
-	uint32_t sp = __get_MSP();
 
-    __asm volatile 
-    (
-        "	push {r4-r11}								\n"
-    );
-
-	user_nmi_handler(lr, sp);
+    dump_fault_info(RESET_SOURCE_CRASH_ILLEGAL_JUMP);
 	
 	while(1);
 }

@@ -313,8 +313,24 @@ bk_err_t bk_aud_dac_register_isr(aud_isr_id_t isr_id, aud_isr_t isr);
 bk_err_t bk_aud_dac_set_dwa_bypass(uint8_t value);
 
 /**
+ * @brief     Set the dac work mode
+ *
+ * This API set the dac work mode.
+ *
+ * @param
+ *    - value: dac work mode value
+ *
+ * @return
+ *    - BK_OK: succeed
+ *    - BK_ERR_AUD_DAC_NOT_INIT: audio dac is not init
+ *    - others: other errors.
+ */
+bk_err_t bk_aud_dac_work_mode_set(uint32_t value);
+
+/**
  * @}
  */
+
 
 #ifdef __cplusplus
 }

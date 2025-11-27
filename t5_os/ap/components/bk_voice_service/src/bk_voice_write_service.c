@@ -4,6 +4,7 @@
 #include <components/bk_voice_write_service_types.h>
 #include <components/bk_voice_write_service.h>
 #include <driver/audio_ring_buff.h>
+#include <components/bk_audio/audio_pipeline/framebuf.h>
 
 
 #define TAG "voc_wt"
@@ -50,6 +51,8 @@ struct voice_write
     uint32_t pause_threshold;               /**< pause threshold of pool ringbuffer, pause write data to voice when the data in pool reach the threshold */
     bool pool_reach_level;                  /**< the state, whether the start threshold is reached */
     bool running;                           /**< the state, whether voice write task start work */
+    audio_buf_type_t  write_buf_type;       /**< write buffer type:ringbuffer or framebuffer */
+    framebuf_handle_t pool_fb;              /**< pool framebuffer handle */
 };
 
 
@@ -171,34 +174,73 @@ static void voice_write_task_main(beken_thread_arg_t param_data)
         if (voice_write_handle->running)
         {
             VOICE_WRITE_PROCESS_START();
-            uint32_t pool_fill_size = ring_buffer_get_fill_size(&voice_write_handle->pool_rb);
-            if (voice_write_handle->pool_reach_level == false)
+            if(AUDIO_BUF_TYPE_RB == voice_write_handle->write_buf_type)
             {
-                if (pool_fill_size >= voice_write_handle->start_threshold)
+                uint32_t pool_fill_size = ring_buffer_get_fill_size(&voice_write_handle->pool_rb);
+                if (voice_write_handle->pool_reach_level == false)
                 {
-                    voice_write_handle->pool_reach_level = true;
+                    if (pool_fill_size >= voice_write_handle->start_threshold)
+                    {
+                        voice_write_handle->pool_reach_level = true;
+                    }
+                }
+
+                if (pool_fill_size <= voice_write_handle->pause_threshold)
+                {
+                    voice_write_handle->pool_reach_level = false;
+                }
+
+                if (voice_write_handle->pool_reach_level)
+                {
+                    read_size = ring_buffer_read(&voice_write_handle->pool_rb, voice_write_handle->write_buff, voice_write_handle->write_size);
+                    if (read_size > 0)
+                    {
+                        VOICE_WRITE_OUTPUT_START();
+                        bk_voice_write_spk_data(voice_write_handle->voice_handle, (char *)voice_write_handle->write_buff, read_size);
+                        VOICE_WRITE_OUTPUT_END();
+                    }
+                }
+                else
+                {
+                    rtos_delay_milliseconds(2);
                 }
             }
-
-            if (pool_fill_size <= voice_write_handle->pause_threshold)
+            else if(AUDIO_BUF_TYPE_FB == voice_write_handle->write_buf_type)
             {
-                voice_write_handle->pool_reach_level = false;
-            }
-
-            if (voice_write_handle->pool_reach_level)
-            {
-                read_size = ring_buffer_read(&voice_write_handle->pool_rb, voice_write_handle->write_buff, voice_write_handle->write_size);
-                if (read_size > 0)
+                if (fb_get_ready_node_num(voice_write_handle->pool_fb))
                 {
-                    VOICE_WRITE_OUTPUT_START();
-                    bk_voice_write_spk_data(voice_write_handle->voice_handle, (char *)voice_write_handle->write_buff, read_size);
-                    VOICE_WRITE_OUTPUT_END();
+                    framebuf_node_item_t *fb_node_item = NULL;
+                    read_size = fb_read(voice_write_handle->pool_fb, &fb_node_item, 0);
+                    if (read_size > 0)
+                    {
+                        if (read_size > voice_write_handle->write_size)
+                        {
+                            BK_LOGE(TAG, "%s, frame size:%d > buffer len:%d\n", __func__,__LINE__, read_size, voice_write_handle->write_size);
+                            goto voice_write_exit;
+                        }
+                        else
+                        {
+                            os_memcpy(voice_write_handle->write_buff, fb_node_item->fb_node->buffer, fb_node_item->fb_node->length);
+                        }
+
+                        VOICE_WRITE_OUTPUT_START();
+                        bk_voice_write_spk_data(voice_write_handle->voice_handle, (char *)voice_write_handle->write_buff, read_size);
+                        VOICE_WRITE_OUTPUT_END();
+                    }
+
+                    fb_free(voice_write_handle->pool_fb, fb_node_item, 0);
+                }
+                else
+                {
+                    rtos_delay_milliseconds(2);
                 }
             }
             else
             {
-                rtos_delay_milliseconds(2);
+                BK_LOGE(TAG, "%s, %d, write_buf_type:%d is invalid\n", __func__, __LINE__,voice_write_handle->write_buf_type);
+                goto voice_write_exit;
             }
+            
             VOICE_WRITE_PROCESS_END();
         }
         else
@@ -254,7 +296,7 @@ voice_write_handle_t bk_voice_write_init(voice_write_cfg_t *cfg)
 
     /* copy config */
     voice_write_handle->voice_handle = cfg->voice_handle;
-    voice_write_handle->pool_size = cfg->pool_size;
+
     voice_write_handle->task_stack = cfg->task_stack;
     voice_write_handle->task_core = cfg->task_core;
     voice_write_handle->task_prio = cfg->task_prio;
@@ -262,6 +304,7 @@ voice_write_handle_t bk_voice_write_init(voice_write_cfg_t *cfg)
     voice_write_handle->start_threshold = cfg->start_threshold;
     voice_write_handle->pause_threshold = cfg->pause_threshold;
     voice_write_handle->write_size = 320;
+    voice_write_handle->write_buf_type = cfg->write_buf_type;
 
     /* malloc write buffer */
     if (cfg->mem_type == AUDIO_MEM_TYPE_PSRAM)
@@ -278,27 +321,43 @@ voice_write_handle_t bk_voice_write_init(voice_write_cfg_t *cfg)
     {
         voice_write_handle->write_buff = (uint8_t *)os_malloc(voice_write_handle->write_size);
     }
+
     VOICE_WRITE_CHECK_NULL(voice_write_handle->write_buff, goto fail);
     os_memset(voice_write_handle->write_buff, 0, voice_write_handle->write_size);
 
-    /* malloc pool buffer */
-    if (cfg->mem_type == AUDIO_MEM_TYPE_PSRAM)
+    if(AUDIO_BUF_TYPE_RB == voice_write_handle->write_buf_type)
     {
-        voice_write_handle->pool_addr = (int8_t *)psram_malloc(voice_write_handle->pool_size);
-    }
+        voice_write_handle->pool_size = (cfg->node_size*cfg->node_num);
+        
+        /* malloc pool buffer */
+        if (cfg->mem_type == AUDIO_MEM_TYPE_PSRAM)
+        {
+            voice_write_handle->pool_addr = (int8_t *)psram_malloc(voice_write_handle->pool_size);
+        }
 #if 0
-    else if (cfg->mem_type == AUDIO_MEM_TYPE_AUDIO_HEAP)
-    {
-        voice_write_handle->pool_addr = (int8_t *)audio_heap_malloc(voice_write_handle->pool_size);
-    }
+        else if (cfg->mem_type == AUDIO_MEM_TYPE_AUDIO_HEAP)
+        {
+            voice_write_handle->pool_addr = (int8_t *)audio_heap_malloc(voice_write_handle->pool_size);
+        }
 #endif
+        else
+        {
+            voice_write_handle->pool_addr = (int8_t *)os_malloc(voice_write_handle->pool_size);
+        }
+        VOICE_WRITE_CHECK_NULL(voice_write_handle->pool_addr, goto fail);
+        os_memset(voice_write_handle->pool_addr, 0, voice_write_handle->pool_size);
+        ring_buffer_init(&voice_write_handle->pool_rb, (uint8_t *)voice_write_handle->pool_addr, voice_write_handle->pool_size, DMA_ID_MAX, RB_DMA_TYPE_NULL);
+    }
+    else if(AUDIO_BUF_TYPE_FB == voice_write_handle->write_buf_type)
+    {
+        voice_write_handle->pool_fb = fb_create(cfg->node_size, cfg->node_num, 4); 
+        VOICE_WRITE_CHECK_NULL(voice_write_handle->pool_fb, goto fail);
+    }
     else
     {
-        voice_write_handle->pool_addr = (int8_t *)os_malloc(voice_write_handle->pool_size);
-    }
-    VOICE_WRITE_CHECK_NULL(voice_write_handle->pool_addr, goto fail);
-    os_memset(voice_write_handle->pool_addr, 0, voice_write_handle->pool_size);
-    ring_buffer_init(&voice_write_handle->pool_rb, (uint8_t *)voice_write_handle->pool_addr, voice_write_handle->pool_size, DMA_ID_MAX, RB_DMA_TYPE_NULL);
+        BK_LOGE(TAG, "%s, %d, write_buf_type:%d is invalid\n", __func__, __LINE__,cfg->write_buf_type);
+        goto fail;
+    }    
 
     ret = rtos_init_semaphore(&voice_write_handle->sem, 1);
     if (ret != kNoErr)
@@ -390,6 +449,12 @@ fail:
         voice_write_handle->pool_size = 0;
     }
 
+    if (voice_write_handle->pool_fb)
+    {
+        fb_destroy(voice_write_handle->pool_fb);
+        voice_write_handle->pool_fb = NULL;
+    }
+
     if (cfg->mem_type == AUDIO_MEM_TYPE_PSRAM)
     {
         psram_free(voice_write_handle);
@@ -443,21 +508,6 @@ bk_err_t bk_voice_write_deinit(voice_write_handle_t voice_write_handle)
         os_free(voice_write_handle->write_buff);
     }
 
-    if (voice_write_handle->mem_type == AUDIO_MEM_TYPE_PSRAM)
-    {
-        psram_free(voice_write_handle);
-    }
-#if 0
-    else if (voice_write_handle->mem_type == AUDIO_MEM_TYPE_AUDIO_HEAP)
-    {
-        audio_heap_free(voice_write_handle);
-    }
-#endif
-    else
-    {
-        os_free(voice_write_handle);
-    }
-
     if (voice_write_handle->pool_addr)
     {
         ring_buffer_clear(&voice_write_handle->pool_rb);
@@ -477,6 +527,27 @@ bk_err_t bk_voice_write_deinit(voice_write_handle_t voice_write_handle)
         }
         voice_write_handle->pool_addr = NULL;
         voice_write_handle->pool_size = 0;
+    }
+
+    if (voice_write_handle->pool_fb)
+    {
+        fb_destroy(voice_write_handle->pool_fb);
+        voice_write_handle->pool_fb = NULL;
+    }
+
+    if (voice_write_handle->mem_type == AUDIO_MEM_TYPE_PSRAM)
+    {
+        psram_free(voice_write_handle);
+    }
+#if 0
+    else if (voice_write_handle->mem_type == AUDIO_MEM_TYPE_AUDIO_HEAP)
+    {
+        audio_heap_free(voice_write_handle);
+    }
+#endif
+    else
+    {
+        os_free(voice_write_handle);
     }
 
     WIFI_RX_DATA_COUNT_CLOSE();
@@ -534,22 +605,52 @@ bk_err_t bk_voice_write_frame_data(voice_write_handle_t voice_write_handle, char
 
     WIFI_RX_DATA_COUNT_ADD_SIZE(len);
 
-    uint32_t pool_free_size = ring_buffer_get_free_size(&voice_write_handle->pool_rb);
-    if (pool_free_size > len)
+    if(AUDIO_BUF_TYPE_RB == voice_write_handle->write_buf_type)
     {
-        VOICE_WRITE_INPUT_START();
-        uint32_t write_size = ring_buffer_write(&voice_write_handle->pool_rb, (uint8_t *)buffer, len);
-        VOICE_WRITE_INPUT_END();
-        if (write_size != len)
+        uint32_t pool_free_size = ring_buffer_get_free_size(&voice_write_handle->pool_rb);
+        if (pool_free_size > len)
         {
-            BK_LOGV(TAG, "%s, %d, write_size: %d, len: %d\n", __func__, __LINE__, write_size, len);
+            VOICE_WRITE_INPUT_START();
+            uint32_t write_size = ring_buffer_write(&voice_write_handle->pool_rb, (uint8_t *)buffer, len);
+            VOICE_WRITE_INPUT_END();
+            if (write_size != len)
+            {
+                BK_LOGV(TAG, "%s, %d, write_size: %d, len: %d\n", __func__, __LINE__, write_size, len);
+            }
+            ret = write_size;
         }
-        ret = write_size;
+        else
+        {
+            /* If pool is enough, throw away the all data to avoid the incomplete frame data being written to voice. */
+            ret = 0;
+        }
+    }
+    else if(AUDIO_BUF_TYPE_FB == voice_write_handle->write_buf_type)
+    {
+        int node_size = fb_get_node_size(voice_write_handle->pool_fb);
+        int node_total_num = fb_get_total_node_num(voice_write_handle->pool_fb);
+        int node_ready_num = fb_get_ready_node_num(voice_write_handle->pool_fb);
+        if((node_total_num > node_ready_num) && (node_size >= len))
+        {
+            framebuf_node_item_t *fb_node_item = NULL;
+            int ret = fb_malloc(voice_write_handle->pool_fb, &fb_node_item, 40/portTICK_RATE_MS);
+            if (ret > 0)
+            {
+                os_memcpy(fb_node_item->fb_node->buffer, buffer, len);
+                fb_node_item->fb_node->length = len;
+                ret = fb_write(voice_write_handle->pool_fb, fb_node_item, 0);
+            }
+        }
+        else
+        {
+            BK_LOGE(TAG, "%s, %d, FB node size:%d,len:%d,total node:%d,ready node:%d\n",
+                    __func__, __LINE__, node_size, len, node_total_num, node_ready_num);
+        }
     }
     else
     {
-        /* If pool is enough, throw away the all data to avoid the incomplete frame data being written to voice. */
-        ret = 0;
+        BK_LOGE(TAG, "%s, %d, write_buf_type:%d is invalid!\n",
+                    __func__, __LINE__, voice_write_handle->write_buf_type);
     }
 
     return ret;

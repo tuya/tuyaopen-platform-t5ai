@@ -86,7 +86,7 @@ echo "APP_DIR:"$APP_DIR
 
 boot_file=cp/components/bk_libs/bk7258/bootloader/normal_bootloader/bootloader.bin
 check_value=$(md5sum ${boot_file} | awk '{print $1}')
-ori_value=f8f45b0779a8269fa089ac84ebd9c149
+ori_value=eed24a0637a4e96749aba006807eb3b7
 if [ "x${check_value}" != "x${ori_value}" ]; then
     echo -e "\033[1;31m bootloader.bin check failed, the file had been changed, please update md5 value in build.sh \033[0m"
     exit
@@ -299,7 +299,7 @@ if [ -e "build/bk7258/tuya_app/package/all-app.bin" ]; then
 
     python3 ${TUYA_CREATE_UA_FILE_TOOL} ${partiton_file} ${cp_bin_file} ${ap_bin_file} --ua_file=${ua_bin_file}
 
-    # python3 ${TUYA_FORMAT_BIN_TOOL} ${ua_bin_file} ${ug_bin_file} 360000 1000 0 1000 10D0 $split_point -v
+    # python3 ${TUYA_FORMAT_BIN_TOOL} ${ua_bin_file} ${ug_bin_file} 460000 1000 0 1000 10D0 $split_point -v
     python3 ${TUYA_FORMAT_BIN_TOOL} ${ua_bin_file} ${ug_bin_file} 6b8000 1000 0 1000 10D0 $split_point -v
 
     ./${TUYA_DIFF_OTA_BIN_TOOL} ${ug_bin_file} ${ug_bin_file} ${ty_ota_file} 0 > /dev/null
@@ -334,18 +334,6 @@ if [ -e "build/bk7258/tuya_app/package/all-app.bin" ]; then
         cp $bk_all_bin_file $ty_final_bin_file
     fi
 
-    # 在固件尾部追加固件校验信息
-    script_file=${TUYA_PROJECT_DIR}/scripts/write_verid_to_bin.py
-    if [ "x" != "x$TUYAOS_VERSION_ID" ] && [ -f ${script_file} ]; then
-        cp $bk_all_bin_file                         $DEBUG_FILE_PATH/${TARGET_PLATFORM}/ori-all-app.bin
-        cp $ty_ota_file                             $DEBUG_FILE_PATH/${TARGET_PLATFORM}/ori-app_ota_ug.bin
-
-        cd ./build/${TARGET_PLATFORM}
-        python3 ${script_file} $ty_final_bin_file
-        python3 ${script_file} $ty_ota_file
-        cd -
-    fi
-
     cp $ty_final_bin_file                                   $OUTPUT_PATH/$APP_BIN_NAME"_QIO_"$USER_SW_VER.bin
     cp $ua_bin_file                                         $OUTPUT_PATH/$APP_BIN_NAME"_UA_"$USER_SW_VER.bin
     cp $ty_ota_file                                         $OUTPUT_PATH/$APP_BIN_NAME"_UG_"$USER_SW_VER.bin
@@ -362,6 +350,8 @@ if [ -e "build/bk7258/tuya_app/package/all-app.bin" ]; then
     cp "projects/tuya_app/cp/config/bk7258/usr_gpio_cfg.h"  $DEBUG_FILE_PATH/${TARGET_PLATFORM}
     cp projects/tuya_app/ap/config/bk7258_ap/usr_gpio_cfg.h $DEBUG_FILE_PATH/${TARGET_PLATFORM}_ap
 
+    echo "*************************************************************************"
+    echo "******************$APP_BIN_NAME"_"$USER_SW_VER.bin***********************"
     echo "*************************************************************************"
     echo "**********************COMPILE SUCCESS************************************"
     echo "*************************************************************************"

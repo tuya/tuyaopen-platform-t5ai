@@ -20,6 +20,7 @@
 #endif
 #endif
 #include "spinlock.h"
+#include <arch_interrupt.h>
 
 #define DEV_UART        1
 #define DEV_MAILBOX     2
@@ -68,14 +69,14 @@
 #define SHELL_LOG_BUF1_NUM      8
 #define SHELL_LOG_BUF2_NUM      40
 #define SHELL_LOG_BUF3_NUM      40
-#define SHELL_DYM_LOG_NUM_MAX   150
+#define SHELL_DYM_LOG_NUM_MAX   400
 #endif   //  (LOG_DEV == DEV_MAILBOX)
 
 #if (LOG_DEV == DEV_UART)
 #define SHELL_LOG_BUF1_NUM      8
 #define SHELL_LOG_BUF2_NUM      40
 #define SHELL_LOG_BUF3_NUM      60
-#define SHELL_DYM_LOG_NUM_MAX   200
+#define SHELL_DYM_LOG_NUM_MAX   400
 #endif   // (LOG_DEV == DEV_UART)
 
 #define SHELL_LOG_BUF_NUM       (SHELL_LOG_BUF1_NUM + SHELL_LOG_BUF2_NUM + SHELL_LOG_BUF3_NUM)
@@ -228,6 +229,8 @@ static u16 s_dynamic_log_num = 0;   // dynamic log in send queue
 static u16 s_dynamic_log_total_len = 0;  // total consumption of dynamic log memory
 static u16 s_dynamic_log_num_in_mem = 0;  // number of dynamic log in memory, including no free log.
 static u16 s_dynamic_log_mem_max = 0;  // maximum of consumption
+
+static u16 s_insert_log_cnt = 0;
 
 #define DYM_NODE_SIZE (sizeof(dynamic_log_node))
 
@@ -1097,7 +1100,7 @@ static void tx_req_process(void)
 				shell_assert_out(bTRUE, "xFATAL: in Tx_req id=%x\r\n", blk_id);
 		}
 	}
-	else if (queue_id == SHELL_DYM_QUEUE_ID) 
+	else if (queue_id == SHELL_DYM_QUEUE_ID)
 	{
 		dynamic_log_node *node = dynamic_list_switch();
 		packet_buf = node->ptr;
@@ -1240,6 +1243,15 @@ static void rx_ind_process(void)
 						cmd_line_buf.bkreg_state = BKREG_WAIT_E0;
 				}
 
+				if((rx_temp_buff[i] > 0x7f))
+				{
+					cmd_line_buf.cur_cmd_type = CMD_TYPE_HEX;
+
+					cmd_line_buf.cmd_data_len = 0;
+					cmd_line_buf.cmd_buff[cmd_line_buf.cmd_data_len] = rx_temp_buff[i];
+					cmd_line_buf.cmd_data_len++;
+					continue;
+				}
 			}
 
 			if(cmd_line_buf.cur_cmd_type == CMD_TYPE_TEXT)
@@ -1332,12 +1344,26 @@ static void rx_ind_process(void)
 					break;
 				}
 			}
+
+			/* patch for AUD debug tool. */
+			if (cmd_line_buf.cur_cmd_type == CMD_TYPE_HEX)
+			{
+				if(cmd_line_buf.cmd_data_len < sizeof(cmd_line_buf.cmd_buff))
+				{
+					cmd_line_buf.cmd_buff[cmd_line_buf.cmd_data_len] = rx_temp_buff[i];
+					cmd_line_buf.cmd_data_len++;
+					if (cmd_line_buf.cmd_data_len == read_cnt) {
+						cmd_rx_done = bTRUE;
+						break;
+					}
+				}
+			}
 		}
 
 		if( cmd_rx_done )
 		{
 			/* patch for BK_REG tool. */
-			if(cmd_line_buf.cur_cmd_type == CMD_TYPE_BKREG)
+			if(cmd_line_buf.cur_cmd_type == CMD_TYPE_BKREG  || cmd_line_buf.cur_cmd_type == CMD_TYPE_HEX)
 			{
 				break;  // cann't echo anything.
 			}
@@ -1475,6 +1501,12 @@ static void rx_ind_process(void)
 				bkreg_run_command((const char *)&cmd_line_buf.cmd_buff[0], (int)cmd_line_buf.cmd_data_len);
 #endif // CONFIG_BKREG
 			}
+		}
+
+		if (cmd_line_buf.cur_cmd_type == CMD_TYPE_HEX)
+		{
+			extern void app_dbg_audparam(uint8_t * params, int len);
+			app_dbg_audparam((uint8_t *)&cmd_line_buf.cmd_buff[0], (int)cmd_line_buf.cmd_data_len);
 		}
 
 		cmd_line_buf.cur_cmd_type = CMD_TYPE_INVALID;  /* reset cmd line to interpret new cmd. */
@@ -1657,7 +1689,7 @@ void create_log_handle_task(void)
 							"log_hanlder",
 							(beken_thread_function_t)log_handle_task,
 							ulTaskStackSize,
-							( void * ) NULL, 
+							( void * ) NULL,
 							pxTaskStackBuffer,
 							pxTaskTCBBuffer,
 							-1);
@@ -1814,7 +1846,7 @@ void reset_forward_log_status(void)
 	ipc_fwd_data.rsp_buf.tag = INVALID_LOG_TAG;
 	ipc_fwd_data.ind_buf.tag = INVALID_LOG_TAG;
 	ipc_fwd_data.common_log_buf.tag = INVALID_LOG_TAG;
-	
+
 	shell_task_exit_critical(int_mask);
 }
 #endif
@@ -1825,7 +1857,7 @@ static void log_handle_task( void *para )
 	while(bTRUE)
 	{
 		Events = wait_any_event(&shell_log_event, BEKEN_WAIT_FOREVER);
-		
+
 		if(Events & SHELL_EVENT_DYM_FREE)
 		{
 			check_and_free_dynamic_node();
@@ -1973,7 +2005,7 @@ static int shell_log_raw_data_internel(bool hint, const u8 *data, u16 data_len)
 
 	if (NULL == packet_buf)
 	{
-		if (hint == 0) 
+		if (hint == 0)
 			return 0;
 
 		if (s_block_mode & LOG_BLOCK_MASK) {
@@ -2060,12 +2092,10 @@ static inline bool get_dynamic_log_status(int block_mode, u16 buf_len)
 		   (buf_len + s_dynamic_log_total_len <= CONFIG_DYM_LOG_MEM_MAX);
 }
 
-#define LOG_TRY_ALLOC_COUNT 5
 /* alloc log buffer from static memory or dynamic memory */
 static u8 * alloc_buffer(int block_mode, u16 *blk_tag, u16 buf_len)
 {
 	u8 *packet_buf = NULL;
-	int try_cnt = LOG_TRY_ALLOC_COUNT;
 	do {
 		if (buf_len <= SHELL_LOG_BUF1_LEN) {
 			packet_buf = alloc_log_blk(buf_len, blk_tag);
@@ -2088,7 +2118,7 @@ static u8 * alloc_buffer(int block_mode, u16 *blk_tag, u16 buf_len)
 			break;
 		}
 		rtos_get_semaphore(&log_buf_semaphore, SHELL_LOG_BLOCK_TIME);
-	} while (try_cnt--);
+	} while (1);
 	return packet_buf;
 }
 
@@ -2120,12 +2150,19 @@ void shell_log_out_port(int block_mode, int level, char *prefix, const char *for
 
 	if(packet_buf == NULL)
 	{
-		if (block_mode & s_block_mode & LOG_BLOCK_MASK)
+		if (block_mode & s_block_mode & LOG_BLOCK_MASK) {
+			s_insert_log_cnt++;
 			output_insert_log(buf_len, prefix, format, ap);
+			if (s_insert_log_cnt >= 100) {
+				BK_ASSERT(0);
+			}
+		}
 		else
 			log_hint_out();
 		return;
 	}
+
+	s_insert_log_cnt = 0;
 
 	log_len = combine_log_with_prefix(prefix, (char *)&packet_buf[0], buf_len, format, ap);
 
@@ -2146,13 +2183,14 @@ void shell_log_out_port(int block_mode, int level, char *prefix, const char *for
 	return ;
 }
 
+
 static int shell_assert_out_va(bool bContinue, const char * format, va_list arg_list)
 {
 	u32         int_mask;
 	char       *pbuf;
 	u16         data_len, buf_len;
 
-	if( !shell_cpu_check_valid() )
+	if(arch_is_cp_in_dump_mode())
 		return 0;
 
 	pbuf = (char *)&shell_assert_buff[0];
@@ -2171,7 +2209,8 @@ static int shell_assert_out_va(bool bContinue, const char * format, va_list arg_
 	if(data_len >= buf_len)
 		data_len = buf_len - 1;
 
-	log_dev->dev_drv->write_sync(log_dev, (u8 *)pbuf, data_len);
+	pbuf[data_len] = '\0';
+	emergency_uart_write_string(CONFIG_DUMP_UART_PRINT_PORT, pbuf);
 
 	if( bContinue )
 	{
@@ -2203,7 +2242,7 @@ int shell_assert_raw(bool bContinue, char * data_buff, u16 data_len)
 {
 	u32         int_mask;
 
-	if( !shell_cpu_check_valid() )
+	if(arch_is_cp_in_dump_mode())
 		return 0;
 
 	/* just disabled interrupts even when dump out in SMP. */
@@ -2214,7 +2253,7 @@ int shell_assert_raw(bool bContinue, char * data_buff, u16 data_len)
 	// int_mask = shell_task_enter_critical();
 	int_mask = rtos_disable_int();
 
-	log_dev->dev_drv->write_sync(log_dev, (u8 *)data_buff, data_len);
+	emergency_uart_write_buf(CONFIG_DUMP_UART_PRINT_PORT, data_buff, data_len);
 
 	if( bContinue )
 	{
@@ -2387,10 +2426,10 @@ int shell_cmd_forward(char *cmd, u16 cmd_len)
 	    u32  int_mask = shell_task_enter_critical();
 	    ret_code = ipc_dev->dev_drv->write_cmd(ipc_dev, &mb_cmd_buf);
 	    shell_task_exit_critical(int_mask);
-	    
+
 	    if(ret_code != 0)
 	        break;
-	        
+
 	    rtos_delay_milliseconds(10);
 	    try_cnt++;
 	    if(try_cnt < 4)
@@ -2398,7 +2437,7 @@ int shell_cmd_forward(char *cmd, u16 cmd_len)
 	    else
 	        return 0;
 	}
-	
+
 	rtos_get_semaphore(&cmd_line_buf.cmd_fwd_semaphore, SHELL_WAIT_OUT_TIME);
 	return ret_code;
 }
@@ -2611,6 +2650,8 @@ static void dynamic_node_gc(void)
 	dynamic_log_node *node;
 	dynamic_log_node *temp_node;
 	dynamic_log_node *free_list = NULL;
+	u32 free_len = 0;
+	u32 free_num = 0;
 	u32  int_mask = shell_task_enter_critical();
 	if (s_to_free_list != NULL) {
 		free_list = s_to_free_list;
@@ -2620,11 +2661,16 @@ static void dynamic_node_gc(void)
 	node = free_list;
 	while (node != NULL) {
 		temp_node = node;
-		s_dynamic_log_total_len -= node->len;
+        free_len += node->len;
 		node = node->next;
 		LOG_FREE(temp_node);
-		s_dynamic_log_num_in_mem--;
+        free_num++;
 	}
+	int_mask = shell_task_enter_critical();
+	BK_ASSERT(s_dynamic_log_total_len >= free_len);
+	s_dynamic_log_total_len -= free_len;
+	s_dynamic_log_num_in_mem -= free_num;
+	shell_task_exit_critical(int_mask);
 }
 
 static void check_and_free_dynamic_node(void)
@@ -2686,15 +2732,37 @@ static void shell_insert_data( const u8 *data, u16 data_len )
 	rtos_enable_int(int_mask);
 }
 
+const char *s_insert_log_reason[] = {
+	"D", // disable interrupt
+	"I", // interrupt
+	"N", // log not init
+	"S", // scheduler suspended
+	"U", // unknown
+};
+
+static const char *get_log_insert_reason(void)
+{
+	if (rtos_local_irq_disabled()) {
+		return s_insert_log_reason[0];
+	} else if (rtos_is_in_interrupt_context()) {
+		return s_insert_log_reason[1];
+	} else if (log_buf_semaphore == NULL) {
+		return s_insert_log_reason[2];
+	} else if (rtos_is_scheduler_suspended()) {
+		return s_insert_log_reason[3];
+	}
+	return s_insert_log_reason[4];
+}
+
 static void output_insert_data(const u8 *data, u16 data_len)
 {
-	shell_assert_out(bTRUE, "\r\nINSRT:");
+	shell_assert_out(bTRUE, "\r\nINSRT-%s:", get_log_insert_reason());
 	shell_insert_data(data, data_len);
 }
 
 static void output_insert_log(u16 buf_len, char *prefix, const char *format, va_list ap)
 {
-	shell_assert_out(bTRUE, "\r\nINSRT:%s", prefix);
+	shell_assert_out(bTRUE, "\r\nINSRT-%s:%s", get_log_insert_reason(), prefix);
 	shell_assert_out_va(bTRUE, format, ap);
 }
 

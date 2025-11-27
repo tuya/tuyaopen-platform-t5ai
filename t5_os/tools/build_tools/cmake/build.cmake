@@ -120,7 +120,7 @@ function(__build_set_default_build_specifications)
                                     "-Wno-deprecated-declarations"   # prefer to use -Wno-error=deprecated-declarations
                                     "-Wno-unused-value"              # ignore statement with no effect warning
                                     "-Wno-unused-function"           # ignore unused function warning
-
+                                    "-fno-builtin-printf"            # prevent printf from optimizing to puts
                                     "-ffunction-sections"
                                     "-fsigned-char"
                                     "-fdata-sections"

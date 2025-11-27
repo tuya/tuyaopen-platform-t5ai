@@ -118,8 +118,6 @@ frame_list_node_t *jpeg_frame_node;
 bool img_service_task_running = false;// img_service_task_running = false;
 static beken_thread_t img_service_task = NULL;
 
-static img_display_cb g_img_display_cb = NULL;
-
 img_info_t img_info = {0};
 
 bk_err_t bk_img_msg_send(img_msg_t *msg)
@@ -238,17 +236,12 @@ static void img_service_task_entry(beken_thread_arg_t data)
                     else
                     #endif
                     {
-                        // ret = lcd_display_frame_request(processed_frame);  //may be not rotate
-                        // if (ret != BK_OK)
-                        // {
-                        //     LOGE("%s lcd_display_frame_request push failed\n", __func__);
-                        //     img_info.fb_free(processed_frame);
-                        // }
-
-                            if(g_img_display_cb) {
-                                g_img_display_cb(processed_frame);
-                            }
-                            img_info.fb_free(processed_frame); 
+                        ret = lcd_display_frame_request(processed_frame);  //may be not rotate
+                        if (ret != BK_OK)
+                        {
+                            LOGE("%s lcd_display_frame_request push failed\n", __func__);
+                            img_info.fb_free(processed_frame);
+                        }
                     }
                 }
                 break;
@@ -430,7 +423,7 @@ static void decoder_task_entry(beken_thread_arg_t data)
             img_info.fb_free(dec_frame);
         }
     }
-    LOGD("camera display task exit\n");
+    LOGI("camera decoder task exit\n");
     jpeg_decoder_task = NULL;
     rtos_set_semaphore(&jpeg_decoder_sem);
     rtos_delete_thread(NULL);
@@ -615,7 +608,7 @@ frame_buffer_t *decoder_frame_handler(frame_buffer_t *frame)
 #endif
             if (ret != BK_OK)
             {
-                LOGE("%s sw decoder error\n", __func__);
+                LOGE("%s sw decoder error, %d, %d\n", __func__, __LINE__, ret);
                 img_info.fb_free(img_info.decoder_frame);
                 img_info.decoder_frame = NULL;
                 goto out;
@@ -627,7 +620,7 @@ frame_buffer_t *decoder_frame_handler(frame_buffer_t *frame)
 
             if (ret != BK_OK)
             {
-                LOGE("%s sw decoder error\n", __func__);
+                LOGE("%s sw decoder error, %d\n", __func__, __LINE__);
                 img_info.fb_free(img_info.decoder_frame);
                 img_info.decoder_frame = NULL;
                 goto out;
@@ -922,7 +915,6 @@ bk_err_t img_service_close(void)
 
     img_info.enable = false;
 
-
     rtos_lock_mutex(&img_info.dec_lock);
     img_info.decoder_en = false;
     rtos_unlock_mutex(&img_info.dec_lock);
@@ -963,9 +955,4 @@ bk_err_t img_service_close(void)
     LOGD("%s complete\n", __func__);
 out:
     return ret;
-}
-
-void img_register_display_cb(img_display_cb *disp_cb)
-{
-    g_img_display_cb = disp_cb;
 }

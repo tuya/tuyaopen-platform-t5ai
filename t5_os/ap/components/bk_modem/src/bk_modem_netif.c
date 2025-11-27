@@ -19,10 +19,10 @@
 #include <components/netif_types.h>
 #include "common/bk_err.h"
 #include "bk_modem_dte.h"
+#include "bk_modem_netif.h"
 
 #if CONFIG_LWIP_PPP_SUPPORT
-#include "tkl_cellular.h"
-extern TKL_CELLULAR_STATUS_CHANGE_CB ppp_netif_link_chg_cb;
+BK_MODEM_NETIF_STATE_NOTIFY bk_modem_ppp_netif_link_chg_cb = NULL;
 
 #if PPP_SUPPORT && PPP_AUTH_SUPPORT
 typedef struct {
@@ -32,6 +32,11 @@ typedef struct {
     const char *user;
     const char *passwd;
 } set_auth_msg_t;
+
+void bk_modem_ppp_netif_state_cb_register(BK_MODEM_NETIF_STATE_NOTIFY cb)
+{
+    bk_modem_ppp_netif_link_chg_cb = cb;
+}
 
 int bk_modem_ppp_netif_event_cb(void *arg, event_module_t event_module,
 					   int event_id, void *event_data);
@@ -69,7 +74,6 @@ static void on_ppp_status_changed(ppp_pcb *pcb, int err_code, void *ctx)
 #if IP_NAPT
 extern const ip_addr_t *sta_dns;
             sta_dns = dns_getserver(0);
-            BK_MODEM_LOGI("DNS Server: %s 0x%x\r\n", ip4addr_ntoa((const ip4_addr_t *)&sta_dns->addr), sta_dns->addr);
 #endif
             bk_event_post(EVENT_MOD_NETIF, EVENT_NETIF_GOT_IP4,
                                    &event_data, sizeof(event_data), BEKEN_NEVER_TIMEOUT);
@@ -94,8 +98,8 @@ extern const ip_addr_t *sta_dns;
             //TODO post connection lost event
             bk_modem_set_state(PPP_STOP);
             bk_modem_send_msg(MSG_PPP_STOP, ABNORMAL_STOP,0,0);
-            if (ppp_netif_link_chg_cb) {
-                ppp_netif_link_chg_cb(TKL_CELLULAR_LINK_DOWN);
+            if (bk_modem_ppp_netif_link_chg_cb) {
+                bk_modem_ppp_netif_link_chg_cb(BK_MODEM_NETIF_LINK_DOWN);
             }
             return;
 
@@ -220,11 +224,12 @@ int bk_modem_ppp_netif_event_cb(void *arg, event_module_t event_module,
     switch (event_id) {
     case EVENT_NETIF_GOT_IP4:
 		got_ip = (netif_event_got_ip4_t *)event_data;
-		if (got_ip->netif_if == NETIF_IF_PPP)
+		if (got_ip->netif_if == NETIF_IF_PPP) {
 			BK_MODEM_LOGI("BK PPP got ip\r\n");
-            if (ppp_netif_link_chg_cb) {
-                ppp_netif_link_chg_cb(TKL_CELLULAR_LINK_UP);
+            if (bk_modem_ppp_netif_link_chg_cb) {
+                bk_modem_ppp_netif_link_chg_cb(BK_MODEM_NETIF_LINK_UP);
             }
+        }
 		break;
 	default:
 		break;

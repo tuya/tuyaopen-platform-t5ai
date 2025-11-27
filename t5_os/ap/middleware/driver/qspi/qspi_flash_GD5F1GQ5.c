@@ -142,9 +142,9 @@ static bk_err_t bk_qspi_flash_gd5f_init(void)
 {
     // 11 ~ 12 MHz
     qspi_config_t config = {0};
-    config.src_clk = QSPI_SCLK_320M;
+    config.src_clk = QSPI_SCLK_480M;
     config.src_clk_div = 0x2;
-    config.clk_div = 0x2;
+    config.clk_div = 0x1;
     BK_LOG_ON_ERR(bk_qspi_init(1, &config));
     return BK_OK;
 }

@@ -584,3 +584,42 @@ char *bk_vfs_refer_cwd(void) {
 	return working_directory;
 }
 
+off_t bk_vfs_ftell(int fd) {
+	struct bk_file *file;
+	off_t ret = -1;
+
+	file = get_file(fd);
+	if (!file) {
+		return -1;
+	}
+
+	if (file->f_ops && file->f_ops->ftell) {
+		ret = file->f_ops->ftell(file);
+	} else {
+		bk_set_errno(ENOTSUP);
+	}
+
+	put_file(file);
+
+	return ret;
+}
+
+int bk_vfs_feof(int fd) {
+	struct bk_file *file;
+	off_t ret = -1;
+
+	file = get_file(fd);
+	if (!file) {
+		return -1;
+	}
+
+	if (file->f_ops && file->f_ops->feof) {
+		ret = file->f_ops->feof(file);
+	} else {
+		bk_set_errno(ENOTSUP);
+	}
+
+	put_file(file);
+
+	return ret;
+}

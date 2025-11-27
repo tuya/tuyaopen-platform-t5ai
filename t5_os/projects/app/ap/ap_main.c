@@ -6,7 +6,6 @@
 
 #define APP_TIMEOUT_VALUE    BEKEN_WAIT_FOREVER
 
-extern int bk_ipc_init(void);
 
 #if CONFIG_FREERTOS_SMP
 static beken_semaphore_t app_semaphore;
@@ -81,6 +80,5 @@ int main(void)
     app_test_smp_core1();
 #endif
 
-    bk_ipc_init();
 	return 0;
 }

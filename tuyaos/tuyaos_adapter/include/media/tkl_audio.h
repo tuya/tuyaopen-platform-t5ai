@@ -342,6 +342,9 @@ OPERATE_RET tkl_ai_detect_get_result(INT32_T card, TKL_MEDIA_DETECT_TYPE_E type,
 
 OPERATE_RET tkl_ao_clear_buffer(INT32_T card, TKL_AO_CHN_E chn);
 
+typedef INT_T (*aec_vad_process_fun)(SHORT_T *mic_data, SHORT_T *ref_data, SHORT_T *out_data); 
+OPERATE_RET tkl_ai_set_vad_aec_algorithm(aec_vad_process_fun user_process_fun);
+
 #ifdef __cplusplus
 }
 #endif

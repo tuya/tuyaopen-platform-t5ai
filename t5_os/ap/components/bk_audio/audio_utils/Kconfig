@@ -14,9 +14,9 @@ menu "Adk::Audio_utils"
 		bool "Enable ADK Count Debug Util"
 		default y
 
-	config ADK_TFCARD_UTIL
-		depends on ADK_UTILS && FATFS
-		bool "Enable ADK Tfcard Debug Util"
+	config ADK_VFS_UTIL
+		depends on ADK_UTILS && VFS
+		bool "Enable ADK Vfs Debug Util"
 		default y
 
 endmenu

@@ -79,11 +79,6 @@ static void cli_flash_cmd(char *pcWriteBuffer, int xWriteBufferLen, int argc, ch
 		uint32_t flash_id = bk_flash_get_id();
 		CLI_LOGD("flash_id:%x\r\n", flash_id);
 		msg = CLI_CMD_RSP_SUCCEED;
-	} else if (os_strcmp(argv[1], "set_line") == 0) {
-		/*enable FLASH_QUAD_ENABLE first*/
-		uint16_t line_mode = os_strtoul(argv[2], NULL, 16);
-		bk_flash_set_line_mode(line_mode);
-		msg = CLI_CMD_RSP_SUCCEED;
 	} else if (os_strcmp(argv[1], "mutex_test") == 0) {
 		extern void flash_svr_test_task(void * param);
 		int task_pri = os_strtoul(argv[2], NULL, 16);

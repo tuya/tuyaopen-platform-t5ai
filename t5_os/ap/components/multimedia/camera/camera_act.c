@@ -16,7 +16,6 @@
 #include <components/log.h>
 
 
-#include "camera_act.h"
 #include "media_evt.h"
 #include <driver/int.h>
 #include <os/mem.h>
@@ -31,7 +30,7 @@
 #include <driver/uvc_camera.h>
 #include <driver/h264.h>
 #include <driver/jpeg_enc.h>
-#include <camera_act.h>
+#include "camera_act.h"
 
 #define TAG "cam_act"
 
@@ -200,6 +199,21 @@ bk_err_t camera_get_main_stream_handle(frame_list_node_t *node)
     return ret;
 }
 
+bk_err_t camera_set_stream_state_handle(uint32_t state)
+{
+    int ret = BK_FAIL;
+
+#ifdef CONFIG_USB_CAMERA
+    ret = bk_uvc_set_stream_state(state);
+#endif
+
+#ifdef CONFIG_DVP_CAMERA
+    ret = bk_dvp_set_stream_state(state);
+#endif
+
+    return ret;
+}
+
 #if 0
 static bk_err_t camera_net_frame_buffer_malloc_handle(media_mailbox_msg_t *msg)
 {
@@ -215,6 +229,7 @@ static bk_err_t camera_net_frame_buffer_malloc_handle(media_mailbox_msg_t *msg)
 	{
 		ret = BK_OK;
 	}
+
 	//msg_send_rsp_to_media_major_mailbox(msg, ret, APP_MODULE);
 
 	return ret;
@@ -250,3 +265,4 @@ static bk_err_t camera_net_frame_buffer_free_handle(media_mailbox_msg_t *msg)
 	return ret;
 }
 #endif
+

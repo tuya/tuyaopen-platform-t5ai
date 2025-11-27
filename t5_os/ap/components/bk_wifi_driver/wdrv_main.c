@@ -374,7 +374,6 @@ bk_err_t wdrv_init()
         goto wdrv_init_failed;
     }
     
-    
     ret = rtos_smp_create_thread(&wdrv_env.handle,
                                 WDRV_TASK_PRIO,
                                 "wdrv_thread",

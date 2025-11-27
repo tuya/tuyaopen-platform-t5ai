@@ -667,9 +667,7 @@ bk_err_t bk_wlan_start_sta(network_InitTypeDef_st *inNetworkInitPara)
 	if (bk_feature_fast_connect_enable()) {
 		struct wlan_fast_connect_info fci = {0};
 		int ssid_len, req_ssid_len;
-#if CONFIG_EASY_FLASH_FAST_CONNECT
-		bk_get_env_enhance("fast_connect_id", (void *)&fci, sizeof(struct wlan_fast_connect_info));
-#endif
+		wlan_read_fast_connect_info(&fci);
 
 		ssid_len = os_strlen((char *)fci.ssid);
 		if (ssid_len > SSID_MAX_LEN)
@@ -694,7 +692,7 @@ bk_err_t bk_wlan_start_sta(network_InitTypeDef_st *inNetworkInitPara)
 			psk = fci.psk;
 			psk_len = PMK_LEN * 2;
 
-			WIFI_LOGD("fast_connect\n");
+			WIFI_LOGI("fast_connect\n");
 #if 0
 			WIFI_LOGD("  chan: %d\n", chan);
 			WIFI_LOGD("  PMK: %s\n", psk);
@@ -1807,7 +1805,12 @@ void wlan_read_fast_connect_info(struct wlan_fast_connect_info *fci)
 {
 	/* read fast connect info from flash */
 	if(g_is_get_fci_from_flash && g_is_use_fci_from_flash)
-		get_net_info(FAST_CONNECT_ITEM, (UINT8 *)fci, NULL, NULL);
+	{
+		//get_net_info(FAST_CONNECT_ITEM, (UINT8 *)fci, NULL, NULL);
+		#if CONFIG_EASY_FLASH_FAST_DHCP
+		bk_get_env_enhance("fast_connect_id", (void *)&fci, sizeof(struct wlan_fast_connect_info));
+		#endif
+	}
 	else
 		os_memcpy((UINT8 *)fci, &g_fci, sizeof(struct wlan_fast_connect_info));
 
@@ -1838,7 +1841,12 @@ void wlan_write_fast_connect_info(struct wlan_fast_connect_info *fci)
 
 	/* save encrypted or plain fast connect info to flash */
 	if(g_is_get_fci_from_flash && g_is_use_fci_from_flash)
-		save_net_info(FAST_CONNECT_ITEM, (UINT8 *)fci, NULL, NULL);
+	{
+		//save_net_info(FAST_CONNECT_ITEM, (UINT8 *)fci, NULL, NULL);
+		#if CONFIG_EASY_FLASH_FAST_DHCP
+		bk_set_env_enhance("fast_connect_id", (void *)&fci, sizeof(struct wlan_fast_connect_info));
+		#endif
+	}
 	else
 		os_memcpy(&g_fci, (UINT8 *)fci, sizeof(struct wlan_fast_connect_info));
 
@@ -1854,7 +1862,10 @@ void wlan_clear_fast_connect_info(struct wlan_fast_connect_info *fci)
 		if(g_is_get_fci_from_flash && g_is_use_fci_from_flash)
 		{
 			os_memset(fci, 0, sizeof(struct wlan_fast_connect_info));
-			save_net_info(FAST_CONNECT_ITEM, (UINT8 *)fci, NULL, NULL);
+			//save_net_info(FAST_CONNECT_ITEM, (UINT8 *)fci, NULL, NULL);
+			#if CONFIG_EASY_FLASH_FAST_DHCP
+			bk_set_env_enhance("fast_connect_id", (void *)&fci, sizeof(struct wlan_fast_connect_info));
+			#endif
 		}
 		else
 		{
@@ -2065,9 +2076,7 @@ bk_err_t bk_wifi_sta_start(void)
 		int ssid_len, req_ssid_len;
 
 		os_memset(&fci, 0, sizeof(fci));
-#if CONFIG_EASY_FLASH_FAST_CONNECT
-		bk_get_env_enhance("fast_connect_id", (void *)&fci, sizeof(struct wlan_fast_connect_info));
-#endif
+		wlan_read_fast_connect_info(&fci);
 
 		ssid_len = os_strlen((char *)fci.ssid);
 		if (ssid_len > SSID_MAX_LEN)
@@ -2097,7 +2106,7 @@ bk_err_t bk_wifi_sta_start(void)
 			g_sta_param_ptr->fast_connect.chann = fci.channel;
 			g_sta_param_ptr->fast_connect_set = 1;
 
-			WIFI_LOGD("fast_connect\n");
+			WIFI_LOGI("fast_connect\n");
 #if 0
 			WIFI_LOGD("  chan: %d\n", fci.channel);
 			WIFI_LOGD("  PMK: %s\n", psk);
@@ -2700,14 +2709,12 @@ bk_err_t bk_wifi_sta_get_config(wifi_sta_config_t *config)
 	if (!wifi_sta_is_configured())
 		return BK_ERR_WIFI_STA_NOT_CONFIG;
 
-	os_memcpy(config->ssid, g_sta_param_ptr->ssid.array, g_sta_param_ptr->ssid.length);
+	os_strcpy(config->ssid, (char *)g_sta_param_ptr->ssid.array);
+	os_strcpy(config->password, (char *)g_sta_param_ptr->key);
 
 	if (bk_feature_bssid_connect_enable()) {
 		os_memcpy(config->bssid, g_sta_param_ptr->fast_connect.bssid, sizeof(config->bssid));
 	}
-
-	os_memcpy(config->password, g_sta_param_ptr->key, g_sta_param_ptr->key_len);
-	config->password[g_sta_param_ptr->key_len] = 0;
 
 	if(bk_feature_fast_connect_enable()){
 		os_memcpy(config->bssid, g_fci.bssid, WIFI_BSSID_LEN);
@@ -3072,9 +3079,8 @@ void bk_wifi_scan_free_result(wifi_scan_result_t *scan_result)
 }
 
 #if CONFIG_BRIDGE
-extern uint8 bridge_is_enabled;
+static bk_bridge_state_t bridge_state = BRIDGE_STATE_DISABLED;
 #endif
-
 bk_err_t bk_wifi_ap_start(void)
 {
 	WIFI_LOGV("ap starting\n");
@@ -3112,7 +3118,7 @@ bk_err_t bk_wifi_ap_start(void)
 #if CONFIG_LWIP
 	//TODO move to event handler
 #if CONFIG_BRIDGE
-	if (!bridge_is_enabled)
+	if (bk_wifi_get_bridge_state() == BRIDGE_STATE_DISABLED)
 #endif
 		uap_ip_start();
 #endif
@@ -3225,26 +3231,19 @@ static bk_err_t wifi_ap_set_config(const wifi_ap_config_t *ap_config)
 bk_err_t bk_wifi_ap_set_config(const wifi_ap_config_t *ap_config)
 {
 	int ret = BK_OK;
-	netif_ip4_config_t ip4_config = {0};
 
 	WIFI_LOGV("ap configuring\n");
 
 #if CONFIG_BRIDGE
-	if (!bridge_is_enabled) {
-#endif
-		os_strcpy(ip4_config.ip, WLAN_DEFAULT_IP);
-		os_strcpy(ip4_config.mask, WLAN_DEFAULT_MASK);
-		os_strcpy(ip4_config.gateway, WLAN_DEFAULT_GW);
-		os_strcpy(ip4_config.dns, WLAN_DEFAULT_GW);
-#if CONFIG_BRIDGE
-	} else {
+	if (bk_wifi_get_bridge_state() != BRIDGE_STATE_DISABLED) {
+		netif_ip4_config_t ip4_config = {0};
 		os_strcpy(ip4_config.ip, WLAN_ANY_IP);
 		os_strcpy(ip4_config.mask, WLAN_ANY_IP);
 		os_strcpy(ip4_config.gateway, WLAN_ANY_IP);
 		os_strcpy(ip4_config.dns, WLAN_ANY_IP);
+		BK_RETURN_ON_ERR(bk_netif_set_ip4_config(NETIF_IF_AP, &ip4_config));
 	}
 #endif
-	BK_RETURN_ON_ERR(bk_netif_set_ip4_config(NETIF_IF_AP, &ip4_config));
 
 	if (!wifi_is_inited()) {
 		WIFI_LOGV("set ap config fail, wifi not init\n");
@@ -4244,6 +4243,9 @@ bk_err_t bk_wifi_ftm_start(const wifi_ftm_config_t *config, wifi_ftm_results_t *
 	WIFI_LOGD("FTM starting\n");
 	WIFI_LOGD("ftm config: ftm_per_burst %d, nb_ftm_rsp %d \n", config->ftm_per_burst, config->nb_ftm_rsp);
 
+	ftm_results->nb_ftm_rsp = 0;
+	ftm_results->rsp = NULL;
+
 	if (!wifi_is_inited()) {
 		WIFI_LOGV("start ftm fail, wifi not init\n");
 		return BK_ERR_WIFI_NOT_INIT;
@@ -4273,7 +4275,7 @@ bk_err_t bk_wifi_ftm_start(const wifi_ftm_config_t *config, wifi_ftm_results_t *
 	}
 
 	ftm_results->nb_ftm_rsp = ind->results.nb_ftm_rsp;
-	ftm_results->rsp = os_zalloc(sizeof(wifi_ftm_rsp_info_t) * ftm_results->nb_ftm_rsp);
+	ftm_results->rsp = os_malloc(sizeof(wifi_ftm_rsp_info_t) * ftm_results->nb_ftm_rsp);
 	for (int i = 0; i < ftm_results->nb_ftm_rsp; i++)
 	{
 		os_memcpy(ftm_results->rsp[i].bssid, (uint8_t *)&ind->results.meas[i].addr, ETH_ALEN);
@@ -4303,8 +4305,8 @@ bk_err_t bk_wifi_ftm_dump_result(const wifi_ftm_results_t *ftm_results)
 	WIFI_LOGD("ftm found %d responser\n", ftm_results->nb_ftm_rsp);
 
 	for (int i = 0; i < ftm_results->nb_ftm_rsp; i++) {
-		BK_LOGD("The distance to " WIFI_MAC_FORMAT " is %.2f meters, rtt is %d nSec \n",
-			WIFI_MAC_STR(ftm_results->rsp[i].bssid), ftm_results->rsp[i].distance, ftm_results->rsp[i].rtt);
+		WIFI_LOGD("The distance to "BK_MAC_FORMAT" is %.2f meters, rtt is %d nSec \n",
+			BK_MAC_STR(ftm_results->rsp[i].bssid), ftm_results->rsp[i].distance, ftm_results->rsp[i].rtt);
 		rtos_delay_milliseconds(10);
 	}
 
@@ -4313,7 +4315,7 @@ bk_err_t bk_wifi_ftm_dump_result(const wifi_ftm_results_t *ftm_results)
 	return BK_OK;
 }
 
-void bk_wifi_ftm_free_result(wifi_ftm_results_t *ftm_results)
+bk_err_t bk_wifi_ftm_free_result(wifi_ftm_results_t *ftm_results)
 {
 	if (ftm_results) {
 		os_free(ftm_results->rsp);
@@ -4321,6 +4323,8 @@ void bk_wifi_ftm_free_result(wifi_ftm_results_t *ftm_results)
 		ftm_results->nb_ftm_rsp = 0;
 	}
 	WIFI_LOGD("ftm free result\n");
+
+	return BK_OK;
 }
 #endif //CONFIG_WIFI_FTM
 
@@ -4405,17 +4409,18 @@ bk_err_t bk_wifi_csi_demo_turn_on_light(uint8_t color, bool flicker) {
 #endif
 #endif //CONFIG_WIFI_CSI_EN
 
-wifi_csi_cb_t g_wifi_csi_info_handler = NULL;
-void bk_wifi_csi_info_cb_register(wifi_csi_cb_t cb)
+static bool g_wifi_csi_info_cb_registered = false;
+bk_err_t bk_wifi_csi_info_cb_register(bool enable)
 {
-	g_wifi_csi_info_handler = cb;
+	g_wifi_csi_info_cb_registered = enable;
+
+	return BK_OK;
 }
 void bk_wifi_csi_info_cb(void * data)
 {
-	if(g_wifi_csi_info_handler)
-		g_wifi_csi_info_handler((struct wifi_csi_info_t *)data);
+	if(g_wifi_csi_info_cb_registered)
+		cif_handle_bk_cmd_csi_info_ind(data);
 }
-
 
 bk_err_t bk_wifi_get_tx_stats(uint8_t mode,struct tx_stats_t* tx_stats)
 {
@@ -4543,7 +4548,7 @@ static bk_err_t bk_scan_country_code_callback(void *ctxt, uint8_t *cc, uint8_t c
 			}
 			bk_scan_ptr->cc_len = MAC_COUNTRY_STRING_LEN;
 		}
-		bk_wifi_bcn_cc_rxed_register_cb(NULL, NULL);
+		bk_wifi_bcn_cc_rxed_register_cb(NULL, NULL, false);
 		rtos_set_semaphore(&bk_scan_ptr->cc_wait);
 	}
 
@@ -4564,7 +4569,7 @@ bk_err_t bk_scan_country_code(uint8_t *country_code, int *len)
 		else
 			bk_scan.cc_ptr = NULL;
 
-		bk_wifi_bcn_cc_rxed_register_cb(bk_scan_country_code_callback, &bk_scan);
+		bk_wifi_bcn_cc_rxed_register_cb(bk_scan_country_code_callback, &bk_scan, false);
 		err = cc_scan_start();
 		if (err == kNoErr) {
 			err = rtos_get_semaphore(&bk_scan.cc_wait, 4000);
@@ -4575,10 +4580,58 @@ bk_err_t bk_scan_country_code(uint8_t *country_code, int *len)
 				return err;
 			}
 		}
-		bk_wifi_bcn_cc_rxed_register_cb(NULL, NULL);
+		bk_wifi_bcn_cc_rxed_register_cb(NULL, NULL, false);
 		rtos_deinit_semaphore(&bk_scan.cc_wait);
 	}
 
 	return err;
 }
+
+static bool g_scan_cc_rxed_registered = false;
+static wifi_beacon_cc_rxed_t g_scan_cc_rxed_cb = NULL;
+void *g_scan_cc_ctxt = NULL;
+bk_err_t bk_wifi_bcn_cc_rxed_register_cb(const wifi_beacon_cc_rxed_t cc_cb, void *ctxt, bool enable)
+{
+    g_scan_cc_rxed_cb = cc_cb;
+    g_scan_cc_ctxt = ctxt;
+
+    g_scan_cc_rxed_registered = enable;
+
+    return 0;
+}
+
+bk_err_t bk_wifi_bcn_cc_rxed_cb(uint8_t *cc, uint8_t cc_len)
+{
+    if (g_scan_cc_rxed_registered)
+        cif_handle_bk_cmd_bcn_cc_ind(cc, cc_len);
+
+    if (g_scan_cc_rxed_cb)
+        g_scan_cc_rxed_cb(g_scan_cc_ctxt, cc, cc_len);
+
+    return 0;
+}
+
 #endif //CONFIG_WIFI_SCAN_COUNTRY_CODE
+
+#if CONFIG_BRIDGE
+bk_err_t bk_wifi_check_client_mac_connected(uint8_t *mac)
+{
+	if (!rwm_mgmt_sta_mac2ptr(mac))
+	{
+		return BK_FAIL;
+	} else {
+		return BK_OK;
+	}
+}
+
+bk_bridge_state_t bk_wifi_get_bridge_state(void)
+{
+    return bridge_state;
+}
+
+bk_err_t bk_wifi_sync_bridge_state(bk_bridge_state_t state)
+{
+    bridge_state = state;
+    return BK_OK;
+}
+#endif

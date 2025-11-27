@@ -1,0 +1,17 @@
+menu "Bk_player_service"
+
+	config PLAYER_SERVICE
+		bool "Enable bk_player_service"
+		depends on ADK
+		default n
+		help
+			Enable the bk_player_service Interface API for playing prompt tones or music
+
+	config PLAYER_SERVICE_TEST
+		depends on PLAYER_SERVICE
+		bool "Enable bk_player_service Test"
+		default n
+		help
+			Enable bk_player_service test to test bk_player_service by cli command
+
+endmenu

@@ -19,6 +19,7 @@
 #include "tkl_flash.h"
 #include "tkl_wakeup.h"
 
+#include "driver/pm_ap_core.h"
 
 static uint32_t is_prepare_deepsleep = 0;
 
@@ -35,30 +36,38 @@ extern void bk_printf(const char *fmt, ...);
  ******************************************************************************
  */
 #define RTC_TIME 1000
-alarm_info_t low_valtage_alarm;
+static pm_ap_rtc_info_t low_power_info = {0};
+static bk_err_t cli_pm_rtc_sleep_wakeup_callback(pm_sleep_mode_e sleep_mode,pm_wakeup_source_e wake_source,void* param_p)
+{
+    bk_printf("rtc sleep wakeup callback\r\n");
+    return 0;
+}
+
+
 void _bk_rtc_wakeup_register(unsigned int rtc_time)
 {
     if (is_prepare_deepsleep)
         return;
 
     bk_printf("TODO %s\r\n", __func__);
-    memcpy(low_valtage_alarm.name, "rtc_wakeup", sizeof("rtc_wakeup"));
-    low_valtage_alarm.period_tick = rtc_time*AON_RTC_MS_TICK_CNT;
-    low_valtage_alarm.period_cnt = 0xFFFFFFFF;
-    low_valtage_alarm.callback = NULL;
-    low_valtage_alarm.param_p = NULL;
 
-    //force unregister previous if doesn't finish.
-	pm_rtc_wakeup_config_t rtc_wakeup = {0};
-	rtc_wakeup.rtc_period = rtc_time*AON_RTC_MS_TICK_CNT;//10s
-	bk_pm_ap_rtc_wakeup_source_config(PM_MODE_LOW_VOLTAGE,WAKEUP_SOURCE_INT_RTC,&rtc_wakeup);
-    bk_pm_wakeup_source_set(PM_WAKEUP_SOURCE_INT_RTC, NULL);
+    low_power_info.period_tick  = 1*1000;   // 1s
+    low_power_info.period_cnt   = 0xffffffff;
+    low_power_info.callback     = cli_pm_rtc_sleep_wakeup_callback;
+    low_power_info.param_p      = NULL;
+    bk_printf("---trace %s %d, wakeup data:%p\r\n", __func__, __LINE__, &low_power_info);
+    bk_pm_ap_rtc_regsiter_wakeup(PM_MODE_LOW_VOLTAGE, &low_power_info);
 }
 
 void _bk_rtc_wakeup_unregister(void)
 {
     bk_printf("TODO %s\r\n", __func__);
-    // bk_alarm_unregister(AON_RTC_ID_1, low_valtage_alarm.name);
+
+    low_power_info.period_tick  = 0;
+    low_power_info.period_cnt   = 0;
+    low_power_info.callback     = NULL;
+    low_power_info.param_p      = NULL;
+    bk_pm_ap_rtc_regsiter_wakeup(PM_MODE_LOW_VOLTAGE, &low_power_info);
 }
 #endif // CONFIG_AON_RTC
 
@@ -183,10 +192,11 @@ OPERATE_RET tkl_cpu_sleep_mode_set(BOOL_T enable, TUYA_CPU_SLEEP_MODE_E mode)
             if(enable) {
                 bk_printf("app vote sleep\r\n");
                 __pm_debug_8();
-	            bk_pm_ap_sleep_mode_set(PM_MODE_LOW_VOLTAGE);
-			    bk_pm_module_vote_sleep_ctrl(PM_SLEEP_MODULE_NAME_APP,0x1,0);
+                bk_pm_module_vote_cpu_freq(PM_DEV_ID_CPU1, PM_CPU_FRQ_DEFAULT);
+                bk_pm_ap_sleep_mode_set(PM_MODE_LOW_VOLTAGE);
+                bk_pm_module_vote_sleep_ctrl(PM_SLEEP_MODULE_NAME_APP,0x1,0);
             }else {
-			    bk_pm_module_vote_sleep_ctrl(PM_SLEEP_MODULE_NAME_APP,0x0,0);
+                bk_pm_module_vote_sleep_ctrl(PM_SLEEP_MODULE_NAME_APP,0x0,0);
                 // bk7236 连上路由后，cpu 一直保持在睡眠状态，唤醒周期由wifi唤醒决定
                 // bk_printf("bk_pm_module_vote_sleep_ctrl disable !!!\r\n");
             }

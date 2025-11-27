@@ -340,6 +340,19 @@ static off_t _bk_fatfs_lseek(struct bk_file *file, off_t offset, int whence) {
 	return pos;
 }
 
+static off_t _bk_fatfs_ftell(struct bk_file *file)
+{
+	FIL *fil = (FIL *)file->f_data;
+
+	return f_tell(fil);
+}
+
+static int _bk_fatfs_feof(struct bk_file *file)
+{
+	FIL *fil = (FIL *)file->f_data;
+
+	return f_EOF(fil);
+}
 static int _bk_fatfs_unlink(struct bk_filesystem *fs, const char *pathname) {
 	int ret;
 	char *full_name;
@@ -374,7 +387,7 @@ static int _bk_fatfs_stat(struct bk_filesystem *fs, const char *pathname, struct
 			statbuf->st_mode = S_IFREG;
 	}
 
-	return ret;     // Modified by TUYA
+	return ret;
 }
 
 static int _bk_fatfs_rename(struct bk_filesystem *fs, const char *oldpath, const char *newpath) {
@@ -552,6 +565,8 @@ static struct bk_file_ops g_fatfs_file_ops = {
 	.closedir = _bk_fatfs_closedir,
 	.mkdir = _bk_fatfs_mkdir,
 	.rmdir = _bk_fatfs_rmdir,
+	.ftell = _bk_fatfs_ftell,
+	.feof = _bk_fatfs_feof,
 };
 
 int bk_fatfs_init(void) {

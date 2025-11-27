@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "avdk_types.h"
+#include <components/bk_audio/audio_pipeline/audio_types.h>
 #include <components/bk_audio_asr_service_types.h>
 
 #ifdef __cplusplus

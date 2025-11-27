@@ -41,8 +41,6 @@ typedef enum
 {
 	MODULE_WIFI,
 	MODULE_DECODER,
-	MODULE_DECODER_CP2 = MODULE_DECODER,
-	MODULE_DECODER_CP1,
 	MODULE_LCD,
 	MODULE_CAPTURE,
 	MODULE_MAX,
@@ -109,8 +107,8 @@ bk_err_t frame_buffer_list_node_deinit(frame_list_node_t *node);
 /*malloc a frame_buffer node from current camera frame list*/
 frame_buffer_t *frame_buffer_fb_malloc(frame_list_node_t *node, uint32_t size);
 
-/*free a frame_buffer node to current camera frame list (free list)*/
-bk_err_t frame_buffer_list_node_invalid(frame_list_node_t *node);
+/*free ready node to current camera frame list (free list)*/
+bk_err_t frame_buffer_list_node_clear(frame_list_node_t *node);
 
 /*free a frame_buffer node to current camera frame list (free list)*/
 bk_err_t frame_buffer_fb_free(frame_list_node_t *node, frame_buffer_t *frame);

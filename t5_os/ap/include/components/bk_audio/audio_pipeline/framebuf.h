@@ -1,4 +1,4 @@
-// Copyright 2022-2023 Beken
+// Copyright 2025-2026 Beken
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -63,7 +63,7 @@ framebuf_handle_t fb_create(int node_size, int n_nodes, int info_size);
 /**
  * @brief      Cleanup and free all memory created by framebuf_handle_t
  *
- * @param[in]  fb    The Framebuffer handle
+ * @param[in]  fb    The framebuffer handle
  *
  * @return
  *     - BK_OK
@@ -74,7 +74,7 @@ bk_err_t fb_destroy(framebuf_handle_t fb);
 /**
  * @brief      Abort waiting until there is space for reading or mallocing of the framebuffer
  *
- * @param[in]  rb    The Framebuffer handle
+ * @param[in]  fb    The framebuffer handle
  *
  * @return
  *     - BK_OK
@@ -83,9 +83,20 @@ bk_err_t fb_destroy(framebuf_handle_t fb);
 bk_err_t fb_abort(framebuf_handle_t fb);
 
 /**
+ * @brief      Mark the framebuffer as done writing, no more data will be written to the framebuffer
+ *
+ * @param[in]  fb    The framebuffer handle
+ *
+ * @return
+ *     - BK_OK
+ *     - BK_FAIL
+ */
+bk_err_t fb_done_write(framebuf_handle_t fb);
+
+/**
  * @brief      Reset framebuffer, clear all values as initial state
  *
- * @param[in]  rb    The farmebuffer handle
+ * @param[in]  fb    The framebuffer handle
  *
  * @return
  *     - BK_OK
@@ -125,7 +136,7 @@ int fb_get_ready_node_num(framebuf_handle_t fb);
  *             if the ready framebuffer list is exist node.
  *
  * @param[in]  fb             The framebuffer handle
- * @param      fb_buf_node    The buffer pointer to read out framebuffer node
+ * @param[out] fb_node_item   The framebuffer node item to read out
  * @param[in]  ticks_to_wait  The ticks to wait
  *
  * @return
@@ -138,7 +149,7 @@ int fb_read(framebuf_handle_t fb, framebuf_node_item_t **fb_node_item, TickType_
  * @brief      Write framebuffer node to ready framebuffer and wait `tick_to_wait` ticks until can write
  *
  * @param[in]  fb             The framebuffer handle
- * @param      fb_buf_node    The buffer pointer to need write framebuffer node
+ * @param[out] fb_node_item   The framebuffer node item to write
  * @param[in]  ticks_to_wait  The ticks to wait
  *
  * @return
@@ -152,7 +163,7 @@ int fb_write(framebuf_handle_t fb, framebuf_node_item_t *fb_node_item, TickType_
  *             if the free framebuffer list available is exist node.
  *
  * @param[in]   fb             The framebuffer handle
- * @param[out]  fb_buf_node    The buffer pointer to read out framebuffer node
+ * @param[out]  fb_node_item   The framebuffer node item to malloc
  * @param[in]   ticks_to_wait  The ticks to wait
  *
  * @return
@@ -165,7 +176,7 @@ int fb_malloc(framebuf_handle_t fb, framebuf_node_item_t **fb_node_item, TickTyp
  * @brief      Push framebuffer node to free framebuffer and wait `tick_to_wait` ticks until can push
  *
  * @param[in]  fb             The framebuffer handle
- * @param[in]  fb_buf_node    The buffer pointer to read out framebuffer node
+ * @param[in]  fb_node_item   The framebuffer node item to free
  * @param[in]  ticks_to_wait  The ticks to wait
  *
  * @return
@@ -178,7 +189,7 @@ int fb_free(framebuf_handle_t fb, framebuf_node_item_t *fb_node_item, TickType_t
  * @brief      Debug framebuffer, printf framebuffer node information
  *
  * @param[in]  fb             The framebuffer handle
- * @param[in]  fb_buf_node    The line
+ * @param[in]  line           The line
  * @param[in]  func           The function call this api
  *
  * @return     None
@@ -188,7 +199,7 @@ void debug_fb_node_lists(framebuf_handle_t fb, int line, const char *func);
 /**
  * @brief      Debug framebuffer node, printf framebuffer node information
  *
- * @param[in]  fb_node_item    The framebuffer node ptr handle
+ * @param[in]  fb_node_item    The framebuffer node item to debug
  * @param[in]  line            The line
  * @param[in]  func            The function call this api
  *

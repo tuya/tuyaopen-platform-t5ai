@@ -15,7 +15,6 @@
 #pragma once
 
 #include  "cpu_id.h"
-#include <stdint.h>
 
 void cpu0_set_core_id(void);
 void cpu1_set_core_id(void);

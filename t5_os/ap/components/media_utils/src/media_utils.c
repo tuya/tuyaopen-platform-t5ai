@@ -29,7 +29,11 @@ char * get_string_to_lcd_name(char *string)
 {
 	char* value = NULL;
 
-	if (os_strcmp(string, "nt35512") == 0)
+	if (os_strcmp(string, "st7789t3") == 0)
+	{
+		value = "st7789t3";
+	}
+    else if (os_strcmp(string, "nt35512") == 0)
 	{
 		value = "nt35512";
 	}
@@ -118,6 +122,11 @@ media_ppi_t get_string_to_ppi(char *string)
 	if (strcmp(string, "1920X1080") == 0)
 	{
 		value = PPI_1920X1080;
+	}
+
+	if (strcmp(string, "1600X1200") == 0)
+	{
+		value = PPI_1600X1200;
 	}
 
 	if (strcmp(string, "1280X720") == 0)
@@ -272,23 +281,24 @@ media_ppi_cap_t pixel_ppi_to_cap(media_ppi_t ppi)
 			cap = PPI_CAP_480X480;
 			break;
 
-		case PPI_640X480:
-			cap = PPI_CAP_640X480;
-			break;
-
 		case PPI_480X800:
 			cap = PPI_CAP_480X800;
+			break;
+
+		case PPI_640X480:
+			cap = PPI_CAP_640X480;
 			break;
 
 		case PPI_800X480:
 			cap = PPI_CAP_800X480;
 			break;
-		case PPI_864X480:
-			cap = PPI_CAP_864X480;
-			break;
 
 		case PPI_800X600:
 			cap = PPI_CAP_800X600;
+			break;
+
+		case PPI_864X480:
+			cap = PPI_CAP_864X480;
 			break;
 
 		case PPI_1024X600:

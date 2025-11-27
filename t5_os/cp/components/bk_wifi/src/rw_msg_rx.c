@@ -337,19 +337,9 @@ void mhdr_scanu_reg_cb(FUNC_2PARAM_PTR ind_cb, void *ctxt)
 
 #if CONFIG_WIFI_SCAN_COUNTRY_CODE
 // Country code beacon received
-static wifi_beacon_cc_rxed_t g_scan_cc_rxed_cb = NULL;
-void *g_scan_cc_ctxt = NULL;
 static beken_thread_t g_scan_cc_thread = NULL;
 static beken_semaphore_t cc_scan_handle = NULL;
 bool site_survey_cc = false;
-
-bk_err_t bk_wifi_bcn_cc_rxed_register_cb(const wifi_beacon_cc_rxed_t cc_cb, void *ctxt)
-{
-	g_scan_cc_rxed_cb = cc_cb;
-	g_scan_cc_ctxt = ctxt;
-
-	return 0;
-}
 
 static int cc_scan_ap_cb(void *arg, event_module_t event_module,
 						 int event_id, void *_event_data)
@@ -1051,11 +1041,11 @@ UINT32 mhdr_scanu_result_ind(SCAN_RST_UPLOAD_T *scan_rst, void *msg, UINT32 len)
 	vies_len = scanu_ret_ptr->length - MAC_BEACON_VARIABLE_PART_OFT;
 	var_part_addr = probe_rsp_ieee80211_ptr->rsp.variable;
 	#if CONFIG_WIFI_SCAN_COUNTRY_CODE
-	if (site_survey_cc && g_scan_cc_rxed_cb) {
+	if (site_survey_cc) {
 		elmt_addr = (UINT8 *)get_ie(var_part_addr, vies_len, MAC_ELTID_COUNTRY);
 		if (elmt_addr) {
 			UINT8 cc_len = *(elmt_addr + MAC_COUNTRY_LEN_OFT);
-			g_scan_cc_rxed_cb(g_scan_cc_ctxt, (uint8_t *)(elmt_addr + MAC_COUNTRY_STRING_OFT), cc_len);
+			bk_wifi_bcn_cc_rxed_cb((uint8_t *)(elmt_addr + MAC_COUNTRY_STRING_OFT), cc_len);
 		}
 	}
 	#endif // CONFIG_WIFI_SCAN_COUNTRY_CODE

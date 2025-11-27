@@ -255,12 +255,15 @@ function(__project_init components_var test_components_var)
             set(EXTRA_COMPONENTS_DIRS $ENV{EXTRA_COMPONENTS_DIRS})
             spaces2list(EXTRA_COMPONENTS_DIRS)
         endif()
-        foreach(component_dir ${EXTRA_COMPONENTS_DIRS})
-            __project_component_dir("${component_dir}")
-        endforeach()
 
         armino_build_get_property(armino_path ARMINO_PATH)
         get_filename_component(sub_sys ${armino_path} NAME) #ap/cp
+
+	# Modified by TUYA Start
+        foreach(component_dir ${EXTRA_COMPONENTS_DIRS})
+            __project_component_dir("${component_dir}")
+        endforeach()
+	# Modified by TUYA End
 
         __project_component_dir("${CMAKE_CURRENT_LIST_DIR}/${sub_sys}/components")
 

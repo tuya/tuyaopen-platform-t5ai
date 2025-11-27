@@ -1,11 +1,5 @@
 menu "Media Utils"
 
-	config MEDIA_IPC
-		depends on MAILBOX
-		bool "Enable Media"
-		default n
-		help
-			Enable media ipc
 
 	config PSRAM_MEDIA_MALLOC_ENABLE
 		depends on PSRAM_AS_SYS_MEMORY

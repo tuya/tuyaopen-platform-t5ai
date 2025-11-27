@@ -130,6 +130,19 @@ const dvp_sensor_config_t *bk_dvp_get_sensor_auto_detect(void);
  */
 bk_err_t bk_dvp_h264_idr_reset(void);
 
+/**
+ * @brief     set stream state
+ *
+ * This API called by user, once call this api, will set stream state
+ *
+ * @attation 1. This api only set current frame buffer is invalid, and drop it.
+ *
+ * @return
+ *    - BK_OK: succeed
+ *    - others: other errors.
+ */
+bk_err_t bk_dvp_set_stream_state(uint32_t state);
+
 #ifdef __cplusplus
 }
 #endif

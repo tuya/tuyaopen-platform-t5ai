@@ -1,4 +1,4 @@
-// Copyright 2022-2023 Beken
+// Copyright 2025-2026 Beken
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -56,23 +56,12 @@ bk_err_t adk_raw_test_case_0(void)
     audio_pipeline_handle_t record_pipeline, play_pipeline;
     audio_element_handle_t onboard_mic, raw_read;
     audio_element_handle_t raw_write, onboard_speaker;
-#if 0
-    bk_set_printf_sync(true);
-    extern void bk_enable_white_list(int enabled);
-    bk_enable_white_list(1);
-    bk_disable_mod_printf("AUDIO_PIPELINE", 0);
-    bk_disable_mod_printf("AUDIO_ELEMENT", 0);
-    bk_disable_mod_printf("AUDIO_EVENT", 0);
-    //      bk_disable_mod_printf("AUDIO_MEM", 0);
-    bk_disable_mod_printf("FATFS_STREAM", 0);
-    bk_disable_mod_printf("ONBOARD_MIC", 0);
-    bk_disable_mod_printf("ONBOARD_MIC_TEST", 0);
-#endif
+
     BK_LOGD(TAG, "--------- %s ----------\n", __func__);
     AUDIO_MEM_SHOW("start \n");
 
     char *buf = audio_calloc(1, 960);
-    AUDIO_MEM_CHECK(TAG, buf, return BK_FAIL;);
+    TEST_CHECK_NULL(buf);
 
     BK_LOGD(TAG, "--------- step1: pipeline init ----------\n");
     audio_pipeline_cfg_t record_pipeline_cfg = DEFAULT_AUDIO_PIPELINE_CONFIG();
@@ -129,19 +118,15 @@ bk_err_t adk_raw_test_case_0(void)
     }
 
     BK_LOGD(TAG, "--------- step4: pipeline link ----------\n");
-    if (BK_OK != audio_pipeline_link(record_pipeline, (const char *[])
-{"onboard_mic", "raw_read"
-}, 2))
+    if (BK_OK != audio_pipeline_link(record_pipeline, (const char *[]){"onboard_mic", "raw_read"}, 2))
     {
-        BK_LOGE(TAG, "pipeline link fail, %d \n", __LINE__);
+        BK_LOGE(TAG, "record pipeline link fail, %d \n", __LINE__);
         return BK_FAIL;
     }
 
-    if (BK_OK != audio_pipeline_link(play_pipeline, (const char *[])
-{"raw_write", "onboard_speaker"
-}, 2))
+    if (BK_OK != audio_pipeline_link(play_pipeline, (const char *[]){"raw_write", "onboard_speaker"}, 2))
     {
-        BK_LOGE(TAG, "pipeline link fail, %d \n", __LINE__);
+        BK_LOGE(TAG, "play pipeline link fail, %d \n", __LINE__);
         return BK_FAIL;
     }
 
@@ -150,14 +135,14 @@ bk_err_t adk_raw_test_case_0(void)
     audio_event_iface_handle_t record_evt = audio_event_iface_init(&evt_cfg);
     if (BK_OK != audio_pipeline_set_listener(record_pipeline, record_evt))
     {
-        BK_LOGE(TAG, "set listener fail, %d \n", __LINE__);
+        BK_LOGE(TAG, "set record pipeline listener fail, %d \n", __LINE__);
         return BK_FAIL;
     }
 
     audio_event_iface_handle_t play_evt = audio_event_iface_init(&evt_cfg);
     if (BK_OK != audio_pipeline_set_listener(play_pipeline, play_evt))
     {
-        BK_LOGE(TAG, "set listener fail, %d \n", __LINE__);
+        BK_LOGE(TAG, "set play pipeline listener fail, %d \n", __LINE__);
         return BK_FAIL;
     }
 
@@ -184,8 +169,7 @@ bk_err_t adk_raw_test_case_0(void)
         bk_err_t ret = audio_event_iface_listen(evt, &msg, 0);//portMAX_DELAY
         if (ret == BK_OK)
         {
-            if (msg.source_type == AUDIO_ELEMENT_TYPE_ELEMENT
-                && msg.cmd == AEL_MSG_CMD_REPORT_STATUS
+            if (msg.cmd == AEL_MSG_CMD_REPORT_STATUS
                 && (((int)msg.data == AEL_STATUS_STATE_STOPPED) || ((int)msg.data == AEL_STATUS_STATE_FINISHED)))
             {
                 BK_LOGW(TAG, "[ * ] Stop event received \n");
@@ -218,32 +202,6 @@ bk_err_t adk_raw_test_case_0(void)
         {
             BK_LOGE(TAG, "raw_stream_read size: %d \n", size);
         }
-
-#if 0
-        int size = raw_stream_read(raw_read, buf, 960);
-        if (size > 0)
-        {
-            size = raw_stream_write(raw_write, buf, size);
-            if (size <= 0)
-            {
-                BK_LOGE(TAG, "raw_stream_write size: %d \n", size);
-                break;
-            }
-            else
-            {
-                read_count++;
-                if (read_count == TEST_NUM)
-                {
-                    break;
-                }
-            }
-        }
-        else
-        {
-            BK_LOGE(TAG, "raw_stream_read size: %d \n", size);
-            break;
-        }
-#endif
     }
 
     BK_LOGD(TAG, "--------- step7: deinit pipeline ----------\n");
@@ -270,71 +228,71 @@ bk_err_t adk_raw_test_case_0(void)
 
     if (BK_OK != audio_pipeline_terminate(play_pipeline))
     {
-        BK_LOGE(TAG, "pipeline terminate fail, %d \n", __LINE__);
+        BK_LOGE(TAG, "play pipeline terminate fail, %d \n", __LINE__);
         return BK_FAIL;
     }
     if (BK_OK != audio_pipeline_terminate(record_pipeline))
     {
-        BK_LOGE(TAG, "pipeline terminate fail, %d \n", __LINE__);
+        BK_LOGE(TAG, "record pipeline terminate fail, %d \n", __LINE__);
         return BK_FAIL;
     }
 
     if (BK_OK != audio_pipeline_unregister(record_pipeline, onboard_mic))
     {
-        BK_LOGE(TAG, "pipeline terminate fail, %d \n", __LINE__);
+        BK_LOGE(TAG, "record pipeline unregister fail, %d \n", __LINE__);
         return BK_FAIL;
     }
     if (BK_OK != audio_pipeline_unregister(record_pipeline, raw_read))
     {
-        BK_LOGE(TAG, "pipeline terminate fail, %d \n", __LINE__);
+        BK_LOGE(TAG, "record pipeline unregister fail, %d \n", __LINE__);
         return BK_FAIL;
     }
     if (BK_OK != audio_pipeline_unregister(play_pipeline, onboard_speaker))
     {
-        BK_LOGE(TAG, "pipeline terminate fail, %d \n", __LINE__);
+        BK_LOGE(TAG, "play pipeline unregister fail, %d \n", __LINE__);
         return BK_FAIL;
     }
     if (BK_OK != audio_pipeline_unregister(play_pipeline, raw_write))
     {
-        BK_LOGE(TAG, "pipeline terminate fail, %d \n", __LINE__);
+        BK_LOGE(TAG, "play pipeline unregister fail, %d \n", __LINE__);
         return BK_FAIL;
     }
 
     if (BK_OK != audio_pipeline_remove_listener(record_pipeline))
     {
-        BK_LOGE(TAG, "pipeline terminate fail, %d \n", __LINE__);
+        BK_LOGE(TAG, "record pipeline remove listener fail, %d \n", __LINE__);
         return BK_FAIL;
     }
     if (BK_OK != audio_pipeline_remove_listener(play_pipeline))
     {
-        BK_LOGE(TAG, "pipeline terminate fail, %d \n", __LINE__);
+        BK_LOGE(TAG, "play pipeline remove listener fail, %d \n", __LINE__);
         return BK_FAIL;
     }
 
     if (BK_OK != audio_event_iface_destroy(record_evt))
     {
-        BK_LOGE(TAG, "pipeline terminate fail, %d \n", __LINE__);
+        BK_LOGE(TAG, "record event iface destroy fail, %d \n", __LINE__);
         return BK_FAIL;
     }
     if (BK_OK != audio_event_iface_destroy(play_evt))
     {
-        BK_LOGE(TAG, "pipeline terminate fail, %d \n", __LINE__);
+        BK_LOGE(TAG, "play event iface destroy fail, %d \n", __LINE__);
         return BK_FAIL;
     }
     if (BK_OK != audio_event_iface_destroy(evt))
     {
-        BK_LOGE(TAG, "pipeline terminate fail, %d \n", __LINE__);
+        BK_LOGE(TAG, "play event iface destroy fail, %d \n", __LINE__);
         return BK_FAIL;
     }
 
     if (BK_OK != audio_pipeline_deinit(record_pipeline))
     {
-        BK_LOGE(TAG, "pipeline terminate fail, %d \n", __LINE__);
+        BK_LOGE(TAG, "record pipeline deinit fail, %d \n", __LINE__);
         return BK_FAIL;
     }
     if (BK_OK != audio_pipeline_deinit(play_pipeline))
     {
-        BK_LOGE(TAG, "pipeline terminate fail, %d \n", __LINE__);
+        BK_LOGE(TAG, "play pipeline deinit fail, %d \n", __LINE__);
         return BK_FAIL;
     }
 

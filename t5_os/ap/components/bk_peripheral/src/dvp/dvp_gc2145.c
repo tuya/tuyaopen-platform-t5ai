@@ -679,6 +679,7 @@ const uint8_t sensor_gc2145_init_talbe[][2] =
     {0xfe, 0x00},
 
     //////////////frame rate 50Hz/////////
+#if 0
     {0xfe, 0x00},
     {0x05, 0x01},
     {0x06, 0x56},
@@ -737,13 +738,32 @@ const uint8_t sensor_gc2145_init_talbe[][2] =
     {0x08, 0x38},
     {0x0a, 0x80},
     {0x21, 0x04},
+#endif
     {0xfe, 0x00},
-    {0x20, 0x03},
+    {0x24, 0xff},//[7:6] drv_low_data [5:4] sync_drv[3:2] drv_high_data[1:0] pclk_drv
     {0xfe, 0x00},
 };
 
 const uint8_t sensor_gc2145_640_480_table[][2] =
 {
+    {0xfe, 0x00},
+    {0x05, 0x01},
+    {0x06, 0x56},
+    {0x07, 0x00},
+    {0x08, 0x32},
+    {0xfe, 0x01},
+    {0x25, 0x00},
+    {0x26, 0xfa},
+    {0x27, 0x04},
+    {0x28, 0xe2}, //20fps
+    {0x29, 0x04},
+    {0x2a, 0xe2}, //14fps
+    {0x2b, 0x04},
+    {0x2c, 0xe2}, //12fps
+    {0x2d, 0x04},
+    {0x2e, 0xe2}, //8fps
+    {0xfe, 0x00},
+
     {0xfe, 0x00},
     {0xfe, 0x00},
     {0xf8, 0x85},
@@ -1026,6 +1046,87 @@ const uint8_t sensor_gc2145_1024_600_table[][2] =
     {0xa2, 0x23},
 };
 */
+const uint8_t sensor_gc2145_1600_1200_table[][2] =
+{
+    //pclk=72m,fps=21fps
+    {0xfe, 0x00},
+    //{0xfe, 0x00},
+    {0xfd, 0x00},
+    //{0xf8, 0x84},
+    {0xfa, 0x00},
+    {0x1c , 0x05},
+    //////////////////////////////////////
+    /////////  crop window   /////////////
+    //////////////////////////////////////
+    {0xfe, 0x00},
+    {0x99 , 0x11},
+    {0x9a , 0x06},
+    {0x9b , 0x00},
+    {0x9c , 0x00},
+    {0x9d , 0x00},
+    {0x9e , 0x00},
+    {0x9f , 0x00},
+    {0xa0 , 0x00},
+    {0xa1 , 0x00},
+    {0xa2  ,0x00},
+
+    // out windows VGA
+    {0x90, 0x01},
+    {0x91, 0x00},
+    {0x92, 0x00},
+    {0x93, 0x00},
+    {0x94, 0x00},
+    {0x95, 0x04}, // 1200
+    {0x96, 0xb0},
+    {0x97, 0x06}, // 1600
+    {0x98, 0x40},
+    //// AWB
+    {0xfe , 0x00},
+    {0xec , 0x06},
+    {0xed , 0x04},
+    {0xee , 0x60},
+    {0xef , 0x90},
+    {0xfe , 0x01},
+    {0x74 , 0x01},
+        //// AEC
+    {0xfe , 0x01},
+    {0x01 , 0x04},
+    {0x02 , 0xc0},
+    {0x03 , 0x04},
+    {0x04 , 0x90},
+    {0x05 , 0x30},
+    {0x06 , 0x90},
+    {0x07 , 0x30},
+    {0x08 , 0x80},
+    {0x0a , 0x82},
+    //{0xfe , 0x01},
+    {0x21 , 0x15},
+    {0xfe , 0x00},
+    {0x20 , 0x15},//if 0xfa=11,then 0x21=15;else if 0xfa=00,then 0x21=04
+    {0xfe , 0x00},
+};
+
+const uint8_t sensor_gc2145_1600_1200_10fps_table[][2] =
+{
+    //////////////frame rate 50Hz////////////////////////////////////////////////////
+    {0xfe, 0x00},
+    {0x05, 0x01},
+    {0x06, 0x56},
+    {0x07, 0x00},
+    {0x08, 0x80},
+    {0xfe, 0x01},
+    {0x25, 0x00},
+    {0x26, 0xb1},
+    {0x27, 0x02},
+    {0x28, 0xc4},
+    {0x29, 0x02},
+    {0x2a, 0xc4},
+    {0x2b, 0x02},
+    {0x2c, 0xc4},
+    {0x2d, 0x02},
+    {0x2e, 0xc4},
+    {0xfe, 0x00},
+};
 
 const uint8_t sensor_gc2145_1280_720_table[][2] =
 {
@@ -1129,7 +1230,64 @@ const uint8_t sensor_gc2145_1280_720_10fps_table[][2] =
 
 const uint8_t sensor_gc2145_800_480_table[][2] =
 {
-    // use default init_table
+    {0xfe, 0x00},
+    {0x05, 0x01},
+    {0x06, 0x56},
+    {0x07, 0x00},
+    {0x08, 0x32},
+    {0xfe, 0x01},
+    {0x25, 0x00},
+    {0x26, 0xfa},
+    {0x27, 0x04},
+    {0x28, 0xe2}, //20fps
+    {0x29, 0x04},
+    {0x2a, 0xe2}, //14fps
+    {0x2b, 0x04},
+    {0x2c, 0xe2}, //12fps
+    {0x2d, 0x04},
+    {0x2e, 0xe2}, //8fps
+    {0xfe, 0x00},
+
+    //SENSORDB("GC2145_Sensor_SVGA"},
+    {0xfe, 0x00},
+    {0xfd, 0x01},
+    {0xfa, 0x00},
+    //// crop window
+    {0xfe, 0x00},
+    {0x90, 0x01},
+    {0x91, 0x00},
+    {0x92, 0x3C},
+    {0x93, 0x00},
+    {0x94, 0x00},
+    {0x95, 0x01},
+    {0x96, 0xE0},
+    {0x97, 0x03},
+    {0x98, 0x20},
+    {0x99, 0x11},
+    {0x9a, 0x06},
+
+    //// AWB
+    {0xfe, 0x00},
+    {0xec, 0x02},
+    {0xed, 0x02},
+    {0xee, 0x30},
+    {0xef, 0x48},
+    {0xfe, 0x02},
+    {0x9d, 0x08},
+    {0xfe, 0x01},
+    {0x74, 0x00},
+    //// AEC
+    {0xfe, 0x01},
+    {0x01, 0x04},
+    {0x02, 0x60},
+    {0x03, 0x02},
+    {0x04, 0x48},
+    {0x05, 0x18},
+    {0x06, 0x50},
+    {0x07, 0x10},
+    {0x08, 0x38},
+    {0x0a, 0x80},
+    {0x21, 0x04},
 };
 
 const uint8_t sensor_gc2145_480_480_table[][2] =
@@ -1324,6 +1482,22 @@ int gc2145_set_ppi(media_ppi_t ppi)
         }
         break;
 
+        case PPI_1600X1200:
+        {
+            size = sizeof(sensor_gc2145_1600_1200_table) / 2;
+
+            for (i = 0; i < size; i++)
+            {
+                SENSOR_I2C_WRITE(sensor_gc2145_1600_1200_table[i][0],
+                                 sensor_gc2145_1600_1200_table[i][1]);
+
+                gc2145_read_register(sensor_gc2145_1600_1200_table[i][0],
+                                     sensor_gc2145_1600_1200_table[i][1]);
+            }
+            ret = 0;
+        }
+        break;
+
         default:
             LOGD("use default ppi:800X480\r\n");
             ret = 0;
@@ -1346,7 +1520,22 @@ int gc2145_set_fps(frame_fps_t fps)
 
     width = width_h << 8 | width_l;
 
-    if (width == 0x0500) // 1280*720
+    if (width == 0x0640)
+    {
+        size = sizeof(sensor_gc2145_1600_1200_10fps_table) / 2;
+
+        for (i = 0; i < size; i++)
+        {
+            SENSOR_I2C_WRITE(sensor_gc2145_1600_1200_10fps_table[i][0],
+                                sensor_gc2145_1600_1200_10fps_table[i][1]);
+
+            gc2145_read_register(sensor_gc2145_1600_1200_10fps_table[i][0],
+                                    sensor_gc2145_1600_1200_10fps_table[i][1]);
+        }
+
+        ret = 0;
+    }
+    else if (width == 0x0500) // 1280*720
     {
         switch (fps)
         {
@@ -1419,9 +1608,8 @@ int gc2145_set_fps(frame_fps_t fps)
             }
         }
     }
-
-        if (width == 0x0360) // 864*480
-        {
+    else if (width == 0x0360) // 864*480
+    {
         switch (fps)
         {
             case FPS25:
@@ -1605,7 +1793,7 @@ const dvp_sensor_config_t dvp_sensor_gc2145 =
     .def_fps = FPS20,
     /* capability config */
     .fps_cap = FPS10 | FPS15 | FPS20 | FPS25 | FPS30,
-    .ppi_cap = PPI_CAP_480X480 | PPI_CAP_640X480 | PPI_CAP_800X480 | PPI_CAP_864X480 | PPI_CAP_1280X720,
+    .ppi_cap = PPI_CAP_480X480 | PPI_CAP_640X480 | PPI_CAP_800X480 | PPI_CAP_864X480 | PPI_CAP_1280X720 | PPI_CAP_1600X1200,
     .id = ID_GC2145,
     .address = (GC2145_WRITE_ADDRESS >> 1),
     .init = gc2145_init,

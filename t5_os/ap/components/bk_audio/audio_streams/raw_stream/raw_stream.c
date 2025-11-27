@@ -1,4 +1,4 @@
-// Copyright 2022-2023 Beken
+// Copyright 2025-2026 Beken
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,7 +20,7 @@
 #include "semphr.h"
 #include "task.h"
 #include <components/bk_audio/audio_streams/raw_stream.h>
-#include <components/bk_audio/audio_pipeline/audio_common.h>
+#include <components/bk_audio/audio_pipeline/audio_types.h>
 #include <components/bk_audio/audio_pipeline/audio_mem.h>
 #include <components/bk_audio/audio_pipeline/audio_error.h>
 #include <components/bk_audio/audio_pipeline/audio_element.h>
@@ -210,7 +210,8 @@ audio_element_handle_t raw_stream_init(raw_stream_cfg_t *config)
     cfg.task_stack = -1;    // Not need creat task
     cfg.destroy = _raw_destroy;
     cfg.tag = "raw";
-    cfg.out_type = PORT_TYPE_RB;
+    //cfg.out_type = PORT_TYPE_RB;
+    cfg.out_type = config->output_port_type;
     cfg.out_block_size = config->out_block_size;
     cfg.out_block_num = config->out_block_num;
     raw->type = config->type;

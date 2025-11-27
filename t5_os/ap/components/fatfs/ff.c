@@ -21,6 +21,7 @@
 #include "diskio.h"		/* Declarations of device I/O functions */
 #include "bk_uart.h"
 #include <os/os.h>
+#include <time/time.h>
 /*--------------------------------------------------------------------------
 
    Module Private Definitions
@@ -2063,7 +2064,7 @@ FRESULT load_xdir (	/* FR_INT_ERR: invalid entry block */
 /* exFAT: Load the object's directory entry block */
 /*------------------------------------------------*/
 static
-FRESULT load_obj_xdir (	
+FRESULT load_obj_xdir (
 	DIR* dp,			/* Blank directory object to be used to access containing direcotry */
 	const FFOBJID* obj	/* Object with its containing directory information */
 )
@@ -3061,7 +3062,7 @@ FRESULT find_volume (	/* FR_OK(0): successful, !=0: any error occurred */
 	WORD nrsv;
 	FATFS *fs;
 	UINT i;
-	
+
 	//BK_LOGD(NULL, "find_volume 1\r\n");
 
 	/* Get logical drive number */
@@ -3334,6 +3335,8 @@ FRESULT f_mount (
 
 	/* Get logical drive number */
 	vol = get_ldnumber(&rp);
+    // bk_printf("--- fs trace %s %d, res %d, vol %d, cfs %x, fs %x, sobj %x, %x, FatFs[vol] %x\r\n",
+    //         __func__, __LINE__, res, vol, (uint32_t)cfs, (uint32_t)fs, (uint32_t)cfs->sobj, (uint32_t)fs->sobj, (uint32_t)FatFs[vol]);
 	if (vol < 0) return FR_INVALID_DRIVE;
 	cfs = FatFs[vol];					/* Pointer to fs object */
 
@@ -3358,6 +3361,13 @@ FRESULT f_mount (
 	if (opt == 0) return FR_OK;			/* Do not mount now, it will be mounted later */
 
 	res = find_volume(&path, &fs, 0);	/* Force mounted the volume */
+    if (FR_OK != res) {
+        ff_del_syncobj(fs->sobj);
+        fs->sobj = NULL;
+        FatFs[vol] = NULL;
+        return res;
+    }
+
 	LEAVE_FF(fs, res);
 }
 
@@ -5418,7 +5428,7 @@ FRESULT f_mkfs (
 		sz_vol = ld_dword(pte + PTE_SizLba);	/* Get volume size */
 	} else {
 		/* Create a single-partition in this function */
-		if (disk_ioctl(pdrv, GET_SECTOR_COUNT, &sz_vol) != RES_OK) 
+		if (disk_ioctl(pdrv, GET_SECTOR_COUNT, &sz_vol) != RES_OK)
 		{
 			BK_LOGD(NULL, "sz_vol=%d\r\n", sz_vol);
 			return FR_DISK_ERR;
@@ -6241,16 +6251,16 @@ FRESULT f_SeekfromCurPos( FIL *fp ,BYTE ff_fb,DWORD bytes)
 {
 	FRESULT res = FR_FILE_BEGIN;
 	FSIZE_t offset = 0;
-		
+
 	if(ff_fb == 0)
 	{//forward
-		if (fp->fptr + bytes > fp->obj.objsize) 
+		if (fp->fptr + bytes > fp->obj.objsize)
 		{
 			offset = fp->obj.objsize;
 			res = FR_FILE_END;
 		}
 		else
-			offset = fp->obj.objsize+ bytes;	
+			offset = fp->obj.objsize+ bytes;
 	}
 	else
 	{//backward
@@ -6270,12 +6280,12 @@ FRESULT f_SeekfromCurPos( FIL *fp ,BYTE ff_fb,DWORD bytes)
 
 FRESULT f_EOF(FIL *fp )
 {
-	
+
 	if(fp->obj.objsize <= fp->fptr)
 		return FR_FILE_END;
 	else
 		return FR_OK;
-		
+
 }
 
 FRESULT Beken_dir_sdi(
@@ -6311,7 +6321,7 @@ void Beken_get_fileinfo(
 void beken_mem_cpy (void* dst, const void* src, UINT cnt)
 {
 	mem_cpy ( dst,  src,  cnt);
-	
+
 }
 FRESULT init_buf(FATFS *fs)
 {
@@ -6331,5 +6341,15 @@ void beken_mem_set(void* dst, int val, UINT cnt)
 
 DWORD get_fattime (void)
 {
-	return ((DWORD)(FF_NORTC_YEAR - 1980) << 25 | (DWORD)FF_NORTC_MON << 21 | (DWORD)FF_NORTC_MDAY << 16);
+	uint32_t year = FF_NORTC_YEAR;
+	uint32_t month = FF_NORTC_MON;
+	uint32_t day = FF_NORTC_MDAY;
+#if CONFIG_NTP_SYNC_RTC
+	struct tm t = {0};
+	datetime_get(&t);
+	year = t.tm_year + 1900;
+	month = t.tm_mon + 1;
+	day = t.tm_mday;
+#endif
+	return ((DWORD)(year - 1980) << 25 | (DWORD)month << 21 | (DWORD)day << 16);
 }

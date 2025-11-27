@@ -45,13 +45,15 @@ uint32_t mem_sanity_check(void *mem)
     return 1;
 }
 #endif
-#if 0
+
+#if (CONFIG_CPU_INDEX != 0)
 void tuya_get_usb_dev(uint32_t *vid, uint32_t *pid)
 {
     int cnt = 10, status = 0;
     if (vid == NULL || pid == NULL)
         return;
 
+#if 0   // TODO
     TUYA_GPIO_BASE_CFG_T cfg;
     cfg.mode = TUYA_GPIO_PULLUP;
     cfg.direct = TUYA_GPIO_OUTPUT;
@@ -73,133 +75,9 @@ void tuya_get_usb_dev(uint32_t *vid, uint32_t *pid)
     } while (cnt++ < 10);
 
     tkl_gpio_write(TUYA_GPIO_NUM_28, TUYA_GPIO_LEVEL_LOW);
+#endif
 }
-
-#if CONFIG_SYS_CPU0 && CONFIG_SOC_BK7258
-#include "tuya_cloud_types.h"
-#include "tkl_gpio.h"
-#include "tkl_display.h"
-
-enum {
-    MUTIL_INIT = 0,
-    MUTIL_ON,
-    MUTIL_OFF,
-};
-
-static inline int __attribute__((always_inline)) gpio_level_check_and_set(uint32_t io, uint32_t active, int flag)
-{
-    int expect = 0;
-    TUYA_GPIO_LEVEL_E level = TUYA_GPIO_LEVEL_LOW;
-
-    tkl_gpio_read(io, &level);
-
-    switch (flag) {
-        case MUTIL_INIT:
-            expect = (active == TUYA_GPIO_LEVEL_HIGH)? TUYA_GPIO_LEVEL_LOW: TUYA_GPIO_LEVEL_HIGH;
-            break;
-
-        case MUTIL_ON:
-            expect = (active == TUYA_GPIO_LEVEL_HIGH)? TUYA_GPIO_LEVEL_HIGH: TUYA_GPIO_LEVEL_LOW;
-            if (expect != level) {
-                tkl_gpio_write(io, expect);
-            }
-            break;
-
-        case MUTIL_OFF:
-            expect = (active == TUYA_GPIO_LEVEL_HIGH)? TUYA_GPIO_LEVEL_LOW: TUYA_GPIO_LEVEL_HIGH;
-            if (expect != level) {
-                tkl_gpio_write(io, expect);
-            }
-            break;
-
-        default:
-            break;
-    }
-
-    return expect;
-}
-
-static uint32_t is_init = 0;
-static void __mutil_power_init(void)
-{
-#if CONFIG_TUYA_LOGIC_MODIFY
-    TUYA_GPIO_BASE_CFG_T cfg;
-    cfg.direct = TUYA_GPIO_OUTPUT;
-    cfg.level = TUYA_GPIO_LEVEL_LOW;
-
-    uint8_t usb_ldo, lcd_ldo, lcd_bl, active_level;
-
-    tkl_vi_get_power_info(UVC_CAMERA, &usb_ldo, &active_level);
-    cfg.level = gpio_level_check_and_set(usb_ldo, active_level, MUTIL_INIT);
-    tkl_gpio_init(usb_ldo, &cfg);
-
-//     tkl_display_power_ctrl_pin(&lcd_ldo, &active_level);
-//     cfg.level = gpio_level_check_and_set(lcd_ldo, active_level, MUTIL_INIT);
-//     tkl_gpio_init(lcd_ldo, &cfg);
-
-//    if (tkl_display_bl_mode() == TKL_DISP_BL_GPIO) {
-//        tkl_display_bl_ctrl_io(&lcd_bl, &active_level);
-//        cfg.level = gpio_level_check_and_set(lcd_bl, active_level, MUTIL_INIT);
-//        tkl_gpio_init(lcd_bl, &cfg);
-//    }
-#ifdef MUTEX_CTRL
-    tkl_gpio_init(MUTEX_CTRL, &cfg);
-#endif // MUTEX_CTRL
-#endif // CONFIG_TUYA_LOGIC_MODIFY
-}
-
-void tuya_multimedia_power_on(void)
-{
-#if CONFIG_TUYA_LOGIC_MODIFY
-//    if (!is_init) {
-        __mutil_power_init();
-        is_init = 1;
-//    }
-    uint8_t usb_ldo, lcd_ldo, lcd_bl, active_level;
-    // 3.3V / USB Enable
-    TUYA_GPIO_LEVEL_E level = TUYA_GPIO_LEVEL_LOW;
-    tkl_display_power_ctrl_pin(&lcd_ldo, &active_level);
-    gpio_level_check_and_set(lcd_ldo, active_level, MUTIL_ON);
-
-    tkl_vi_get_power_info(UVC_CAMERA, &usb_ldo, &active_level);
-    gpio_level_check_and_set(usb_ldo, active_level, MUTIL_ON);
-
-#endif // CONFIG_TUYA_LOGIC_MODIFY
-}
-
-void tuya_multimedia_power_off(void)
-{
-#if CONFIG_TUYA_LOGIC_MODIFY
-//    if (!is_init) {
-        __mutil_power_init();
-        is_init = 1;
-//    }
-
-    uint8_t usb_ldo, lcd_ldo, lcd_bl, active_level;
-
-//     if (tkl_display_bl_mode() == TKL_DISP_BL_GPIO) {
-//         tkl_display_bl_ctrl_io(&lcd_bl, &active_level);
-//         gpio_level_check_and_set(lcd_bl, active_level, MUTIL_OFF);
-//     }
-
-    // 3.3V / USB Enable
-    TUYA_GPIO_LEVEL_E level = TUYA_GPIO_LEVEL_LOW;
-    tkl_display_power_ctrl_pin(&lcd_ldo, &active_level);
-    gpio_level_check_and_set(lcd_ldo, active_level, MUTIL_OFF);
-
-    tkl_vi_get_power_info(UVC_CAMERA, &usb_ldo, &active_level);
-    gpio_level_check_and_set(usb_ldo, active_level, MUTIL_OFF);
-
-#endif // CONFIG_TUYA_LOGIC_MODIFY
-}
-
-#endif // CONFIG_SYS_CPU0 && CONFIG_SOC_BK7258
-
-uint8_t* dhcp_lookup_mac(uint8_t *chaddr)
-{
-    return NULL;
-}
-#endif // CONFIG_SYS_CPU0 && CONFIG_SOC_BK7258
+#endif  // CONFIG_CPU_INDEX != 0
 
 VOID tkl_data_dump(CONST int     level,
         CONST CHAR_T              *file,
@@ -225,7 +103,6 @@ void _fini(void) {
 
 #include <stddef.h>
 #include <string.h>
-#include <time.h>
 
 #include "FreeRTOS.h"
 #include "task.h"

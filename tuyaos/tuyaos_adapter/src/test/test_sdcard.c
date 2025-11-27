@@ -143,6 +143,47 @@ static void __cli_sdcard_list_file(const char* path)
     return;
 }
 
+static TUYA_DIR sdcard_test_dirp = NULL;
+static void __cli_sdcard_closedir(TUYA_DIR sdcard_test_dirp)
+{
+    if (sdcard_test_dirp == NULL)
+        return;
+
+    tkl_dir_close(sdcard_test_dirp);
+}
+
+static void __cli_sdcard_mkdir(const char *dir_path)
+{
+    char buff[128] = {0};
+
+    if (dir_path == NULL) {
+        return;
+    }
+
+    if (sdcard_test_dirp != NULL) {
+        // close last opened dir
+        __cli_sdcard_closedir(sdcard_test_dirp);
+        sdcard_test_dirp = NULL;
+    }
+
+    tkl_dir_open(dir_path, &sdcard_test_dirp);
+    if (sdcard_test_dirp == NULL) {
+        bk_printf("[%s][%d] no %s found, mkdir\r\n", __FUNCTION__, __LINE__, dir_path);
+        // mkdir
+        int fd = tkl_fs_mkdir(dir_path);
+        if(fd < 0)
+        {
+            bk_printf("[%s][%d] mkdir fail:%d\r\n", __FUNCTION__, __LINE__, fd);
+            return ;
+        }
+        read(fd, buff, sizeof(buff));
+        close(fd);
+        bk_printf("[%s][%d] mkdir ok\r\n", __FUNCTION__, __LINE__);
+    }
+}
+
+
+
 static void __cli_sdcard_speed_test_opt(uint32_t size)
 {
     uint32_t cnt = 0;
@@ -193,11 +234,7 @@ void cli_sdcard_test_cmd(char *pcWriteBuffer, int xWriteBufferLen, int argc, cha
         return;
     }
 
-    if (!os_strcmp(argv[1], "init")) {
-        bk_sd_card_init();
-    } else if (!os_strcmp(argv[1], "deinit")) {
-        bk_sd_card_deinit();
-    } else if (!os_strcmp(argv[1], "mount")) {
+    if (!os_strcmp(argv[1], "mount")) {
         __cli_sdcard_mount();
     } else if (!os_strcmp(argv[1], "umount")) {
         __cli_sdcard_umount();
@@ -225,6 +262,18 @@ void cli_sdcard_test_cmd(char *pcWriteBuffer, int xWriteBufferLen, int argc, cha
         }
 
         __cli_sdcard_write(argv[2], argv[3], data_len);
+    } else if (!os_strcmp(argv[1], "rmdir")) {
+        if (argv[2] == NULL) {
+            bk_printf("no spec dir\r\n");
+            return;
+        }
+        tkl_fs_remove(argv[2]);
+    } else if (!os_strcmp(argv[1], "mkdir")) {
+        if (argv[2] == NULL) {
+            bk_printf("no spec dir\r\n");
+            return;
+        }
+        __cli_sdcard_mkdir(argv[2]);
     } else if (!os_strcmp(argv[1], "delete")) {
         if (argv[2] == NULL) {
             bk_printf("no file name\r\n");
@@ -234,7 +283,6 @@ void cli_sdcard_test_cmd(char *pcWriteBuffer, int xWriteBufferLen, int argc, cha
     } else if (!os_strcmp(argv[1], "format")) {
         bk_printf("TODO...\r\n");
     } else if (!os_strcmp(argv[1], "auto")) {
-        bk_sd_card_init();
         int ret = __cli_sdcard_mount();
         if (ret != 0)
             return;
@@ -242,7 +290,6 @@ void cli_sdcard_test_cmd(char *pcWriteBuffer, int xWriteBufferLen, int argc, cha
         __cli_sdcard_umount();
         bk_sd_card_deinit();
     } else if (!os_strcmp(argv[1], "speed_test")) {
-        bk_sd_card_init();
         __cli_sdcard_mount();
         __cli_sdcard_speed_test();
         __cli_sdcard_umount();

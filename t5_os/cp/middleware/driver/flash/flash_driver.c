@@ -524,13 +524,6 @@ uint8_t bk_flash_get_coutinuous_read_mode(void)
 	return s_flash.flash_cfg->coutinuous_read_mode_bits_val;
 }
 
-bk_err_t bk_flash_set_line_mode(flash_line_mode_t line_mode)
-{
-	return BK_OK;
-
-	(void)line_mode;
-}
-
 bk_err_t bk_flash_driver_init(void)
 {
 	if (s_flash_is_init) {
@@ -928,9 +921,6 @@ __attribute__((section(".iram"))) bk_err_t bk_flash_enter_deep_sleep(void)
 
 	// flash need to change 2 line when do flash operate except read
 	// need to recover 4 line, please do it manually
-	//if (FLASH_LINE_MODE_FOUR == bk_flash_get_line_mode())
-	//	bk_flash_set_line_mode(FLASH_LINE_MODE_TWO);
-
 	ret = flash_bypass_op_write(&op_code, NULL, 0);
 	if(ret == 0)// success
 	{
@@ -950,9 +940,6 @@ __attribute__((section(".iram"))) bk_err_t bk_flash_exit_deep_sleep(void)
 
 	// flash need to change 2 line when do flash operate except read
 	// need to recover 4 line, please do it manually
-	//if (FLASH_LINE_MODE_FOUR == bk_flash_get_line_mode())
-	//	bk_flash_set_line_mode(FLASH_LINE_MODE_TWO);
-
 	ret = flash_bypass_op_write(&op_code, NULL, 0);
 	if(ret == 0)// success
 	{

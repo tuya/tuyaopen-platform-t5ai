@@ -52,10 +52,7 @@ typedef struct _sys_arch_state_t
 } sys_arch_state_t;
 
 /* Message queue constants. */
-
-#if !CONFIG_ENABLE_TUYA_LWIP
-#define archMESG_QUEUE_LENGTH	( 32 )  // Modified by TUYA
-#endif // CONFIG_ENABLE_TUYA_LWIP
+#define archMESG_QUEUE_LENGTH	( 64 )
 
 #if CONFIG_FREERTOS
 sys_sem_t* sys_thread_sem_get(void);

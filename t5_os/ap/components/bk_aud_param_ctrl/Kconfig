@@ -1,0 +1,7 @@
+menu "Audio Parameters"
+
+	config AUD_PARAM_CTRL
+		bool "Enable audio tool debug audio parameters"
+		default y
+
+endmenu

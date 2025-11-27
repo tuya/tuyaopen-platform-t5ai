@@ -14,6 +14,12 @@ int main(void)
 #if CONFIG_INTEGRATION_DOORBELL
     bk_smart_config_init();
     doorbell_core_init();
+
+#if (CONFIG_ASR_SERVICE_WITH_MIC)
+	extern int doorbell_asr_turn_on(void);
+	doorbell_asr_turn_on();
+#endif
+
 #endif
 	return 0;
 }

@@ -17,9 +17,6 @@
 #include <os/mem.h>
 #include <stdio.h>
 
-//#include <components/log.h>
-
-//#include <driver/psram.h>
 #include "frame_buffer.h"
 
 #include "media_evt.h"

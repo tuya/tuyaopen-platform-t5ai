@@ -970,7 +970,7 @@ static inline void uart_tx_dma_dst_port_config(uart_id_t id, dma_port_config_t *
 static void uart_tx_dma_write_done(dma_id_t dma_id)
 {
 	UART_LOGV("%s:dma_id=%d\r\n", __func__, dma_id);
-	
+
 }
 
 static bk_err_t uart_tx_dma_write_to_fifo(uart_id_t id, uint32_t data_address, uint32_t size)
@@ -1048,6 +1048,12 @@ bk_err_t bk_uart_init(uart_id_t id, const uart_config_t *config)
 	UART_RETURN_ON_INVALID_ID(id);
 	UART_RETURN_ON_BAUD_RATE_NOT_SUPPORT(config->baud_rate);
 	UART_CHECK_SECURE(id);
+
+    /* If UART is already initialized, return Ok directly */
+    if (s_uart[id].id_init_bits & BIT(id)){
+
+        return BK_OK;
+    }
 
 #if CONFIG_UART_PM_CB_SUPPORT	//this macro config set to n
 	pm_cb_conf_t uart_enter_config = {
@@ -1143,6 +1149,12 @@ bk_err_t bk_uart_deinit(uart_id_t id)
 {
 	UART_RETURN_ON_NOT_INIT();
 	UART_RETURN_ON_INVALID_ID(id);
+
+    /* If UART is already deinitialized, return Ok directly */
+    if (!(s_uart[id].id_init_bits & BIT(id))){
+
+        return BK_OK;
+    }
 
 #if CONFIG_UART_RX_DMA
 	uart_rx_dma_deinit(id);

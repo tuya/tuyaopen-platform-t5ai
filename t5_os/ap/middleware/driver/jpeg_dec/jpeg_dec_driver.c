@@ -16,10 +16,6 @@
 #include <common/bk_include.h>
 #include <os/mem.h>
 #include "arch_interrupt.h"
-#include "gpio_map.h"
-#include "gpio_driver.h"
-#include <driver/gpio.h>
-#include "gpio_map.h"
 #include <driver/int.h>
 #include "sys_driver.h"
 #include "jpeg_dec_macro_def.h"
@@ -112,7 +108,7 @@ bk_err_t bk_jpeg_dec_driver_deinit(void)
 
 	return BK_OK;
 }
-bk_err_t jpeg_dec_set_dst_addr(unsigned char * output_buf)
+bk_err_t bk_jpeg_dec_set_dst_addr(unsigned char * output_buf)
 {
 	jpeg_dec_ll_set_reg0x59_value((uint32_t)output_buf);
 	return BK_OK;

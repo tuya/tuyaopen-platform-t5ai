@@ -108,7 +108,7 @@ CONFIG_LWIP_MEMP_NUM_TCP_SEG=80
 #
 # sensor_detect
 #
-CONFIG_VOLT_DETECT=n
+CONFIG_VOLT_DETECT=y
 # end of sensor_detect
 
 #

@@ -5,7 +5,7 @@ menu "Adk::Audio_encoders::G711_encoder"
 		default n
 
 	config ADK_G711_ENCODER_TEST
-		depends on ADK_G711_ENCODER
+		depends on ADK_G711_ENCODER && ADK_ARRAY_STREAM && ADK_UART_STREAM
 		bool "Enable Audio G711 encoder test"
 		default n
 

@@ -18,10 +18,17 @@ static void __cmd_usage(void)
 static TaskHandle_t __test_wifi_scan_thread = NULL;
 static void __test_wifi_scan(void *args)
 {
-    CONST SCHAR_T *ssid = NULL;
+    SCHAR_T *ssid = NULL;
     AP_IF_S *ap_ary = NULL;
     UINT_T num = 0;
-    bk_printf("--- trace %s %d\r\n", __func__, __LINE__);
+
+    if (args == NULL) {
+        bk_printf("--- trace %s %d, all ap scan\r\n", __func__, __LINE__);
+    } else {
+        ssid = (SCHAR_T *)args;
+        bk_printf("--- trace %s %d, scan %s\r\n", __func__, __LINE__, ssid);
+    }
+
     OPERATE_RET ret = tkl_wifi_scan_ap(ssid, &ap_ary, &num);
     if (ret != 0) {
         bk_printf("scan error\r\n");
@@ -68,7 +75,7 @@ void cli_wifi_cmd(char *pcWriteBuffer, int xWriteBufferLen, int argc, char **arg
             __cmd_usage();
         }
     } else if (!os_strcmp(argv[1], "scan")) {
-        tkl_thread_create(&__test_wifi_scan_thread, "tscan", 4096, 5,  __test_wifi_scan, NULL);
+        tkl_thread_create(&__test_wifi_scan_thread, "tscan", 4096, 5,  __test_wifi_scan, argv[2]);
     } else if (!os_strcmp(argv[1], "ap")) {
         bk_printf("not support ap test\r\n");
     }

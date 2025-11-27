@@ -45,6 +45,6 @@ bk_err_t bk_pm_module_lv_sleep_state_clear(pm_dev_id_e module)
 
 bk_err_t pm_debug_lv_state()
 {
-	BK_LOGD(NULL,"pm_module_lv_sleep_state:0x%llx\r\n",s_pm_module_lv_sleep_state);
+	BK_LOGI(NULL,"pm_module_lv_sleep_state:0x%llx\r\n",s_pm_module_lv_sleep_state);
 	return BK_OK;
 }

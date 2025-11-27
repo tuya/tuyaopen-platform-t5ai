@@ -12,6 +12,7 @@
 #define BK_MODEM_LOGV(...)			BK_LOGV(BK_MODEM_LOG, ##__VA_ARGS__)
 #define BK_MODEM_LOGI_RAW(...)		BK_RAW_LOGI(BK_MODEM_LOG, ##__VA_ARGS__)
 #define BK_MODEM_LOGD_RAW(...)		BK_RAW_LOGD(BK_MODEM_LOG, ##__VA_ARGS__)
+#define BK_MODEM_INVALID_RSSI_VAL 99
 
 enum bk_modem_msg_e
 {
@@ -30,6 +31,14 @@ enum bk_modem_msg_e
     MSG_MODEM_DISC_IND,
     /// POWER ON CPU1
     MSG_MODEM_USBH_POWER_ON,
+    /// UART INIT,
+    MSG_MODEM_UART_INIT,
+    
+    ///UART NETWORK INTERFACE CARD START
+    MSG_MODEM_UART_NIC_START = 10,
+    
+    ///COMM UART START
+    MSG_MODEM_COMM_UART_START = 20,
 };
 
 enum bk_modem_state_e
@@ -44,6 +53,8 @@ enum bk_modem_state_e
     PPP_STOP,    
     /// MODEM_DISC
     MODEM_DISC,
+    /// UART NIC START
+    UART_NIC_START,
 };
 
 enum bk_modem_ppp_stop_reason_e
@@ -52,6 +63,7 @@ enum bk_modem_ppp_stop_reason_e
     NO_CARRIER_STOP,
     ABNORMAL_STOP,
     DSIC_STOP,
+    RESTORE_STOP,
 };
 
 typedef struct bus_message 
@@ -71,12 +83,35 @@ enum bk_modem_ppp_mode_e
     PPP_DATA_MODE,
 };
 
+enum bk_modem_comm_proto_e
+{
+    INVALID_MODE,
+    PPP_MODE,
+    UART_NIC_MODE,
+};
+
+enum bk_modem_comm_if_e
+{
+    INVALID_IF,
+    USB_IF,
+    UART_IF,
+    SPI_IF,
+};
+
+enum bk_modem_uart_trx_mode_e
+{
+    NIC_DATA_MODE,
+    AT_CMD_MODE,
+    DATA_MODE,
+};
+
 struct bk_modem_env_s
 {
     enum bk_modem_ppp_mode_e bk_modem_ppp_mode;
     bool is_ppp_started;
-    uint8_t port_num;
-    uint8_t port_idx;
+    bool is_ec_nat_set;
+    enum bk_modem_comm_proto_e comm_proto;
+    enum bk_modem_comm_if_e comm_if;
 };
 
 extern struct bk_modem_env_s bk_modem_env;

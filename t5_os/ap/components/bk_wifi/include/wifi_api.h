@@ -34,6 +34,9 @@ extern "C" {
         GLOBAL_INT_RESTORE();\
     }while(0);
 
+#define WIFI_MAC_FORMAT "%02x:%02x:%02x:%02x:%02x:%02x"
+#define WIFI_MAC_STR(_m) (_m)[0], (_m)[1], (_m)[2], (_m)[3], (_m)[4], (_m)[5]
+
 /* bk_wifi_init() set the bit, bk_wifi_deinit() clear the bit */
 #define WIFI_INIT_BIT               (1)
 

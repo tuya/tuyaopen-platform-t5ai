@@ -27,10 +27,13 @@
 #include "bk_aon_wdt.h"
 #include <driver/flash_partition.h>
 #include "bk_wdt.h"
+#include "wdt_driver.h"
 #include "stack_base.h"
 #if CONFIG_CM_BACKTRACE
 #include "cm_backtrace.h"
 #endif
+
+#include "arch_interrupt.h"
 
 #define STACK_CALLBACK_BUF_SIZE 32
 #define SOC_ITCM_CODE_SIZE      (0x4000)
@@ -60,7 +63,7 @@ static inline int addr_is_in_iram_txt(uint32_t addr)
     return 0;
 }
 
-static int code_addr_is_valid(uint32_t addr)
+int code_addr_is_valid(uint32_t addr)
 {
     if (addr % 2 == 0) {
         return false;
@@ -102,15 +105,12 @@ void stack_mem_dump(uint32_t stack_top, uint32_t stack_bottom)
 		}
 #if CONFIG_DEBUG_VERSION || CONFIG_DUMP_ENABLE 
 		if((cnt & 0xff) == 0) {
-// #if CONFIG_WDT_EN
 #if (CONFIG_TASK_WDT)
 			bk_task_wdt_feed();
 #endif
-			bk_wdt_feed();
-#if (CONFIG_INT_AON_WDT)
-			bk_int_aon_wdt_feed();
-#endif
-// #endif //CONFIG_WDT_EN
+            if(arch_is_enter_exception()) {
+                bk_wdt_force_feed();
+            }
 		}
 #endif //#if CONFIG_DEBUG_VERSION || CONFIG_DUMP_ENABLE
 		BK_DUMP_OUT("%02x %02x %02x %02x ", data[0], data[1], data[2], data[3]);

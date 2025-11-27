@@ -54,6 +54,8 @@ uint32_t aon_pmu_hal_bias_cal_get();
 void aon_pmu_hal_psram_iodrv_set(uint32_t io_drv);
 uint32_t aon_pmu_hal_gpio_retention_bitmap_get();
 void aon_pmu_hal_gpio_retention_bitmap_set(uint32_t bitmap);
+void aon_pmu_hal_set_r0(uint32_t value);
+uint32_t aon_pmu_hal_get_r0(void);
 
 void aon_pmu_struct_dump(uint32_t start, uint32_t end);
 

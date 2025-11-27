@@ -1,4 +1,4 @@
-// Copyright 2022-2023 Beken
+// Copyright 2025-2026 Beken
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -30,7 +30,8 @@ typedef struct
 {
     uint32_t                main_buff_size;            /*!< mainbuff size */
     uint32_t                out_pcm_buff_size;         /*!< out pcm buffer size */
-    int                     out_rb_size;               /*!< Size of output ringbuffer */
+    int                     out_block_size;            /*!< Size of output block */
+    int                     out_block_num;             /*!< Number of output block */
     int                     task_stack;                /*!< Task stack size */
     int                     task_core;                 /*!< Task running in core (0 or 1) */
     int                     task_prio;                 /*!< Task priority (based on freeRTOS priority) */
@@ -47,7 +48,8 @@ typedef struct
 #define DEFAULT_MP3_DECODER_CONFIG() {                   \
     .main_buff_size     = MP3_DECODER_MAIN_BUFF_SIZE,    \
     .out_pcm_buff_size  = MP3_DECODER_OUT_PCM_BUFF_SIZE, \
-    .out_rb_size        = MP3_DECODER_OUT_PCM_BUFF_SIZE, \
+    .out_block_size     = MP3_DECODER_OUT_PCM_BUFF_SIZE, \
+    .out_block_num      = 1,                             \
     .task_stack         = MP3_DECODER_TASK_STACK,        \
     .task_core          = MP3_DECODER_TASK_CORE,         \
     .task_prio          = MP3_DECODER_TASK_PRIO,         \

@@ -31,20 +31,20 @@
 #define DEFAULT_ADC_STEADY_TIME      7
 #define DEFAULT_SATURATE_MODE        ADC_SATURATE_MODE_3
 
-// bk_err_t bk_adc_acquire(void);
-// bk_err_t bk_adc_init(adc_chan_t adc_chan);
-// bk_err_t bk_adc_enable_bypass_clalibration(void);
-// bk_err_t bk_adc_start(void);
-// bk_err_t bk_adc_read_raw(uint16_t* buf, uint32_t size, uint32_t timeout);
-// bk_err_t bk_adc_stop(void);
-// bk_err_t bk_adc_deinit(adc_chan_t chan);
-// bk_err_t bk_adc_release(void);
+//bk_err_t bk_adc_acquire(void);
+//bk_err_t bk_adc_init(adc_chan_t adc_chan);
+//bk_err_t bk_adc_enable_bypass_clalibration(void);
+//bk_err_t bk_adc_start(void);
+//bk_err_t bk_adc_read_raw(uint16_t* buf, uint32_t size, uint32_t timeout);
+//bk_err_t bk_adc_stop(void);
+//bk_err_t bk_adc_deinit(adc_chan_t chan);
+//bk_err_t bk_adc_release(void);
 
-// bk_err_t bk_adc_set_config(adc_config_t *config);
-// bk_err_t bk_adc_get_config(uint32 adc_ch, adc_config_t **config);
-// bk_err_t bk_adc_is_valid_ch(uint32_t ch);
-// bk_err_t bk_adc_register_isr_iot_callback(    void* iot_callback, void      * p_iot_context);
-// bk_err_t bk_adc_unregister_isr_iot_callback(void);
+//bk_err_t bk_adc_set_config(adc_config_t *config);
+//bk_err_t bk_adc_get_config(uint32 adc_ch, adc_config_t **config);
+//bk_err_t bk_adc_is_valid_ch(uint32_t ch);
+//bk_err_t bk_adc_register_isr_iot_callback(    void* iot_callback, void      * p_iot_context);
+//bk_err_t bk_adc_unregister_isr_iot_callback(void);
 
-// bk_err_t bk_adc_en(void);
+//bk_err_t bk_adc_en(void);
 

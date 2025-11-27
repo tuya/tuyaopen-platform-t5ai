@@ -139,8 +139,7 @@ static void media_cli_frame_buffer_out(frame_buffer_t *frame)
 
 int open_camera_display(int camera_port, image_format_t fmt)  // uvc 1/ uvc 2/ dvp 3
 {
-    int ret = UNKNOW_ERROR;
-
+    int ret = BK_FAIL;
     media_camera_device_t device = {0};
     media_ppi_t ppi;
     camera_handle_t handle = NULL;
@@ -176,9 +175,8 @@ int open_camera_display(int camera_port, image_format_t fmt)  // uvc 1/ uvc 2/ d
         ret = media_app_camera_close(&handle);
     }
 
-    ret = h264_jdec_pipeline_close();
-    ret = lcd_jdec_pipeline_close();
-    ret = img_service_close();
+    ret = media_app_pipeline_h264_close();
+    ret = media_app_jdec_close();
 
     handle = NULL;
     handle = bk_camera_handle_node_get_by_id_and_fomat(0, IMAGE_YUV | IMAGE_MJPEG);
@@ -204,10 +202,10 @@ int open_camera_display(int camera_port, image_format_t fmt)  // uvc 1/ uvc 2/ d
 
         if (fmt == IMAGE_H264)
         {
-            pipeline_set_rotate(ROTATE_90);
-            ret = h264_jdec_pipeline_open();
+            media_app_set_rotate(ROTATE_90);
+            ret = media_app_pipeline_h264_open(NULL);
         }
-        ret = lcd_jdec_pipeline_open();
+        ret = media_app_jdec_open(JPEGDEC_BY_LINE);
     }
     else if (camera_port == 0)
     {
@@ -227,18 +225,21 @@ int open_camera_display(int camera_port, image_format_t fmt)  // uvc 1/ uvc 2/ d
         device.port = 0;
         handle = NULL;
         ret = media_app_camera_open(&handle, &device);
-        image_rotate_set(ROTATE_90);
-        ret = img_service_open();
+        media_app_set_rotate(ROTATE_90);
+        ret = media_app_jdec_open(JPEGDEC_BY_FRAME);
     }
     else
     {
         LOGD("%s not support camera id %d\n", __func__, camera_port);
     }
+
     return ret;
 }
 
 void media_cli_display_test_cmd(char *pcWriteBuffer, int xWriteBufferLen, int argc, char **argv)
 {
+    bk_err_t ret = UNKNOW_ERROR;
+    char *msg = NULL;
     image_format_t fmt = IMAGE_MJPEG;
     static uint32_t cnt = 0;
     if (os_strcmp(argv[1], "switch") == 0)
@@ -252,8 +253,8 @@ void media_cli_display_test_cmd(char *pcWriteBuffer, int xWriteBufferLen, int ar
 
             lcd_open.device_ppi = PPI_480X480;
             lcd_open.device_name = "st7701s";
-            lcd_display_open(&lcd_open);
-            pipeline_set_rotate(ROTATE_90);
+            media_app_lcd_disp_open(&lcd_open);
+            media_app_set_rotate(ROTATE_90);
         }
         uint8_t port = os_strtoul(argv[2], NULL, 10) & 0xFF;
         if (CMD_CONTAIN("h264"))
@@ -264,15 +265,38 @@ void media_cli_display_test_cmd(char *pcWriteBuffer, int xWriteBufferLen, int ar
         {
             fmt = IMAGE_MJPEG;
         }
-        open_camera_display(port, fmt);
+
+        ret = open_camera_display(port, fmt);
     }
-    LOGD("%s complete\n", __func__);
+
+    if (ret == UNKNOW_ERROR)
+    {
+        LOGE("%s unknow cmd\n", __func__);
+    }
+
+    if (ret == PARAMS_ERROR)
+    {
+        LOGE("%s param error cmd\n", __func__);
+    }
+
+    if (ret != BK_OK)
+    {
+        msg = CLI_CMD_RSP_ERROR;
+    }
+    else
+    {
+        msg = CLI_CMD_RSP_SUCCEED;
+    }
+
+    LOGI("%s ---complete\n", __func__);
+
+    os_memcpy(pcWriteBuffer, msg, os_strlen(msg));
 }
 
 void media_cli_camera_test_cmd(char *pcWriteBuffer, int xWriteBufferLen, int argc, char **argv)
 {
-    bk_err_t ret = BK_FAIL;
-
+    bk_err_t ret = UNKNOW_ERROR;
+    char *msg = NULL;
     static camera_handle_t handle = NULL;
     media_ppi_t ppi = GET_PPI(PPI_640X480);
     media_camera_device_t device = DEFAULT_CAMERA_CONFIG();
@@ -280,6 +304,11 @@ void media_cli_camera_test_cmd(char *pcWriteBuffer, int xWriteBufferLen, int arg
     device.width = ppi >> 16;
     device.height = ppi & 0xFFFF;
     device.fps = FPS30;
+
+    if (CMD_CONTAIN("jpeg"))
+    {
+        device.format = IMAGE_MJPEG;
+    }
 
     if (CMD_CONTAIN("h264"))
     {
@@ -378,11 +407,11 @@ void media_cli_camera_test_cmd(char *pcWriteBuffer, int xWriteBufferLen, int arg
     {
         if (os_strcmp(argv[2], "h264_open") == 0)
         {
-            ret = h264_jdec_pipeline_open();
+            ret = media_app_pipeline_h264_open(NULL);
         }
         else if (os_strcmp(argv[2], "h264_close") == 0)
         {
-            ret = h264_jdec_pipeline_close();
+            ret = media_app_pipeline_h264_close();
         }
         else
         {
@@ -402,16 +431,34 @@ void media_cli_camera_test_cmd(char *pcWriteBuffer, int xWriteBufferLen, int arg
         LOGE("%s, %d, not found this cmd!\n", __func__, __LINE__);
     }
 
+    if (ret == UNKNOW_ERROR)
+    {
+        LOGE("%s unknow cmd\n", __func__);
+    }
+
+    if (ret == PARAMS_ERROR)
+    {
+        LOGE("%s param error cmd\n", __func__);
+    }
+
     if (ret != BK_OK)
     {
-        LOGE("%s, cmd process error\n", __func__);
+        msg = CLI_CMD_RSP_ERROR;
     }
+    else
+    {
+        msg = CLI_CMD_RSP_SUCCEED;
+    }
+
+    LOGI("%s ---complete\n", __func__);
+
+    os_memcpy(pcWriteBuffer, msg, os_strlen(msg));
 }
 
 void media_cli_lcd_test_cmd(char *pcWriteBuffer, int xWriteBufferLen, int argc, char **argv)
 {
-    bk_err_t ret = BK_FAIL;
-
+    bk_err_t ret = UNKNOW_ERROR;
+    char *msg = NULL;
     lcd_open_t lcd_open;
     char *name = "st7792";
     name = GET_NAME(name);
@@ -425,19 +472,18 @@ void media_cli_lcd_test_cmd(char *pcWriteBuffer, int xWriteBufferLen, int argc, 
         media_app_set_rotate(rotate);
         if (os_strcmp(argv[2], "fb") == 0)
         {
-            img_service_open();
+            media_app_jdec_open(JPEGDEC_BY_FRAME);
         }
         else
         {
-            lcd_jdec_pipeline_open();
+            media_app_jdec_open(JPEGDEC_BY_LINE);
         }
 
         ret = media_app_lcd_disp_open(&lcd_open);
     }
     else if (os_strcmp(argv[1], "close") == 0)
     {
-        lcd_jdec_pipeline_close();
-        img_service_close();
+        media_app_jdec_close();
         ret = media_app_lcd_disp_close();
     }
     else
@@ -445,21 +491,45 @@ void media_cli_lcd_test_cmd(char *pcWriteBuffer, int xWriteBufferLen, int argc, 
         LOGE("%s, %d, not found this cmd!\n", __func__, __LINE__);
     }
 
+    if (ret == UNKNOW_ERROR)
+    {
+        LOGE("%s unknow cmd\n", __func__);
+    }
+
+    if (ret == PARAMS_ERROR)
+    {
+        LOGE("%s param error cmd\n", __func__);
+    }
+
     if (ret != BK_OK)
     {
-        LOGE("%s, cmd process error\n", __func__);
+        msg = CLI_CMD_RSP_ERROR;
     }
+    else
+    {
+        msg = CLI_CMD_RSP_SUCCEED;
+    }
+
+    LOGI("%s ---complete\n", __func__);
+
+    os_memcpy(pcWriteBuffer, msg, os_strlen(msg));
 }
 
 void media_cli_storage_test_cmd(char *pcWriteBuffer, int xWriteBufferLen, int argc, char **argv)
 {
-    bk_err_t ret = BK_FAIL;
+    bk_err_t ret = UNKNOW_ERROR;
+    char *msg = NULL;
     uint8_t callback_register = 0;
     image_format_t img_format = IMAGE_MJPEG;
 
     if (CMD_CONTAIN("cb"))
     {
         callback_register = 1;
+    }
+
+    if (CMD_CONTAIN("jpeg"))
+    {
+        img_format = IMAGE_MJPEG;
     }
 
     if (CMD_CONTAIN("h264"))
@@ -519,10 +589,28 @@ void media_cli_storage_test_cmd(char *pcWriteBuffer, int xWriteBufferLen, int ar
         LOGE("%s, %d, not found this cmd!\n", __func__, __LINE__);
     }
 
+    if (ret == UNKNOW_ERROR)
+    {
+        LOGE("%s unknow cmd\n", __func__);
+    }
+
+    if (ret == PARAMS_ERROR)
+    {
+        LOGE("%s param error cmd\n", __func__);
+    }
+
     if (ret != BK_OK)
     {
-        LOGE("%s, cmd process error\n", __func__);
+        msg = CLI_CMD_RSP_ERROR;
     }
+    else
+    {
+        msg = CLI_CMD_RSP_SUCCEED;
+    }
+
+    LOGI("%s ---complete\n", __func__);
+
+    os_memcpy(pcWriteBuffer, msg, os_strlen(msg));
 }
 
 

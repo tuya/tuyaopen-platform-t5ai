@@ -1,4 +1,4 @@
-// Copyright 2022-2023 Beken
+// Copyright 2025-2026 Beken
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -224,6 +224,13 @@ int fb_read(framebuf_handle_t fb, framebuf_node_item_t **fb_node_item, TickType_
             }
         }
 
+        if (fb->is_done_write)
+        {
+            ret_val = FB_DONE;
+            fb_release(fb->lock);
+            goto read_err;
+        }
+
         /* no data to read, release thread block to allow other threads to write data */
         if (fb->abort_read) {
             *fb_node_item = NULL;
@@ -304,9 +311,16 @@ int fb_malloc(framebuf_handle_t fb, framebuf_node_item_t **fb_node_item, TickTyp
         }
 
         /* no free frame_buffer node to malloc, release thread block to allow other threads to free frame_buffer node */
+        if (fb->is_done_write) {
+            ret_val = FB_DONE;
+            fb_release(fb->lock);
+            goto out;
+        }
+
         if (fb->abort_malloc) {
             *fb_node_item = NULL;
             ret_val = FB_ABORT;
+            fb_release(fb->lock);
             goto out;
         }
 
@@ -374,6 +388,17 @@ bk_err_t fb_abort(framebuf_handle_t fb)
     bk_err_t err = fb_abort_read(fb);
     err |= fb_abort_malloc(fb);
     return err;
+}
+
+bk_err_t fb_done_write(framebuf_handle_t fb)
+{
+    if (fb == NULL)
+    {
+        return BK_ERR_ADK_INVALID_ARG;
+    }
+    fb->is_done_write = true;
+    fb_release(fb->can_read);
+    return BK_OK;
 }
 
 int fb_get_node_size(framebuf_handle_t fb)

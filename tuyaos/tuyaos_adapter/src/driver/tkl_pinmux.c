@@ -44,7 +44,8 @@ static TUYA_PIN_FUNC_MAP_T pin_func_map[] = {
     {TUYA_IO_PIN_7,   TUYA_SDIO_HOST_D3,   GPIO_DEV_SDIO_HOST_DATA3},
     {TUYA_IO_PIN_30,  TUYA_UART2_RX,       GPIO_DEV_UART2_RXD},
     {TUYA_IO_PIN_31,  TUYA_UART2_TX,       GPIO_DEV_UART2_TXD},
-
+    {TUYA_IO_PIN_20,  TUYA_IIC0_SCL,       GPIO_DEV_I2C0_SCL},
+    {TUYA_IO_PIN_21,  TUYA_IIC0_SDA,       GPIO_DEV_I2C0_SDA},
 };
 
 /****************************************************************************

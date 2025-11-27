@@ -34,6 +34,23 @@
 #if CONFIG_CACHE_ENABLE
 #include "cache.h"
 #endif
+
+#define portNVIC_SYSTICK_CTRL_REG             ( *( ( volatile uint32_t * ) 0xe000e010 ) )
+#define portNVIC_SYSTICK_LOAD_REG             ( *( ( volatile uint32_t * ) 0xe000e014 ) )
+#define portNVIC_SYSTICK_CURRENT_VALUE_REG    ( *( ( volatile uint32_t * ) 0xe000e018 ) )
+#define portNVIC_SHPR3_REG                    ( *( ( volatile uint32_t * ) 0xe000ed20 ) )
+
+#define portNVIC_INT_CTRL_REG                 ( *( ( volatile uint32_t * ) 0xe000ed04 ) )
+
+#define portNVIC_SYSTICK_ENABLE_BIT           ( 1UL << 0UL )
+#define portNVIC_SYSTICK_INT_BIT              ( 1UL << 1UL )
+#define portNVIC_SYSTICK_COUNT_FLAG_BIT       ( 1UL << 16UL )
+
+#define portNVIC_PENDSVSET_BIT                ( 1UL << 28UL )
+#define portNVIC_PENDSVCLR_BIT                ( 1UL << 27UL )
+#define portNVIC_SYSTICKSET_BIT               ( 1UL << 26UL )
+#define portNVIC_SYSTICKCLR_BIT               ( 1UL << 25UL )
+
 #define PM_TRRIGER_AP_MAX_COUNT               (100)
 #define PM_AP_TRRIGER_DELAY_TIME_US           (10)  //10us
 #define TAG                                   "pm_ap"
@@ -839,8 +856,15 @@ void sys_hal_enter_normal_sleep(uint32_t peri_clk)
 
 			int_state1 = sys_ll_get_cpu1_int_0_31_en_value();
 			int_state2 = sys_ll_get_cpu1_int_32_63_en_value();
-
-			if(check_IRQ_pending()||bk_dma_check_chn_status())
+			/*Disable Int exclude mailbox,mailbox int for wakeup*/
+			sys_ll_set_cpu1_int_0_31_en_value(0x0);
+			sys_ll_set_cpu1_int_32_63_en_value(0x0);
+			__asm volatile( "nop" );
+			__asm volatile( "nop" );
+			__asm volatile( "nop" );
+			__asm volatile( "nop" );
+			__asm volatile( "nop" );
+			if(check_IRQ_pending()||bk_dma_check_chn_status()||(sys_ll_get_cpu1_int_0_31_status_value()||(sys_ll_get_cpu1_int_32_63_status_value()))||(portNVIC_INT_CTRL_REG&portNVIC_SYSTICKSET_BIT))
 			{
 				sys_ll_set_cpu1_int_0_31_en_value(int_state1);
 				sys_ll_set_cpu1_int_32_63_en_value(int_state2);
@@ -848,9 +872,6 @@ void sys_hal_enter_normal_sleep(uint32_t peri_clk)
 				//BK_LOGD(NULL, "Core0 pending irq:0x%llx,0x%x\r\n",check_IRQ_pending(),bk_dma_check_chn_status());
 				return;
 			}
-			/*Disable Int exclude mailbox,mailbox int for wakeup*/
-			sys_ll_set_cpu1_int_0_31_en_value(0x0);
-			sys_ll_set_cpu1_int_32_63_en_value(0x0);
 			sys_ll_set_cpu1_int_32_63_en_cpu1_mailbox_int_en(1);
 
 			bk_pm_handle_lv_sleep_callback(PM_LV_ENTER_SLEEP);
@@ -900,8 +921,15 @@ void sys_hal_enter_normal_sleep(uint32_t peri_clk)
 
 			int1_state1 = sys_ll_get_cpu2_int_0_31_en_value();
 			int1_state2 = sys_ll_get_cpu2_int_32_63_en_value();
-
-			if(check_IRQ_pending()||bk_dma_check_chn_status())
+			/*Disable Int exclude mailbox,mailbox int for wakeup*/
+			sys_ll_set_cpu2_int_0_31_en_value(0x0);
+			sys_ll_set_cpu2_int_32_63_en_value(0x0);
+			__asm volatile( "nop" );
+			__asm volatile( "nop" );
+			__asm volatile( "nop" );
+			__asm volatile( "nop" );
+			__asm volatile( "nop" );
+			if(check_IRQ_pending()||bk_dma_check_chn_status()||(sys_ll_get_cpu2_int_0_31_status_value()||(sys_ll_get_cpu2_int_32_63_status_value()))||(portNVIC_INT_CTRL_REG&portNVIC_SYSTICKSET_BIT))
 			{
 				sys_ll_set_cpu2_int_0_31_en_value(int1_state1);
 				sys_ll_set_cpu2_int_32_63_en_value(int1_state2);
@@ -909,9 +937,6 @@ void sys_hal_enter_normal_sleep(uint32_t peri_clk)
 				//BK_LOGD(NULL, "Core1 pending irq:0x%llx,0x%x\r\n",check_IRQ_pending(),bk_dma_check_chn_status());
 				return;
 			}
-			/*Disable Int exclude mailbox,mailbox int for wakeup*/
-			sys_ll_set_cpu2_int_0_31_en_value(0x0);
-			sys_ll_set_cpu2_int_32_63_en_value(0x0);
 			sys_ll_set_cpu2_int_32_63_en_cpu2_mailbox_int_en(1);
 			/*Set cpu2 wfi state*/
 			aon_pmu_ll_set_r3_cp2_enter_wfi_state(1);

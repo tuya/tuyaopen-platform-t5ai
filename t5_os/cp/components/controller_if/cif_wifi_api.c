@@ -134,7 +134,7 @@ bk_err_t cif_handle_wifi_api_cmd(struct bk_msg_hdr *msg)
 
     if (arg_info->argc)
     {
-        BK_ASSERT(arg_info->argc < WIFI_API_IPC_COM_REQ_MAX_ARGC);
+        BK_ASSERT(arg_info->argc <= WIFI_API_IPC_COM_REQ_MAX_ARGC);
         // CIF_LOGD("arg[0]:%x arg[1]:%x arg[2]:%x arg[3]:%x arg[4]:%x arg[5]:%x\n", 
         //     arg_info->args[0], arg_info->args[1], arg_info->args[2],
         //     arg_info->args[3], arg_info->args[4], arg_info->args[5]);
@@ -199,6 +199,13 @@ bk_err_t cif_handle_wifi_api_cmd(struct bk_msg_hdr *msg)
             break;
         }
 
+        case WIFI_GET_COUNTRY:
+        {
+            wifi_country_t *country = (wifi_country_t *)(arg_info->args[0]);
+            ret = bk_wifi_get_country(country);
+            break;
+        }
+
         case STA_GET_LISTEN_INTERVAL:
         {
             uint8_t *listen_interval = (uint8_t *)(arg_info->args[0]);
@@ -238,6 +245,13 @@ bk_err_t cif_handle_wifi_api_cmd(struct bk_msg_hdr *msg)
             break;
         }
 
+        case STA_SET_BCN_MISS_TIME:
+        {
+            uint8_t bcn_miss_time = (uint8_t)(arg_info->args[0]);
+            ret = bk_wifi_set_bcn_miss_time(bcn_miss_time);
+            break;
+        }
+
         case STA_GET_LINK_STATE_WITH_REASON:
         {
             wifi_linkstate_reason_t *info = (wifi_linkstate_reason_t *)(arg_info->args[0]);
@@ -245,6 +259,14 @@ bk_err_t cif_handle_wifi_api_cmd(struct bk_msg_hdr *msg)
             break;
         }
 
+        case WIFI_GET_SUPPORT_MODE:
+        {
+            uint8_t *support_mode = (uint8_t *)(arg_info->args[0]);
+            ret = bk_wifi_get_support_wifi_mode(support_mode);
+            break;
+        }
+
+        #if CONFIG_WIFI_SCAN_COUNTRY_CODE
         case SCAN_CONTRY_CODE:
         {
             uint8_t *country_code = (uint8_t *)(arg_info->args[0]);
@@ -252,6 +274,98 @@ bk_err_t cif_handle_wifi_api_cmd(struct bk_msg_hdr *msg)
             ret = bk_scan_country_code(country_code, country_code_len);
             break;
         }
+
+        case WIFI_GET_BCN_CC:
+        {
+            bool enable = !!(arg_info->args[0]);
+            ret = bk_wifi_bcn_cc_rxed_register_cb(NULL, NULL, enable);
+            break;
+        }
+        #endif
+
+        case WIFI_SET_BLOCK_BCMC_EN:
+        {
+            uint8_t config = (uint8_t)(arg_info->args[0]);
+            ret = bk_wifi_set_block_bcmc_en(config);
+            break;
+        }
+
+        case WIFI_GET_BLOCK_BCMC_EN:
+        {
+            bool *enable = (bool *)(arg_info->args[0]);
+            *enable = bk_wifi_get_block_bcmc_en();
+            break;
+        }
+
+        #if CONFIG_WIFI_FTM
+        case FTM_START:
+        {
+            wifi_ftm_config_t *config = (wifi_ftm_config_t *)(arg_info->args[0]);
+            wifi_ftm_results_t *ftm_results = (wifi_ftm_results_t *)(arg_info->args[1]);
+            ret = bk_wifi_ftm_start(config, ftm_results);
+            break;
+        }
+
+        case FTM_FREE_RESULT:
+        {
+            wifi_ftm_results_t *ftm_results = (wifi_ftm_results_t *)(arg_info->args[0]);
+            ret = bk_wifi_ftm_free_result(ftm_results);
+            break;
+        }
+        #endif
+
+        #if CONFIG_WIFI_CSI_EN
+        case CSI_ALG_CONFIG:
+        {
+            double thres1 = (double)(arg_info->args[0]);
+            ret = bk_wifi_csi_alg_config(thres1);
+            break;
+        }
+
+        case CSI_START:
+        {
+            uint8_t csi_work_type = (uint8_t)(arg_info->args[0]);
+            uint8_t csi_work_mode = (uint8_t)(arg_info->args[1]);
+            uint8_t csi_work_identity = (uint8_t)(arg_info->args[2]);
+            uint8_t csi_data_format = (uint8_t)(arg_info->args[3]);
+            uint32_t csi_data_interval = (uint32_t)(arg_info->args[4]);
+            uint32_t delay = (uint32_t)(arg_info->args[5]);
+            ret = bk_wifi_csi_start_req(csi_work_type, csi_work_mode, csi_work_identity, csi_data_format,
+                                        csi_data_interval, delay);
+            break;
+        }
+
+        case CSI_STOP:
+        {
+            ret = bk_wifi_csi_stop_req();
+            break;
+        }
+
+        case CSI_STATIC_PARAM_RESET:
+        {
+            uint8_t update_cali_mode = (uint8_t)(arg_info->args[0]);
+            uint32_t cali_cnt = (uint32_t)(arg_info->args[1]);
+            ret = bk_wifi_csi_static_param_reset_req(update_cali_mode, cali_cnt);
+            break;
+        }
+        #endif
+
+        case CSI_INFO_GET:
+        {
+            bool enable = !!(arg_info->args[0]);
+            ret = bk_wifi_csi_info_cb_register(enable);
+            break;
+        }
+
+        #if CONFIG_WIFI_CSI_DEMO
+        case CSI_DEMO_LIGHT:
+        {
+            uint8_t color = (uint8_t)(arg_info->args[0]);
+            bool flicker = (bool)(arg_info->args[1]);
+            ret = bk_wifi_csi_demo_turn_on_light(color, flicker);
+            break;
+        }
+        #endif
 
         case MONITOR_START:
         {
@@ -383,6 +497,23 @@ bk_err_t cif_handle_wifi_api_cmd(struct bk_msg_hdr *msg)
         case AP_START:
         {
             ret = bk_wifi_ap_start();
+            break;
+        }
+#if CONFIG_BRIDGE
+        case CHECK_CLIENT_MAC_CONNECTED:
+        {
+            ret = bk_wifi_check_client_mac_connected((uint8_t *)arg_info->args[0]);
+            break;
+        }
+        case SET_BRIDGE_SYNC_STATE:
+        {
+            ret = bk_wifi_sync_bridge_state(*(bk_bridge_state_t *)arg_info->args[0]);
+            break;
+        }
+#endif
+        case AP_NETIF_IP4_CONFIG:
+        {
+            ret = bk_netif_set_ip4_config(NETIF_IF_AP, (netif_ip4_config_t *)arg_info->args[0]);
             break;
         }
         default:

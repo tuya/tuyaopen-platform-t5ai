@@ -1,4 +1,4 @@
-// Copyright 2022-2023 Beken
+// Copyright 2025-2026 Beken
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -51,7 +51,9 @@ typedef struct
 #define UAC_MIC_STREAM_TASK_CORE           (0)
 #define UAC_MIC_STREAM_TASK_PRIO           (3)
 
-#define UAC_MIC_STREAM_CFG_DEFAULT() {                   \
+#define UAC_MIC_STREAM_CFG_DEFAULT() DEFAULT_UAC_MIC_STREAM_CONFIG()
+
+#define DEFAULT_UAC_MIC_STREAM_CONFIG() {                \
     .port_index = USB_HUB_PORT_1,                        \
     .format = AUDIO_FORMAT_PCM,                          \
     .chl_num = 1,                                        \

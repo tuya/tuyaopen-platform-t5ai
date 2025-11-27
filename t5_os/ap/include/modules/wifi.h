@@ -1409,9 +1409,10 @@ bk_err_t bk_wifi_ftm_dump_result(const wifi_ftm_results_t *ftm_results);
  * @param ftm_results The ftm result to be freed.
  *
  * @return
- *    - BK_OK: always succeed
+ *    - BK_OK: succeed
+ *    - BK_ERR_PARAM: invalid scan result
  */
-void bk_wifi_ftm_free_result(wifi_ftm_results_t *ftm_results);
+bk_err_t bk_wifi_ftm_free_result(wifi_ftm_results_t *ftm_results);
 
 /**
  * @brief  Set Wi-Fi TX/RX debug log configuration
@@ -1567,7 +1568,7 @@ bk_err_t bk_wifi_get_tx_power(wifi_standard standard, float *powerdBm);
  *    - otherwise: fail
  */
 bk_err_t bk_wifi_set_tx_power(wifi_standard standard, float powerdBm);
-#if CONFIG_WIFI_CSI_EN
+
 /**
  * @brief user get csi data function
  *
@@ -1630,7 +1631,6 @@ bk_err_t bk_wifi_csi_stop_req(void);
  *    - otherwise: fail
  */
 bk_err_t bk_wifi_csi_static_param_reset_req(uint8_t update_cali_mode,uint32_t cali_cnt);
-#if CONFIG_WIFI_CSI_DEMO
 /**
  * @brief csi demo light control
  *
@@ -1642,7 +1642,40 @@ bk_err_t bk_wifi_csi_static_param_reset_req(uint8_t update_cali_mode,uint32_t ca
  *    - otherwise: fail
  */
 bk_err_t bk_wifi_csi_demo_turn_on_light(uint8_t color, bool flicker);
-#endif
+
+#if CONFIG_BRIDGE
+/**
+ * @brief    Start BK Bridge Mode
+ *
+ * This API configures the basic configurations of the BK Bridge.
+ *
+ * Usage example:
+ *
+ *     k_bridge_config_t br_config = {0};
+ *
+ *     os_strncpy(br_config.bridge_ssid, "ssid", WIFI_SSID_STR_LEN);
+ *     os_strncpy(br_config.ext_sta_ssid, "ext_sta_ssid", WIFI_SSID_STR_LEN);
+ *     os_strncpy(br_config.ext_sta_password, "ext_sta_password", WIFI_PASSWORD_LEN);
+ *     //more initialization here
+ *     BK_LOG_ON_ERR(bk_bridge_start(&br_config));
+ *
+ * @param br_config the bridge configuration
+ * @return
+ *    - BK_OK: succeed
+ *    - BK_FAIL: bridge start fail.
+ *    - others: other errors
+ */
+bk_err_t bk_bridge_start(bk_bridge_config_t *br_config);
+
+/**
+ * @brief    Stop BK Bridge Mode
+ *
+ * @return
+ *    - BK_OK: succeed
+ *    - BK_FAIL: bridge stop fail.
+ *    - others: other errors
+ */
+bk_err_t bk_bridge_stop(void);
 #endif
 
 #ifdef __cplusplus

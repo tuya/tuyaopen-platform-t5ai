@@ -9,13 +9,34 @@
  */
 
 #include "tkl_mutex.h"
+#include <common/bk_kernel_err.h>
 #include "FreeRTOSConfig.h"
 #include "FreeRTOS.h"
 #include "task.h"
 #include "semphr.h"
 
+#include <os/os.h>
+#include <common/bk_generic.h>
+#include <common/bk_generic.h>
 
-extern void bk_printf(const char *fmt, ...);
+/**************************************************************************************************/
+/**************************************************************************************************/
+/**************************************************************************************************/
+/**************************************************************************************************/
+/**************************************************************************************************/
+/**************************************************************************************************/
+
+
+#define RTOS_ASSERT_TASK_CONTEXT() do {                     \
+    BK_ASSERT(0 == platform_is_in_interrupt_context());     \
+} while(0)
+
+#define RTOS_ASSERT_INT_ENABLED_WITH_SCHEDULER() do {       \
+    if(rtos_is_scheduler_started()){                             \
+        BK_ASSERT(0 == platform_local_irq_disabled());      \
+    }                                                       \
+} while(0)
+
 /**
 * @brief Create mutex
 *
@@ -58,6 +79,9 @@ OPERATE_RET tkl_mutex_lock(CONST TKL_MUTEX_HANDLE handle)
         return OPRT_INVALID_PARM;
     }
 
+    RTOS_ASSERT_TASK_CONTEXT();
+    RTOS_ASSERT_INT_ENABLED_WITH_SCHEDULER();
+
     BaseType_t ret;
 #if configUSE_RECURSIVE_MUTEXES
     ret = xSemaphoreTakeRecursive(handle, portMAX_DELAY);
@@ -87,6 +111,9 @@ OPERATE_RET tkl_mutex_unlock(CONST TKL_MUTEX_HANDLE handle)
     if(!handle) {
         return OPRT_INVALID_PARM;
     }
+
+    RTOS_ASSERT_TASK_CONTEXT();
+    RTOS_ASSERT_INT_ENABLED_WITH_SCHEDULER();
 
 #if configUSE_RECURSIVE_MUTEXES
     ret = xSemaphoreGiveRecursive(handle);

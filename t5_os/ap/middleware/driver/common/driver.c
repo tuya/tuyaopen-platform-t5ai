@@ -41,6 +41,13 @@
 #include <driver/otp.h>
 #include <driver/pwr_clk.h>
 #include "bk_rtos_debug.h"
+#if CONFIG_SARADC_MB
+#include "saradc_client.h"
+#endif
+#if CONFIG_PHY_MB
+#include "phy_client.h"
+#endif
+#include "bk_api_ipc.h"
 
 #if CONFIG_SECURITY
 #include "bk_security.h"
@@ -334,6 +341,7 @@ int driver_init(void) {
 #if CONFIG_MAILBOX_IPC
 	mb_ipc_init();
 #endif
+	bk_ipc_init();
 #endif
 
 	os_show_memory_config_info();
@@ -354,8 +362,12 @@ int driver_init(void) {
 	bk_pwm_driver_init();
 #endif
 
-#if CONFIG_SARADC
+#if CONFIG_SARADC && CONFIG_SARADC_MB
 	bk_saradc_driver_init();
+#endif
+
+#if CONFIG_PHY_MB
+	bk_phy_driver_init();
 #endif
 
 #if CONFIG_SPI

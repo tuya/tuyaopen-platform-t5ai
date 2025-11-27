@@ -36,9 +36,10 @@ static TKL_ASR_WAKEUP_WORD_E sg_wakeup_word_list[TKL_ASR_WAKEUP_WORD_MAX];
 static uint8_t sg_wakeup_word_cnt = 0;
 
 static ASR_WAKEUP_WORD_MAP_T cASR_WAKEUP_WORD_MAP[] = {
-    {1, "heytuya", TKL_ASR_WAKEUP_NIHAO_TUYA},
-    {2, "你好涂鸦", TKL_ASR_WAKEUP_NIHAO_TUYA},
-    {3, "小智同学", TKL_ASR_WAKEUP_XIAOZHI_TONGXUE},
+    {1, "你好涂鸦", TKL_ASR_WAKEUP_NIHAO_TUYA},
+    {2, "小智同学", TKL_ASR_WAKEUP_XIAOZHI_TONGXUE},
+    {3, "heytuya", TKL_ASR_WAKEUP_NIHAO_TUYA},
+    {4, "hituya",  TKL_ASR_WAKEUP_NIHAO_TUYA},
 };
 
 /***********************************************************
@@ -71,8 +72,8 @@ OPERATE_RET tkl_asr_init(void)
 {
 #ifdef __EN_EXTERNALLY_ALLOCATION__
 	int i = TUTUClear_QueryMemSz();
-    pExternallyAllocatedMem = os_malloc(i);
-	bk_printf("tutuClear DM usage = %d bytes, addr = %p\n", i, pExternallyAllocatedMem);
+    pExternallyAllocatedMem = psram_malloc(i);
+	bk_printf("tutuClear PSTAM DM usage = %d bytes, addr = %p\n", i, pExternallyAllocatedMem);
 #endif // __EN_EXTERNALLY_ALLOCATION__
 
     W16 TUTUClear_ret = TUTUClear_Init(pExternallyAllocatedMem,

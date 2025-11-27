@@ -20,6 +20,8 @@ armino_path = curr_project.app0_src_root_path
 ota_tool = curr_project.tools_path / "env_tools/rtt_ota/ota-rbl/ota_packager_python.py"
 header_path = curr_project.tools_path / "env_tools/rtt_ota/ota-rbl"
 
+OTA_PACK_BIN_ALIGN_LEN = 64
+
 
 # region gen json
 def gen_ota_pack_json():
@@ -177,17 +179,24 @@ def pack_ota_app_bin(pack_dir: Path, output_bin: Path):
     ota_app_bin = output_bin
     packager = bk_packager.bk_packager_linear(pack_dir, app_pack_json, ota_app_bin)
     packager.pack()
+    ota_app_size = ota_app_bin.stat().st_size
+    padding_len = (
+        OTA_PACK_BIN_ALIGN_LEN - (ota_app_size % OTA_PACK_BIN_ALIGN_LEN)
+    ) % OTA_PACK_BIN_ALIGN_LEN
+    logger.info(f"ota app size {ota_app_size}, padding len {padding_len}")
+    if padding_len > 0:
+        with ota_app_bin.open("ab") as f:
+            f.write(bytes([0xFF]) * padding_len)
 
 
 def ota_pack():
     build_pack_dir = curr_project.project_build_package_dir
     pack_dir_temp = build_pack_dir / "tmp"
-    output_bin = pack_dir_temp / "origin_ota_app.bin"
-    pack_ota_app_bin(pack_dir_temp, output_bin)
+    origin_ota_app_bin = pack_dir_temp / "app_pack.bin"
+    pack_ota_app_bin(pack_dir_temp, origin_ota_app_bin)
 
     build_partitions_dir = curr_project.project_build_parititons_dir
     pack_json = build_partitions_dir / "bk_package.json"
-    origin_ota_app_bin = pack_dir_temp / "origin_ota_app.bin"
     all_app_bin = build_pack_dir / "all-app.bin"
     ota_bin = pack_ota_rbl(pack_dir_temp, pack_json, origin_ota_app_bin, all_app_bin)
     return ota_bin.absolute()

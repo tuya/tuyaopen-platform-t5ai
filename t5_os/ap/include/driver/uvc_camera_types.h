@@ -44,6 +44,12 @@ typedef enum
     UVC_STATE_UNKNOW,
 } uvc_state_t;
 
+typedef enum {
+    UVC_STREAM_STATE_RUNNING = 0,
+    UVC_STREAM_STATE_RESUME,
+    UVC_STREAM_STATE_SUSPEND,
+} uvc_stream_state_t;
+
 typedef enum
 {
     UVC_SINGLE_STREAM = 0,

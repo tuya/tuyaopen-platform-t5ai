@@ -426,6 +426,9 @@ SECTIONS
         _spinlock_start = .;
         *(.sram_spinlock_section)
     #if (CONFIG_ASR_SERVICE)
+        *(.wanson_asr_data11)
+        *(.wanson_asr_data12)
+        *(.wanson_asr_data13)
         *(.wanson_asr_data2)
     #endif
         . = ALIGN(4);

@@ -11,6 +11,7 @@ typedef enum
     PM_AP_CORE_AP_RECOVERY,
     PM_AP_CORE_SLEEP_WAKEUP_NOTIFY,
     PM_AP_CORE_PSRAM_STATE_NOTIFY,
+    PM_AP_CORE_SLEEP_DEMO_HANDLE,
 	PM_AP_CORE_STATE_MAX
 }pm_ap_core_state_e;
 
@@ -78,7 +79,15 @@ typedef enum
     PM_AP_USING_SYS_WAKEUP_DEV_DEMO,
     PM_AP_USING_SYS_WAKEUP_DEV_MAX,
 }pm_ap_using_wakeup_dev_e;
-typedef bk_err_t (*system_wakeup_cb_fn)(pm_wakeup_source_e wake_source,uint32_t wake_src_param);
+typedef bk_err_t (*system_wakeup_cb_fn)(pm_sleep_mode_e sleep_mode,pm_wakeup_source_e wake_source,void* param_p);
+
+typedef struct
+{
+	uint32_t period_tick;	//unit:ms
+	uint32_t period_cnt;	//total period count == 0Xffffffff means forever period;else period how many times
+	system_wakeup_cb_fn callback;
+	void *param_p;
+}pm_ap_rtc_info_t;
 
 typedef struct
 {
@@ -86,6 +95,7 @@ typedef struct
     pm_sleep_mode_e  sleep_mode;
     pm_wakeup_source_e  wakeup_source;
     system_wakeup_cb_fn sys_wakeup_fn;
+    void* param_p;
 } pm_ap_system_wakeup_cb_info_t;
 /**
  * @brief handle psram power on/off callback
@@ -275,4 +285,35 @@ bk_err_t bk_pm_ap_core_init();
  * - others: other errors.
  */
 bk_err_t bk_pm_ap_core_send_msg(pm_ap_core_msg_t *msg);
+/**
+ * @brief rtc unregsiter wakeup
+ *
+ * rtc unregsiter wakeup
+ *
+ * @attention
+ * - This API is to rtc unregsiter wakeup
+ *
+ * @param
+ * -sleep_mode
+ * @return
+ * - BK_OK: succeed
+ * - others: other errors.
+ */
+bk_err_t bk_pm_ap_rtc_unregsiter_wakeup(pm_sleep_mode_e sleep_mode);
+/**
+ * @brief rtc regsiter wakeup
+ *
+ * rtc regsiter wakeup
+ *
+ * @attention
+ * - This API is to rtc regsiter wakeup
+ *
+ * @param
+ * -sleep_mode
+ * -low_power_info
+ * @return
+ * - BK_OK: succeed
+ * - others: other errors.
+ */
+bk_err_t bk_pm_ap_rtc_regsiter_wakeup(pm_sleep_mode_e sleep_mode,pm_ap_rtc_info_t *low_power_info);
 #endif

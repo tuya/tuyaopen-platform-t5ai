@@ -360,4 +360,12 @@ menu "Bk_Wifi"
 		range 2 10
 		default 2
 
+	config PHY_CLIENT
+		bool "Enable PHY client"
+		default y
+
+	config PHY_MB
+		bool "Enable PHY mailbox"
+		default y
+
 endmenu

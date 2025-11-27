@@ -18,6 +18,18 @@
         struct type *stqe_next; /* next element */          \
     }
 
+#define STAILQ_INSERT_HEAD(head, elm, field) do {           \
+    if ((STAILQ_NEXT((elm), field) = STAILQ_FIRST((head))) == NULL) \
+        (head)->stqh_last = &STAILQ_NEXT((elm), field);     \
+    STAILQ_FIRST((head)) = (elm);                           \
+} while (0)
+
+#define STAILQ_INSERT_AFTER(head, listelm, elm, field) do {       \
+    if ((STAILQ_NEXT(elm, field) = STAILQ_NEXT(listelm, field)) == NULL) \
+        (head)->stqh_last = &STAILQ_NEXT(elm, field);           \
+    STAILQ_NEXT(listelm, field) = (elm);                         \
+} while (0)
+
 #define STAILQ_INSERT_TAIL(head, elm, field) do {           \
         STAILQ_NEXT((elm), field) = NULL;               \
         *(head)->stqh_last = (elm);                 \

@@ -56,30 +56,36 @@ menu "Arch::Cm33"
 			help
 				Dump all memory when exception happen
 
+		config DUMP_UART_PRINT_PORT
+			int "Config DumpUart Print Port"
+			range 0 2
+			default 0
+			help
+			Default 0 mean use UART0
+
+		config DUMP_TEST
+			bool "Enable Dump Test"
+			default n
+			help
+				Enable Dump Test
+
 		config MEMDUMP_ALL
 			bool "Enable Memdump All"
 			default y
 			help
 				Dump all memory when exception happen
         
-         config TRAP_TEST
-			bool "Enable trap test"
-			default n
-			help
-				trap test
-        
-        config INTERRUPT_DEBUG_RECORDER
+		config INTERRUPT_DEBUG_RECORDER
 			bool "Enable interrupt debug"
 			default n
 			help
 				interrupt debug
         
-        config INTERRUPT_RECORDER_CNT
-            int "Set recorder interrupt count"
+		config INTERRUPT_RECORDER_CNT
+			int "Set recorder interrupt count"
 			default 40
 			help
 				interrupt recorder count
-
 
 	endmenu
 endmenu

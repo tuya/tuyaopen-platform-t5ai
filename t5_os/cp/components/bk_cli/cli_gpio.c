@@ -399,6 +399,7 @@ static void cli_gpio_dump_map_dev_cfg_cmd(char *pcWriteBuffer, int xWriteBufferL
 }
 #endif
 
+#if CONFIG_GPIO_DEFAULT_SET_SUPPORT
 static void cli_gpio_check_dev_match_cmd(char *pcWriteBuffer, int xWriteBufferLen, int argc, char **argv)
 {
 	uint32_t id = 0;
@@ -430,6 +431,7 @@ static void cli_gpio_check_capacity_match_cmd(char *pcWriteBuffer, int xWriteBuf
 
 	BK_LOG_ON_ERR(gpio_check_capacity_match(id, capacity));
 }
+#endif
 
 #define GPIO_CMD_CNT (sizeof(s_gpio_commands) / sizeof(struct cli_command))
 static const struct cli_command s_gpio_commands[] = {
@@ -449,8 +451,10 @@ static const struct cli_command s_gpio_commands[] = {
 #if CONFIG_GPIO_DUMP_MAP_DEV_DEBUG
 	{"gpio_dump_map_dev_cfg", "gpio_dump_map_dev_cfg", cli_gpio_dump_map_dev_cfg_cmd},
 #endif
+#if CONFIG_GPIO_DEFAULT_SET_SUPPORT
 	{"gpio_check_dev_match", "gpio_check_dev_match [id] [dev]", cli_gpio_check_dev_match_cmd},
 	{"gpio_check_capacity_match", "gpio_check_capacity_match [id] [capacity]", cli_gpio_check_capacity_match_cmd},
+#endif
 };
 
 int cli_gpio_init(void)

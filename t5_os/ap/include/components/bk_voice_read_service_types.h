@@ -14,7 +14,6 @@
 
 #pragma once
 
-#include "avdk_types.h"
 #include <components/bk_voice_service_types.h>
 
 #ifdef __cplusplus

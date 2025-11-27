@@ -130,15 +130,15 @@ bk_err_t bk_pm_cpu_freq_dump()
 	switch((value_8 >> PM_CPU_SRC_POS)&PM_CPU_SRC_MASK)
 	{
 		case PM_CPU_SRC_480M:
-			LOGD("Curfreq CPU0:(480/%d)M,CPU1/CPU2:(480/%d)M\r\n",cp0_div,cp1_div);
+			LOGI("Curfreq CPU0:(480/%d)M,CPU1/CPU2:(480/%d)M\r\n",cp0_div,cp1_div);
 			break;
 		case PM_CPU_SRC_320M:
-			LOGD("Curfreq:CPU0:(320/%d)M,CPU1/CPU2:(320/%d)M\r\n",cp0_div,cp1_div);
+			LOGI("Curfreq:CPU0:(320/%d)M,CPU1/CPU2:(320/%d)M\r\n",cp0_div,cp1_div);
 			break;
 		default:
 			break;
 	}
-	LOGD("Freq_reg:0x%x,0x%x,0x%x\r\n",value_8,value_4,value_5);
+	LOGI("Freq_reg:0x%x,0x%x,0x%x\r\n",value_8,value_4,value_5);
 	return BK_OK;
 }
 

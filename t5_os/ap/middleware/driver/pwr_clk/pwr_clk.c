@@ -726,7 +726,7 @@ bk_err_t bk_pm_ap_rtc_wakeup_source_config(pm_sleep_mode_e sleep_mode,pm_wakeup_
 	{
 		return BK_FAIL;
 	}
-	ret = pm_wakeup_source_config(sleep_mode,wakeup_source,prtc_wakeup_cfg->rtc_period);
+	ret = pm_wakeup_source_config(sleep_mode,wakeup_source,(uint32_t)prtc_wakeup_cfg);
 	return ret;
 }
 bk_err_t bk_pm_ap_gpio_wakeup_source_config(pm_sleep_mode_e sleep_mode,pm_wakeup_source_e wakeup_source,pm_gpio_wakeup_config_t* pgpio_wakeup_cfg)

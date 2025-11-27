@@ -42,7 +42,7 @@ bk_err_t bk_uvc_frame_buffer_list_node_deinit(void *node)
 
 bk_err_t bk_uvc_frame_buffer_list_node_clear(void *node)
 {
-    frame_buffer_list_node_invalid((frame_list_node_t *)node);
+    frame_buffer_list_node_clear((frame_list_node_t *)node);
     return BK_OK;
 }
 

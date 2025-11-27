@@ -15,18 +15,24 @@
 #include "i2s_hal.h"
 #include "tkl_audio.h"
 #include "tkl_semaphore.h"
+#include "tkl_queue.h"
 #include "tkl_system.h"
 #include "bk_general_dma.h"
-
+#include "tkl_gpio.h"
 #include "i2s_hw.h"
+#include "tkl_thread.h"
+#include "tkl_memory.h"
 #include <driver/i2s_types.h>
 // --- END: user defines and implements ---
 
 /***********************************************************
 ************************macro define************************
 ***********************************************************/
-#define DMA_FRAME_SIZE    (16000 * 2 * 32 / 8 / 50)
-#define BUFFER_NUM        (2)
+#define DEFAULT_CHANNEL_NUM  (2)
+#define BITS_PER_BYTE        (8)
+#define MS_20_DIV            (50)
+#define BUFFER_NUM           (2)
+#define DEFAULT_SAMPLE       (16000)
 #define DMA_MAGIC         (0xf0f0f0f0)
 /***********************************************************
 ***********************typedef define***********************
@@ -34,8 +40,6 @@
 typedef struct i2s_cb_config {
     i2s_data_handle_cb tx_cb;   //发送回调，dma发送完成时调用
     i2s_data_handle_cb rx_cb;   //接收回调，dma接收完成时调用
-    dma_id_t dma_id;
-    UINT32_T * dma_curr_buf;
 }i2s_cb_config_t;
 
 /***********************************************************
@@ -51,13 +55,16 @@ static int ch2_rx_data_handle_cb(uint32_t size);
 ***********************variable define**********************
 ***********************************************************/
 i2s_cb_config_t m_i2s_cfg[TUYA_I2S_NUM_MAX] = {
-    {ch0_tx_data_handle_cb,ch0_rx_data_handle_cb,DMA_ID_MAX},
-    {ch1_tx_data_handle_cb,ch1_rx_data_handle_cb,DMA_ID_MAX},
-    {ch2_tx_data_handle_cb,ch2_rx_data_handle_cb,DMA_ID_MAX}
+    {ch0_tx_data_handle_cb,ch0_rx_data_handle_cb},
+    {ch1_tx_data_handle_cb,ch1_rx_data_handle_cb},
+    {ch2_tx_data_handle_cb,ch2_rx_data_handle_cb}
 };
 static TUYA_I2S_BASE_CFG_T m_i2s_config[TUYA_I2S_NUM_MAX] = {0};
 static RingBufferContext *m_ringbuffer[TUYA_I2S_NUM_MAX] = {NULL};
 static TKL_SEM_HANDLE m_semaphore[TUYA_I2S_NUM_MAX] = {0};
+static TKL_QUEUE_HANDLE m_i2s_msg_queue[TUYA_I2S_NUM_MAX] = {0};
+
+STATIC TKL_THREAD_HANDLE i2s_handle[TUYA_I2S_NUM_MAX] = {NULL};
 /***********************************************************
 ***********************function define**********************
 ************************************************************/
@@ -169,7 +176,43 @@ static int ch2_rx_data_handle_cb(uint32_t size)
         bk_printf("dma rx sem fail %d\r\n", ret);
         return ret;
     }
+    
 	return size;
+}
+
+static void i2s_handle_task(void)
+{
+    INT32 ret = 0L;
+    UINT32_T val = 0U;
+    VOID_T *data = NULL;
+    UINT32_T frame_size = 0U;
+    while (1) {
+        //20ms取一次数据到缓冲区
+        for (size_t i = 0; i < TUYA_I2S_NUM_MAX; i++) {
+            frame_size = (DEFAULT_SAMPLE * DEFAULT_CHANNEL_NUM * m_i2s_config[i].bits_per_sample) / (BITS_PER_BYTE * MS_20_DIV);
+            if (m_i2s_config[i].i2s_dma_flags) {
+                ret = tkl_semaphore_wait(m_semaphore[i], 20);
+                if (ret != BK_OK) {
+		        	continue;
+		        }
+                //dma缓冲区有大于一帧数据则取出加入队列
+                while (ring_buffer_get_fill_size(m_ringbuffer[i]) >= frame_size) {
+                    data = tkl_system_psram_malloc(frame_size);
+                    if (data) {
+                        ring_buffer_read(m_ringbuffer[i], data, frame_size);
+                        ret = tkl_queue_post(m_i2s_msg_queue[i], &data, 0);
+                        if (ret != OPRT_OK) {
+	                        bk_i2s_stop();
+                            tkl_system_psram_free(data);
+                            data = NULL;
+                            continue;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
 }
 
 /**
@@ -184,9 +227,11 @@ OPERATE_RET tkl_i2s_init(TUYA_I2S_NUM_E i2s_num, const TUYA_I2S_BASE_CFG_T *cfg)
 {
     // --- BEGIN: user implements ---
     OPERATE_RET ret = 0;
+    UINT32_T val = 0U;
     i2s_config_t i2s_config = DEFAULT_I2S_CONFIG();
     i2s_data_handle_cb i2s_cb = NULL;
     i2s_txrx_type_t type = I2S_TXRX_TYPE_MAX;
+    UINT32_T frame_size = 0U;
 
     if ((i2s_num >= TUYA_I2S_NUM_MAX) || (cfg == NULL)) {
         bk_printf("i2s port %d is invalid\n", i2s_num);
@@ -220,7 +265,7 @@ OPERATE_RET tkl_i2s_init(TUYA_I2S_NUM_E i2s_num, const TUYA_I2S_BASE_CFG_T *cfg)
     switch (cfg->channel_format) {
         case TUYA_I2S_CHANNEL_FMT_RIGHT_LEFT:
             i2s_config.store_mode = I2S_LRCOM_STORE_16R16L;
-            i2s_config.pcm_chl_num = 2;
+            i2s_config.pcm_chl_num = DEFAULT_CHANNEL_NUM;
             break;
         case TUYA_I2S_CHANNEL_FMT_ALL_RIGHT:
         case TUYA_I2S_CHANNEL_FMT_ALL_LEFT:
@@ -231,7 +276,7 @@ OPERATE_RET tkl_i2s_init(TUYA_I2S_NUM_E i2s_num, const TUYA_I2S_BASE_CFG_T *cfg)
             break;
         default:
             i2s_config.store_mode = I2S_LRCOM_STORE_16R16L;
-            i2s_config.pcm_chl_num = 2;
+            i2s_config.pcm_chl_num = DEFAULT_CHANNEL_NUM;
             break;
     }
 	switch (cfg->sample_rate) {
@@ -275,9 +320,19 @@ OPERATE_RET tkl_i2s_init(TUYA_I2S_NUM_E i2s_num, const TUYA_I2S_BASE_CFG_T *cfg)
 			break;
 	}
 
-    bk_i2s_driver_init();
+    ret = bk_i2s_driver_init();
+    if (ret != BK_OK) {
+        return OPRT_COM_ERROR;
+    }
+    
     i2s_config.data_length = cfg->bits_per_sample;
-    bk_i2s_init((i2s_gpio_group_id_t)i2s_num, &i2s_config);
+    ret = bk_i2s_init((i2s_gpio_group_id_t)i2s_num, &i2s_config);
+    if (ret != BK_OK) {
+        bk_i2s_driver_deinit();
+        return OPRT_COM_ERROR;
+    }
+    //配置信息前置，避免任务运行时参数不一致导致任务无法进入阻塞状态
+    memcpy(&m_i2s_config[i2s_num], cfg, sizeof(TUYA_I2S_BASE_CFG_T));
     if (cfg->i2s_dma_flags) {
         if (cfg->mode & TUYA_I2S_MODE_TX) {
             type = I2S_TXRX_TYPE_TX;
@@ -286,23 +341,45 @@ OPERATE_RET tkl_i2s_init(TUYA_I2S_NUM_E i2s_num, const TUYA_I2S_BASE_CFG_T *cfg)
             type = I2S_TXRX_TYPE_RX;
             i2s_cb = m_i2s_cfg[i2s_num].rx_cb;
         }
-        ret = tkl_semaphore_create_init(&m_semaphore[i2s_num], 0, 1);
+        ret = tkl_semaphore_create_init(&m_semaphore[i2s_num], 0, 2);
         if (ret != BK_OK) {
             bk_i2s_deinit();
             bk_i2s_driver_deinit();
             bk_printf("i2s sem create failed %d\n", ret);
 			return OPRT_COM_ERROR;
 		}
-        ret = bk_i2s_chl_init(I2S_CHANNEL_1, type, DMA_FRAME_SIZE * 2, i2s_cb, &m_ringbuffer[i2s_num]);
+        frame_size = (DEFAULT_SAMPLE * DEFAULT_CHANNEL_NUM * cfg->bits_per_sample) / (BITS_PER_BYTE * MS_20_DIV);
+        ret = bk_i2s_chl_init(I2S_CHANNEL_1, type, frame_size * BUFFER_NUM, i2s_cb, &m_ringbuffer[i2s_num]);
 		if (ret != BK_OK) {
             bk_i2s_deinit();
             bk_i2s_driver_deinit();
             tkl_semaphore_release(m_semaphore[i2s_num]);
+            m_semaphore[i2s_num] = NULL;
 			return OPRT_COM_ERROR;
 		}
+        ret = tkl_queue_create_init(&m_i2s_msg_queue[i2s_num], sizeof(VOID_T *), 10);
+		if (ret != BK_OK) {
+            bk_i2s_chl_deinit(I2S_CHANNEL_1, type);
+            tkl_semaphore_release(m_semaphore[i2s_num]);
+            m_semaphore[i2s_num] = NULL;
+            bk_i2s_deinit();
+            bk_i2s_driver_deinit();
+			return OPRT_COM_ERROR;
+		}
+        if (type == I2S_TXRX_TYPE_RX) {
+            ret = tkl_thread_create_in_psram(&i2s_handle[i2s_num], "i2s_handle", 1024 * 2, 4, i2s_handle_task, NULL);
+	        if (ret != BK_OK) {
+                tkl_queue_free(m_i2s_msg_queue[i2s_num]);
+                m_i2s_msg_queue[i2s_num] = NULL;
+                bk_i2s_chl_deinit(I2S_CHANNEL_1, type);
+                tkl_semaphore_release(m_semaphore[i2s_num]);
+                m_semaphore[i2s_num] = NULL;
+                bk_i2s_deinit();
+                bk_i2s_driver_deinit();
+	        	return OPRT_COM_ERROR;
+	        }
+        }
     }
-	bk_i2s_start();
-    memcpy(&m_i2s_config[i2s_num], cfg, sizeof(TUYA_I2S_BASE_CFG_T));
     
     return OPRT_OK;
     // --- END: user implements ---
@@ -318,15 +395,35 @@ OPERATE_RET tkl_i2s_init(TUYA_I2S_NUM_E i2s_num, const TUYA_I2S_BASE_CFG_T *cfg)
 OPERATE_RET tkl_i2s_deinit(TUYA_I2S_NUM_E i2s_num)
 {
     // --- BEGIN: user implements ---
+    VOID_T *data = NULL;
+    UINT32_T val = 0U;
+    i2s_txrx_type_t type = I2S_TXRX_TYPE_MAX;
+    
+    if (m_i2s_config[i2s_num].mode & TUYA_I2S_MODE_TX) {
+        type = I2S_TXRX_TYPE_TX;
+    } else {
+        type = I2S_TXRX_TYPE_RX;
+    }
     if (i2s_num >= TUYA_I2S_NUM_MAX) {
         bk_printf("i2s port %d is invalid\n", i2s_num);
         return OPRT_INVALID_PARM;
     }
+    bk_i2s_stop();
 
     if (m_i2s_config[i2s_num].i2s_dma_flags) {
-        bk_i2s_chl_deinit(I2S_CHANNEL_1, (m_i2s_config[i2s_num].mode & (TUYA_I2S_MODE_TX | TUYA_I2S_MODE_RX)));
+        tkl_thread_release(i2s_handle[i2s_num]);
+        i2s_handle[i2s_num] = NULL;
+        //取出所有数据后释放，不阻塞
+        while (tkl_queue_fetch(m_i2s_msg_queue[i2s_num], &data, 0) == OPRT_OK) {
+            tkl_system_psram_free(data);
+            data = NULL;
+        }
+        tkl_queue_free(m_i2s_msg_queue[i2s_num]);
+        m_i2s_msg_queue[i2s_num] = NULL;
+        bk_i2s_chl_deinit(I2S_CHANNEL_1, type);
+        tkl_semaphore_release(m_semaphore[i2s_num]);
+        m_semaphore[i2s_num] = NULL;
     }
-    bk_i2s_enable(I2S_DISABLE);
     bk_i2s_deinit();
     bk_i2s_driver_deinit();
 
@@ -347,28 +444,42 @@ OPERATE_RET tkl_i2s_deinit(TUYA_I2S_NUM_E i2s_num)
 OPERATE_RET tkl_i2s_send(TUYA_I2S_NUM_E i2s_num, VOID_T *buff, UINT32_T len)
 {
     // --- BEGIN: user implements ---
+    VOID_T *data = NULL;
     INT32_T ret = 0;
     uint32_t write_flag = 0U;
-    if ((i2s_num >= TUYA_I2S_NUM_MAX) || ((m_i2s_config[i2s_num].i2s_dma_flags) && (len > DMA_FRAME_SIZE)) || (buff == NULL)) {
+    UINT32_T size = 0;
+    INT_T really_size = 0U;
+    UINT32_T frame_size = (DEFAULT_SAMPLE * DEFAULT_CHANNEL_NUM * m_i2s_config[i2s_num].bits_per_sample) / (BITS_PER_BYTE * MS_20_DIV);
+    if ((i2s_num >= TUYA_I2S_NUM_MAX) || (len == 0) || ((m_i2s_config[i2s_num].i2s_dma_flags) && (len % frame_size != 0)) || (buff == NULL)) {
         bk_printf("i2s port %d is invalid\n", i2s_num);
         return OPRT_INVALID_PARM;
     }
     if ((m_i2s_config[i2s_num].i2s_dma_flags) && (m_i2s_config[i2s_num].mode & TUYA_I2S_MODE_TX)) {
-        ret = ring_buffer_write(m_ringbuffer[i2s_num], buff, DMA_FRAME_SIZE);
-        if (ret != OPRT_OK)
-        {
-            return OPRT_SEND_ERR;
+        while (1) {
+            if(ring_buffer_get_free_size(m_ringbuffer[i2s_num]) >= frame_size) {
+                ring_buffer_write(m_ringbuffer[i2s_num], buff + really_size, frame_size);
+                really_size += frame_size;
+		        bk_i2s_start();
+            } else {
+                ret = tkl_semaphore_wait(m_semaphore[i2s_num], TKL_SEM_WAIT_FOREVER);
+                if (ret != BK_OK) {
+                    bk_printf("i2s sem wait failed %d\n", ret);
+		        }
+            }
+            if ((len - really_size) <= 0) {
+                break;
+            }
+            
         }
-        ret = tkl_semaphore_wait(m_semaphore[i2s_num], TKL_SEM_WAIT_FOREVER);
-        if (ret != OPRT_OK)
-        {
-            bk_printf("tkl_semaphore_wait %d is invalid\n", ret);
-            return ret;
-        }
+        
+        return really_size;
     } else {
         bk_i2s_get_write_ready(&write_flag);
         if (write_flag) {
             BK_RETURN_ON_ERR(bk_i2s_write_data(i2s_num, buff, (UINT32_T)len));
+            return len;
+        } else {
+            return OPRT_COM_ERROR;
         }
     }
     return OPRT_OK;
@@ -388,27 +499,61 @@ INT_T tkl_i2s_recv(TUYA_I2S_NUM_E i2s_num, VOID_T *buff, UINT32_T len)
 {
     // --- BEGIN: user implements ---
     INT_T ret = 0L;
+    INT_T really_size = 0U;
+    UINT32_T val = 0U;
+    VOID_T *data = NULL;
     uint32_t read_flag = 0U;
-    if ((i2s_num >= TUYA_I2S_NUM_MAX) || ((m_i2s_config[i2s_num].i2s_dma_flags) && (len < DMA_FRAME_SIZE)) || (buff == NULL)) {
+    UINT32_T frame_size = (DEFAULT_SAMPLE * DEFAULT_CHANNEL_NUM * m_i2s_config[i2s_num].bits_per_sample) / (BITS_PER_BYTE * MS_20_DIV);
+    if ((i2s_num >= TUYA_I2S_NUM_MAX) || (len == 0) || ((m_i2s_config[i2s_num].i2s_dma_flags) && (len % frame_size != 0)) || (buff == NULL)) {
         bk_printf("i2s port %d is invalid\n", i2s_num);
         return OPRT_INVALID_PARM;
     }
     if ((m_i2s_config[i2s_num].i2s_dma_flags) && (m_i2s_config[i2s_num].mode & TUYA_I2S_MODE_RX)) {
-        ret = tkl_semaphore_wait(m_semaphore[i2s_num], TKL_SEM_WAIT_FOREVER);
-        if (ret != OPRT_OK)
-        {
-            bk_printf("tkl_semaphore_wait %d is invalid\n", ret);
-            return ret;
+        // 先非阻塞读取所有可读的数据
+        while (really_size < len) {
+            ret = tkl_queue_fetch(m_i2s_msg_queue[i2s_num], &data, 0);
+            if (ret != OPRT_OK) {
+                break; // 队列为空，退出非阻塞读取
+            }
+
+            if (data) {
+                UINT32_T copy_size = (len - really_size) < frame_size ? (len - really_size) : frame_size;
+                memcpy((UINT8_T*)buff + really_size, data, copy_size);
+                tkl_system_psram_free(data);
+                really_size += copy_size;
+            }
         }
-        ring_buffer_read(m_ringbuffer[i2s_num], buff, DMA_FRAME_SIZE);
-        ret = DMA_FRAME_SIZE;
+        // 如果非阻塞读取后，一个数据都没有读到，则阻塞等待
+        if (really_size == 0) {
+            // 阻塞读取剩余可读的数据
+            if (really_size < len) {
+	            bk_i2s_start();
+                ret = tkl_queue_fetch(m_i2s_msg_queue[i2s_num], &data, TKL_SEM_WAIT_FOREVER);
+                if (ret != OPRT_OK) {
+                    return OPRT_COM_ERROR;
+                }
+
+                if (data) {
+                    UINT32_T copy_size = (len - really_size) < frame_size ? (len - really_size) : frame_size;
+                    memcpy((UINT8_T*)buff + really_size, data, copy_size);
+                    tkl_system_psram_free(data);
+                    really_size += copy_size;
+                }
+            }
+        }
+
+        return really_size;
     } else {
         bk_i2s_get_read_ready(&read_flag);
         if (read_flag) {
             BK_RETURN_ON_ERR(bk_i2s_read_data(buff, (UINT32_T)len));
+            return len;
+        } else {
+            return OPRT_COM_ERROR;
         }
+        
     }
-    return ret;
+    return OPRT_OK;
     // --- END: user implements ---
 }
 
@@ -426,7 +571,7 @@ OPERATE_RET tkl_i2s_send_stop(TUYA_I2S_NUM_E i2s_num)
         bk_printf("i2s port %d is invalid\n", i2s_num);
         return OPRT_INVALID_PARM;
     }
-    BK_RETURN_ON_ERR(bk_i2s_enable(I2S_DISABLE));
+    BK_RETURN_ON_ERR(bk_i2s_stop());
     return OPRT_OK;
     // --- END: user implements ---
 }
@@ -445,7 +590,7 @@ OPERATE_RET tkl_i2s_recv_stop(TUYA_I2S_NUM_E i2s_num)
         bk_printf("i2s port %d is invalid\n", i2s_num);
         return OPRT_INVALID_PARM;
     }
-    BK_RETURN_ON_ERR(bk_i2s_enable(I2S_DISABLE));
+    BK_RETURN_ON_ERR(bk_i2s_stop());
     return OPRT_OK;
     // --- END: user implements ---
 }

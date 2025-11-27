@@ -61,6 +61,7 @@ static volatile  pm_mailbox_communication_state_e s_pm_cp1_boot_ready           
 static volatile  pm_mailbox_communication_state_e s_pm_cp1_psram_malloc_state    = 0;
 static volatile  uint32_t                         s_pm_cp1_psram_malloc_count    = 0;
 static volatile  uint64_t                         s_pm_cp1_module_recovery_state = PM_CP1_RECOVERY_DEFAULT_VALUE;
+static volatile  uint32_t                         s_pm_vdddig_ctrl_state         = 0;
 #if (CONFIG_CPU_CNT > 1)
 static beken_semaphore_t                          s_sync_cp1_open_sema           = NULL;
 #endif
@@ -264,7 +265,7 @@ static void pm_cp0_mailbox_rx_isr(int *pm_mb, mb_chnl_cmd_t *cmd_buf)
 	{
 		if(cmd_buf->hdr.cmd != PM_CP1_PSRAM_MALLOC_STATE_CMD)
 		{
-			BK_LOGD(NULL,"cp0_mb_rx_isr %d %d %d %d %d\r\n",cmd_buf->hdr.cmd,cmd_buf->param1,cmd_buf->param2,cmd_buf->param3,ret);
+			BK_LOGV(NULL,"cp0_mb_rx_isr %d %d %d %d %d\r\n",cmd_buf->hdr.cmd,cmd_buf->param1,cmd_buf->param2,cmd_buf->param3,ret);
 		}
 	}
 
@@ -481,29 +482,26 @@ bk_err_t bk_pm_cp_wakeup_ap_from_wfi(uint8_t core_id)
 	int ret                       = BK_OK;
 #if CONFIG_PM_LV_SUBCORES_ON
 	mb_chnl_cmd_t mb_cmd          = {0};
-	volatile uint8_t  retry_count = 0;
 
 	mb_cmd.hdr.cmd = PM_SLEEP_WAKEUP_NOTIFY_CMD;
 	mb_cmd.param1 = 0;
 	mb_cmd.param2 = 0;
 	mb_cmd.param3 = 0;
 	ret = mb_chnl_write(MB_CHNL_PWC, &mb_cmd);
-    while(ret != BK_OK)
+	if(ret == BK_ERR_BUSY)
 	{
-		bk_delay_us(PM_CP_NOTIFY_DELAY_TIME_US);
-		ret = mb_chnl_write(MB_CHNL_PWC, &mb_cmd);
-		retry_count++;
-		if((retry_count > PM_CP_NOTIFY_AP_MAX_COUNT)||(ret == BK_OK))
-		{
-			break;
-		}
+		// BK_LOGI(NULL,"Mb busy[%d]wait next wakeup\r\n",ret);     // Modified by TUYA
+		ret = BK_FAIL;
+	}
+	else if(ret == BK_OK)
+	{
+	}
+	else
+	{
+		BK_LOGE(NULL,"Mb write error[%d]\r\n",ret);
 	}
 	FIXED_ADDR_WAKEUP_CP_COUNT += 1;
-	if(retry_count > PM_CP_NOTIFY_AP_MAX_COUNT)
-	{
-		BK_LOGE(NULL,"Wakeup Ap[%d]retry_count[%d]time out\r\n",ret,retry_count);
-		BK_ASSERT(0);
-	}
+
 #endif
 	return ret;
 }
@@ -627,7 +625,7 @@ static bk_err_t pm_psram_power_ctrl(pm_power_psram_module_name_e module,pm_power
     {
 		if(s_pm_psram_ctrl_state == 0)
 		{
-			bk_pm_module_vote_cpu_freq(PM_DEV_ID_PSRAM,PM_CPU_FRQ_480M);
+			bk_pm_module_vote_vdddig_ctrl(PM_VDDDIG_MODULE_PSRAM,PM_VDDDIG_HIGH_STATE_ON);
 		}
 		ret = bk_psram_init();
 		if(ret != BK_OK)
@@ -663,7 +661,7 @@ static bk_err_t pm_psram_power_ctrl(pm_power_psram_module_name_e module,pm_power
 			if(0x0 == s_pm_psram_ctrl_state)
 			{
 				bk_psram_deinit();
-				bk_pm_module_vote_cpu_freq(PM_DEV_ID_PSRAM,PM_CPU_FRQ_DEFAULT);
+				bk_pm_module_vote_vdddig_ctrl(PM_VDDDIG_MODULE_PSRAM,PM_VDDDIG_HIGH_STATE_OFF);
 				FIXED_ADDR_PSRAM_POWER_DOWN = PM_PSRAM_POWER_DOWN_MAGIC;
                 bk_pm_get_cp1_psram_malloc_count(0x1);
 			}
@@ -676,12 +674,12 @@ static bk_err_t pm_psram_power_ctrl(pm_power_psram_module_name_e module,pm_power
 bk_err_t pm_debug_pwr_clk_state()
 {
 #if CONFIG_PSRAM
-	BK_LOGD(NULL,"pm_psram:0x%x 0x%x\r\n",s_pm_psram_ctrl_state,bk_psram_heap_init_flag_get());
+	BK_LOGI(NULL,"pm_psram:0x%x 0x%x\r\n",s_pm_psram_ctrl_state,bk_psram_heap_init_flag_get());
 #endif
 #if (CONFIG_CPU_CNT > 1)
-	BK_LOGD(NULL,"pm_cp1_ctr:0x%x \r\n",s_pm_cp1_ctrl_state);
+	BK_LOGI(NULL,"pm_cp1_ctr:0x%x \r\n",s_pm_cp1_ctrl_state);
 #endif
-	BK_LOGD(NULL,"pm_cp1_boot_ready:0x%x 0x%x\r\n",s_pm_cp1_boot_ready,s_pm_cp1_module_recovery_state);
+	BK_LOGI(NULL,"pm_cp1_boot_ready:0x%x 0x%x\r\n",s_pm_cp1_boot_ready,s_pm_cp1_module_recovery_state);
 	return BK_OK;
 }
 uint32_t bk_pm_get_psram_ctrl_state()
@@ -707,4 +705,35 @@ bk_err_t bk_pm_module_vote_ctrl_external_ldo(gpio_ctrl_ldo_module_e module,gpio_
 	bk_gpio_ctrl_external_ldo(module,gpio_id,value);
 	return BK_OK;
 }
+bk_err_t bk_pm_module_vote_vdddig_ctrl(pm_vdddig_module_e module,pm_vdddig_high_state_e state)
+{
+#if CONFIG_SYS_CPU0
+	if(state == PM_VDDDIG_HIGH_STATE_ON)
+	{
+		/*The VDDDIG voltage must be ramped up prior to PRRAM power-on. During CPU operation at high frequencies, the voltage should be increased in conjunction with CPU frequency scaling events.*/
+		if((module == PM_VDDDIG_MODULE_PSRAM)&&(s_pm_vdddig_ctrl_state == 0x0))
+		{
+			sys_hal_set_vdddig_h_vol(PM_VDDDIG_095);
+		}
+		s_pm_vdddig_ctrl_state |= 0x1 << module;
+	}
+	else
+	{
+		s_pm_vdddig_ctrl_state &= ~(0x1 << module);
+		if((module == PM_VDDDIG_MODULE_PSRAM)&&(s_pm_vdddig_ctrl_state == 0x0))
+		{
+			pm_cpu_freq_e  cpu_freq = bk_pm_current_max_cpu_freq_get();
+			const cpu_freq_vdddig_t cpu_freq_vdddig_map[] = CPU_FREQ_VDDDIG_MAP;
 
+			for(int i = 0; i < sizeof(cpu_freq_vdddig_map)/sizeof(cpu_freq_vdddig_t); i++)
+			{
+				if(cpu_freq == cpu_freq_vdddig_map[i].cpu_freq)
+				{
+					sys_hal_set_vdddig_h_vol(cpu_freq_vdddig_map[i].vdddig);
+				}
+			}
+		}
+	}
+#endif
+	return BK_OK;
+}

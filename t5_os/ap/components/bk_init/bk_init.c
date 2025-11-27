@@ -313,7 +313,7 @@ int bk_init(void)
 
 	bk_event_init();
 
-#if 0   // CONFIG_AT
+#if CONFIG_AT
     set_ap_startup_index(AP_ENTER_AT_SERVER_INIT);
 	at_server_init();
 

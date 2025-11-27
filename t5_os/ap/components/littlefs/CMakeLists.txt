@@ -1,6 +1,5 @@
 set(incs "")
 set(srcs "")
-
 if(CONFIG_LITTLEFS)
 	list(APPEND incs .)
 	list(APPEND srcs
@@ -10,7 +9,9 @@ if(CONFIG_LITTLEFS)
 		)
 endif()
 
+# Modified by TUYA Start
 armino_component_register(SRCS "${srcs}"
 		INCLUDE_DIRS "${incs}"
-		PRIV_REQUIRES bk_common
+		PRIV_REQUIRES bk_common tuyaos_adapter
 		)
+# Modified by TUYA End

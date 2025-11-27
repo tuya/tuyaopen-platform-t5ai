@@ -1,4 +1,4 @@
-SDK_DIR := $(abspath ../..)
+SDK_DIR ?= $(abspath ../..)
 
 PROJECT_MAKE_FILE := $(SDK_DIR)/tools/build_tools/build_files/project_main.mk
 ifeq ($(wildcard $(PROJECT_MAKE_FILE)),)

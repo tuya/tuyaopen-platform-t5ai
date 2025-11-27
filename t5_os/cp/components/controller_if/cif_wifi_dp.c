@@ -186,6 +186,12 @@ bool cif_filter_check_ip_data(struct pbuf *p)
 // 	BK_ASSERT(0);
 // 	 return 0;
 //   }
+#if CONFIG_BRIDGE
+    if (bk_wifi_get_bridge_state() == BRIDGE_STATE_ENABLED) {
+        upload2ctrl = false;
+        return upload2ctrl;
+    }
+#endif
 
   switch (IPH_PROTO(iphdr)) 
   {
@@ -235,7 +241,7 @@ bool cif_filter_check_ip_data(struct pbuf *p)
     return upload2ctrl;
 }
 
-bool cif_rx_local_packet_check(struct pbuf **p_ptr, struct eth_hdr * ethhdr,void* vif)
+bool cif_rx_local_packet_check(struct pbuf **p_ptr, struct eth_hdr * ethhdr,void* vif, uint8_t dst_idx)
 {
     bool upload2ctrl = true;
     struct pbuf *p = *p_ptr;
@@ -270,7 +276,9 @@ bool cif_rx_local_packet_check(struct pbuf **p_ptr, struct eth_hdr * ethhdr,void
 
 #if CONFIG_CONTROLLER_RX_DIRECT_PSH
             p_copy = pbuf_alloc(PBUF_RAW,p->len+sizeof(cpdu_t),PBUF_RAM_RX);
-            upload2ctrl = true;
+#if CONFIG_BRIDGE
+            upload2ctrl = false;
+#endif
             if(p_copy)
             {
                 pbuf_header(p_copy, -(s16)sizeof(struct cpdu_t));
@@ -278,8 +286,17 @@ bool cif_rx_local_packet_check(struct pbuf **p_ptr, struct eth_hdr * ethhdr,void
             }
             else
             {
-                return upload2ctrl;   
+                return upload2ctrl;
             }
+#if CONFIG_BRIDGE
+            pbuf_free(p);
+#else
+            if(cif_is_arp_request(p))
+            {
+                upload2ctrl = false;
+                pbuf_free(p);
+            }
+#endif
 #else
             p_copy = (struct pbuf*)cif_maclloc_rx_buf();
 
@@ -315,6 +332,7 @@ bool cif_rx_local_packet_check(struct pbuf **p_ptr, struct eth_hdr * ethhdr,void
             cpdu->co_hdr.need_free = 0;
             cpdu->co_hdr.special_type = 0;
             cpdu->co_hdr.vif_idx = wifi_netif_vif_to_netif_type(vif);
+            cpdu->co_hdr.dst_index = dst_idx;
             //bk_mem_dump("cif_filter before snder",(uint32_t)p_copy->payload,100);
             ret = cif_msg_sender(cpdu,CIF_TASK_MSG_RX_DATA,0);
             if(ret != BK_OK)
@@ -377,6 +395,7 @@ bool cif_rx_local_packet_check(struct pbuf **p_ptr, struct eth_hdr * ethhdr,void
                 cpdu->co_hdr.need_free = 0;
                 cpdu->co_hdr.special_type = 0;
                 cpdu->co_hdr.vif_idx = wifi_netif_vif_to_netif_type(vif);
+                cpdu->co_hdr.dst_index = dst_idx;
                 CIF_LOGV("%s,%d p:%p next:%p payload:%p len:%d\r\n",
                     __func__,__LINE__, p_copy, p_copy->next, p_copy->payload, p_copy->tot_len);
 

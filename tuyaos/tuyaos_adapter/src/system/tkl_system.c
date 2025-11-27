@@ -25,6 +25,7 @@
 extern void bk_printf(const char *fmt, ...);
 static TKL_SEM_HANDLE get_cpu_info_sem = NULL;
 
+#if CONFIG_CPU_INDEX == 0
 static TaskHandle_t __gi_thread_handle = NULL;
 static void __get_info_func(void *arg)
 {
@@ -36,6 +37,7 @@ static void __get_info_func(void *arg)
     __gi_thread_handle = NULL;
     vTaskDelete(__gi_thread_handle);
 }
+#endif
 
 void tkl_sys_ipc_func(struct ipc_msg_s *msg)
 {
@@ -49,8 +51,8 @@ void tkl_sys_ipc_func(struct ipc_msg_s *msg)
 #if CONFIG_CPU_INDEX == 0
         case TKL_IPC_TYPE_SYS_CPU_INFO:
         {
-            bk_printf("recv cpu info req\r\n");
-            xTaskCreate(__get_info_func, "get_info", 1024, msg, 2, (TaskHandle_t * const )&__gi_thread_handle);
+            bk_printf_raw(BK_LOG_INFO, NULL, "recv cpu info req\r\n");
+            xTaskCreate(__get_info_func, "get_info", 1024, msg, 6, (TaskHandle_t * const )&__gi_thread_handle);
             msg->ret_value = 0;
             tuya_ipc_send_no_sync(msg);
         }
@@ -142,6 +144,7 @@ VOID_T tkl_system_reset(VOID_T)
 #if CONFIG_CPU_INDEX == 0
     bk_reboot();
 #else
+    bk_printf("ap request reset\r\n");
     struct ipc_msg_s msg = {0};
     msg.type = TKL_IPC_TYPE_SYS;
     msg.subtype = TKL_IPC_TYPE_SYS_REBOOT;
@@ -288,7 +291,7 @@ OPERATE_RET tkl_system_get_cpu_info(TUYA_CPU_INFO_T **cpu_ary, INT_T *cpu_cnt)
         *cpu_cnt = 1;
     }
 
-    bk_printf("send cpu info rsp, %p, 0x%02x%02x%02x%02x%02x\r\n",
+    bk_printf_raw(BK_LOG_INFO, NULL, "send cpu info rsp, %p, 0x%02x%02x%02x%02x%02x\r\n",
             *cpu, cpu->chipid[0], cpu->chipid[1],
             cpu->chipid[2], cpu->chipid[3], cpu->chipid[4]);
 
@@ -301,8 +304,19 @@ OPERATE_RET tkl_system_get_cpu_info(TUYA_CPU_INFO_T **cpu_ary, INT_T *cpu_cnt)
 
     TUYA_CPU_INFO_T *cpu = tkl_system_malloc(sizeof(TUYA_CPU_INFO_T));
     if (NULL == cpu) {
+        bk_printf("get info malloc failed\r\n");
         return OPRT_MALLOC_FAILED;
     }
+
+    // wait cp response
+    OPERATE_RET ret = tkl_semaphore_create_init(&get_cpu_info_sem, 0, 1);
+    if (ret !=  OPRT_OK) {
+        bk_printf("create semaphore failed\r\n");
+        tkl_system_free(cpu);
+        cpu = NULL;
+        return ret;
+    }
+
     memset(cpu, 0, sizeof(TUYA_CPU_INFO_T));
     *cpu_ary = cpu;
 
@@ -315,11 +329,6 @@ OPERATE_RET tkl_system_get_cpu_info(TUYA_CPU_INFO_T **cpu_ary, INT_T *cpu_cnt)
     bk_printf("send cpu info req\r\n");
     tuya_ipc_send_sync(&msg);
 
-    // wait cp response
-    OPERATE_RET ret = tkl_semaphore_create_init(&get_cpu_info_sem, 0, 1);
-    if (ret !=  OPRT_OK) {
-        return ret;
-    }
     bk_printf("wait cpu info\r\n");
     ret = tkl_semaphore_wait(get_cpu_info_sem, 5000);
     tkl_semaphore_release(get_cpu_info_sem);
@@ -329,7 +338,6 @@ OPERATE_RET tkl_system_get_cpu_info(TUYA_CPU_INFO_T **cpu_ary, INT_T *cpu_cnt)
         return ret;
     }
 
-    bk_printf("recv cpu info\r\n");
 
 #endif
 
@@ -380,5 +388,6 @@ UINT_T tkl_system_get_coreid(VOID_T)
 void tkl_system_task_info_dump(void)
 {
     rtos_dump_task_list();
+    rtos_dump_task_runtime_stats();
 }
 

@@ -56,6 +56,14 @@ static float cli_adc_read_multi_chan(void)
         return 0;
     }
 
+    // Before using the ADC functionality, the GPIO pin must be mapped to ADC mode.
+    // This mapping needs to be done only once, and the GPIO must remain dedicated to ADC functionality afterward.
+    for(UINT8 j = 0; j < (sizeof(adc_chan_buff)/sizeof(UINT8)); j++)
+    {
+        config.chan = adc_chan_buff[j];
+        bk_adc_chan_init_gpio(config.chan);
+    }
+
     config.chan = 0;
     config.adc_mode = 3;
     config.src_clk = 1;
@@ -63,6 +71,7 @@ static float cli_adc_read_multi_chan(void)
     config.saturate_mode = 4;
     config.steady_ctrl= 7;
     config.adc_filter = 0;
+    config.vol_div = ADC_VOL_DIV_NONE;//adc internal voltage division ratio
     if(config.adc_mode == ADC_CONTINUOUS_MODE) {
         config.sample_rate = 0;
     }
@@ -70,7 +79,7 @@ static float cli_adc_read_multi_chan(void)
     flag = 1;
 
     BK_LOG_ON_ERR(bk_adc_acquire());
-    sys_drv_set_ana_pwd_gadc_buf(1);
+    sys_drv_set_ana_hres_sel0v9();
     for(UINT8 i = 0; i < (sizeof(adc_chan_buff)/sizeof(UINT8)); i++)
     {
         config.chan = adc_chan_buff[i];
@@ -92,6 +101,13 @@ static float cli_adc_read_multi_chan(void)
     }
     sys_drv_set_ana_pwd_gadc_buf(0);
     bk_adc_release();
+
+    for(UINT8 k = 0; k < (sizeof(adc_chan_buff)/sizeof(UINT8)); k++)
+    {
+        config.chan = adc_chan_buff[k];
+        bk_adc_chan_deinit_gpio(config.chan);
+    }
+
     flag = 0;
     return cali_value;
 }
@@ -108,6 +124,15 @@ static float cli_adc_read_single_chan(UINT8 adc_chan)
     }
 
     flag = 1;
+
+
+    // Before using the ADC functionality, the GPIO pin must be mapped to ADC mode.
+    // This mapping needs to be done only once, and the GPIO must remain dedicated to ADC functionality afterward.
+    bk_adc_chan_init_gpio(adc_chan);
+
+
+
+
     BK_LOG_ON_ERR(bk_adc_acquire());
     sys_drv_set_ana_hres_sel0v9();
     BK_LOG_ON_ERR(bk_adc_init(adc_chan));
@@ -120,7 +145,7 @@ static float cli_adc_read_single_chan(UINT8 adc_chan)
     config.saturate_mode = ADC_SATURATE_MODE_3;
     config.steady_ctrl= 7;
     config.adc_filter = 0;
-	config.vol_div = ADC_VOL_DIV_NONE;//adc internal voltage division ratio
+    config.vol_div = ADC_VOL_DIV_NONE;//adc internal voltage division ratio
     if(config.adc_mode == ADC_CONTINUOUS_MODE) {
         config.sample_rate = 0;
     }
@@ -137,6 +162,14 @@ static float cli_adc_read_single_chan(UINT8 adc_chan)
     bk_adc_release();
     CLI_LOGD("volt value:%d mv\n",(uint32_t)(cali_value*1000));
     flag = 0;
+
+
+
+    bk_adc_chan_deinit_gpio(adc_chan);
+
+
+
+
     return cali_value;
 }
 

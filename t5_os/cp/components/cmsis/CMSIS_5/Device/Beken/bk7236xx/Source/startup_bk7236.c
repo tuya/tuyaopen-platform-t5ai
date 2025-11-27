@@ -474,7 +474,7 @@ __STATIC_FORCEINLINE void dump_system_info(uint32_t rr, uint32_t lr, uint32_t sp
 void user_nmi_handler(uint32_t lr, uint32_t sp)
 {
 #if CONFIG_DEBUG_VERSION || CONFIG_DUMP_ENABLE
-	if(arch_is_enter_exception())
+	if(arch_is_enter_exception() || arch_is_ap_in_dump_mode())
 	{
 		//For nmi wdt reset
 		aon_pmu_drv_wdt_change_not_rosc_clk();
@@ -486,7 +486,7 @@ void user_nmi_handler(uint32_t lr, uint32_t sp)
 		while(1);
 	}
 
-	bk_wdt_feed();
+	bk_wdt_force_feed();
 
 	dump_system_info(RESET_SOURCE_NMI_WDT, lr, sp);
 #else // nmi wdt without system info dump

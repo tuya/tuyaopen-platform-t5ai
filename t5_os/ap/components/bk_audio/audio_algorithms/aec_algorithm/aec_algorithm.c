@@ -1,4 +1,4 @@
-// Copyright 2022-2023 Beken
+// Copyright 2025-2026 Beken
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@
 #include "semphr.h"
 #include "task.h"
 #include <components/bk_audio/audio_algorithms/aec_algorithm.h>
-#include <components/bk_audio/audio_pipeline/audio_common.h>
+#include <components/bk_audio/audio_pipeline/audio_types.h>
 #include <components/bk_audio/audio_pipeline/audio_mem.h>
 #include <components/bk_audio/audio_pipeline/audio_error.h>
 #include <components/bk_audio/audio_pipeline/audio_element.h>
@@ -69,25 +69,25 @@
 
 #ifdef AEC_DATA_DUMP
 
-/* dump aec data by uart or tfcard, only choose one */
+/* dump aec data by uart or vfs, only choose one */
 #define AEC_DATA_DUMP_BY_UART
-//#define AEC_DATA_DUMP_BY_TFCARD       /* you must sure CONFIG_FATFS=y */
+//#define AEC_DATA_DUMP_BY_VFS       /* you must sure CONFIG_VFS=y */
 
 #ifdef AEC_DATA_DUMP_BY_UART
-#include "uart_util.h"
-static uart_util_handle_t g_aec_uart_util = NULL;
+#include <components/bk_audio/audio_utils/uart_util.h>
+static struct uart_util g_aec_uart_util = {0};
 #define AEC_DATA_DUMP_UART_ID            (1)
 #define AEC_DATA_DUMP_UART_BAUD_RATE     (2000000)
 #endif
 
-#ifdef AEC_DATA_DUMP_BY_TFCARD
-#include "tfcard_util.h"
-static tfcard_util_handle_t g_aec_tfcard_util_mic = NULL;
-static tfcard_util_handle_t g_aec_tfcard_util_ref = NULL;
-static tfcard_util_handle_t g_aec_tfcard_util_out = NULL;
-#define AEC_DATA_DUMP_TFCARD_MIC_NAME     "aec_mic.pcm"
-#define AEC_DATA_DUMP_TFCARD_REF_NAME     "aec_ref.pcm"
-#define AEC_DATA_DUMP_TFCARD_OUT_NAME     "aec_out.pcm"
+#ifdef AEC_DATA_DUMP_BY_VFS
+#include <components/bk_audio/audio_utils/vfs_util.h>
+static struct vfs_util g_aec_vfs_util_mic = {0};
+static struct vfs_util g_aec_vfs_util_ref = {0};
+static struct vfs_util g_aec_vfs_util_out = {0};
+#define AEC_DATA_DUMP_VFS_MIC_NAME     "/sd0/aec_mic.pcm"
+#define AEC_DATA_DUMP_VFS_REF_NAME     "/sd0/aec_ref.pcm"
+#define AEC_DATA_DUMP_VFS_OUT_NAME     "/sd0/aec_out.pcm"
 #endif
 
 #endif  //AEC_DATA_DUMP
@@ -112,63 +112,59 @@ typedef struct aec_algorithm
 static void aec_data_dump_open(void)
 {
 #ifdef AEC_DATA_DUMP_BY_UART
-    g_aec_uart_util = uart_util_create(AEC_DATA_DUMP_UART_ID, AEC_DATA_DUMP_UART_BAUD_RATE);
+    uart_util_create(&g_aec_uart_util, AEC_DATA_DUMP_UART_ID, AEC_DATA_DUMP_UART_BAUD_RATE);
 #endif
 
-#ifdef AEC_DATA_DUMP_BY_TFCARD
-    g_aec_tfcard_util_mic = tfcard_util_create(AEC_DATA_DUMP_TFCARD_MIC_NAME);
-    g_aec_tfcard_util_ref = tfcard_util_create(AEC_DATA_DUMP_TFCARD_REF_NAME);
-    g_aec_tfcard_util_out = tfcard_util_create(AEC_DATA_DUMP_TFCARD_OUT_NAME);
+#ifdef AEC_DATA_DUMP_BY_VFS
+    vfs_util_create(&g_aec_vfs_util_mic, AEC_DATA_DUMP_VFS_MIC_NAME);
+    vfs_util_create(&g_aec_vfs_util_ref, AEC_DATA_DUMP_VFS_REF_NAME);
+    vfs_util_create(&g_aec_vfs_util_out, AEC_DATA_DUMP_VFS_OUT_NAME);
 #endif
 }
 
 static void aec_data_dump_close(void)
 {
 #ifdef AEC_DATA_DUMP_BY_UART
-    uart_util_destroy(g_aec_uart_util);
-    g_aec_uart_util = NULL;
+    uart_util_destroy(&g_aec_uart_util);
 #endif
 
-#ifdef AEC_DATA_DUMP_BY_TFCARD
-    tfcard_util_create(g_aec_tfcard_util_mic);
-    g_aec_tfcard_util_mic = NULL;
-    tfcard_util_create(g_aec_tfcard_util_ref);
-    g_aec_tfcard_util_ref = NULL;
-    tfcard_util_create(g_aec_tfcard_util_out);
-    g_aec_tfcard_util_out = NULL;
+#ifdef AEC_DATA_DUMP_BY_VFS
+    vfs_util_destroy(&g_aec_vfs_util_mic);
+    vfs_util_destroy(&g_aec_vfs_util_ref);
+    vfs_util_destroy(&g_aec_vfs_util_out);
 #endif
 }
 
 static void aec_data_dump_mic_data(void *data_buf, uint32_t len)
 {
 #ifdef AEC_DATA_DUMP_BY_UART
-    uart_util_tx_data(g_aec_uart_util, data_buf, len);
+    uart_util_tx_data(&g_aec_uart_util, data_buf, len);
 #endif
 
-#ifdef AEC_DATA_DUMP_BY_TFCARD
-    tfcard_util_tx_data(g_aec_tfcard_util_mic, data_buf, len);
+#ifdef AEC_DATA_DUMP_BY_VFS
+    vfs_util_tx_data(&g_aec_vfs_util_mic, data_buf, len);
 #endif
 }
 
 static void aec_data_dump_ref_data(void *data_buf, uint32_t len)
 {
 #ifdef AEC_DATA_DUMP_BY_UART
-    uart_util_tx_data(g_aec_uart_util, data_buf, len);
+    uart_util_tx_data(&g_aec_uart_util, data_buf, len);
 #endif
 
-#ifdef AEC_DATA_DUMP_BY_TFCARD
-    tfcard_util_tx_data(g_aec_tfcard_util_ref, data_buf, len);
+#ifdef AEC_DATA_DUMP_BY_VFS
+    vfs_util_tx_data(&g_aec_vfs_util_ref, data_buf, len);
 #endif
 }
 
 static void aec_data_dump_out_data(void *data_buf, uint32_t len)
 {
 #ifdef AEC_DATA_DUMP_BY_UART
-    uart_util_tx_data(g_aec_uart_util, data_buf, len);
+    uart_util_tx_data(&g_aec_uart_util, data_buf, len);
 #endif
 
-#ifdef AEC_DATA_DUMP_BY_TFCARD
-    tfcard_util_tx_data(g_aec_tfcard_util_out, data_buf, len);
+#ifdef AEC_DATA_DUMP_BY_VFS
+    vfs_util_tx_data(&g_aec_vfs_util_out, data_buf, len);
 #endif
 }
 

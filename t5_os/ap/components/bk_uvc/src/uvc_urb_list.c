@@ -56,7 +56,7 @@ static inline void urb_exit_critical(uint32_t flags)
 
 uvc_urb_list_t g_uvc_list = {0};
 
-bk_err_t uvc_camera_urb_list_init(void)
+bk_err_t uvc_camera_urb_list_init(uint32_t max_packet_size)
 {
     int ret = BK_OK;
 
@@ -80,7 +80,7 @@ bk_err_t uvc_camera_urb_list_init(void)
     }
 
     mem_list->count = CONFIG_UVC_URB_NUM;
-    mem_list->size = CONFIG_UVC_URB_NUM * CONFIG_UVC_NUM_PACKET_PER_URB * UVC_MAX_PACKET_SIZE;
+    mem_list->size = CONFIG_UVC_URB_NUM * CONFIG_UVC_NUM_PACKET_PER_URB * max_packet_size;
 
     mem_list->buffer = (uint8_t *)media_malloc(mem_list->size);
 
@@ -110,7 +110,7 @@ bk_err_t uvc_camera_urb_list_init(void)
 
         node->urb.num_of_iso_packets = CONFIG_UVC_NUM_PACKET_PER_URB;
         node->urb.transfer_buffer = mem_list->buffer + offset0;
-        node->urb.transfer_buffer_length = UVC_MAX_PACKET_SIZE * node->urb.num_of_iso_packets;
+        node->urb.transfer_buffer_length = max_packet_size * node->urb.num_of_iso_packets;
         offset0 += node->urb.transfer_buffer_length;
 
         LOGV("node(%d): transfer_buffer:%p, transfer_buffer_length:%d\r\n",
@@ -125,10 +125,10 @@ bk_err_t uvc_camera_urb_list_init(void)
         for (uint8_t j = 0; j < node->urb.num_of_iso_packets; j++)
         {
             node->urb.iso_packet[j].transfer_buffer = node->urb.transfer_buffer + offset1;
-            node->urb.iso_packet[j].transfer_buffer_length = UVC_MAX_PACKET_SIZE;
+            node->urb.iso_packet[j].transfer_buffer_length = max_packet_size;
             node->urb.iso_packet[j].actual_length = 0;
             node->urb.iso_packet[j].errorcode = 0;
-            offset1 += UVC_MAX_PACKET_SIZE;
+            offset1 += max_packet_size;
 
             LOGV("iso_packet(%d): transfer_buffer:%p, transfer_buffer_length:%d\r\n",
                  j, node->urb.iso_packet[j].transfer_buffer,

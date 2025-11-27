@@ -994,9 +994,11 @@ int bk_ipc_init(void)
     stop_cpu1_register_notification(bk_ipc_cpu1_shutdown_callback, bk_ipc_info);
     bk_ipc_slave_core_state_change(bk_ipc_info, IPC_CPU_STARTUP);
 
-#if (BK_IPC_UT_TEST)
-    bk_ipc_test_init();
-#endif
+// Modified by TUYA Start
+// #if (BK_IPC_UT_TEST)
+//     bk_ipc_test_init();
+// #endif
+// Modified by TUYA End
 
     return BK_OK;
 }

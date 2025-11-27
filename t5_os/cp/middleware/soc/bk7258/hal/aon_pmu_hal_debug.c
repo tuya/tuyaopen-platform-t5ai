@@ -35,9 +35,9 @@ static void aon_pmu_dump_r0(void)
 	SOC_LOGD("	fast_boot: %-8x\r\n", r->fast_boot);
 	SOC_LOGD("	ota_finish: %-8x\r\n", r->ota_finish);
 	SOC_LOGD("	bl2_deep_sleep: %-8x\r\n", r->bl2_deep_sleep);
-	SOC_LOGD("	reserved_bit_4_11: %-8x\r\n", r->reserved_bit_4_11);
+	SOC_LOGD("	reset_reason_cp: %-8x\r\n", r->reset_reason_cp);
 	SOC_LOGD("	gpio_retention_bitmap: %-8x\r\n", r->gpio_retention_bitmap);
-	SOC_LOGD("	reset_reason: %-8x\r\n", r->reset_reason);
+	SOC_LOGD("	reset_reason_ap: %-8x\r\n", r->reset_reason_ap);
 	SOC_LOGD("	gpio_sleep: %-8x\r\n", r->gpio_sleep);
 }
 

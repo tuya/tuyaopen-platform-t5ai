@@ -34,6 +34,7 @@
 #include <driver/flash.h>
 #include "driver/lcd.h"
 #include "driver/pwr_clk.h"
+#include "bk_misc.h"
 
 #include "cpu_id.h"
 
@@ -97,7 +98,6 @@ static bool s_lcd_driver_is_init = false;
 #define LOGD(...) BK_LOGD(TAG, ##__VA_ARGS__)
 #define LOGV(...) BK_LOGV(TAG, ##__VA_ARGS__)
 
-extern u64 riscv_get_mtimer(void);
 
 typedef struct
 {
@@ -702,11 +702,43 @@ bk_err_t bk_lcd_set_partical_display(bool en, uint16_t partial_clum_l, uint16_t 
 	lcd_hal_set_partical_display(en, partial_clum_l, partial_clum_r, partial_line_l, partial_line_r);
 	return BK_OK;
 }
+uint32_t bk_lcd_rgb_ver_cnt_get(void)
+{
+    return lcd_hal_get_status_ver_cnt_status();
+}
 
 #if CONFIG_FLASH
 void lcd_flash_disable_int(uint32_t enable)
 {
-	lcd_hal_rgb_int_enable(0, enable);
+    if (lcd_hal_get_rbg_dispay_en() == 0)
+        return;
+
+    if(enable)
+    {
+        //check display flush status (vsync cnt) is flushing or not, when vsync_pulse_width timing cnt==0
+        if (bk_lcd_rgb_ver_cnt_get() == 0)
+        {
+            //if not flush, delay 90us (need bigger then vsync_pulse_width times),recheck
+            delay(20);
+            //recheck flush status ,display is also not workking, to reset display
+            if (bk_lcd_rgb_ver_cnt_get() == 0)
+            {
+                LOGD(" %s softreset display %d\n", __func__, bk_lcd_rgb_ver_cnt_get());
+                lcd_disp_ll_set_module_control_soft_reset(0);
+                delay(10);
+                lcd_disp_ll_set_module_control_soft_reset(1);
+            }
+            lcd_hal_rgb_int_enable(0, 1);
+        }
+        else
+        {
+            lcd_hal_rgb_int_enable(0, 1);
+        }
+    }
+    else
+    {
+        lcd_hal_rgb_int_enable(0, 0);
+    }
 }
 #endif
 
@@ -792,6 +824,7 @@ bk_err_t bk_lcd_rgb_display_en(bool en)
 	lcd_hal_rgb_display_en(en);
 	return BK_OK;
 }
+
 
 bk_err_t lcd_driver_display_disable(void)
 {
@@ -991,24 +1024,10 @@ bk_err_t lcd_driver_init(const lcd_device_t *device)
     }
 #endif
 
-	uint64_t before, after;
-#if CONFIG_ARCH_RISCV
-	before = riscv_get_mtimer();
-#else
-	before = 0;
-#endif
-
 	if (device->init)
 	{
 		device->init();
 	}
-#if CONFIG_ARCH_RISCV
-	after = riscv_get_mtimer();
-#else
-	after = 0;
-#endif
-	LOGV("lcd init time: %lu\n", (after - before) / 26000);
-
 	return ret;
 }
 

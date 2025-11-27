@@ -32,7 +32,6 @@
 #include <driver/video_common_driver.h>
 #include "avdk_crc.h"
 #include "media_utils.h"
-#include <driver/flash.h>
 #define TAG "dvp_drv"
 
 #define LOGI(...) BK_LOGW(TAG, ##__VA_ARGS__)
@@ -541,6 +540,7 @@ static void dvp_camera_reset_hardware_modules_handler(dvp_driver_handle_t *handl
     }
 
     bk_yuv_buf_soft_reset();
+
     if (handle->yuv_config)
     {
         handle->yuv_config->yuv_data_offset = 0;
@@ -730,7 +730,6 @@ static void dvp_camera_jpeg_eof_handler(jpeg_unit_t id, void *param)
         return;
     }
 
-
     if (handle->encode_frame == NULL
         || handle->encode_frame->frame == NULL)
     {
@@ -748,20 +747,19 @@ static void dvp_camera_jpeg_eof_handler(jpeg_unit_t id, void *param)
     if (handle->dma_length != real_length)
     {
         uint32_t left_length = real_length - handle->dma_length;
-        LOGW("%s size no match:%d-%d=%d\n", __func__, real_length, handle->dma_length, left_length);
         if (left_length != FRAME_BUFFER_CACHE)
         {
             DVP_SIZE_ERROR_ENTRY();
+            LOGW("%s size no match:%d-%d=%d\n", __func__, real_length, handle->dma_length, left_length);
             handle->error = true;
             DVP_SIZE_ERROR_OUT();
         }
     }
+
     if (handle->error)
     {
         handle->encode_frame->length = 0;
         handle->dma_length = 0;
-        bk_dma_stop(handle->dma_channel);
-        bk_dma_start(handle->dma_channel);
         DVP_JPEG_EOF_OUT();
         return;
     }
@@ -774,7 +772,7 @@ static void dvp_camera_jpeg_eof_handler(jpeg_unit_t id, void *param)
         if (handle->encode_frame->frame[i - 1] == 0xD9
             && handle->encode_frame->frame[i - 2] == 0xFF)
         {
-            real_length = i + 1;
+            real_length = i;
             handle->eof = true;
             break;
         }
@@ -929,10 +927,10 @@ static void dvp_camera_h264_eof_handler(h264_unit_t id, void *param)
     if (handle->dma_length != real_length)
     {
         uint32_t left_length = real_length - handle->dma_length;
-        LOGW("%s size no match:%d-%d=%d\n", __func__, real_length, handle->dma_length, left_length);
         if (left_length != FRAME_BUFFER_CACHE)
         {
             DVP_SIZE_ERROR_ENTRY();
+			LOGW("%s size no match:%d-%d=%d\n", __func__, real_length, handle->dma_length, left_length);
             handle->error = true;
             DVP_SIZE_ERROR_OUT();
         }
@@ -1450,20 +1448,6 @@ const dvp_sensor_config_t *bk_dvp_detect(void)
 
     return sensor;
 }
-#if CONFIG_FLASH
-bk_err_t bk_dvp_flash_ops_cb(bool suspend)
-{
-    dvp_driver_handle_t *handle = s_dvp_camera_handle;
-    if (handle == NULL)
-    {
-        LOGW("%s, not open...\n", __func__);
-        return BK_FAIL;
-    }
-    handle->error = true;
-
-    return BK_OK;
-}
-#endif
 
 bk_err_t bk_dvp_init(camera_handle_t *handle, dvp_config_t *cfg, bk_dvp_callback_t *cb)
 {
@@ -1543,9 +1527,6 @@ bk_err_t bk_dvp_init(camera_handle_t *handle, dvp_config_t *cfg, bk_dvp_callback
         goto error;
     }
 
-#if CONFIG_FLASH
-    mb_flash_register_op_dvp_notify(bk_dvp_flash_ops_cb);
-#endif
     // step 2: init stream list
     if (cfg->img_format & IMAGE_MJPEG)
     {
@@ -1692,9 +1673,24 @@ bk_err_t bk_dvp_h264_idr_reset(void)
     if (handle->config.img_format & IMAGE_H264)
     {
         handle->regenerate_idr = true;
+        handle->callback.frame_clear(handle->enc_stream);// h264 list clear
         return BK_OK;
     }
 
     LOGW("%s, not enable h264 func...\n", __func__);
     return BK_FAIL;
+}
+
+bk_err_t bk_dvp_set_stream_state(uint32_t state)
+{
+    dvp_driver_handle_t *handle = s_dvp_camera_handle;
+    if (handle == NULL)
+    {
+        LOGV("%s, not open...\n", __func__);
+        return BK_FAIL;
+    }
+
+    handle->error = true;
+
+    return BK_OK;
 }

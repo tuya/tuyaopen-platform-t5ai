@@ -396,6 +396,33 @@ adc_mode_t bk_adc_get_mode(void);
 UINT16 bk_adc_data_calculate(UINT16 adc_val, UINT8 adc_chan);
 
 /**
+ * @brief     Init the ADC GPIO
+ *
+ * This API init the ADC gpio:
+ *   - Map the ADC gpio
+ *
+ * @param id ADC id
+ *
+ * @attention 1. This API should be called before use adc.
+ *
+ * @return
+ */
+bk_err_t bk_adc_chan_init_gpio(adc_chan_t chan);
+
+/**
+ * @brief     Deinit the ADC GPIO
+ *
+ * This API Deinit the ADC gpio:
+ *   - Unmap the ADC gpio
+ *
+ * @param id ADC id
+ *
+ * @attention 1. This API should be called before use adc.
+ *
+ * @return
+ */
+bk_err_t bk_adc_chan_deinit_gpio(adc_chan_t chan);
+/**
  * @brief     only use for saradc
  */
 #if SARADC_AUTOTEST

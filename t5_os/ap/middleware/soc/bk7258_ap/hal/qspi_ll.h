@@ -206,7 +206,7 @@ static inline void qspi_ll_set_cmd_d_data_line(qspi_hw_t *hw, qspi_wire_mode_t d
 	hw->cmd_d_cfg2.data_line = data_line;
 }
 
-static inline void qspi_ll_set_cmd_d_data_length(qspi_hw_t *hw, uint32_t data_len)
+static inline void qspi_ll_set_cmd_d_data_length(qspi_hw_t *hw, qspi_wire_mode_t data_len)
 {
 	hw->cmd_d_cfg2.data_len = data_len;
 }
@@ -366,7 +366,7 @@ static inline void qspi_ll_set_lcd_head_interval(qspi_hw_t *hw, uint32_t intv_cn
 
 /* End for qspi lcd with no ram and refresh by line */
 
-//Modify by Tuya
+
 static inline void qspi_ll_direct_write(qspi_id_t id, uint32_t base_addr, const void *data, uint32_t size)
 {
 	for (int i = 0; i < size; i++) {
@@ -405,7 +405,7 @@ static inline void qspi_ll_io_read(qspi_hw_t *hw, void *data, uint32_t data_len)
 	} else {
 		size = (data_len / 4) + 1;
 	}
-
+	
 	for(uint32_t i = 0; i < size; i++) {
 		*((uint32_t *)data + i) = *((uint32_t *)(hw->fifo_data) + i);
 	}

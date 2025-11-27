@@ -2066,7 +2066,7 @@ void cli_pkt_debug_cmd(char *pcWriteBuffer, int xWriteBufferLen, int argc, char 
     uint32_t cfg_bit = 0;
     int ret = 0;
 
-    if (argc != 2) {
+    if (argc < 2) {
         CLI_LOGD("invalid debug command %d\n",argc);
         goto error;
     }
@@ -2085,6 +2085,11 @@ void cli_pkt_debug_cmd(char *pcWriteBuffer, int xWriteBufferLen, int argc, char 
         CLI_LOGD("LWIP_RX_DBG_LOG_TCP          (1<<22)\r\n");
         CLI_LOGD("LWIP_TX_DBG_LOG_PING         (1<<24)\r\n");
         CLI_LOGD("LWIP_RX_DBG_LOG_PING         (1<<25)\r\n");
+    }
+    else if (os_strcmp(argv[1], "wifi_err_dbg") == 0)
+    {
+        CLI_LOGD("open Wi-Fi error debug log\r\n");
+        bk_wifi_set_wifi_err_dbg(os_strtoul(argv[2], NULL, 10));
     }
     else
     {
@@ -2285,111 +2290,6 @@ void cli_wifi_close_coex_csa_cmd(char * pcWriteBuffer, int xWriteBufferLen, int 
 	}
 
 }
-
-#if CONFIG_BRIDGE
-extern uint8_t bk_wlan_has_role(uint8_t role);
-enum mac_vif_type
-{
-    VIF_STA,
-    VIF_IBSS,
-    VIF_AP,
-    VIF_MESH_POINT,
-    VIF_MONITOR,
-    VIF_UNKNOWN
-};
-
-extern uint8 bridge_is_enabled;
-void bk_bridge_start(char *bridge_ssid, char *ext_ssid, char *key) {
-	uint8_t mac[6] = {0};
-	bridgeif_initdata_t mybr_initdata = {0};
-	wifi_linkstate_reason_t info = {0};
-	netif_ip4_config_t ip4_config = {0};
-	ip4_addr_t my_ip, my_gw, my_mask;
-
-	bridge_is_enabled = 1;
-	demo_sta_app_init(ext_ssid, key);
-	while(1) {
-		bk_wifi_sta_get_linkstate_with_reason(&info);
-		if (info.state != WIFI_LINKSTATE_STA_GOT_IP) {
-			BK_LOGD("br","waiting fot sta getting ip\r\n");
-			rtos_delay_milliseconds(500);
-		} else
-			break;
-	}
-
-	/*confige bridgeif and add sta to bridgeif*/
-	bk_wifi_sta_get_mac(mac);
-	os_memcpy(((struct netif *)net_get_br_handle())->hwaddr, mac, 6);
-	os_memcpy(&mybr_initdata.ethaddr, mac, 6);
-	mybr_initdata.max_fdb_dynamic_entries = 64;
-	mybr_initdata.max_fdb_static_entries = 4;
-	mybr_initdata.max_ports = 16;
-	bk_netif_get_ip4_config(NETIF_IF_STA, &ip4_config);
-	inet_aton((char *)&ip4_config.ip, &my_ip);
-	inet_aton((char *)&ip4_config.gateway, &my_gw);
-	inet_aton((char *)&ip4_config.mask, &my_mask);
-
-	netifapi_netif_add((struct netif *)net_get_br_handle(), &my_ip, &my_mask, &my_gw,
-						&mybr_initdata, bridgeif_init, netif_input);
-	bridgeif_add_port((struct netif *)net_get_br_handle(), (struct netif *)net_get_sta_handle());
-	netif_set_hostname((struct netif *)net_get_sta_handle(), "beken");
-
-	/*start softap and add to bridgeif*/
-	demo_softap_app_init(bridge_ssid, NULL, NULL);
-	bridgeif_add_port((struct netif *)net_get_br_handle(), (struct netif *)net_get_uap_handle());
-	netifapi_netif_set_default(net_get_br_handle());
-	netifapi_netif_set_up((struct netif *)net_get_br_handle());
-
-}
-
-void bk_wifi_bridge_stop() {
-	bridge_ip_stop();
-}
-
-void bk_bridge_stop() {
-	if(bk_wifi_sta_stop())
-		BK_LOGD(NULL,"bridge stop sta fail\r\n");
-	if(bk_wifi_ap_stop())
-		BK_LOGD(NULL,"bridge stop ap fail\r\n");
-	bk_wifi_bridge_stop();
-}
-
-void cli_wifi_open_bridge_cmd(char * pcWriteBuffer, int xWriteBufferLen, int argc, char * * argv)
-{
-	char *oob_ssid = NULL;
-    char *bridge_ssid = NULL;
-    char *connect_key = NULL;
-
-    BK_LOGD(NULL,"bridge_Command\r\n");
-
-    if (argc < 2) {
-usage:
-		BK_LOGD(NULL,"Usage: \n");
-		BK_LOGD(NULL,"  %s open bridge_ssid extap_ssid key\n", argv[0]);
-		BK_LOGD(NULL,"  %s close\n", argv[0]);
-		return;
-	}
-
-	if (!strcmp(argv[1], "open")) {
-		if (argc < 4)
-			goto usage;
-
-		bridge_ssid = argv[2];
-		oob_ssid = argv[3];
-
-		if(argc == 5)
-			connect_key = argv[4];
-		else
-			connect_key = "";
-
-		bk_bridge_start(bridge_ssid, oob_ssid, connect_key);
-	} else if (!strcmp(argv[1], "close")) {
-        bk_bridge_stop();
-	} else {
-		goto usage;
-	}
-}
-#endif
 
 #if CONFIG_WIFI_CSI_EN
 
@@ -2762,7 +2662,7 @@ static const struct cli_command s_wifi_commands[] = {
 	{"rlk_cfg", "rlk config", cli_rlk_cfg_cmd},
 	#endif
 	{"close_coex_csa","close csa in coexist mode {1|0}", cli_wifi_close_coex_csa_cmd},
-#if CONFIG_BRIDGE
+#if 0//CONFIG_BRIDGE
 	{"bridge", "bridge open|close", cli_wifi_open_bridge_cmd},
 #endif
 #if CONFIG_WIFI_CSI_EN

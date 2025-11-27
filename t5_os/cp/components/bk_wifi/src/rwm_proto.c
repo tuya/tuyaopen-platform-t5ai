@@ -85,10 +85,10 @@ static void rwm_ip_printf(char *dir, struct ethhdr *eth_hdr_ptr)
 static void rwm_arp_printf(char *dir, struct ethhdr *eth_hdr_ptr)
 {
 	char *tmp = NULL;
-	struct etharp_hdr *arphdr = NULL;
+	struct etharp_hdr_proto *arphdr = NULL;
 
 	tmp = (char *)eth_hdr_ptr + ETHDR_LEN;
-	arphdr = (struct etharp_hdr *)tmp;
+	arphdr = (struct etharp_hdr_proto *)tmp;
 
 	if (ntohs(ARP_OPCODE(arphdr)) == 1) {
 		RWNX_LOGD("%s ARP - Request\n", dir);

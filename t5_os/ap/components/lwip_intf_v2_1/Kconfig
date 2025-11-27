@@ -56,9 +56,32 @@ menu "Lwip_intf_v2_1"
                 bool "Enable LWIP BRIDGE"
                 default n
 
+	config PAN
+		bool "Enable BT Personal Area Networking"
+		default n
+
 	config WIFI_SOFTAP
                 bool "Enable SAP"
                 default n
+
+	config IP_FORWARD_ALLOW_TX_ON_RX_NETIF
+		depends on BRIDGE
+		bool "enable IP forward on rx interface"
+		default n
+
+	config BK_DHCP_RELEASE_TIME
+		depends on BRIDGE
+		int "enable min DHCP release time"
+		default 0
+
+	config FUZZ_TEST
+		bool "fuzz test config"
+		default n
+
+	config RIO
+		depends on IPV6
+		bool "Enable RIO(Route Information Options)"
+		default n
 
 	config LWIP_PPP_SUPPORT
                 bool "Enable Ppp Protocol"
@@ -129,6 +152,40 @@ menu "Lwip_intf_v2_1"
 			help
 				open lwip debug log
 
+		config LWIP_PTP
+			bool "Enable LWIP PTP"
+			default y
+
+		 config LWIP_NETBUF_RECVINFO
+			bool "Enable netbuf recvinfo"
+			default y
+
+		config LWIP_HTTPD
+			bool "Enable HTTPD"
+			default n
+
+		config ICMP_ERR_RATELIMIT
+			bool "Enable ICMP rate limit"
+			default n
+
+		config ICMP_ERR_RATE_THRESHOLD
+			int "ICMP rate limit threshold"
+			default 10
+
+		config LWIP_HW_IP_CHECKSUM
+			bool "Enable HW IP checksum"
+			default n
+
+		config BK_HW_IP_CHECKSUM
+			depends on LWIP_HW_IP_CHECKSUM
+			bool "Enable BK HW IP checksum"
+			default n
+
+		config IPCHKSUM_UNIT_TEST
+			bool "enable HW IP checksum unittest"
+			depends on LWIP_HW_IP_CHECKSUM
+			default n
+
 		#TODO optimize it
 		choice LWIP_MEM
 			prompt "Select Lwip Mem Policy"
@@ -191,12 +248,12 @@ menu "Lwip_intf_v2_1"
 
 	config LWIP_TCP_MSS
 		int "Maximum Segment Size (MSS)"
-		default 1460
+		default 1400
 		range 536 1460
 		help
 			Set maximum segment size for TCP transmission.
 
-			Can be set lower to save RAM, the default value 1460(ipv4)/1440(ipv6) will
+			Can be set lower to save RAM, the max value 1460(ipv4)/1440(ipv6) will
 			give best throughput.
 			IPv4 TCP_MSS Range: 576 <= TCP_MSS <= 1460
 			IPv6 TCP_MSS Range: 1220<= TCP_mSS <= 1440

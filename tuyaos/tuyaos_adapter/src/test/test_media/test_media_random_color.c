@@ -67,7 +67,7 @@ const uint8_t cILI9488_INIT_SEQ[] = {
 ***********************function define**********************
 ***********************************************************/
 
-void ty_rgb_isr(ty_rgb_event_e event)
+void ty_rgb_isr(TUYA_RGB_EVENT_E event)
 {
     TAL_PR_NOTICE("ty_rgb_isr event:%d", event);
 }

@@ -1,4 +1,4 @@
-// Copyright 2022-2023 Beken
+// Copyright 2025-2026 Beken
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -59,15 +59,7 @@ bk_err_t adk_aac_encoder_test_case_0(void)
 {
     audio_pipeline_handle_t pipeline;
     audio_element_handle_t onboard_mic, aac_enc, uart_out;
-#if 0
-    //bk_set_printf_sync(true);
-    //      extern void bk_enable_white_list(int enabled);
-    //      bk_enable_white_list(1);
-    //      bk_disable_mod_printf("AUDIO_PIPELINE", 0);
-    //      bk_disable_mod_printf("AUDIO_ELEMENT", 0);
-    //      bk_disable_mod_printf("AUDIO_EVENT", 0);
-    //      bk_disable_mod_printf("AUDIO_MEM", 0);
-#endif
+
     BK_LOGD(TAG, "--------- %s ----------\n", __func__);
     AUDIO_MEM_SHOW("start \n");
 
@@ -109,9 +101,7 @@ bk_err_t adk_aac_encoder_test_case_0(void)
     }
 
     BK_LOGD(TAG, "--------- step4: pipeline link ----------\n");
-    if (BK_OK != audio_pipeline_link(pipeline, (const char *[])
-{"onboard_mic", "aac_enc", "uart_out"
-}, 3))
+    if (BK_OK != audio_pipeline_link(pipeline, (const char *[]){"onboard_mic", "aac_enc", "uart_out"}, 3))
     {
         BK_LOGE(TAG, "pipeline link fail, %d \n", __LINE__);
         return BK_FAIL;
@@ -120,10 +110,11 @@ bk_err_t adk_aac_encoder_test_case_0(void)
     BK_LOGD(TAG, "--------- step5: init event listener ----------\n");
     audio_event_iface_cfg_t evt_cfg = AUDIO_EVENT_IFACE_DEFAULT_CFG();
     audio_event_iface_handle_t evt = audio_event_iface_init(&evt_cfg);
+    TEST_CHECK_NULL(evt);
 
     if (BK_OK != audio_pipeline_set_listener(pipeline, evt))
     {
-        BK_LOGE(TAG, "set uri fail, %d \n", __LINE__);
+        BK_LOGE(TAG, "set listener fail, %d \n", __LINE__);
         return BK_FAIL;
     }
 
@@ -149,8 +140,7 @@ bk_err_t adk_aac_encoder_test_case_0(void)
             continue;
         }
 
-        if (msg.source_type == AUDIO_ELEMENT_TYPE_ELEMENT
-            && msg.cmd == AEL_MSG_CMD_REPORT_STATUS
+        if (msg.cmd == AEL_MSG_CMD_REPORT_STATUS
             && (((int)msg.data == AEL_STATUS_STATE_STOPPED) || ((int)msg.data == AEL_STATUS_STATE_FINISHED)))
         {
             BK_LOGW(TAG, "[ * ] Stop event received \n");
@@ -177,35 +167,35 @@ bk_err_t adk_aac_encoder_test_case_0(void)
     }
     if (BK_OK != audio_pipeline_unregister(pipeline, onboard_mic))
     {
-        BK_LOGE(TAG, "pipeline terminate fail, %d \n", __LINE__);
+        BK_LOGE(TAG, "pipeline unregister element fail, %d \n", __LINE__);
         return BK_FAIL;
     }
     if (BK_OK != audio_pipeline_unregister(pipeline, aac_enc))
     {
-        BK_LOGE(TAG, "pipeline terminate fail, %d \n", __LINE__);
+        BK_LOGE(TAG, "pipeline unregister element fail, %d \n", __LINE__);
         return BK_FAIL;
     }
     if (BK_OK != audio_pipeline_unregister(pipeline, uart_out))
     {
-        BK_LOGE(TAG, "pipeline terminate fail, %d \n", __LINE__);
+        BK_LOGE(TAG, "pipeline unregister element fail, %d \n", __LINE__);
         return BK_FAIL;
     }
 
     if (BK_OK != audio_pipeline_remove_listener(pipeline))
     {
-        BK_LOGE(TAG, "pipeline terminate fail, %d \n", __LINE__);
+        BK_LOGE(TAG, "pipeline remove listener fail, %d \n", __LINE__);
         return BK_FAIL;
     }
 
     if (BK_OK != audio_event_iface_destroy(evt))
     {
-        BK_LOGE(TAG, "pipeline terminate fail, %d \n", __LINE__);
+        BK_LOGE(TAG, "event iface destroy fail, %d \n", __LINE__);
         return BK_FAIL;
     }
 
     if (BK_OK != audio_pipeline_deinit(pipeline))
     {
-        BK_LOGE(TAG, "pipeline terminate fail, %d \n", __LINE__);
+        BK_LOGE(TAG, "pipeline deinit fail, %d \n", __LINE__);
         return BK_FAIL;
     }
 

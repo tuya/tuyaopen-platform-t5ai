@@ -59,15 +59,12 @@ void demo_scan_adv_app_init(uint8_t *oob_ssid)
 	} else
 		BK_LOG_ON_ERR(bk_wifi_scan_start(NULL));
 }
-#if CONFIG_BRIDGE
-extern uint8 bridge_is_enabled;
-#endif
+
 int demo_softap_app_init(char *ap_ssid, char *ap_key, char *ap_channel)
 {
 	wifi_ap_config_t ap_config = {0};//WIFI_DEFAULT_AP_CONFIG();
-#if 0
 	netif_ip4_config_t ip4_config = {0};
-#endif
+
 	int len, key_len = 0;
 	len = os_strlen(ap_ssid);
 	if (ap_key)
@@ -88,24 +85,12 @@ int demo_softap_app_init(char *ap_ssid, char *ap_key, char *ap_channel)
 		BK_LOGW(TAG, "key more than 64 Bytes\r\n");
 		return BK_FAIL;
 	}
-#if 0
-#if CONFIG_BRIDGE
-	if (!bridge_is_enabled) {
-#endif
-		os_strcpy(ip4_config.ip, WLAN_DEFAULT_IP);
-		os_strcpy(ip4_config.mask, WLAN_DEFAULT_MASK);
-		os_strcpy(ip4_config.gateway, WLAN_DEFAULT_GW);
-		os_strcpy(ip4_config.dns, WLAN_DEFAULT_GW);
-#if CONFIG_BRIDGE
-	} else {
-		os_strcpy(ip4_config.ip, WLAN_ANY_IP);
-		os_strcpy(ip4_config.mask, WLAN_ANY_IP);
-		os_strcpy(ip4_config.gateway, WLAN_ANY_IP);
-		os_strcpy(ip4_config.dns, WLAN_ANY_IP);
-	}
-#endif
+	os_strcpy(ip4_config.ip, WLAN_DEFAULT_IP);
+	os_strcpy(ip4_config.mask, WLAN_DEFAULT_MASK);
+	os_strcpy(ip4_config.gateway, WLAN_DEFAULT_GW);
+	os_strcpy(ip4_config.dns, WLAN_DEFAULT_GW);
 	BK_RETURN_ON_ERR(bk_netif_set_ip4_config(NETIF_IF_AP, &ip4_config));
-#endif
+
 	os_strcpy(ap_config.ssid, ap_ssid);
 	if (ap_key)
 		os_strcpy(ap_config.password, ap_key);
@@ -131,9 +116,8 @@ int demo_softap_app_init(char *ap_ssid, char *ap_key, char *ap_channel)
 int demo_softap_hidden_init(char *ap_ssid, char *ap_key, char *ap_channel)
 {
 	wifi_ap_config_t ap_config = {0};//WIFI_DEFAULT_AP_CONFIG();
-#if 0
 	netif_ip4_config_t ip4_config = {0};
-#endif
+
 	int len, key_len = 0;
 	len = os_strlen(ap_ssid);
 	if (ap_key)
@@ -154,25 +138,11 @@ int demo_softap_hidden_init(char *ap_ssid, char *ap_key, char *ap_channel)
 		BK_LOGW(TAG, "key more than 64 Bytes\r\n");
 		return BK_FAIL;
 	}
-#if 0
-#if CONFIG_BRIDGE
-	if (!bridge_is_enabled) {
-#endif
-		os_strcpy(ip4_config.ip, WLAN_DEFAULT_IP);
-		os_strcpy(ip4_config.mask, WLAN_DEFAULT_MASK);
-		os_strcpy(ip4_config.gateway, WLAN_DEFAULT_GW);
-		os_strcpy(ip4_config.dns, WLAN_DEFAULT_GW);
-#if CONFIG_BRIDGE
-	} else {
-		os_strcpy(ip4_config.ip, WLAN_ANY_IP);
-		os_strcpy(ip4_config.mask, WLAN_ANY_IP);
-		os_strcpy(ip4_config.gateway, WLAN_ANY_IP);
-		os_strcpy(ip4_config.dns, WLAN_ANY_IP);
-	}
-#endif
+	os_strcpy(ip4_config.ip, WLAN_DEFAULT_IP);
+	os_strcpy(ip4_config.mask, WLAN_DEFAULT_MASK);
+	os_strcpy(ip4_config.gateway, WLAN_DEFAULT_GW);
+	os_strcpy(ip4_config.dns, WLAN_DEFAULT_GW);
 	BK_RETURN_ON_ERR(bk_netif_set_ip4_config(NETIF_IF_AP, &ip4_config));
-#endif
-
 	os_strcpy(ap_config.ssid, ap_ssid);
 	if (ap_key)
 		os_strcpy(ap_config.password, ap_key);

@@ -34,6 +34,7 @@ enum
 #define FLASH_SECTOR_SIZE           (0x1000)
 #endif
 #define OTA_FLASH_BUFFER_LENGTH     (1024)
+#define OTA_CRC_BUFFER_LENGTH       (32)
 
 #ifndef MIN
 #define MIN(x, y)                  (((x) < (y)) ? (x) : (y))

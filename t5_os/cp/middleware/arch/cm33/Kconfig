@@ -56,6 +56,19 @@ menu "Arch::Cm33"
 			help
 				Dump all memory when exception happen
 
+		config DUMP_UART_PRINT_PORT
+			int "Config DumpUart Print Port"
+			range 0 2
+			default 0
+			help
+			Default 0 mean use UART0
+
+		config DUMP_TEST
+			bool "Enable Dump Test"
+			default n
+			help
+				Enable Dump Test
+
 		config MEMDUMP_ALL
 			bool "Enable Memdump All"
 			default y

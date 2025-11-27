@@ -1,4 +1,4 @@
-// Copyright 2022-2023 Beken
+// Copyright 2025-2026 Beken
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -24,13 +24,14 @@ extern "C" {
 #endif
 
 /**
- * @brief   ADC mode configurations, if any entry is zero then the configuration will be set to default values
+ * @brief   RAW stream configuration
  */
 typedef struct
 {
     audio_stream_type_t     type;               /*!< Type of stream */
     int                     out_block_size;     /*!< Size of output block */
     int                     out_block_num;      /*!< Number of output block */
+    port_type_t             output_port_type;   /*!< Output port type */
 } raw_stream_cfg_t;
 
 #define RAW_STREAM_OUT_BLOCK_SIZE       (8 * 1024)
@@ -40,6 +41,7 @@ typedef struct
         .type = AUDIO_STREAM_NONE,                      \
         .out_block_size = RAW_STREAM_OUT_BLOCK_SIZE,    \
         .out_block_num = RAW_STREAM_OUT_BLOCK_NUM,      \
+        .output_port_type = PORT_TYPE_RB,               \
     }
 
 

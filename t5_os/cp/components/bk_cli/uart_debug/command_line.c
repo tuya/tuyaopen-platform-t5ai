@@ -670,6 +670,13 @@ static int bkreg_run_command_implement(const char *content, int cnt)
 	}
 	break;
 
+	case BEKEN_SET_EQ_CONFIG_VOICE_PARA:
+	case BEKEN_SET_AEC_CONFIG_VOICE_PARA:
+	case BEKEN_SET_SYS_CONFIG_VOICE_PARA: {
+		shell_cmd_forward((char *)&pHCIrxBuf->param[0], pHCIrxBuf->total);
+		found = 0;
+	}
+	break;
 	default:
 		pHCItxBuf->total = 1;
 		pHCItxBuf->param[0] = pHCIrxBuf->cmd;

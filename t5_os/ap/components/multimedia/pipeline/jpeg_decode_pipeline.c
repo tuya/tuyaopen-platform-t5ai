@@ -27,7 +27,6 @@
 #include "frame_buffer.h"
 #include "yuv_encode.h"
 #include "sw_decode.h"
-#include "media_comm.h"
 
 #include "mux_pipeline.h"
 #if (CONFIG_CPU_CNT > 2)
@@ -209,8 +208,8 @@ void jpeg_decode_cp2_init_notify(void)
 
 bk_err_t jpeg_decode_task_send_msg(uint8_t type, uint32_t param)
 {
-	int ret = BK_OK;
-	jpeg_msg_t msg;
+	int ret = BK_FAIL;
+	media_msg_t msg;
 
 	if (jdec_config && jdec_config->jdec_queue)
 	{
@@ -218,33 +217,11 @@ bk_err_t jpeg_decode_task_send_msg(uint8_t type, uint32_t param)
 		msg.param = param;
 
 		ret = rtos_push_to_queue(&jdec_config->jdec_queue, &msg, BEKEN_WAIT_FOREVER);
-
-		if (ret != BK_OK)
-		{
-			LOGE("%s push failed\n", __func__);
-		}
 	}
 
-	return ret;
-}
-
-bk_err_t jpeg_decode_task_send_more_msg(uint8_t type, uint32_t param, uint32_t param1)
-{
-	int ret = BK_FAIL;
-	jpeg_msg_t msg;
-
-	if (jdec_config && jdec_config->task_state)
+	if (ret != BK_OK)
 	{
-		msg.event = type;
-		msg.param = param;
-		msg.param1 = param1;
-
-		ret = rtos_push_to_queue(&jdec_config->jdec_queue, &msg, BEKEN_WAIT_FOREVER);
-
-		if (ret != BK_OK)
-		{
-			LOGE("%s push failed\n", __func__);
-		}
+		LOGE("%s %d push failed\n", __func__, __LINE__);
 	}
 
 	return ret;
@@ -282,7 +259,7 @@ static void jpeg_decode_frame_complete_handler(jpeg_dec_res_t *result)
 
 static inline bool jpeg_decode_frame_is_last_line(uint8 index)
 {
-	return index == (jdec_config->jpeg_frame->height >> 4);
+	return index == (jdec_config->jpeg_frame->height / PIPELINE_DECODE_LINE);
 }
 
 static inline uint8_t jpeg_decode_mux_buf_index_get(void)
@@ -383,7 +360,6 @@ static void jpeg_decode_reset_restart(uint32_t param)
 
 static void jpeg_decode_line_start_continue(void)
 {
-
 	jdec_config->state = DECODE_STATE_DECODING;
 
 	if (!rtos_is_oneshot_timer_running(&jdec_config->decoder_timer))
@@ -423,7 +399,6 @@ static void jpeg_decode_line_complete_handler(jpeg_dec_res_t *result)
 		mux_buf->buffer.ok = true;
 	}
 
-#if 1
 	if (jdec_config->task_state)
 	{
 		if (mux_buf->buffer.ok)
@@ -438,16 +413,6 @@ static void jpeg_decode_line_complete_handler(jpeg_dec_res_t *result)
 			jpeg_decode_task_send_msg(JPEGDEC_RESET, 0);
 		}
 	}
-#else
-
-	mux_buf->encoded = true;
-
-	if (jdec_config->task_state)
-	{
-		LOGV("%s, ID: %d\n", __func__, mux_buf->state);
-		jpeg_decode_task_send_msg(JPEGDEC_LINE_DONE, (uint32_t)mux_buf);
-	}
-#endif
 
 	jdec_config->state = DECODE_STATE_IDLE;
 }
@@ -485,119 +450,104 @@ void jpeg_software_decode_callback_cp2(uint8_t ret)
 	jpeg_decode_task_send_msg(JPEGDEC_FRAME_CP2_FINISH, ret);
 }
 
-static void jpeg_decode_software_decode_start_handle(frame_module_t module)
+static void jpeg_decode_software_decode_start_handle(void)
 {
-	LOGV("%s, %d, module:%d, %d-%d\n", __func__, __LINE__, module, jdec_config->mux_buf[0].state[PIPELINE_MOD_SW_DEC],
+	LOGV("%s, %d, %d-%d\n", __func__, __LINE__, jdec_config->mux_buf[0].state[PIPELINE_MOD_SW_DEC],
 		jdec_config->mux_buf[1].state[PIPELINE_MOD_SW_DEC]);
+
 	if (jdec_config->mux_buf[1].state[PIPELINE_MOD_SW_DEC] == MUX_BUFFER_IDLE)
 	{
-		if (module == MODULE_DECODER_CP2)
-		{
-			jdec_config->jdec_frame = frame_buffer_display_malloc(jdec_config->jpeg_frame->width *
-										jdec_config->jpeg_frame->height * 2);
-			if(jdec_config->jdec_frame == NULL)
-			{
-#if !CONFIG_MEDIA_PSRAM_SIZE_4M
-				LOGE("%s(%d) jdec_config->jdec_frame is NULL\r\n", __func__, __LINE__);
-#endif
-				frame_buffer_fb_read_free(jdec_config->stream, jdec_config->jpeg_frame, MODULE_DECODER_CP2);
-				jdec_config->jpeg_frame = NULL;
-				if (!jdec_config->task_state)
-				{
-					jpeg_decode_task_send_msg(JPEGDEC_STOP, 0);
-				}
-				else
-				{
-					jpeg_get_task_send_msg(JPEGDEC_START, MODULE_DECODER_CP2);
-				}
-				return;
-			}
-
-			jdec_config->jdec_frame->type = jdec_config->jpeg_frame->type;
-			jdec_config->jdec_frame->sequence = jdec_config->jpeg_frame->sequence;
-			jdec_config->jdec_frame->width = jdec_config->jpeg_frame->width;
-			jdec_config->jdec_frame->height = jdec_config->jpeg_frame->height;
-			jdec_config->jdec_frame->fmt = PIXEL_FMT_YUYV;
-
-			jdec_config->sw_dec_info[1].in_frame = jdec_config->jpeg_frame;
-			jdec_config->sw_dec_info[1].out_frame = jdec_config->jdec_frame;
-			jdec_config->sw_dec_info[1].cb = &jpeg_software_decode_callback_cp2;
-			jdec_config->cp2_last_decode_sequence = jdec_config->jpeg_frame->sequence;
-			jdec_config->jpeg_frame = NULL;
-			jdec_config->jdec_frame = NULL;
-			jdec_config->mux_buf[1].state[PIPELINE_MOD_SW_DEC] = MUX_BUFFER_SHAREED;
-
-			jdec_msg.event = EVENT_JPEG_DEC_START_NOTIFY;
-			jdec_msg.param = (uint32_t)&jdec_config->sw_dec_info[1];
-			software_decode_minor_task_send_msg(EVENT_JPEG_DEC_START_NOTIFY, (uint32_t)&jdec_msg);
-		}
-		else
-		{
-			jpeg_get_task_send_msg(JPEGDEC_START, MODULE_DECODER_CP2);
-		}
-	}
-
-	if (jdec_config->mux_buf[0].state[PIPELINE_MOD_SW_DEC] == MUX_BUFFER_IDLE)
-	{
-		if (module == MODULE_DECODER_CP1)
-		{
-			jdec_config->jdec_frame = frame_buffer_display_malloc(jdec_config->jpeg_frame->width *
+		jdec_config->jdec_frame = frame_buffer_display_malloc(jdec_config->jpeg_frame->width *
 									jdec_config->jpeg_frame->height * 2);
-			if(jdec_config->jdec_frame == NULL)
-			{
-#if !CONFIG_MEDIA_PSRAM_SIZE_4M
-				LOGE("%s(%d) jdec_config->jdec_frame is NULL\r\n", __func__, __LINE__);
-#endif
-				frame_buffer_fb_read_free(jdec_config->stream, jdec_config->jpeg_frame, MODULE_DECODER_CP1);
-				jdec_config->jpeg_frame = NULL;
-				if (!jdec_config->task_state)
-				{
-					jpeg_decode_task_send_msg(JPEGDEC_STOP, 0);
-				}
-				else
-				{
-					jpeg_get_task_send_msg(JPEGDEC_START, MODULE_DECODER_CP1);
-				}
-				return;
-			}
-
-			jdec_config->jdec_frame->type = jdec_config->jpeg_frame->type;
-			jdec_config->jdec_frame->sequence = jdec_config->jpeg_frame->sequence;
-			jdec_config->jdec_frame->width = jdec_config->jpeg_frame->width;
-			jdec_config->jdec_frame->height = jdec_config->jpeg_frame->height;
-			jdec_config->jdec_frame->fmt = PIXEL_FMT_YUYV;
-
-			jdec_config->sw_dec_info[0].in_frame = jdec_config->jpeg_frame;
-			jdec_config->sw_dec_info[0].out_frame = jdec_config->jdec_frame;
-			jdec_config->sw_dec_info[0].cb = &jpeg_software_decode_callback_cp1;
-			jdec_config->cp1_last_decode_sequence = jdec_config->jpeg_frame->sequence;
-			jdec_config->jpeg_frame = NULL;
-			jdec_config->jdec_frame = NULL;
-			jdec_config->mux_buf[0].state[PIPELINE_MOD_SW_DEC] = MUX_BUFFER_SHAREED;
-
-			software_decode_task_send_msg(JPEGDEC_START, (uint32_t)&jdec_config->sw_dec_info[0]);
-		}
-		else
+		if(jdec_config->jdec_frame == NULL)
 		{
-			jpeg_get_task_send_msg(JPEGDEC_START, MODULE_DECODER_CP1);
+#if !CONFIG_MEDIA_PSRAM_SIZE_4M
+			LOGE("%s(%d) jdec_config->jdec_frame is NULL\r\n", __func__, __LINE__);
+#endif
+			frame_buffer_fb_read_free(jdec_config->stream, jdec_config->jpeg_frame, MODULE_DECODER);
+			jdec_config->jpeg_frame = NULL;
+			if (!jdec_config->task_state)
+			{
+				jpeg_decode_task_send_msg(JPEGDEC_STOP, 0);
+			}
+			else
+			{
+				jpeg_get_task_send_msg(JPEGDEC_START, MODULE_DECODER);
+			}
+			return;
 		}
+
+		jdec_config->jdec_frame->type = jdec_config->jpeg_frame->type;
+		jdec_config->jdec_frame->sequence = jdec_config->jpeg_frame->sequence;
+		jdec_config->jdec_frame->width = jdec_config->jpeg_frame->width;
+		jdec_config->jdec_frame->height = jdec_config->jpeg_frame->height;
+		jdec_config->jdec_frame->fmt = PIXEL_FMT_YUYV;
+
+		jdec_config->sw_dec_info[1].in_frame = jdec_config->jpeg_frame;
+		jdec_config->sw_dec_info[1].out_frame = jdec_config->jdec_frame;
+		jdec_config->sw_dec_info[1].cb = &jpeg_software_decode_callback_cp2;
+		jdec_config->cp2_last_decode_sequence = jdec_config->jpeg_frame->sequence;
+		jdec_config->jpeg_frame = NULL;
+		jdec_config->jdec_frame = NULL;
+		jdec_config->mux_buf[1].state[PIPELINE_MOD_SW_DEC] = MUX_BUFFER_SHAREED;
+
+		jdec_msg.event = EVENT_JPEG_DEC_START_NOTIFY;
+		jdec_msg.param = (uint32_t)&jdec_config->sw_dec_info[1];
+		software_decode_minor_task_send_msg(EVENT_JPEG_DEC_START_NOTIFY, (uint32_t)&jdec_msg);
 	}
-
-	LOGV("%s, %d, module:%d, %d-%d\n", __func__, __LINE__, module, jdec_config->mux_buf[0].state[PIPELINE_MOD_SW_DEC],
-		jdec_config->mux_buf[1].state[PIPELINE_MOD_SW_DEC]);
-
-
-	if (jdec_config->jpeg_frame)
+	else if (jdec_config->mux_buf[0].state[PIPELINE_MOD_SW_DEC] == MUX_BUFFER_IDLE)
 	{
-		LOGV("%s, %d need free...\n", __func__, __LINE__);
-		frame_buffer_fb_read_free(jdec_config->stream, jdec_config->jpeg_frame, module);
+		jdec_config->jdec_frame = frame_buffer_display_malloc(jdec_config->jpeg_frame->width *
+								jdec_config->jpeg_frame->height * 2);
+		if(jdec_config->jdec_frame == NULL)
+		{
+#if !CONFIG_MEDIA_PSRAM_SIZE_4M
+			LOGE("%s(%d) jdec_config->jdec_frame is NULL\r\n", __func__, __LINE__);
+#endif
+			frame_buffer_fb_read_free(jdec_config->stream, jdec_config->jpeg_frame, MODULE_DECODER);
+			jdec_config->jpeg_frame = NULL;
+			if (!jdec_config->task_state)
+			{
+				jpeg_decode_task_send_msg(JPEGDEC_STOP, 0);
+			}
+			else
+			{
+				jpeg_get_task_send_msg(JPEGDEC_START, MODULE_DECODER);
+			}
+			return;
+		}
+
+		jdec_config->jdec_frame->type = jdec_config->jpeg_frame->type;
+		jdec_config->jdec_frame->sequence = jdec_config->jpeg_frame->sequence;
+		jdec_config->jdec_frame->width = jdec_config->jpeg_frame->width;
+		jdec_config->jdec_frame->height = jdec_config->jpeg_frame->height;
+		jdec_config->jdec_frame->fmt = PIXEL_FMT_YUYV;
+
+		jdec_config->sw_dec_info[0].in_frame = jdec_config->jpeg_frame;
+		jdec_config->sw_dec_info[0].out_frame = jdec_config->jdec_frame;
+		jdec_config->sw_dec_info[0].cb = &jpeg_software_decode_callback_cp1;
+		jdec_config->cp1_last_decode_sequence = jdec_config->jpeg_frame->sequence;
+		jdec_config->jpeg_frame = NULL;
+		jdec_config->jdec_frame = NULL;
+		jdec_config->mux_buf[0].state[PIPELINE_MOD_SW_DEC] = MUX_BUFFER_SHAREED;
+
+		software_decode_task_send_msg(JPEGDEC_START, (uint32_t)&jdec_config->sw_dec_info[0]);
+	}
+	else
+	{
+		LOGD("%s, %d need free...\n", __func__, __LINE__);
+		frame_buffer_fb_read_free(jdec_config->stream, jdec_config->jpeg_frame, MODULE_DECODER);
 		jdec_config->jpeg_frame = NULL;
 	}
+
+	LOGV("%s, %d, %d-%d\n", __func__, __LINE__, jdec_config->mux_buf[0].state[PIPELINE_MOD_SW_DEC],
+		jdec_config->mux_buf[1].state[PIPELINE_MOD_SW_DEC]);
+
 	jpeg_decode_get_next_frame();
 }
 #endif
 
-static void jpeg_decode_start_handle(frame_buffer_t *jpeg_frame, frame_module_t module)
+static void jpeg_decode_start_handle(frame_buffer_t *jpeg_frame)
 {
 	int ret = BK_OK;
 
@@ -606,67 +556,23 @@ static void jpeg_decode_start_handle(frame_buffer_t *jpeg_frame, frame_module_t 
 		if (jpeg_frame != NULL)
 		{
 			LOGD("%s, %d\r\n", __func__, __LINE__);
-			frame_buffer_fb_read_free(jdec_config->stream, jpeg_frame, module);
+			frame_buffer_fb_read_free(jdec_config->stream, jpeg_frame, MODULE_DECODER);
 		}
 		return;
 	}
 
-	LOGV("%s, %d, seq:%d, module:%d, %p\r\n", __func__, __LINE__, jpeg_frame->sequence, module, jpeg_frame);
+	LOGV("%s, %d, seq:%d, %p\r\n", __func__, __LINE__, jpeg_frame->sequence, jpeg_frame);
 
 	LOGV("0:%d-%d, 1:%d-%d\n", jdec_config->mux_buf[0].state[0], jdec_config->mux_buf[0].state[1],
 		jdec_config->mux_buf[1].state[0], jdec_config->mux_buf[1].state[1]);
 
-	// step 1: read a jpeg frame
-	if (jdec_config->jdec_mode == JPEGDEC_SW_MODE)
+	if (jdec_config->jpeg_frame != NULL)
 	{
-		if (jpeg_frame == NULL)
-		{
-			return;
-		}
-		jdec_config->jpeg_frame = jpeg_frame;
-
-		if (module == MODULE_DECODER_CP2)
-		{
-			if (jdec_config->jpeg_frame->sequence != 0 && jdec_config->jpeg_frame->sequence <= jdec_config->cp1_last_decode_sequence)
-			{
-				frame_buffer_fb_read_free(jdec_config->stream, jdec_config->jpeg_frame, module);
-				jdec_config->jpeg_frame = NULL;
-				jpeg_get_task_send_msg(JPEGDEC_START, module);
-				return;
-			}
-		}
-		else if (module == MODULE_DECODER_CP1)
-		{
-			if (jdec_config->jpeg_frame->sequence != 0 && jdec_config->jpeg_frame->sequence <= jdec_config->cp2_last_decode_sequence)
-			{
-				frame_buffer_fb_read_free(jdec_config->stream, jdec_config->jpeg_frame, module);
-				jdec_config->jpeg_frame = NULL;
-				if (jdec_config->jdec_init)
-				{
-					jpeg_get_task_send_msg(JPEGDEC_START, module);
-				}
-				return;
-			}
-		}
-		else
-		{
-			frame_buffer_fb_read_free(jdec_config->stream, jdec_config->jpeg_frame, module);
-			jdec_config->jpeg_frame = NULL;
-			return;
-		}
-	}
-	else
-	{
-		if (jdec_config->jpeg_frame != NULL)
-		{
-			frame_buffer_fb_read_free(jdec_config->stream, jpeg_frame, module);
-			return;
-		}
-
-		jdec_config->jpeg_frame = jpeg_frame;
+		frame_buffer_fb_read_free(jdec_config->stream, jpeg_frame, MODULE_DECODER);
+		return;
 	}
 
-	LOGV("%s, %d, seq:%d, module:%d, %p\r\n", __func__, __LINE__, jdec_config->jpeg_frame->sequence, module, jdec_config->jpeg_frame);
+	jdec_config->jpeg_frame = jpeg_frame;
 
 	if (jdec_config->jdec_init == false)
 	{
@@ -682,20 +588,12 @@ static void jpeg_decode_start_handle(frame_buffer_t *jpeg_frame, frame_module_t 
 					__func__, jdec_config->jpeg_frame->width, jdec_config->jpeg_frame->height);
 				jdec_config->jdec_mode = JPEGDEC_HW_MODE;
 				jdec_config->jdec_init = false;
-				frame_buffer_fb_read_free(jdec_config->stream, jdec_config->jpeg_frame, module);
+				frame_buffer_fb_read_free(jdec_config->stream, jdec_config->jpeg_frame, MODULE_DECODER);
 				jdec_config->jpeg_frame = NULL;
 				jpeg_decode_task_send_msg(JPEGDEC_RESET, 0);
 				return;
 			}
-			if (module == MODULE_DECODER_CP1)
-			{
-				jdec_config->jdec_mode = JPEGDEC_HW_MODE;
-				jdec_config->jdec_init = false;
-				frame_buffer_fb_read_free(jdec_config->stream, jdec_config->jpeg_frame, module);
-				jdec_config->jpeg_frame = NULL;
-				//jpeg_get_task_send_msg(JPEGDEC_START, MODULE_DECODER);
-				return;
-			}
+
 			LOGD("%s, FMT: YUV422, PPI: %dX%d, use HARDWARE DECODE\r\n",
 				__func__, jdec_config->jpeg_frame->width, jdec_config->jpeg_frame->height);
 			jdec_config->jdec_mode = JPEGDEC_HW_MODE;
@@ -704,7 +602,7 @@ static void jpeg_decode_start_handle(frame_buffer_t *jpeg_frame, frame_module_t 
 		else if (yuv_fmt == YUV_ERR)
 		{
 			LOGD("%s, FMT:ERR\r\n", __func__);
-			frame_buffer_fb_read_free(jdec_config->stream, jdec_config->jpeg_frame, module);
+			frame_buffer_fb_read_free(jdec_config->stream, jdec_config->jpeg_frame, MODULE_DECODER);
 			jdec_config->jpeg_frame = NULL;
 			jdec_config->jdec_init = false;
 			jpeg_get_task_send_msg(JPEGDEC_START, MODULE_DECODER);
@@ -718,7 +616,7 @@ static void jpeg_decode_start_handle(frame_buffer_t *jpeg_frame, frame_module_t 
 					__func__, jdec_config->jpeg_frame->width, jdec_config->jpeg_frame->height);
 				jdec_config->jdec_mode = JPEGDEC_SW_MODE;
 				jdec_config->jdec_init = false;
-				frame_buffer_fb_read_free(jdec_config->stream, jdec_config->jpeg_frame, module);
+				frame_buffer_fb_read_free(jdec_config->stream, jdec_config->jpeg_frame, MODULE_DECODER);
 				jdec_config->jpeg_frame = NULL;
 				jpeg_decode_task_send_msg(JPEGDEC_RESET, 0);
 				return;
@@ -730,7 +628,7 @@ static void jpeg_decode_start_handle(frame_buffer_t *jpeg_frame, frame_module_t 
 			if (jdec_config->jpeg_frame->width >= PIXEL_1280 && jdec_config->jpeg_frame->height >= PIXEL_720)
 			{
 				LOGE("%s, not support this resloution for software decode\n", __func__);
-				frame_buffer_fb_read_free(jdec_config->stream, jdec_config->jpeg_frame, module);
+				frame_buffer_fb_read_free(jdec_config->stream, jdec_config->jpeg_frame, MODULE_DECODER);
 				jdec_config->jpeg_frame = NULL;
 				jdec_config->jdec_init = false;
 				jpeg_get_task_send_msg(JPEGDEC_START, MODULE_DECODER);
@@ -738,13 +636,11 @@ static void jpeg_decode_start_handle(frame_buffer_t *jpeg_frame, frame_module_t 
 			}
 			jdec_config->jdec_mode = JPEGDEC_SW_MODE;
 			jdec_config->jdec_type = JPEGDEC_BY_FRAME;
-			LOGD("%s %d \r\n", __func__, __LINE__);
 			jdec_config->sw_dec_init = 1;
 			software_decode_minor_task_open((uint32_t)(mux_sram_buffer->rotate));
 			if (jdec_config->rotate_angle != ROTATE_NONE)
 			{
 				software_decode_set_rotate(jdec_config->rotate_angle);
-				LOGD("%s %d \r\n", __func__, __LINE__);
 				software_decode_minor_set_rotate(jdec_config->rotate_angle);
 			}
 #else
@@ -753,10 +649,10 @@ static void jpeg_decode_start_handle(frame_buffer_t *jpeg_frame, frame_module_t 
 			jdec_config->jdec_type = JPEGDEC_BY_LINE;
 #else
 			LOGE("%s %d do not support software decode\n", __func__, __LINE__);
-			frame_buffer_fb_read_free(jdec_config->stream, jdec_config->jpeg_frame, module);
+			frame_buffer_fb_read_free(jdec_config->stream, jdec_config->jpeg_frame, MODULE_DECODER);
 			jdec_config->jpeg_frame = NULL;
 			jdec_config->jdec_init = false;
-			jpeg_get_task_send_msg(JPEGDEC_START, module);
+			jpeg_get_task_send_msg(JPEGDEC_START, MODULE_DECODER);
 			return;
 #endif
 #endif
@@ -767,20 +663,11 @@ static void jpeg_decode_start_handle(frame_buffer_t *jpeg_frame, frame_module_t 
 
 	if (jdec_config->jdec_mode == JPEGDEC_HW_MODE || jdec_config->jdec_type == JPEGDEC_BY_LINE)
 	{
-		if (module == MODULE_DECODER_CP1)
-		{
-			LOGV("%s, %d\n", __func__, __LINE__);
-			frame_buffer_fb_read_free(jdec_config->stream, jdec_config->jpeg_frame, module);
-			jdec_config->jpeg_frame = NULL;
-			jpeg_get_task_send_msg(JPEGDEC_START, MODULE_DECODER);
-			return;
-		}
-
 		// wait work buf to idle
 		if (jpeg_decode_check_buf_state(&jdec_config->mux_buf[0]) == false)
 		{
 			LOGV("%s, %d\n", __func__, __LINE__);
-			frame_buffer_fb_read_free(jdec_config->stream, jdec_config->jpeg_frame, module);
+			frame_buffer_fb_read_free(jdec_config->stream, jdec_config->jpeg_frame, MODULE_DECODER);
 			jdec_config->jpeg_frame = NULL;
 			jpeg_get_task_send_msg(JPEGDEC_START, MODULE_DECODER);
 			return;
@@ -819,13 +706,14 @@ static void jpeg_decode_start_handle(frame_buffer_t *jpeg_frame, frame_module_t 
 			DECODER_FRAME_START();
 			DECODER_LINE_START();
 
-			LOGV("%s, %d, seq:%d, module:%d, %p\r\n", __func__, __LINE__, jdec_config->jpeg_frame->sequence, module, jdec_config->jpeg_frame);
+			LOGV("%s, %d, seq:%d, %p\r\n", __func__, __LINE__, jdec_config->jpeg_frame->sequence, jdec_config->jpeg_frame);
 
 			// wait buf state all in idle
 			if (jpeg_decode_mux_buf_mask(jdec_config->work_buf) == false)
 			{
 				LOGW("%s %d buffer error\n", __func__, __LINE__);
 			}
+
 			rtos_unlock_mutex(&jdec_info->lock);
 
 			if (!rtos_is_oneshot_timer_running(&jdec_config->decoder_timer))
@@ -906,8 +794,8 @@ static void jpeg_decode_start_handle(frame_buffer_t *jpeg_frame, frame_module_t 
 		else
 		{
 #if CONFIG_JPEG_SW_DECODE_SUPPORT_BY_FRAME
-            DECODER_FRAME_START();
-			jpeg_decode_software_decode_start_handle(module);
+			DECODER_FRAME_START();
+			jpeg_decode_software_decode_start_handle();
 			return;
 #else
 			ret = BK_FAIL;
@@ -934,7 +822,7 @@ static void jpeg_decode_start_handle(frame_buffer_t *jpeg_frame, frame_module_t 
 			jdec_config->jdec_frame = NULL;
 		}
 
-		frame_buffer_fb_read_free(jdec_config->stream, jdec_config->jpeg_frame, module);
+		frame_buffer_fb_read_free(jdec_config->stream, jdec_config->jpeg_frame, MODULE_DECODER);
 		jdec_config->jpeg_frame = NULL;
 
 		jpeg_get_task_send_msg(JPEGDEC_START, MODULE_DECODER);
@@ -1004,8 +892,8 @@ static void jpeg_decode_line_done_handle(uint32_t param)
 			}
 		}
 	}
-	rtos_unlock_mutex(&jdec_info->lock);
 
+	rtos_unlock_mutex(&jdec_info->lock);
 	if (j == 0)
 	{
 		LOGD("%s, %d\n", __func__, __LINE__);
@@ -1087,15 +975,16 @@ static void jpeg_decode_finish_handle(uint32_t param)
 
 void jpeg_decode_get_next_frame()
 {
-	if (jdec_config && jdec_config->jdec_mode == JPEGDEC_SW_MODE)
+	if (jdec_config && jdec_config->task_state && jdec_config->jdec_mode == JPEGDEC_SW_MODE)
 	{
-		if (!jdec_config->mux_buf[1].state[PIPELINE_MOD_SW_DEC])
+		if (jdec_config->mux_buf[1].state[PIPELINE_MOD_SW_DEC] == MUX_BUFFER_IDLE)
 		{
 			jpeg_get_task_send_msg(JPEGDEC_START, MODULE_DECODER);
 		}
-		if (!jdec_config->mux_buf[0].state[PIPELINE_MOD_SW_DEC])
+
+		if (jdec_config->mux_buf[0].state[PIPELINE_MOD_SW_DEC] == MUX_BUFFER_IDLE)
 		{
-			jpeg_get_task_send_msg(JPEGDEC_START, MODULE_DECODER_CP1);
+			jpeg_get_task_send_msg(JPEGDEC_START, MODULE_DECODER);
 		}
 	}
 }
@@ -1155,6 +1044,13 @@ static void jpeg_decode_task_deinit(void)
 
 		if (jdec_config->jdec_queue)
 		{
+			media_msg_t msg;
+			while (rtos_pop_from_queue(&jdec_config->jdec_queue, &msg, BEKEN_NO_WAIT) == BK_OK)
+			{
+				LOGD("%s, %d, event:%d\n", __func__, __LINE__, msg.event);
+				if (msg.event == JPEGDEC_START)
+					jpeg_decode_start_handle((frame_buffer_t *)msg.param);
+			};
 			rtos_deinit_queue(&jdec_config->jdec_queue);
 			jdec_config->jdec_queue = NULL;
 		}
@@ -1176,11 +1072,8 @@ static void jpeg_decode_task_deinit(void)
 		jdec_config = NULL;
 	}
 
-#if CONFIG_SOC_BK7256XX
-#else
 	bk_pm_module_vote_cpu_freq(PM_DEV_ID_DECODER, PM_CPU_FRQ_DEFAULT);
-#endif
-	LOGV("%s complete\r\n", __func__);
+	LOGD("%s complete\r\n", __func__, __LINE__);
 }
 
 static void jpeg_decode_notify_handle(uint32_t param, pipeline_module_t module)
@@ -1321,8 +1214,6 @@ static bk_err_t h264_encode_frame_complete_callback(void *param)
 
 void h264_frame_start()
 {
-	bk_err_t ret = BK_OK;
-
 	do {
 		frame_buffer_t *frame = jpeg_decode_list_pop(&jdec_config->jpeg_decode_queue);
 
@@ -1366,8 +1257,7 @@ void h264_frame_start()
 			jdec_pipeline_info.buffer->index = 1;
 			jdec_config->mux_buf[0].state[PIPELINE_MOD_H264] = MUX_BUFFER_SHAREED;
 			LOGV("%s, %d\n", __func__, __LINE__);
-			ret = bk_h264_encode_request(&jdec_pipeline_info, &h264_encode_frame_complete_callback);
-			if (ret != BK_OK)
+			if (bk_h264_encode_request(&jdec_pipeline_info, &h264_encode_frame_complete_callback) != BK_OK)
 			{
 				jdec_config->mux_buf[0].state[PIPELINE_MOD_H264] = MUX_BUFFER_IDLE;
 				LOGE("%s %d h264_encode_task_send_msg error\r\n", __func__, __LINE__);
@@ -1376,17 +1266,19 @@ void h264_frame_start()
 	} while (0);
 }
 
-static void jpeg_decode_software_decode_finish_handle(frame_module_t module, uint32_t result)
+static void jpeg_decode_software_decode_finish_handle(uint8_t id, uint32_t result)
 {
 	bk_err_t ret = BK_OK;
 	int index_1 = 0, index_2 = 1;
-	if (module == MODULE_DECODER_CP2)
+	if (id == 2)
 	{
+		// cpu2
 		index_1 = 1;
 		index_2 = 0;
 	}
-	else if (module == MODULE_DECODER_CP1)
+	else if (id == 1)
 	{
+		// cpu1
 		index_1 = 0;
 		index_2 = 1;
 	}
@@ -1397,11 +1289,11 @@ static void jpeg_decode_software_decode_finish_handle(frame_module_t module, uin
 
 	jdec_config->mux_buf[index_1].state[PIPELINE_MOD_SW_DEC] = MUX_BUFFER_IDLE;
 
-	LOGV("%s, module:%d, %d-%d\n", __func__, module, jdec_config->mux_buf[0].state[PIPELINE_MOD_SW_DEC], jdec_config->mux_buf[1].state[PIPELINE_MOD_SW_DEC]);
+	LOGV("%s, %d-%d\n", __func__, jdec_config->mux_buf[0].state[PIPELINE_MOD_SW_DEC], jdec_config->mux_buf[1].state[PIPELINE_MOD_SW_DEC]);
 
 	if (jdec_config->sw_dec_info[index_1].in_frame != NULL)
 	{
-		frame_buffer_fb_read_free(jdec_config->stream, jdec_config->sw_dec_info[index_1].in_frame, module);
+		frame_buffer_fb_read_free(jdec_config->stream, jdec_config->sw_dec_info[index_1].in_frame, MODULE_DECODER);
 		jdec_config->sw_dec_info[index_1].in_frame = NULL;
 	}
 
@@ -1444,13 +1336,13 @@ static void jpeg_decode_software_decode_finish_handle(frame_module_t module, uin
 					break;
 				}
 
-			#if CONFIG_LVGL
+#if CONFIG_LVGL
 				if (lvgl_disp_enable) {
 					jpeg_decode_list_del_node(frame, &jdec_config->jpeg_decode_queue);
 					frame_buffer_display_free(frame);
 				}
 				else
-			#endif
+#endif
 				{
 					ret = lcd_display_frame_request(frame);
 					jpeg_decode_list_del_node(frame, &jdec_config->jpeg_decode_queue);
@@ -1539,7 +1431,6 @@ out:
 }
 #endif
 
-
 static void jpeg_decode_main(beken_thread_arg_t data)
 {
 	int ret = BK_OK;
@@ -1549,14 +1440,14 @@ static void jpeg_decode_main(beken_thread_arg_t data)
 
 	while(1)
 	{
-		jpeg_msg_t msg;
+		media_msg_t msg;
 		ret = rtos_pop_from_queue(&jdec_config->jdec_queue, &msg, BEKEN_WAIT_FOREVER);
 		if (ret == BK_OK)
 		{
 			switch (msg.event)
 			{
 				case JPEGDEC_START:
-					jpeg_decode_start_handle((frame_buffer_t *)msg.param, msg.param1);
+					jpeg_decode_start_handle((frame_buffer_t *)msg.param);
 					break;
 
 				case JPEGDEC_LINE_DONE:
@@ -1569,11 +1460,11 @@ static void jpeg_decode_main(beken_thread_arg_t data)
 
 #if CONFIG_JPEG_SW_DECODE_SUPPORT_BY_FRAME
 				case JPEGDEC_FRAME_CP1_FINISH:
-					jpeg_decode_software_decode_finish_handle(MODULE_DECODER_CP1, msg.param);
+					jpeg_decode_software_decode_finish_handle(1, msg.param);
 					break;
 
 				case JPEGDEC_FRAME_CP2_FINISH:
-					jpeg_decode_software_decode_finish_handle(MODULE_DECODER_CP2, msg.param);
+					jpeg_decode_software_decode_finish_handle(2, msg.param);
 					break;
 #endif
 
@@ -1678,7 +1569,7 @@ static void jpeg_decode_main(beken_thread_arg_t data)
 					{
 						LOGD("%s, %d, event:%d\n", __func__, __LINE__, msg.event);
 						if (msg.event == JPEGDEC_START)
-							jpeg_decode_start_handle((frame_buffer_t *)msg.param, msg.param1);
+							jpeg_decode_start_handle((frame_buffer_t *)msg.param);
 					};
 				}
 				goto exit;
@@ -1698,26 +1589,21 @@ exit:
 
 static void jpeg_decode_init(void)
 {
-	if (1)//jdec_config->jdec_mode == JPEGDEC_HW_MODE)
+	bk_jpeg_dec_driver_init();
+	bk_jpeg_dec_isr_register(DEC_ERR, jpeg_decode_err_handler);
+	if (jdec_config->jdec_type == JPEGDEC_BY_LINE)
 	{
-		bk_jpeg_dec_driver_init();
-		bk_jpeg_dec_isr_register(DEC_ERR, jpeg_decode_err_handler);
-		if (jdec_config->jdec_type == JPEGDEC_BY_LINE)
-		{
-			if (PIPELINE_DECODE_LINE == 16)
-				bk_jpeg_dec_line_num_set(LINE_16);
-			else
-				LOGE("%s, to config decode line \n", __func__);
-			bk_jpeg_dec_isr_register(DEC_EVERY_LINE_INT, jpeg_decode_line_complete_handler);
-		}
+		if (PIPELINE_DECODE_LINE == 16)
+			bk_jpeg_dec_line_num_set(LINE_16);
+		else if (PIPELINE_DECODE_LINE == 8)
+			bk_jpeg_dec_line_num_set(LINE_8);
 		else
-		{
-			bk_jpeg_dec_isr_register(DEC_END_OF_FRAME, jpeg_decode_frame_complete_handler);
-		}
+			LOGE("%s, to config decode line \n", __func__);
+		bk_jpeg_dec_isr_register(DEC_EVERY_LINE_INT, jpeg_decode_line_complete_handler);
 	}
 	else
 	{
-		// not adapt
+		bk_jpeg_dec_isr_register(DEC_END_OF_FRAME, jpeg_decode_frame_complete_handler);
 	}
 }
 
@@ -1769,15 +1655,14 @@ bk_err_t jpeg_decode_task_open(media_decode_mode_t jdec_mode, media_decode_type_
 {
 	int ret = BK_OK;
 
-	rtos_lock_mutex(&jdec_info->lock);
-
 	// step 1: check jdec_task state
 	if (jdec_config != NULL && jdec_config->task_state)
 	{
 		LOGE("%s have been opened!\r\n", __func__);
-		rtos_unlock_mutex(&jdec_info->lock);
 		return ret;
 	}
+
+	rtos_lock_mutex(&jdec_info->lock);
 
 	// step 2: init jdec config
 	jdec_config = (jdec_config_t *)os_malloc(sizeof(jdec_config_t));
@@ -1787,7 +1672,6 @@ bk_err_t jpeg_decode_task_open(media_decode_mode_t jdec_mode, media_decode_type_
 		rtos_unlock_mutex(&jdec_info->lock);
 		return BK_FAIL;
 	}
-	rtos_unlock_mutex(&jdec_info->lock);
 
 	os_memset(jdec_config, 0, sizeof(jdec_config_t));
 
@@ -1835,10 +1719,8 @@ bk_err_t jpeg_decode_task_open(media_decode_mode_t jdec_mode, media_decode_type_
 
 	// step 4: init jpeg_dec driver
 	jpeg_decode_init();
-#if CONFIG_SOC_BK7256XX
-#else
+
 	bk_pm_module_vote_cpu_freq(PM_DEV_ID_DECODER, PM_CPU_FRQ_480M);
-#endif
 
 	// step 5: init jdec_task
 	INIT_LIST_HEAD(&jdec_config->jpeg_decode_queue);
@@ -1861,7 +1743,7 @@ bk_err_t jpeg_decode_task_open(media_decode_mode_t jdec_mode, media_decode_type_
 
 	ret = rtos_init_queue(&jdec_config->jdec_queue,
 							"jdec_que",
-							sizeof(jpeg_msg_t),
+							sizeof(media_msg_t),
 							15);
 
 	if (ret != BK_OK)
@@ -1885,6 +1767,7 @@ bk_err_t jpeg_decode_task_open(media_decode_mode_t jdec_mode, media_decode_type_
 
 	rtos_get_semaphore(&jdec_config->jdec_sem, BEKEN_NEVER_TIMEOUT);
 
+	rtos_unlock_mutex(&jdec_info->lock);
 	DECODER_LINE_END();
 	DECODER_FRAME_END();
 
@@ -1896,30 +1779,26 @@ error:
 
 	jpeg_decode_task_deinit();
 
+	rtos_unlock_mutex(&jdec_info->lock);
+
 	return ret;
 }
 
 bk_err_t jpeg_decode_task_close()
 {
 	LOGV("%s  %d\n", __func__, __LINE__);
-	if (jdec_info == NULL)
-		return BK_OK;
-
-	rtos_lock_mutex(&jdec_info->lock);
 
 	if (jdec_config == NULL || !jdec_config->task_state)
 	{
-		rtos_unlock_mutex(&jdec_info->lock);
 		return BK_OK;
 	}
 
+	rtos_lock_mutex(&jdec_info->lock);
 	jdec_config->task_state = false;
-
 	rtos_unlock_mutex(&jdec_info->lock);
 
 	jpeg_decode_task_send_msg(JPEGDEC_STOP, 0);
 	rtos_get_semaphore(&jdec_config->jdec_sem, BEKEN_NEVER_TIMEOUT);
-
 	if (jdec_config->jpeg_frame)
 	{
 		LOGV("%s free jpeg_frame\n", __func__);
@@ -1943,7 +1822,9 @@ bk_err_t jpeg_decode_task_close()
 	}
 #endif
 
+	rtos_lock_mutex(&jdec_info->lock);
 	jpeg_decode_task_deinit();
+	rtos_unlock_mutex(&jdec_info->lock);
 
 	LOGD("%s complete, %d\n", __func__, __LINE__);
 
@@ -1952,21 +1833,21 @@ bk_err_t jpeg_decode_task_close()
 
 void bk_jdec_buffer_request_register(pipeline_module_t module, mux_request_callback_t cb, mux_reset_callback_t reset_cb)
 {
-	LOGD("%s module: %d, trigger:%d\n", __func__, module, jdec_config->trigger);
-
 	if (jdec_config)
 	{
-		uint32_t flag = jdec_pipeline_enter_critical();
+		LOGD("%s module: %d, trigger:%d\n", __func__, module, jdec_config->trigger);
+		rtos_lock_mutex(&jdec_info->lock);
 		jdec_config->module[module].enable = true;
 		jdec_config->cb[module] = cb;
 		jdec_config->reset_cb[module] = reset_cb;
-		jdec_pipeline_exit_critical(flag);
 
 		if (jdec_config->trigger == false)
 		{
 			jpeg_get_task_send_msg(JPEGDEC_START, MODULE_DECODER);
 			jdec_config->trigger = true;
 		}
+
+		rtos_unlock_mutex(&jdec_info->lock);
 	}
 }
 
@@ -1976,6 +1857,7 @@ void bk_jdec_buffer_request_deregister(pipeline_module_t module)
 
 	if (jdec_config)
 	{
+		rtos_lock_mutex(&jdec_info->lock);
 		uint32_t flag = jdec_pipeline_enter_critical();
 		jdec_config->cb[module] = NULL;
 		jdec_config->reset_cb[module] = NULL;
@@ -2016,9 +1898,10 @@ void bk_jdec_buffer_request_deregister(pipeline_module_t module)
 				}
 			}
 		}
+
+		rtos_unlock_mutex(&jdec_info->lock);
 	}
 }
-
 
 bk_err_t bk_jdec_pipeline_init(void)
 {

@@ -45,6 +45,8 @@ bk_err_t lcd_hal_int_enable(lcd_int_type_t int_type);
 #define lcd_hal_set_rgb_clk_rev_edge       lcd_disp_ll_set_rgb_cfg_dclk_rev
 #define lcd_hal_get_status_ver_cnt_status  lcd_disp_ll_get_disp_status_rgb_ver_cnt
 #define lcd_hal_rgb_display_en             lcd_disp_ll_set_rgb_cfg_rgb_disp_on  /* bit24: rgb display enable  */
+#define lcd_hal_get_rbg_dispay_en          lcd_disp_ll_get_rgb_cfg_rgb_disp_on
+
 #define lcd_hal_rgb_io_enable              lcd_disp_ll_set_rgb_cfg_rgb_on /* bit25:  1: rgb module output, 0 8080 module output  */
 #define lcd_hal_rgb_start_transfer         lcd_disp_ll_set_rgb_cfg_lcd_display_on /*BIT26 : lcd_display_on*/
 void lcd_hal_set_sync_low(uint8_t hsync_back_low, uint16_t vsync_back_low);

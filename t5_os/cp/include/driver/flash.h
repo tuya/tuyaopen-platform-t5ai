@@ -47,17 +47,6 @@ bk_err_t bk_flash_driver_init(void);
 bk_err_t bk_flash_driver_deinit(void);
 
 /**
- * @brief     Set flash line mode
- *
- * @param line_mode flash line mode
- *
- * @return
- *    - BK_OK: succeed
- *    - others: other errors.
- */
-bk_err_t bk_flash_set_line_mode(flash_line_mode_t line_mode);
-
-/**
  * @brief     Get flash coutinuous read mode
  *
  * @return flash coutinuous read mode
@@ -377,6 +366,24 @@ bk_err_t mb_flash_unregister_op_notify(void * notify_cb);
 
 
 uint32_t flash_get_excute_enable();
+
+/**
+ * @brief     Set flash 2 line mode
+ *
+ * @return
+ *    - BK_OK: succeed
+ *    - others: other errors.
+ */
+bk_err_t bk_flash_power_saving_enter(void);
+
+/**
+ * @brief     Set flash 4 line mode
+ *
+ * @return
+ *    - BK_OK: succeed
+ *    - others: other errors.
+ */
+bk_err_t bk_flash_power_saving_exit(void);
 
 #ifdef __cplusplus
 }

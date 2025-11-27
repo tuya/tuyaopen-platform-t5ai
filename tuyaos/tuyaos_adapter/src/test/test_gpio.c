@@ -20,6 +20,30 @@ static void __gpio_cmd_usage(void)
     bk_printf("xgpio irq [gpio num] [rase|fall|low|high|start|stop]\r\n");
 }
 
+static TaskHandle_t __relay_test_thread = NULL;
+static void __ralay_test_func(void *arg)
+{
+    TUYA_GPIO_BASE_CFG_T cfg;
+
+    cfg.direct = TUYA_GPIO_OUTPUT;
+    cfg.level = TUYA_GPIO_LEVEL_LOW;
+
+    tkl_gpio_init(GPIO_16, &cfg);
+    tkl_gpio_init(GPIO_18, &cfg);
+
+    bk_printf("relay test, P16/P18 opt in 10s\r\n");
+    tkl_system_sleep(5 * 1000);
+
+    while(1) {
+        bk_printf("relay test, set P16 1\r\n");
+        tkl_gpio_write(GPIO_16, TUYA_GPIO_LEVEL_HIGH);
+        tkl_system_sleep(8 * 1000);
+        bk_printf("relay test, set P16 0\r\n");
+        tkl_gpio_write(GPIO_16, TUYA_GPIO_LEVEL_LOW);
+        tkl_system_sleep(100);
+    }
+}
+
 void cli_gpio_cmd(char *pcWriteBuffer, int xWriteBufferLen, int argc, char **argv)
 {
     if (argc == 1) {
@@ -82,6 +106,9 @@ void cli_gpio_cmd(char *pcWriteBuffer, int xWriteBufferLen, int argc, char **arg
         }
         tkl_gpio_init(pin_id, &cfg);
     }
+
+
+    // xTaskCreate(__ralay_test_func, "relay", 4096, NULL, 5, &__relay_test_thread);
 
     return;
 }

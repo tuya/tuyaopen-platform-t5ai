@@ -61,6 +61,7 @@ typedef enum {
 
 typedef void (*flash_ps_callback_t)(void);
 typedef void (*flash_wait_callback_t)(void);
+typedef void (*flash_op_notify_onboard_mic_stream_callback_t)(uint32_t param, void *args);
 
 #ifdef __cplusplus
 }

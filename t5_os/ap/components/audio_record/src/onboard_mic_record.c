@@ -35,8 +35,8 @@
 //#define AUD_MIC_DATA_DUMP_BY_UART
 
 #ifdef AUD_MIC_DATA_DUMP_BY_UART
-#include "uart_util.h"
-static uart_util_t g_aud_mic_uart_util = {0};
+#include <components/bk_audio/audio_utils/uart_util.h>
+static struct uart_util g_aud_mic_uart_util = {0};
 #define AUD_MIC_DATA_DUMP_UART_ID            (1)
 #define AUD_MIC_DATA_DUMP_UART_BAUD_RATE     (2000000)
 

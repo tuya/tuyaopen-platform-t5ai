@@ -309,15 +309,15 @@ static int ota_do_check_crc(f_ota_t* ota_ptr,uint32_t in_crc)
 
     OTA_LOGE("in_crc :0x%x, in_crc,start_addr :0x%x,end_addr:0x%x \r\n", in_crc,start_addr,end_addr);
     CRC32_Init(&ota_ptr->ota_crc);
-    os_memset(ota_ptr->rd_buf, 0, OTA_FLASH_BUFFER_LENGTH);
+    os_memset(ota_ptr->rd_buf, 0, OTA_CRC_BUFFER_LENGTH);
 
-    for( i =0; i<= (ota_ptr->image_size - OTA_FLASH_BUFFER_LENGTH); i+= OTA_FLASH_BUFFER_LENGTH)
+    for( i =0; i<= (ota_ptr->image_size - OTA_CRC_BUFFER_LENGTH); i+= OTA_CRC_BUFFER_LENGTH)
     {
-        bk_flash_read_bytes((start_addr + i), ota_ptr->rd_buf, OTA_FLASH_BUFFER_LENGTH);
-        CRC32_Update(&ota_ptr->ota_crc, ota_ptr->rd_buf, OTA_FLASH_BUFFER_LENGTH);
+        bk_flash_read_bytes((start_addr + i), ota_ptr->rd_buf, OTA_CRC_BUFFER_LENGTH);
+        CRC32_Update(&ota_ptr->ota_crc, ota_ptr->rd_buf, OTA_CRC_BUFFER_LENGTH);
     }
     OTA_LOGV("i :0x%x \r\n", i);
-    if (i != ota_ptr->image_size -OTA_FLASH_BUFFER_LENGTH)
+    if (i != ota_ptr->image_size -OTA_CRC_BUFFER_LENGTH)
     {
         uint32_t remain_size = ota_ptr->image_size - i;
         bk_flash_read_bytes((start_addr + i), ota_ptr->rd_buf, remain_size);

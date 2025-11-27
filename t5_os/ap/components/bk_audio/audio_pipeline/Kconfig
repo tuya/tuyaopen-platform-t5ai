@@ -21,6 +21,11 @@ menu "Adk"
 				ADK use psram memory
 	endchoice
 
+	config ADK_BIND_TASK_TO_CORE
+		depends on ADK && SOC_SMP
+		bool "Enable ADK bind task to cpu core according to module configuration"
+		default n
+
 	config ADK_AUTO_TEST
 		depends on ADK
 		bool "Enable ADK auto test"

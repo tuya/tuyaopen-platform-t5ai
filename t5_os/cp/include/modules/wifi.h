@@ -1268,7 +1268,7 @@ bk_err_t bk_wifi_set_bcn_recv_win(uint8_t default_win, uint8_t max_win, uint8_t 
  * 	-others:real error, used for future.
  *
  */
-bk_err_t bk_wifi_bcn_cc_rxed_register_cb(const wifi_beacon_cc_rxed_t cc_cb, void *ctxt);
+// bk_err_t bk_wifi_bcn_cc_rxed_register_cb(const wifi_beacon_cc_rxed_t cc_cb, void *ctxt);
 
 /**
  * @brief start scan procedure to find AP's country code
@@ -1409,9 +1409,10 @@ bk_err_t bk_wifi_ftm_dump_result(const wifi_ftm_results_t *ftm_results);
  * @param ftm_results The ftm result to be freed.
  *
  * @return
- *    - BK_OK: always succeed
+ *    - BK_OK: succeed
+ *    - BK_ERR_PARAM: invalid scan result
  */
-void bk_wifi_ftm_free_result(wifi_ftm_results_t *ftm_results);
+bk_err_t bk_wifi_ftm_free_result(wifi_ftm_results_t *ftm_results);
 
 /**
  * @brief  Set Wi-Fi TX/RX debug log configuration
@@ -1576,7 +1577,7 @@ bk_err_t bk_wifi_set_tx_power(wifi_standard standard, float powerdBm);
  * @param cb    user register callback function to get csi data
  *
  */
-void bk_wifi_csi_info_cb_register(wifi_csi_cb_t cb);
+// void bk_wifi_csi_info_cb_register(wifi_csi_cb_t cb);
 
 /**
  * @brief config csi algorithm param

@@ -30,8 +30,10 @@ extern "C" {
  * @{
  */
 
+#define PIXEL_160   (160)
 #define PIXEL_170   (170)
 #define PIXEL_240   (240)
+#define PIXEL_256   (256)
 #define PIXEL_272   (272)
 #define PIXEL_288   (288)
 #define PIXEL_320   (320)
@@ -58,6 +60,7 @@ extern "C" {
 #define PIXEL_2304 (2304)
 #define PIXEL_4320 (4320)
 #define PIXEL_7680 (7680)
+
 #define MEDIA_DEBUG_TIMER_INTERVAL    (6)
 #ifdef CONFIG_MEDIA_DEBUG_TIMER_ENABLE
 #define MEDIA_DEBUG_TIMER_ENABLE      (1)
@@ -126,9 +129,13 @@ typedef enum
 typedef enum
 {
 	PPI_DEFAULT     = 0,
+	PPI_160X160     = (PIXEL_160 << 16) | PIXEL_160,
 	PPI_170X320     = (PIXEL_170 << 16) | PIXEL_320,
+	PPI_256X320    = (PIXEL_256 << 16) | PIXEL_320,
+	PPI_240X320    = (PIXEL_240 << 16) | PIXEL_320,
 	PPI_320X240     = (PIXEL_320 << 16) | PIXEL_240,
 	PPI_320X480     = (PIXEL_320 << 16) | PIXEL_480,
+	PPI_360X360     = (PIXEL_360 << 16) | PIXEL_360,
 	PPI_360X480     = (PIXEL_360 << 16) | PIXEL_480,
 	PPI_400X400     = (PIXEL_400 << 16) | PIXEL_400,
 	PPI_412X412     = (PIXEL_412 << 16) | PIXEL_412,

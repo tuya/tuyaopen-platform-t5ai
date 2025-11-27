@@ -65,7 +65,7 @@ set (blacklist_elem
 # Modified by TUYA Start
 # 如果定义了CONFIG_USE_PRIVATE_HELIX，添加libhelix到黑名单
 message(AUTHOR_WARNING "NOT use bk helix, this lib offered by tuya")
-list(APPEND blacklist_elem "libhelix.a")
+list(APPEND blacklist_elem "libhelix.a" "libopus.a" )
 # Modified by TUYA End
 
 list (JOIN blacklist_elem | blacklist_elem_regax)

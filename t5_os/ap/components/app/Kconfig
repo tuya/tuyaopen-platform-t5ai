@@ -34,4 +34,7 @@ menu "App"
 		help
 			Stack size of NTP Sync task
 
+	config FTP_SERVER
+		bool "Enable FTP server"
+		default n
 endmenu

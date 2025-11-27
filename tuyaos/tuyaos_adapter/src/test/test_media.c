@@ -76,6 +76,7 @@ static void __test_app_lcd_component(void)
 }
 
 extern void bk_printf_raw(int level, char *tag, const char *fmt, ...);
+extern void test_custom_dvp_open(int usage);
 void cli_tuya_media_cmd(char *pcWriteBuffer, int xWriteBufferLen, int argc, char **argv)
 {
     if (argc < 2) {
@@ -132,7 +133,28 @@ void cli_tuya_media_cmd(char *pcWriteBuffer, int xWriteBufferLen, int argc, char
             test_media_audio_open(AUDIO_MIC);
         } else if (!os_strcmp(argv[2], "spk")) {
             test_media_audio_open(AUDIO_SPK);
+        }
 #endif
+        else if (!os_strcmp(argv[2], "custom_dvp")) {
+            bk_printf("--- trace %s %d\r\n", __func__, __LINE__);
+            if (argv[3] == NULL) {
+                bk_printf("not specify the dvp purpose\r\n");
+                return;
+            } else {
+                if (!os_strcmp(argv[3], "display")) {
+                    test_custom_dvp_open(0);
+                } else if (!os_strcmp(argv[3], "h264")) {
+                    test_custom_dvp_open(1);
+                } else if (!os_strcmp(argv[3], "mjpeg")) {
+                    test_custom_dvp_open(2);
+                } else if (!os_strcmp(argv[3], "display_h264")) {
+                    test_custom_dvp_open(3);
+                } else if (!os_strcmp(argv[3], "display_mjepg")) {
+                    test_custom_dvp_open(4);
+                } else {
+                    bk_printf("parameter error\r\n");
+                }
+            }
         }
     } else if (!os_strcmp(argv[1], "close")) {
         if (argc == 2) {

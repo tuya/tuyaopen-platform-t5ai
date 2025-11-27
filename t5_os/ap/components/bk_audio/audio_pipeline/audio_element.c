@@ -1,4 +1,4 @@
-// Copyright 2022-2023 Beken
+// Copyright 2025-2026 Beken
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -154,7 +154,6 @@ static bk_err_t audio_element_cmd_send(audio_element_handle_t el, audio_element_
     audio_event_iface_msg_t msg =
     {
         .source = el,
-        .source_type = AUDIO_ELEMENT_TYPE_ELEMENT,
         .cmd = cmd,
     };
     BK_LOGD(TAG, "[%s]evt internal cmd = %d \n", el->tag, msg.cmd);
@@ -164,7 +163,6 @@ static bk_err_t audio_element_cmd_send(audio_element_handle_t el, audio_element_
 static bk_err_t audio_element_msg_sendout(audio_element_handle_t el, audio_event_iface_msg_t *msg)
 {
     msg->source = el;
-    msg->source_type = AUDIO_ELEMENT_TYPE_ELEMENT;
     if (el->events_type == EVENTS_TYPE_CB && el->callback_event.cb)
     {
         return el->callback_event.cb(el, msg, el->callback_event.ctx);
@@ -321,11 +319,6 @@ static bk_err_t audio_element_on_cmd(audio_event_iface_msg_t *msg, void *context
 {
     audio_element_handle_t el = (audio_element_handle_t)context;
 
-    if (msg->source_type != AUDIO_ELEMENT_TYPE_ELEMENT)
-    {
-        BK_LOGE(TAG, "[%s] Invalid event type, this event should be ELEMENT type \n", el->tag);
-        return BK_FAIL;
-    }
     bk_err_t ret = BK_OK;
     //process an event
     switch (msg->cmd)
@@ -1589,6 +1582,16 @@ audio_port_handle_t audio_element_get_multi_input_port(audio_element_handle_t el
         return el->multi_in.port[index];
     }
     return NULL;
+}
+
+bk_err_t audio_element_get_multi_input_max_port_num(audio_element_handle_t el)
+{
+    return el->multi_in.max_port_num;
+}
+
+bk_err_t audio_element_get_multi_output_max_port_num(audio_element_handle_t el)
+{
+    return el->multi_out.max_port_num;
 }
 
 audio_port_handle_t audio_element_get_multi_output_port(audio_element_handle_t el, int index)

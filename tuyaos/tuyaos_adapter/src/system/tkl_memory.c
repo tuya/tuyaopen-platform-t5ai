@@ -20,11 +20,15 @@ extern VOID_T tkl_system_psram_free(VOID_T* ptr);
 
 extern void bk_printf(const char *fmt, ...);
 
-STATIC BOOL_T s_psram_malloc_force = 0;
-
+STATIC BOOL_T s_psram_malloc_force = FALSE;
 VOID_T tkl_system_psram_malloc_force_set(BOOL_T enable)
 {
     s_psram_malloc_force = enable;
+}
+
+BOOL_T tkl_system_psram_malloc_force_get(VOID_T)
+{
+    return s_psram_malloc_force;
 }
 
 /**
@@ -38,11 +42,19 @@ VOID_T tkl_system_psram_malloc_force_set(BOOL_T enable)
 */
 VOID_T* tkl_system_malloc(CONST SIZE_T size)
 {
-    VOID_T* ptr = os_malloc(size);
-    if(NULL == ptr) {
-        bk_printf("tkl_system_malloc failed, size(%d)!\r\n", size);
+    if (size > 4096) {
+        //bk_printf("tkl_system_malloc big memory, size(%d), caller %p\r\n", size, __builtin_return_address(0));
     }
-    return ptr;
+
+    if (s_psram_malloc_force) {
+        return tkl_system_psram_malloc(size);
+    } else {
+        VOID_T* ptr = os_malloc(size);
+        if(NULL == ptr) {
+            bk_printf("tkl_system_malloc failed, size(%d)!\r\n", size);
+        }
+        return ptr;
+    }
 }
 
 /**
@@ -56,7 +68,11 @@ VOID_T* tkl_system_malloc(CONST SIZE_T size)
 */
 VOID_T tkl_system_free(VOID_T* ptr)
 {
-    os_free(ptr);
+    if (s_psram_malloc_force) {
+        tkl_system_psram_free(ptr);
+    } else {
+        os_free(ptr);
+    }
 }
 
 /**
@@ -95,14 +111,25 @@ VOID_T *tkl_system_memcpy(VOID_T* src, CONST VOID_T* dst, CONST SIZE_T n)
  */
 VOID_T *tkl_system_calloc(size_t nitems, size_t size)
 {
-    if (size && nitems > (~(size_t) 0) / size)
-        return NULL;
+    if (s_psram_malloc_force) {
+        if (size && nitems > (~(size_t) 0) / size)
+            return NULL;
 
-    void *ptr =  os_zalloc(nitems * size);
-    if (ptr == NULL) {
-        bk_printf("tkl_system_calloc failed, total_size(%d)! nitems = %d size = %d\r\n", nitems * size,nitems,size);
+        void *ptr = psram_zalloc(nitems * size);
+        if (ptr == NULL) {
+            bk_printf("tkl_system_calloc failed, total_size(%d)! nitems = %d size = %d\r\n", nitems * size,nitems,size);
+        }
+        return ptr;
+    } else {
+        if (size && nitems > (~(size_t) 0) / size)
+            return NULL;
+
+        void *ptr =  os_zalloc(nitems * size);
+        if (ptr == NULL) {
+            bk_printf("tkl_system_calloc failed, total_size(%d)! nitems = %d size = %d\r\n", nitems * size,nitems,size);
+        }
+        return ptr;
     }
-    return ptr;
 }
 
 /**
@@ -113,7 +140,11 @@ VOID_T *tkl_system_calloc(size_t nitems, size_t size)
  */
 VOID_T *tkl_system_realloc(VOID_T* ptr, size_t size)
 {
-    return os_realloc(ptr, size);
+    if (s_psram_malloc_force) {
+        return bk_psram_realloc(ptr, size);
+    } else {
+        return os_realloc(ptr, size);
+    }
 }
 
 /**

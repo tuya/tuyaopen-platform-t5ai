@@ -38,6 +38,7 @@ void bk_reboot_ex(uint32_t reset_reason)
 		bk_misc_set_reset_reason(reset_reason);
 	}
 	ipc_send_cpu1_need_reboot();
+	while(1);
 }
 
 void bk_reboot(void)

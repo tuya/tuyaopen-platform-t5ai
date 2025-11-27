@@ -1837,6 +1837,48 @@ int mb_ipc_get_recv_data_len(u32 handle)
 	}
 }
 
+u8 mb_ipc_get_user_cmd(u32 handle)
+{
+	mb_ipc_socket_t * ipc_socket = get_socket_from_handle(handle);
+
+	if(ipc_socket == NULL)
+	{
+		return -MB_IPC_INVALID_HANDLE;
+	}
+
+	// data sanity check.
+	if( (ipc_socket->use_flag & USE_FLAG_ALLOCATED) == 0 )
+	{
+		return -MB_IPC_NOT_INITED;
+	}
+
+	if( (ipc_socket->use_flag & USE_FLAG_CONNECTED) == 0 )
+	{
+		return -MB_IPC_INVALID_STATE;
+	}
+
+	if(ipc_socket->run_state & STATE_RX_IN_PROCESS)
+	{
+		if(ipc_socket->rx_cmd.hdr.cmd != MB_IPC_SEND_CMD)
+		{
+			if((ipc_socket->rx_cmd.hdr.cmd & MB_IPC_RSP_FLAG) == 0)
+			{
+				ipc_socket_rx_cmd_error_handler(ipc_socket, IPC_API_IMPL_RX_DATA_FAILED);
+			}
+			
+			return -MB_IPC_NO_DATA;
+		}
+		
+		u8  user_cmd = ipc_socket->rx_cmd.user_cmd;
+		return user_cmd;
+	}
+	else
+	{
+		return -MB_IPC_NO_DATA;
+	}
+}
+
+
 int mb_ipc_get_recv_event(u32 handle, u32 * event_flag)
 {
 	if(event_flag == NULL)

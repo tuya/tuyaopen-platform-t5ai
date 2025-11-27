@@ -120,6 +120,15 @@ uint32_t sys_drv_aud_dac_bias_en(uint32_t value)
 	return SYS_DRV_SUCCESS;
 }
 
+uint32_t sys_drv_aud_dac_work_mode_set(uint32_t value)
+{
+	uint32_t int_level = sys_drv_enter_critical();
+
+	sys_drv_aud_diffen_en(value);
+	sys_drv_exit_critical(int_level);
+	return SYS_DRV_SUCCESS;
+}
+
 uint32_t sys_drv_aud_dacr_en(uint32_t value)
 {
 	uint32_t int_level = sys_drv_enter_critical();

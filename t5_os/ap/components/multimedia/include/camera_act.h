@@ -17,7 +17,6 @@
 #include <common/bk_include.h>
 #include <driver/media_types.h>
 #include <driver/uvc_camera_types.h>
-
 #include "frame_buffer.h"
 
 #ifdef __cplusplus
@@ -34,6 +33,7 @@ bk_err_t camera_open_handle(media_device_t *dev);
 bk_err_t camera_close_handle(camera_handle_t *handle);
 bk_err_t camera_uvc_register_device_info_cb_handle(camera_state_cb_t cb);
 bk_err_t camera_dvp_h264_reset_handle(void);
+bk_err_t camera_set_stream_state_handle(uint32_t state);
 
 #ifdef __cplusplus
 }

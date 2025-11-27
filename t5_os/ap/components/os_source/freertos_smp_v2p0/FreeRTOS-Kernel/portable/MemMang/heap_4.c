@@ -790,18 +790,9 @@ static inline void show_mem_info(BlockLink_t *pxLink)
 	bk_task_wdt_feed();
 #endif
 
-#if 0	//variables maybe modified abnormal, causes feed watchdog fail,so force to feed them.
-#if CONFIG_INT_WDT
-	bk_wdt_feed();
-#endif
-#if (CONFIG_INT_AON_WDT)
-	bk_int_aon_wdt_feed();
-#endif
-#else
-#if (CONFIG_INT_WDT || CONFIG_INT_AON_WDT)
-	bk_wdt_force_feed();
-#endif
-#endif
+	if(arch_is_enter_exception()) {
+		bk_wdt_force_feed();
+	}
 
 }
 
@@ -1205,16 +1196,17 @@ void vPortFree( void *pv )
 				pxLink->line = 0;
 #endif
 #if (CONFIG_PSRAM_AS_SYS_MEMORY)
-				if ((uint32_t)puc >= (uint32_t)PSRAM_START_ADDRESS)
-                {
-                    /* Add this block to the list of psram free blocks. */
-                    psram_xFreeBytesRemaining += pxLink->xBlockSize;
-                    traceFREE( pv, pxLink->xBlockSize );
-                    psram_prvInsertBlockIntoFreeList( ( ( BlockLink_t * ) pxLink ) );
+				if ((uint32_t)puc >= (uint32_t)CONFIG_AP_PSRAM_HEAP_ADDR
+				&& (uint32_t)puc < (uint32_t)(CONFIG_AP_PSRAM_HEAP_ADDR + CONFIG_AP_PSRAM_HEAP_SIZE))
+				{
+					/* Add this block to the list of psram free blocks. */
+					psram_xFreeBytesRemaining += pxLink->xBlockSize;
+					traceFREE( pv, pxLink->xBlockSize );
+					psram_prvInsertBlockIntoFreeList( ( ( BlockLink_t * ) pxLink ) );
 					s_psram_used_count--;
 					FIXED_ADDR_PSRAM_USDE_COUNT -= 1;
-                }
-                else
+				}
+				else
 #endif
 				{
 					/* Add this block to the list of ram free blocks. */
@@ -1332,11 +1324,6 @@ void mem_overflow_check_all(void)
 			mem_overflow_check(pxLink);
 		}
 	}
-
-    if (arch_is_enter_exception() == 1) {
-		stack_mem_dump(psram_used_area_begin, psram_used_area_end);
-	}
-
 #endif //#if CONFIG_PSRAM_AS_SYS_MEMORY
 
 	if (arch_is_enter_exception() == 0) {
@@ -1430,7 +1417,13 @@ extern unsigned char __psram_bss_end__;
 void bk_psram_heap_dump_data(void)
 {
 #if CONFIG_PSRAM_AS_SYS_MEMORY
-	stack_mem_dump(psram_used_area_begin, psram_used_area_end);
+	if (psram_used_area_begin > SOC_PSRAM_DATA_BASE
+		&& psram_used_area_begin < SOC_PSRAM_DATA_BASE + SOC_PSRAM_DATA_SIZE
+		&& psram_used_area_end > SOC_PSRAM_DATA_BASE
+		&& psram_used_area_end < SOC_PSRAM_DATA_BASE + SOC_PSRAM_DATA_SIZE)
+	{
+		stack_mem_dump(psram_used_area_begin, psram_used_area_end);
+	}
 
     if (PSRAM_DATA_END_ADDRESS > PSRAM_DATA_START_ADDRESS)
     {

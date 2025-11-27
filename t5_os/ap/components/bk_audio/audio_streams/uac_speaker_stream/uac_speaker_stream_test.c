@@ -1,4 +1,4 @@
-// Copyright 2022-2023 Beken
+// Copyright 2025-2026 Beken
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -123,18 +123,7 @@ bk_err_t adk_uac_spk_test_case_0(void)
 {
     audio_pipeline_handle_t pipeline;
     audio_element_handle_t uac_spk, raw_write;
-    //  bk_set_printf_sync(true);
-#if 0
-    extern void bk_enable_white_list(int enabled);
-    bk_enable_white_list(1);
-    bk_disable_mod_printf("AUDIO_PIPELINE", 0);
-    bk_disable_mod_printf("AUDIO_ELEMENT", 0);
-    bk_disable_mod_printf("AUDIO_EVENT", 0);
-    //      bk_disable_mod_printf("AUDIO_MEM", 0);
-    bk_disable_mod_printf("RAW_STREAM", 0);
-    bk_disable_mod_printf("UAC_SPK", 0);
-    bk_disable_mod_printf("UAC_SPK_TEST", 0);
-#endif
+
     BK_LOGD(TAG, "--------- %s ----------\n", __func__);
     AUDIO_MEM_SHOW("start \n");
 
@@ -178,7 +167,7 @@ bk_err_t adk_uac_spk_test_case_0(void)
 
     if (BK_OK != audio_pipeline_set_listener(pipeline, evt))
     {
-        BK_LOGE(TAG, "set uri fail, %d \n", __LINE__);
+        BK_LOGE(TAG, "set listener fail, %d \n", __LINE__);
         return BK_FAIL;
     }
 
@@ -199,8 +188,7 @@ bk_err_t adk_uac_spk_test_case_0(void)
         }
         else
         {
-            if (msg.source_type == AUDIO_ELEMENT_TYPE_ELEMENT
-                && msg.cmd == AEL_MSG_CMD_REPORT_STATUS
+            if (msg.cmd == AEL_MSG_CMD_REPORT_STATUS
                 && (((int)msg.data == AEL_STATUS_STATE_STOPPED) || ((int)msg.data == AEL_STATUS_STATE_FINISHED)))
             {
                 BK_LOGW(TAG, "[ * ] Stop event received \n");
@@ -248,30 +236,30 @@ bk_err_t adk_uac_spk_test_case_0(void)
 
     if (BK_OK != audio_pipeline_unregister(pipeline, raw_write))
     {
-        BK_LOGE(TAG, "pipeline terminate fail, %d \n", __LINE__);
+        BK_LOGE(TAG, "pipeline unregister element fail, %d \n", __LINE__);
         return BK_FAIL;
     }
     if (BK_OK != audio_pipeline_unregister(pipeline, uac_spk))
     {
-        BK_LOGE(TAG, "pipeline terminate fail, %d \n", __LINE__);
+        BK_LOGE(TAG, "pipeline unregister element fail, %d \n", __LINE__);
         return BK_FAIL;
     }
 
     if (BK_OK != audio_pipeline_remove_listener(pipeline))
     {
-        BK_LOGE(TAG, "pipeline terminate fail, %d \n", __LINE__);
+        BK_LOGE(TAG, "pipeline remove listener fail, %d \n", __LINE__);
         return BK_FAIL;
     }
 
     if (BK_OK != audio_event_iface_destroy(evt))
     {
-        BK_LOGE(TAG, "pipeline terminate fail, %d \n", __LINE__);
+        BK_LOGE(TAG, "event iface destroy fail, %d \n", __LINE__);
         return BK_FAIL;
     }
 
     if (BK_OK != audio_pipeline_deinit(pipeline))
     {
-        BK_LOGE(TAG, "pipeline terminate fail, %d \n", __LINE__);
+        BK_LOGE(TAG, "pipeline deinit fail, %d \n", __LINE__);
         return BK_FAIL;
     }
 

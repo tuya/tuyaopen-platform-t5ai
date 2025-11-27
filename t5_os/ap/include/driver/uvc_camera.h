@@ -160,6 +160,19 @@ bk_err_t bk_uvc_register_connect_state_cb(camera_state_cb_t cb);
  */
 bk_err_t bk_uvc_register_separate_packet_callback(uvc_separate_config_t *cb);
 
+/**
+ * @brief     set stream state
+ *
+ * This API will set stream state, include running, suspend, resume
+ *
+ * @param state stream state
+ *
+ * @return
+ *    - BK_OK: set success
+ *    - others: other errors.
+ */
+bk_err_t bk_uvc_set_stream_state(uint32_t state);
+
 #if (CONFIG_STANDARD_DUALSTREAM)
 
 bk_err_t bk_uvc_h26x_power_on(uint32_t trigger);

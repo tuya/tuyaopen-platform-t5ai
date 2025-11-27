@@ -57,6 +57,10 @@ extern int hexstr2bin(const char *hex, u8 *buf, size_t len);
 extern int video_demo_register_cmd(void);
 #endif
 
+#if CONFIG_DUMP_TEST
+extern int cli_trap_test_init(void);
+#endif
+
 #if CONFIG_BKREG
 #define BKREG_MAGIC_WORD0                 (0x01)
 #define BKREG_MAGIC_WORD1                 (0xE0)
@@ -1485,6 +1489,16 @@ int bk_cli_init(void)
     cli_jpeg_sw_enc_init();
 #endif
 
+#if (CONFIG_VOICE_SERVICE_TEST)
+    int cli_voice_init(void);
+    cli_voice_init();
+#endif
+
+#if (CONFIG_PLAYER_SERVICE_TEST)
+	extern int cli_player_init(void);
+	cli_player_init();
+#endif
+
 /*--------------BT&MultMedia cli command init end------------------*/
 
 
@@ -1695,6 +1709,10 @@ int bk_cli_init(void)
 	cli_mbedtls_init();
 #endif
 
+#if (CONFIG_DUMP_TEST)
+	cli_trap_test_init();
+#endif
+
 #endif //CONFIG_DEBUG_VERSION
 
 /*-----open the cli comand both at release and debug vertion begin-----*/
@@ -1707,11 +1725,6 @@ int bk_cli_init(void)
 	cli_modem_init();
 #endif
 /*--------------------platform cli command init end--------------------*/
-
-#if (CONFIG_VOICE_SERVICE_TEST)
-    int cli_voice_init(void);
-    cli_voice_init();
-#endif
 
 	/* sort cmds after registered all cmds. */
 	cli_sort_command(NULL, 0, 0, NULL);

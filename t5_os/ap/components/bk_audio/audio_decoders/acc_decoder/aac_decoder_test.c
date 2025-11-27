@@ -1,4 +1,4 @@
-// Copyright 2022-2023 Beken
+// Copyright 2025-2026 Beken
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,10 +18,9 @@
 #include <components/bk_audio/audio_pipeline/audio_pipeline.h>
 #include <components/bk_audio/audio_pipeline/audio_mem.h>
 #include <components/bk_audio/audio_decoders/aac_decoder.h>
-#include <components/bk_audio/audio_streams/fatfs_stream.h>
+#include <components/bk_audio/audio_streams/vfs_stream.h>
 #include <os/os.h>
-#include "ff.h"
-#include "diskio.h"
+#include "bk_posix.h"
 
 #if (CONFIG_ADK_ONBOARD_MIC_STREAM && CONFIG_ADK_AAC_ENCODER && CONFIG_ADK_UART_STREAM)
 #include <components/bk_audio/audio_encoders/aac_encoder.h>
@@ -31,8 +30,8 @@
 
 #define TAG  "AAC_DECODER_TEST"
 
-#define TEST_FATFS_READER  "1:/mono_8K_16bit_32000bitrate.aac"
-#define TEST_FATFS_WRITER  "1:/mono_8K_16bit_32000bitrate.pcm"
+#define TEST_VFS_READER  "/sd0/mono_8K_16bit_32000bitrate.aac"
+#define TEST_VFS_WRITER  "/sd0/mono_8K_16bit_32000bitrate.pcm"
 
 #define TEST_CHECK_NULL(ptr) do {\
         if (ptr == NULL) {\
@@ -42,59 +41,29 @@
     } while(0)
 
 
-static FATFS *pfs = NULL;
-
-static bk_err_t tf_mount(void)
+/* mount sdcard */
+static int vfs_mount_sd0_fatfs(void)
 {
-    FRESULT fr;
+	int ret = BK_OK;
+	static bool is_mounted = false;
 
-    if (pfs != NULL)
-    {
-        os_free(pfs);
-    }
-
-    pfs = os_malloc(sizeof(FATFS));
-    if (NULL == pfs)
-    {
-        BK_LOGD(TAG, "f_mount malloc failed!\r\n");
-        return BK_FAIL;
-    }
-
-    fr = f_mount(pfs, "1:", 1);
-    if (fr != FR_OK)
-    {
-        BK_LOGE(TAG, "f_mount failed:%d\r\n", fr);
-        return BK_FAIL;
-    }
-    else
-    {
-        BK_LOGD(TAG, "f_mount OK!\r\n");
-    }
-
-    return BK_OK;
+	if(!is_mounted) {
+		struct bk_fatfs_partition partition;
+		char *fs_name = NULL;
+		fs_name = "fatfs";
+		partition.part_type = FATFS_DEVICE;
+		partition.part_dev.device_name = FATFS_DEV_SDCARD;
+		partition.mount_path = VFS_SD_0_PATITION_0;
+		ret = mount("SOURCE_NONE", partition.mount_path, fs_name, 0, &partition);
+		is_mounted = true;
+        BK_LOGI(TAG, "func %s, mount /sd0 \n", __func__);
+	}
+	return ret;
 }
 
-static bk_err_t tf_unmount(void)
+static bk_err_t vfs_unmount_sd0_fatfs(void)
 {
-    FRESULT fr;
-    fr = f_unmount(DISK_NUMBER_SDIO_SD, "1:", 1);
-    if (fr != FR_OK)
-    {
-        BK_LOGE(TAG, "f_unmount failed:%d\r\n", fr);
-        return BK_FAIL;
-    }
-    else
-    {
-        BK_LOGD(TAG, "f_unmount OK!\r\n");
-    }
-
-    if (pfs)
-    {
-        os_free(pfs);
-        pfs = NULL;
-    }
-
-    return BK_OK;
+    return umount(VFS_SD_0_PATITION_0);
 }
 
 
@@ -102,17 +71,17 @@ static bk_err_t tf_unmount(void)
    is neither first element nor last element of the pipeline. Usually this element has
    both src and sink. The data flow model of this element is as follow:
    +--------------+               +--------------+               +--------------+
-   |    fatfs     |               |     aac      |               |     fatfs    |
+   |     vfs      |               |     aac      |               |     vfs      |
    |  stream[IN]  |               |   decoder    |               |  stream[OUT] |
-  ...            src - ringbuf - sink           src - ringbuf - sink           ...
+   |             src - ringbuf - sink           src - ringbuf - sink            |
    |              |               |              |               |              |
    +--------------+               +--------------+               +--------------+
 
    Function: Use aac decoder to decode aac file to pcm file in tfcard.
 
-   The "fatfs-stream[IN]" element read aac file from tfcard to ringbuffer. The
+   The "vfs-stream[IN]" element read aac file from tfcard to ringbuffer. The
    "aac-decoder" element read audio data from ringbuffer, decode the data to pcm format
-   and write the data to ringbuffer. The "fatfs-stream[OUT]" element read pcmd data from
+   and write the data to ringbuffer. The "vfs-stream[OUT]" element read pcmd data from
    ringbuffer, and save to tfcard.
 */
 bk_err_t adk_aac_decoder_test_case_0(void)
@@ -120,22 +89,10 @@ bk_err_t adk_aac_decoder_test_case_0(void)
     audio_pipeline_handle_t pipeline;
     audio_element_handle_t aac_dec, aac_in, pcm_out;
 
-#if 0
-    bk_set_printf_sync(true);
-    extern void bk_enable_white_list(int enabled);
-    bk_enable_white_list(1);
-    bk_disable_mod_printf("AUDIO_PIPELINE", 0);
-    bk_disable_mod_printf("AUDIO_ELEMENT", 0);
-    bk_disable_mod_printf("AUDIO_EVENT", 0);
-    //bk_disable_mod_printf("AUDIO_MEM", 0);
-    //bk_disable_mod_printf("AAC_DECODER", 0);
-    bk_disable_mod_printf("FATFS_STREAM", 0);
-    bk_disable_mod_printf("AAC_DECODER_TEST", 0);
-#endif
     BK_LOGD(TAG, "--------- %s ----------\n", __func__);
     AUDIO_MEM_SHOW("start \n");
 
-    if (BK_OK != tf_mount())
+    if (BK_OK != vfs_mount_sd0_fatfs())
     {
         BK_LOGE(TAG, "mount tfcard fail, %d \n", __LINE__);
         return BK_FAIL;
@@ -147,26 +104,26 @@ bk_err_t adk_aac_decoder_test_case_0(void)
     TEST_CHECK_NULL(pipeline);
 
     BK_LOGD(TAG, "--------- step2: init elements ----------\n");
-    fatfs_stream_cfg_t fatfs_reader_cfg = FATFS_STREAM_CFG_DEFAULT();
-    fatfs_reader_cfg.buf_sz = AAC_DECODER_MAIN_BUFF_SIZE;
-    fatfs_reader_cfg.out_block_size = AAC_DECODER_MAIN_BUFF_SIZE;
-    fatfs_reader_cfg.out_block_num = 1;
-    fatfs_reader_cfg.type = AUDIO_STREAM_READER;
-    aac_in = fatfs_stream_init(&fatfs_reader_cfg);
+    vfs_stream_cfg_t vfs_reader_cfg = DEFAULT_VFS_STREAM_CONFIG();
+    vfs_reader_cfg.buf_sz = AAC_DECODER_MAIN_BUFF_SIZE;
+    vfs_reader_cfg.out_block_size = AAC_DECODER_MAIN_BUFF_SIZE;
+    vfs_reader_cfg.out_block_num = 1;
+    vfs_reader_cfg.type = AUDIO_STREAM_READER;
+    aac_in = vfs_stream_init(&vfs_reader_cfg);
     TEST_CHECK_NULL(aac_in);
 
-    fatfs_stream_cfg_t fatfs_writer_cfg = FATFS_STREAM_CFG_DEFAULT();
-    fatfs_writer_cfg.type = AUDIO_STREAM_WRITER;
-    pcm_out = fatfs_stream_init(&fatfs_writer_cfg);
+    vfs_stream_cfg_t vfs_writer_cfg = DEFAULT_VFS_STREAM_CONFIG();
+    vfs_writer_cfg.type = AUDIO_STREAM_WRITER;
+    pcm_out = vfs_stream_init(&vfs_writer_cfg);
     TEST_CHECK_NULL(pcm_out);
 
-    if (BK_OK != audio_element_set_uri(aac_in, TEST_FATFS_READER))
+    if (BK_OK != audio_element_set_uri(aac_in, TEST_VFS_READER))
     {
         BK_LOGE(TAG, "set uri fail, %d \n", __LINE__);
         return BK_FAIL;
     }
 
-    if (BK_OK != audio_element_set_uri(pcm_out, TEST_FATFS_WRITER))
+    if (BK_OK != audio_element_set_uri(pcm_out, TEST_VFS_WRITER))
     {
         BK_LOGE(TAG, "set uri fail, %d \n", __LINE__);
         return BK_FAIL;
@@ -194,9 +151,7 @@ bk_err_t adk_aac_decoder_test_case_0(void)
     }
 
     BK_LOGD(TAG, "--------- step4: pipeline link ----------\n");
-    if (BK_OK != audio_pipeline_link(pipeline, (const char *[])
-{"stream_in", "aac_dec", "stream_out"
-}, 3))
+    if (BK_OK != audio_pipeline_link(pipeline, (const char *[]){"stream_in", "aac_dec", "stream_out"}, 3))
     {
         BK_LOGE(TAG, "pipeline link fail, %d \n", __LINE__);
         return BK_FAIL;
@@ -208,7 +163,7 @@ bk_err_t adk_aac_decoder_test_case_0(void)
 
     if (BK_OK != audio_pipeline_set_listener(pipeline, evt))
     {
-        BK_LOGE(TAG, "set uri fail, %d \n", __LINE__);
+        BK_LOGE(TAG, "set listener fail, %d \n", __LINE__);
         return BK_FAIL;
     }
 
@@ -229,8 +184,7 @@ bk_err_t adk_aac_decoder_test_case_0(void)
             continue;
         }
 
-        if (msg.source_type == AUDIO_ELEMENT_TYPE_ELEMENT && msg.source == (void *) aac_dec
-            && msg.cmd == AEL_MSG_CMD_REPORT_MUSIC_INFO)
+        if (msg.source == (void *) aac_dec && msg.cmd == AEL_MSG_CMD_REPORT_MUSIC_INFO)
         {
             audio_element_info_t music_info = {0};
             audio_element_getinfo(aac_dec, &music_info);
@@ -239,8 +193,7 @@ bk_err_t adk_aac_decoder_test_case_0(void)
             continue;
         }
 
-        if (msg.source_type == AUDIO_ELEMENT_TYPE_ELEMENT
-            && msg.cmd == AEL_MSG_CMD_REPORT_STATUS
+        if (msg.cmd == AEL_MSG_CMD_REPORT_STATUS
             && (((int)msg.data == AEL_STATUS_STATE_STOPPED)
                 || ((int)msg.data == AEL_STATUS_STATE_FINISHED)
                 || (int)msg.data == AEL_STATUS_ERROR_PROCESS))
@@ -277,17 +230,17 @@ bk_err_t adk_aac_decoder_test_case_0(void)
     }
     if (BK_OK != audio_pipeline_unregister(pipeline, aac_in))
     {
-        BK_LOGE(TAG, "element unregister fail, %d \n", __LINE__);
+        BK_LOGE(TAG, "pipeline unregister element fail, %d \n", __LINE__);
         return BK_FAIL;
     }
     if (BK_OK != audio_pipeline_unregister(pipeline, aac_dec))
     {
-        BK_LOGE(TAG, "element unregister fail, %d \n", __LINE__);
+        BK_LOGE(TAG, "pipeline unregister element fail, %d \n", __LINE__);
         return BK_FAIL;
     }
     if (BK_OK != audio_pipeline_unregister(pipeline, pcm_out))
     {
-        BK_LOGE(TAG, "element unregister fail, %d \n", __LINE__);
+        BK_LOGE(TAG, "pipeline unregister element fail, %d \n", __LINE__);
         return BK_FAIL;
     }
 
@@ -327,7 +280,7 @@ bk_err_t adk_aac_decoder_test_case_0(void)
         return BK_FAIL;
     }
 
-    tf_unmount();
+    vfs_unmount_sd0_fatfs();
 
     BK_LOGD(TAG, "--------- aac decoder test complete ----------\n");
     AUDIO_MEM_SHOW("end \n");
@@ -349,28 +302,16 @@ bk_err_t adk_aac_decoder_test_case_0(void)
 
    Function: Use aac decoder to decode aac file to pcm file in tfcard.
 
-   The "fatfs-stream[IN]" element read aac file from tfcard to ringbuffer. The
-   "aac-decoder" element read audio data from ringbuffer, decode the data to pcm format
-   and write the data to ringbuffer. The "fatfs-stream[OUT]" element read pcmd data from
-   ringbuffer, and save to tfcard.
+   The "onboard-mic-stream[IN]" element write mic data to ringbuffer. The "aac-encoder" element read mic data from ringbuffer,
+    encode the data to aac format and write the data to ringbuffer. The "aac-decoder" element read aac data from ringbuffer,
+    decode the data to pcm format and write the data to ringbuffer. The "uart-stream[OUT]" element read pcm data from ringbuffer,
+     and write it to uart.
 */
 bk_err_t adk_aac_decoder_test_case_1(void)
 {
     audio_pipeline_handle_t pipeline;
     audio_element_handle_t onboard_mic, aac_enc, aac_dec, uart_out;
 
-#if 0
-    bk_set_printf_sync(true);
-    extern void bk_enable_white_list(int enabled);
-    bk_enable_white_list(1);
-    bk_disable_mod_printf("AUDIO_PIPELINE", 0);
-    bk_disable_mod_printf("AUDIO_ELEMENT", 0);
-    bk_disable_mod_printf("AUDIO_EVENT", 0);
-    //bk_disable_mod_printf("AUDIO_MEM", 0);
-    //bk_disable_mod_printf("AAC_DECODER", 0);
-    bk_disable_mod_printf("FATFS_STREAM", 0);
-    bk_disable_mod_printf("AAC_DECODER_TEST", 0);
-#endif
     BK_LOGD(TAG, "--------- %s ----------\n", __func__);
     AUDIO_MEM_SHOW("start \n");
 
@@ -421,9 +362,7 @@ bk_err_t adk_aac_decoder_test_case_1(void)
     }
 
     BK_LOGD(TAG, "--------- step4: pipeline link ----------\n");
-    if (BK_OK != audio_pipeline_link(pipeline, (const char *[])
-{"onboard_mic", "aac_enc", "aac_dec", "uart_out"
-}, 4))
+    if (BK_OK != audio_pipeline_link(pipeline, (const char *[]){"onboard_mic", "aac_enc", "aac_dec", "uart_out"}, 4))
     {
         BK_LOGE(TAG, "pipeline link fail, %d \n", __LINE__);
         return BK_FAIL;
@@ -435,7 +374,7 @@ bk_err_t adk_aac_decoder_test_case_1(void)
 
     if (BK_OK != audio_pipeline_set_listener(pipeline, evt))
     {
-        BK_LOGE(TAG, "set uri fail, %d \n", __LINE__);
+        BK_LOGE(TAG, "pipeline set listener fail, %d \n", __LINE__);
         return BK_FAIL;
     }
 
@@ -456,8 +395,7 @@ bk_err_t adk_aac_decoder_test_case_1(void)
             continue;
         }
 
-        if (msg.source_type == AUDIO_ELEMENT_TYPE_ELEMENT && msg.source == (void *) aac_dec
-            && msg.cmd == AEL_MSG_CMD_REPORT_MUSIC_INFO)
+        if (msg.source == (void *) aac_dec && msg.cmd == AEL_MSG_CMD_REPORT_MUSIC_INFO)
         {
             audio_element_info_t music_info = {0};
             audio_element_getinfo(aac_dec, &music_info);
@@ -466,8 +404,7 @@ bk_err_t adk_aac_decoder_test_case_1(void)
             continue;
         }
 
-        if (msg.source_type == AUDIO_ELEMENT_TYPE_ELEMENT
-            && msg.cmd == AEL_MSG_CMD_REPORT_STATUS
+        if (msg.cmd == AEL_MSG_CMD_REPORT_STATUS
             && (((int)msg.data == AEL_STATUS_STATE_STOPPED)
                 || ((int)msg.data == AEL_STATUS_STATE_FINISHED)
                 || (int)msg.data == AEL_STATUS_ERROR_PROCESS))
@@ -496,34 +433,34 @@ bk_err_t adk_aac_decoder_test_case_1(void)
     }
     if (BK_OK != audio_pipeline_unregister(pipeline, onboard_mic))
     {
-        BK_LOGE(TAG, "unregister element fail, %d \n", __LINE__);
+        BK_LOGE(TAG, "pipeline unregister element fail, %d \n", __LINE__);
         return BK_FAIL;
     }
     if (BK_OK != audio_pipeline_unregister(pipeline, aac_enc))
     {
-        BK_LOGE(TAG, "unregister element fail, %d \n", __LINE__);
+        BK_LOGE(TAG, "pipeline unregister element fail, %d \n", __LINE__);
         return BK_FAIL;
     }
     if (BK_OK != audio_pipeline_unregister(pipeline, aac_dec))
     {
-        BK_LOGE(TAG, "unregister element fail, %d \n", __LINE__);
+        BK_LOGE(TAG, "pipeline unregister element fail, %d \n", __LINE__);
         return BK_FAIL;
     }
     if (BK_OK != audio_pipeline_unregister(pipeline, uart_out))
     {
-        BK_LOGE(TAG, "unregister element fail, %d \n", __LINE__);
+        BK_LOGE(TAG, "pipeline unregister element fail, %d \n", __LINE__);
         return BK_FAIL;
     }
 
-    if (BK_OK != audio_pipeline_remove_listener(pipeline))
+    if (BK_OK != audio_pipeline_remove_listener(pipeline, evt))
     {
-        BK_LOGE(TAG, "remove listener fail, %d \n", __LINE__);
+        BK_LOGE(TAG, "pipeline remove listener fail, %d \n", __LINE__);
         return BK_FAIL;
     }
 
     if (BK_OK != audio_event_iface_destroy(evt))
     {
-        BK_LOGE(TAG, "listener destroy fail, %d \n", __LINE__);
+        BK_LOGE(TAG, "pipeline listener destroy fail, %d \n", __LINE__);
         return BK_FAIL;
     }
 
@@ -563,4 +500,3 @@ bk_err_t adk_aac_decoder_test_case_1(void)
     return BK_OK;
 }
 #endif
-

@@ -1,12 +1,10 @@
-#include "driver/dma.h"
+#include "tuya_dma.h"
 #include "tkl_spi.h"
 #include "tkl_qspi.h"
 #include <driver/spi.h>
 #include <sdkconfig.h>
 #include "qspi_hal.h"
 
-
-#include <driver/dma.h>
 #include <driver/gpio.h>
 #include <driver/int.h>
 #include <driver/spi.h>
@@ -369,18 +367,8 @@ static uint32_t spi_id_read_bytes_common(spi_id_t id)
 
 #if CONFIG_SPI_DMA
 
-static void spi_dma_tx_finish_handler(dma_id_t id)
+static void spi_dma_tx_finish_handler(dma_id_t id, DMA_ISR_TYPE_E event)
 {
-    uint32_t pause =  bk_dma_get_repeat_rd_pause(id);
-    uint32_t addr =  dma_get_src_end_addr(id);
-    uint32_t cur_addr =  dma_get_src_read_addr(id);
-	// 未到达暂停地址时触发的中断仅为某一部分数据传输完成
-    if (addr != cur_addr) {
-        if ((pause == 0)) {
-            return;
-        }
-    }
-    
 	if (spi[current_spi_dma_wr_id].is_tx_blocked) {
 		rtos_set_semaphore(&spi[current_spi_dma_wr_id].tx_sema);
 		spi[current_spi_dma_wr_id].is_tx_blocked = false;
@@ -392,20 +380,11 @@ static void spi_dma_tx_finish_handler(dma_id_t id)
 	spi_hal_disable_tx_fifo_int(&spi[current_spi_dma_wr_id].hal);
 	spi_hal_clear_tx_fifo_int_status(&spi[current_spi_dma_wr_id].hal);
 	spi_hal_disable_tx(&spi[current_spi_dma_wr_id].hal);
-	bk_dma_stop(spi[current_spi_dma_wr_id].spi_tx_dma_chan);
+	tkl_dma_stop(spi[current_spi_dma_wr_id].spi_tx_dma_chan);
 }
 
-static void spi_dma_rx_finish_handler(dma_id_t id)
+static void spi_dma_rx_finish_handler(dma_id_t id, DMA_ISR_TYPE_E event)
 {
-    uint32_t pause =  bk_dma_get_repeat_wr_pause(id);
-    uint32_t addr =  dma_get_dst_end_addr(id);
-    uint32_t cur_addr =  dma_get_dest_write_addr(id);
-	// 未到达暂停地址时触发的中断仅为某一部分数据传输完成
-    if (addr != cur_addr) {
-        if ((pause == 0)) {
-            return;
-        }
-    }
 	if (spi_rx_finish_isr[current_spi_dma_rd_id].callback){
 		spi_rx_finish_isr[current_spi_dma_rd_id].callback(current_spi_dma_rd_id,spi_rx_finish_isr[current_spi_dma_rd_id].param);
 	}
@@ -416,17 +395,15 @@ static void spi_dma_rx_finish_handler(dma_id_t id)
 	spi_hal_disable_rx_fifo_int(&spi[current_spi_dma_wr_id].hal);
 	spi_hal_clear_rx_fifo_int_status(&spi[current_spi_dma_wr_id].hal);
 	spi_hal_disable_rx(&spi[current_spi_dma_rd_id].hal);
-	bk_dma_stop(spi[current_spi_dma_rd_id].spi_rx_dma_chan);
+	tkl_dma_stop(spi[current_spi_dma_rd_id].spi_rx_dma_chan);
 }
 
-static void spi_dma_tx_init(spi_id_t id, dma_id_t spi_tx_dma_chan, dma_data_width_t spi_tx_dma_width, dma_work_mode_t mode)
+static void spi_dma_tx_init(spi_id_t id, dma_id_t *spi_tx_dma_chan, TKL_DATA_WIDTH_T spi_tx_dma_width, TKL_WORK_MODE_E mode)
 {
-	dma_config_t dma_config = {0};
+	TKL_DMA_CONFIG_T dma_config = {0};
 	spi_int_config_t int_cfg_table[] = TKL_SPI_INT_CONFIG_TABLE;
 
 	dma_config.mode = mode;
-    dma_config.trans_type = DMA_TRANS_DEFAULT;
-	dma_config.chan_prio = 0;
 	dma_config.src.dev = DMA_DEV_DTCM;
 	dma_config.src.width = DMA_DATA_WIDTH_32BITS;
 	dma_config.dst.width = spi_tx_dma_width;
@@ -436,24 +413,23 @@ static void spi_dma_tx_init(spi_id_t id, dma_id_t spi_tx_dma_chan, dma_data_widt
     dma_config.dst.addr_loop_en = DMA_ADDR_LOOP_DISABLE;
 	dma_config.dst.start_addr = SPI_R_DATA(id);
 	dma_config.dst.dev = int_cfg_table[id].dma_dev;
+	if (id == TUYA_SPI_NUM_0) {
+    	dma_config.dev_id = DMA_DEV_GSPI0;
+	}
+	if (id == TUYA_SPI_NUM_1) {
+    	dma_config.dev_id = DMA_DEV_GSPI1;
+	}
 
-	BK_LOG_ON_ERR(bk_dma_init(spi_tx_dma_chan, &dma_config));
-	BK_LOG_ON_ERR(bk_dma_register_isr(spi_tx_dma_chan, NULL, spi_dma_tx_finish_handler));
-	BK_LOG_ON_ERR(bk_dma_enable_finish_interrupt(spi_tx_dma_chan));
-#if CONFIG_SPE
-	BK_LOG_ON_ERR(bk_dma_set_dest_sec_attr(spi_tx_dma_chan, DMA_ATTR_SEC));
-	BK_LOG_ON_ERR(bk_dma_set_src_sec_attr(spi_tx_dma_chan, DMA_ATTR_SEC));
-#endif
+	BK_LOG_ON_ERR(tkl_dma_init(spi_tx_dma_chan, &dma_config));
+	BK_LOG_ON_ERR(tkl_dma_register_isr(*spi_tx_dma_chan, spi_dma_tx_finish_handler));
 }
 
-static void spi_dma_rx_init(spi_id_t id, dma_id_t spi_rx_dma_chan, dma_data_width_t spi_rx_dma_width, dma_work_mode_t mode)
+static void spi_dma_rx_init(spi_id_t id, dma_id_t *spi_rx_dma_chan, dma_data_width_t spi_rx_dma_width, dma_work_mode_t mode)
 {
-	dma_config_t dma_config = {0};
+	TKL_DMA_CONFIG_T dma_config = {0};
 	spi_int_config_t int_cfg_table[] = TKL_SPI_RX_INT_CONFIG_TABLE;
 
 	dma_config.mode = mode;
-    dma_config.trans_type = DMA_TRANS_DEFAULT;
-	dma_config.chan_prio = 0;
 	dma_config.src.dev = int_cfg_table[id].dma_dev;
 	dma_config.src.width = spi_rx_dma_width;
 	dma_config.src.start_addr = SPI_R_DATA(id);
@@ -463,14 +439,15 @@ static void spi_dma_rx_init(spi_id_t id, dma_id_t spi_rx_dma_chan, dma_data_widt
 	dma_config.dst.width = DMA_DATA_WIDTH_32BITS;
 	dma_config.dst.addr_inc_en = DMA_ADDR_INC_ENABLE;
 	dma_config.dst.addr_loop_en = DMA_ADDR_LOOP_DISABLE;
+	if (id == TUYA_SPI_NUM_0) {
+    	dma_config.dev_id = DMA_DEV_GSPI0_RX;
+	}
+	if (id == TUYA_SPI_NUM_1) {
+    	dma_config.dev_id = DMA_DEV_GSPI1_RX;
+	}
 
-	BK_LOG_ON_ERR(bk_dma_init(spi_rx_dma_chan, &dma_config));
-	BK_LOG_ON_ERR(bk_dma_register_isr(spi_rx_dma_chan, NULL, spi_dma_rx_finish_handler));
-	BK_LOG_ON_ERR(bk_dma_enable_finish_interrupt(spi_rx_dma_chan));
-#if CONFIG_SPE
-	BK_LOG_ON_ERR(bk_dma_set_dest_sec_attr(spi_rx_dma_chan, DMA_ATTR_SEC));
-	BK_LOG_ON_ERR(bk_dma_set_src_sec_attr(spi_rx_dma_chan, DMA_ATTR_SEC));
-#endif
+	BK_LOG_ON_ERR(tkl_dma_init(spi_rx_dma_chan, &dma_config));
+	BK_LOG_ON_ERR(tkl_dma_register_isr(*spi_rx_dma_chan, spi_dma_rx_finish_handler));
 }
 
 #endif /* CONFIG_SPI_DMA */
@@ -495,7 +472,7 @@ static int spi_backup(uint64_t sleep_time, void *args)
 		spi_hal_backup(&spi[id].hal, &spi[id].pm_backup[0]);
 		spi_clock_disable(id);
 	}
-	return BK_OK;
+	return OPRT_OK;
 }
 static int spi_restore(uint64_t sleep_time, void *args)
 {
@@ -508,7 +485,7 @@ static int spi_restore(uint64_t sleep_time, void *args)
 		spi_hal_restore(&spi[id].hal, &spi[id].pm_backup[0]);
 		spi[id].pm_backup_is_valid = 0;
 	}
-	return BK_OK;
+	return OPRT_OK;
 }
 #else
 #define TKL_SPI_PM_CHECK_RESTORE(id)
@@ -583,20 +560,17 @@ static OPERATE_RET spi_init(spi_id_t id, const spi_config_t *config)
 	spi_hal_start_common(&spi[id].hal);
 #if (CONFIG_SPI_DMA)
 	if (!spi[id].dma_inited) {
-		spi[id].spi_tx_dma_chan = bk_dma_alloc(DMA_DEV_GSPI0 + id * 2);
-		spi[id].spi_rx_dma_chan = bk_dma_alloc(DMA_DEV_GSPI0_RX + id * 2);
+		if (config->dma_mode) {
+#if (!CONFIG_SYSTEM_CTRL)
+			gpio_spi_sel(GPIO_SPI_MAP_MODE0);
+#endif
+			spi_dma_tx_init(id, &spi[id].spi_tx_dma_chan, config->spi_tx_dma_width, DMA_WORK_MODE_SINGLE);
+			spi_dma_rx_init(id, &spi[id].spi_rx_dma_chan, config->spi_rx_dma_width, DMA_WORK_MODE_SINGLE);
+			//dma模式关闭外设中断，使用dma完成中断
+			spi_interrupt_disable(id);
+		}
 
 		spi[id].dma_inited = true;
-	}
-
-	if (config->dma_mode) {
-#if (!CONFIG_SYSTEM_CTRL)
-		gpio_spi_sel(GPIO_SPI_MAP_MODE0);
-#endif
-		spi_dma_tx_init(id, spi[id].spi_tx_dma_chan, config->spi_tx_dma_width, DMA_WORK_MODE_SINGLE);
-		spi_dma_rx_init(id, spi[id].spi_rx_dma_chan, config->spi_rx_dma_width, DMA_WORK_MODE_SINGLE);
-		//dma模式关闭外设中断，使用dma完成中断
-		spi_interrupt_disable(id);
 	}
 #endif
 
@@ -610,11 +584,11 @@ static OPERATE_RET spi_deinit(spi_id_t id)
 #if CONFIG_SPI_DMA
     if (spi[id].dma_inited) {
         if (spi[id].spi_tx_dma_chan != DMA_ID_MAX) {
-            BK_LOG_ON_ERR(bk_dma_free(DMA_DEV_GSPI0 + id * 2, spi[id].spi_tx_dma_chan));
+            BK_LOG_ON_ERR(tkl_dma_deinit(spi[id].spi_tx_dma_chan));
             spi[id].spi_tx_dma_chan = DMA_ID_MAX;
         }
         if (spi[id].spi_rx_dma_chan != DMA_ID_MAX) {
-            BK_LOG_ON_ERR(bk_dma_free(DMA_DEV_GSPI0_RX + id * 2, spi[id].spi_rx_dma_chan));
+            BK_LOG_ON_ERR(tkl_dma_deinit(spi[id].spi_rx_dma_chan));
             spi[id].spi_rx_dma_chan = DMA_ID_MAX;
         }
         spi[id].dma_inited = false;
@@ -864,39 +838,13 @@ static OPERATE_RET spi_read_bytes_async(spi_id_t id, void *data, uint32_t size)
 static OPERATE_RET spi_dma_duplex_init(spi_id_t id)
 {
 	spi_hal_duplex_config(&spi[id].hal);
-	bk_dma_disable_src_addr_loop(spi[id].spi_tx_dma_chan);
-	bk_dma_disable_dest_addr_loop(spi[id].spi_rx_dma_chan);
 	return OPRT_OK;
 }
 
 static OPERATE_RET spi_dma_duplex_deinit(spi_id_t id)
 {
 	spi_hal_duplex_release(&spi[id].hal);
-	bk_dma_enable_src_addr_loop(spi[id].spi_tx_dma_chan);
-	bk_dma_enable_dest_addr_loop(spi[id].spi_rx_dma_chan);
 	return OPRT_OK;
-}
-
-static OPERATE_RET get_dma_repeat_once_len(uint32_t frame_len, uint32_t* outlen)
-{
-    uint32_t len = 0;
-    uint32_t value = 0;
-    uint8_t i = 0;
-
-    for (i = 2; i < 1024; i++) {          
-        len = frame_len / i;
-        if (len <= 0x10000  && (frame_len % i == 0)) {
-            value = frame_len % i;
-            if (!value) {
-                *outlen = len;
-                return OPRT_OK;
-            }
-        }
-    }
-
-    bk_printf("%s Error dma length, please check the resolution of qspi lcd\r\n", __func__);
-
-    return OPRT_INVALID_PARM;
 }
 
 static OPERATE_RET spi_dma_write_bytes(spi_id_t id, const void *data, uint32_t size)
@@ -916,27 +864,13 @@ static OPERATE_RET spi_dma_write_bytes(spi_id_t id, const void *data, uint32_t s
 	spi_hal_disable_tx_fifo_int(&spi[id].hal);
 	spi_hal_disable_tx_underflow_int(&spi[id].hal);
 	spi_exit_critical(int_level);
-	if (size > SPI_DMA_MAX_TRANSFER_LEN) {
-		if(!get_dma_repeat_once_len(size, &tx_len)) {
-		    spi_dma_tx_init(id, spi[id].spi_tx_dma_chan, DMA_DATA_WIDTH_8BITS, DMA_WORK_MODE_REPEAT);
-	        dma_set_src_pause_addr(spi[id].spi_tx_dma_chan, (((uint32_t)data + size)));
-            bk_dma_set_src_addr(spi[id].spi_tx_dma_chan, (uint32_t)data, (uint32_t)(data + size + 4));
-        } else {
-            return OPRT_INVALID_PARM;
-        }
-	} else {
-		tx_len = size;
-		spi_dma_tx_init(id, spi[id].spi_tx_dma_chan, DMA_DATA_WIDTH_8BITS, DMA_WORK_MODE_SINGLE);
-        bk_dma_set_src_addr(spi[id].spi_tx_dma_chan, (uint32_t)data, (uint32_t)(data + size));
-	}
-    bk_dma_set_transfer_len(spi[id].spi_tx_dma_chan, tx_len);
-    bk_dma_start(spi[id].spi_tx_dma_chan);
+	tkl_dma_write(spi[id].spi_tx_dma_chan, (uint32_t)data, size);
 
 	spi_hal_enable_tx(&spi[id].hal);
 	rtos_get_semaphore(&spi[id].tx_sema, BEKEN_NEVER_TIMEOUT);
 	int_level = spi_enter_critical();
 	spi_hal_disable_tx(&spi[id].hal);
-	bk_dma_stop(spi[id].spi_tx_dma_chan);
+	tkl_dma_stop(spi[id].spi_tx_dma_chan);
 	spi_exit_critical(int_level);
 	return OPRT_OK;
 }
@@ -960,28 +894,13 @@ static OPERATE_RET spi_dma_read_bytes(spi_id_t id, void *data, uint32_t size)
 	spi_hal_disable_rx_fifo_int(&spi[id].hal);
 	spi_hal_disable_rx_overflow_int(&spi[id].hal);
 	spi_exit_critical(int_level);
-	if (size > SPI_DMA_MAX_TRANSFER_LEN) {
-		if(!get_dma_repeat_once_len(size, &rx_len)) {
-		    spi_dma_rx_init(id, spi[id].spi_rx_dma_chan, DMA_DATA_WIDTH_8BITS, DMA_WORK_MODE_REPEAT);
-	        dma_set_dst_pause_addr(spi[id].spi_rx_dma_chan, (((uint32_t)data + size)));
-            bk_dma_set_dest_addr(spi[id].spi_rx_dma_chan, (uint32_t)data, (uint32_t)(data + size + 4));
-        } else {
-            return OPRT_INVALID_PARM;
-        }
-	} else {
-		rx_len = size;
-		spi_dma_rx_init(id, spi[id].spi_rx_dma_chan, DMA_DATA_WIDTH_8BITS, DMA_WORK_MODE_SINGLE);
-        bk_dma_set_dest_addr(spi[id].spi_rx_dma_chan, (uint32_t)data, (uint32_t)(data + size)); 
-	}
-	
-    bk_dma_set_transfer_len(spi[id].spi_rx_dma_chan, rx_len);
-    bk_dma_start(spi[id].spi_rx_dma_chan);
+	tkl_dma_read(spi[id].spi_rx_dma_chan, (uint32_t)data, size);
 
 	spi_hal_enable_rx(&spi[id].hal);
 	rtos_get_semaphore(&spi[id].rx_sema, BEKEN_NEVER_TIMEOUT);
 	int_level = spi_enter_critical();
 	spi_hal_disable_rx(&spi[id].hal);
-	bk_dma_stop(spi[id].spi_rx_dma_chan);
+	tkl_dma_stop(spi[id].spi_rx_dma_chan);
 	spi_exit_critical(int_level);
 	return OPRT_OK;
 }
@@ -1014,7 +933,7 @@ static void tkl_spi_isr_common(spi_id_t id)
 		SPI_STATIS_INC(spi_statis->rx_finish_isr_cnt);
 		SPI_LOGV("rx fifo finish int triggered\r\n");
 		if (spi[id].rx_size && spi[id].rx_buf) {
-			while (spi_hal_read_byte(hal, &rd_data) == BK_OK) {
+			while (spi_hal_read_byte(hal, &rd_data) == OPRT_OK) {
 				if (rd_offset < spi[id].rx_size) {
 					spi[id].rx_buf[rd_offset++] = rd_data;
 				}
@@ -1157,21 +1076,8 @@ OPERATE_RET tuya_spi_dma_read_bytes_async(spi_id_t id, void *data, uint32_t size
 	spi_hal_disable_rx_fifo_int(&spi[id].hal);
 	spi_hal_disable_rx_overflow_int(&spi[id].hal);
 	spi_exit_critical(int_level);
-	if (size > SPI_DMA_MAX_TRANSFER_LEN) {
-		if(!get_dma_repeat_once_len(size, &rx_len)) {
-		    spi_dma_rx_init(id, spi[id].spi_rx_dma_chan, DMA_DATA_WIDTH_8BITS, DMA_WORK_MODE_REPEAT);
-	        dma_set_dst_pause_addr(spi[id].spi_rx_dma_chan, (((uint32_t)data + size)));
-            bk_dma_set_dest_addr(spi[id].spi_rx_dma_chan, (uint32_t)data, (uint32_t)(data + size + 4));
-        } else {
-            return OPRT_INVALID_PARM;
-        }
-	} else {
-		rx_len = size;
-		spi_dma_rx_init(id, spi[id].spi_rx_dma_chan, DMA_DATA_WIDTH_8BITS, DMA_WORK_MODE_SINGLE);
-        bk_dma_set_dest_addr(spi[id].spi_rx_dma_chan, (uint32_t)data, (uint32_t)(data + size)); 
-	}
-    bk_dma_set_transfer_len(spi[id].spi_rx_dma_chan, rx_len);
-    bk_dma_start(spi[id].spi_rx_dma_chan);
+
+	tkl_dma_read(spi[id].spi_rx_dma_chan, (uint32_t)data, size);
 
 	spi_hal_enable_rx(&spi[id].hal);
 	return OPRT_OK;
@@ -1194,23 +1100,8 @@ OPERATE_RET tuya_spi_dma_write_bytes_async(spi_id_t id, const void *data, uint32
 	spi_hal_disable_tx_underflow_int(&spi[id].hal);
 	spi_hal_set_tx_trans_len(&spi[id].hal, 0);
 	spi_exit_critical(int_level);
-    bk_dma_stop(spi[id].spi_tx_dma_chan);
-	if (size > SPI_DMA_MAX_TRANSFER_LEN) {
-		if(!get_dma_repeat_once_len(size, &tx_len)) {
-		    spi_dma_tx_init(id, spi[id].spi_tx_dma_chan, DMA_DATA_WIDTH_8BITS, DMA_WORK_MODE_REPEAT);
-		    dma_set_src_pause_addr(spi[id].spi_tx_dma_chan, (((uint32_t)data + size)));
-    	    bk_dma_set_src_addr(spi[id].spi_tx_dma_chan, (uint32_t)data, (uint32_t)(data + size + 4));
-        } else {
-            return OPRT_INVALID_PARM;
-        }
-	} else {
-		tx_len = size;
-		spi_dma_tx_init(id, spi[id].spi_tx_dma_chan, DMA_DATA_WIDTH_8BITS, DMA_WORK_MODE_SINGLE);
-    	bk_dma_set_src_addr(spi[id].spi_tx_dma_chan, (uint32_t)data, (uint32_t)(data + size));
-	}
 
-    bk_dma_set_transfer_len(spi[id].spi_tx_dma_chan, tx_len);
-    bk_dma_start(spi[id].spi_tx_dma_chan);
+	tkl_dma_write(spi[id].spi_tx_dma_chan, (uint32_t)data, size);
 
 	spi_hal_enable_tx(&spi[id].hal);
 	return OPRT_OK;
@@ -1236,59 +1127,24 @@ static OPERATE_RET spi_dma_duplex_xfer(spi_id_t id, const void *tx_data, uint32_
 	current_spi_dma_rd_id = id;
 	int_level = spi_enter_critical();
 	if(rx_data) {
-		bk_dma_set_dest_start_addr(spi[id].spi_rx_dma_chan,((uint32_t)rx_data + offset));
-		bk_dma_set_transfer_len(spi[id].spi_rx_dma_chan,rx_size);
-		
 		spi_hal_clear_rx_fifo(&spi[id].hal);
 		spi_hal_set_rx_trans_len(&spi[id].hal, 0);
 		spi_hal_disable_rx_fifo_int(&spi[id].hal);
 		spi_hal_disable_rx_overflow_int(&spi[id].hal);
-	    if (rx_size > SPI_DMA_MAX_TRANSFER_LEN) {
-	    	if(!get_dma_repeat_once_len(rx_size, &rx_len)) {
-		        spi_dma_rx_init(id, spi[id].spi_rx_dma_chan, DMA_DATA_WIDTH_8BITS, DMA_WORK_MODE_REPEAT);
-	            dma_set_dst_pause_addr(spi[id].spi_rx_dma_chan, (((uint32_t)rx_data + rx_size)));
-                bk_dma_set_dest_addr(spi[id].spi_rx_dma_chan, (uint32_t)rx_data, (uint32_t)(rx_data + rx_size + 4));
-            } else {
-                return OPRT_INVALID_PARM;
-            }
-	    } else {
-	    	rx_len = rx_size;
-		    spi_dma_rx_init(id, spi[id].spi_rx_dma_chan, DMA_DATA_WIDTH_8BITS, DMA_WORK_MODE_SINGLE);
-            bk_dma_set_dest_addr(spi[id].spi_rx_dma_chan, (uint32_t)rx_data, (uint32_t)(rx_data + rx_size)); 
-	    }
-    	bk_dma_set_transfer_len(spi[id].spi_rx_dma_chan, rx_len);
+		tkl_dma_read(spi[id].spi_rx_dma_chan, (uint32_t)rx_data, rx_size);
 	}
 	if(tx_data) {
 		spi_hal_clear_tx_fifo(&spi[id].hal);
 		spi_hal_set_tx_trans_len(&spi[id].hal, 0);
 		spi_hal_disable_tx_fifo_int(&spi[id].hal);
 		spi_hal_disable_tx_underflow_int(&spi[id].hal);
-		if (tx_size > SPI_DMA_MAX_TRANSFER_LEN) {
-	    	if(!get_dma_repeat_once_len(tx_size, &tx_len)) {
-		        spi_dma_tx_init(id, spi[id].spi_tx_dma_chan, DMA_DATA_WIDTH_8BITS, DMA_WORK_MODE_REPEAT);
-			    dma_set_src_pause_addr(spi[id].spi_tx_dma_chan, (((uint32_t)tx_data + tx_size)));
-    	        bk_dma_set_src_addr(spi[id].spi_tx_dma_chan, (uint32_t)tx_data, (uint32_t)(tx_data + tx_size + 4));
-            } else {
-                return OPRT_INVALID_PARM;
-            }
-		} else {
-			tx_len = tx_size;
-		    spi_dma_tx_init(id, spi[id].spi_tx_dma_chan, DMA_DATA_WIDTH_8BITS, DMA_WORK_MODE_SINGLE);
-    	    bk_dma_set_src_addr(spi[id].spi_tx_dma_chan, (uint32_t)tx_data, (uint32_t)(tx_data + tx_size));
-		}
-    	bk_dma_set_transfer_len(spi[id].spi_tx_dma_chan, tx_len);
-	}
-	if(tx_data) {
-		spi_hal_enable_tx(&spi[id].hal);
+		tkl_dma_write(spi[id].spi_tx_dma_chan, (uint32_t)tx_data, tx_size);
 	}
 	if(rx_data) {
 		spi_hal_enable_rx(&spi[id].hal);
 	}
 	if(tx_data) {
-		bk_dma_start(spi[id].spi_tx_dma_chan);
-	}
-	if(rx_data) {
-		bk_dma_start(spi[id].spi_rx_dma_chan);
+		spi_hal_enable_tx(&spi[id].hal);
 	}
 	spi_exit_critical(int_level);
 	if(rx_data) {
@@ -1363,16 +1219,6 @@ OPERATE_RET tkl_spi_init(TUYA_SPI_NUM_E port, const TUYA_SPI_BASE_CFG_T *cfg)
 #if (CONFIG_SPI_DMA)
     if (cfg->spi_dma_flags) {
         spi_config[port].dma_mode = SPI_DMA_MODE_ENABLE;
-
-        if (port == TUYA_SPI_NUM_0) {
-            spi_config[port].spi_tx_dma_chan = bk_dma_alloc(DMA_DEV_GSPI0);
-            spi_config[port].spi_rx_dma_chan = bk_dma_alloc(DMA_DEV_GSPI0_RX);
-        }
-
-        if (port == TUYA_SPI_NUM_1) {
-            spi_config[port].spi_tx_dma_chan = bk_dma_alloc(DMA_DEV_GSPI1);
-            spi_config[port].spi_rx_dma_chan = bk_dma_alloc(DMA_DEV_GSPI1_RX);
-        }
         spi_config[port].spi_tx_dma_width = DMA_DATA_WIDTH_8BITS;
         spi_config[port].spi_rx_dma_width = DMA_DATA_WIDTH_8BITS;
     }
@@ -1435,19 +1281,6 @@ OPERATE_RET tkl_spi_deinit(TUYA_SPI_NUM_E port)
         return tkl_qspi_deinit(port - TUYA_SPI_NUM_2);
     }
     BK_RETURN_ON_ERR(spi_deinit((spi_id_t)port));
-#if (CONFIG_SPI_DMA)
-    if (spi_config[port].dma_mode) {
-        if (port == TUYA_SPI_NUM_0) {
-            bk_dma_free(DMA_DEV_GSPI0, spi_config[port].spi_tx_dma_chan);
-            bk_dma_free(DMA_DEV_GSPI0_RX, spi_config[port].spi_rx_dma_chan);
-        }
-
-        if (port == TUYA_SPI_NUM_1) {
-            bk_dma_free(DMA_DEV_GSPI1, spi_config[port].spi_tx_dma_chan);
-            bk_dma_free(DMA_DEV_GSPI1_RX, spi_config[port].spi_rx_dma_chan);
-        }
-    }
-#endif
     spi_driver_deinit();
     memset(&spi_config[port], 0, sizeof(spi_config[port]));
     return OPRT_OK;

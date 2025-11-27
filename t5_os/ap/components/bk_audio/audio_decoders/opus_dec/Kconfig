@@ -1,0 +1,12 @@
+menu "Adk::Audio_decoders::Opus_dec"
+	config ADK_OPUS_DECODER
+		depends on ADK
+		bool "Enable Audio Opus Decoder"
+		default n
+
+	config ADK_OPUS_DECODER_TEST
+		depends on ADK_OPUS_DECODER && ADK_FRAME_ARRAY_STREAM && ADK_UART_STREAM
+		bool "Enable Audio Opus Decoder test"
+		default n
+
+endmenu

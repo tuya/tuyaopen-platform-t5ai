@@ -3,7 +3,7 @@
 #include "wdrv_cntrl.h"
 #include "wdrv_tx.h"
 #include "wdrv_co_list.h"
-extern void ethernetif_input(uint8_t vif_index, struct pbuf *p);
+extern void ethernetif_input(int iface, struct pbuf *p, uint8_t dst_idx);
 void __asm_flush_dcache_range(void* begin, void* end);
 
 void wdrv_rx_confirm_tx_msg(wdrv_rx_msg *msg)
@@ -74,7 +74,6 @@ void wdrv_rxdata_process(struct pbuf *p)
         struct pbuf * pbuf = NULL;
         pbuf = (struct pbuf*)(PTR_FROM_U32(uint8_t,cpdu) - sizeof(struct pbuf));
         WDRV_LOGV("%s,%d,data addr receive 0x%x\n",__func__,__LINE__,pbuf);
-
 //        for(uint8_t k=0;k<wdrv_rxbank_debug.rx_buf_bank_cnt ;k++)
 //        {
 //            struct pbuf * p_temp =NULL;
@@ -129,11 +128,11 @@ void wdrv_rxdata_process(struct pbuf *p)
     if(p_copy)
     {
         WDRV_LOGV("%s, vif%d\r\n",__func__,vif_idx);
-        ethernetif_input(vif_idx , p_copy);
+        ethernetif_input(vif_idx , p_copy, cpdu->co_hdr.dst_index);
     }
 #else
     WDRV_LOGV("------%s, vif%d\r\n",__func__,cpdu->co_hdr.vif_idx);
-    ethernetif_input(cpdu->co_hdr.vif_idx , p);
+    ethernetif_input(cpdu->co_hdr.vif_idx , p, cpdu->co_hdr.dst_index);
 #endif
 }
 //MBOX
@@ -169,10 +168,10 @@ uint8_t wdrv_recv_buffer(void *param, uint32_t *payload)
                 struct pbuf * p = NULL;
                 p = (struct pbuf*)((struct pbuf*)head - 1);
                 ret = wdrv_msg_sender((uint32_t)p,WDRV_TASK_MSG_RXDATA,0);
-                //bk_mem_dump("wdrv_recv p",PTR_TO_U32(p),sizeof(struct pbuf)+8);qq
+                //bk_mem_dump("wdrv_recv p",PTR_TO_U32(p),sizeof(struct pbuf)+8);
                 if(ret != BK_OK)
                 {
-                    pbuf_free(p);
+                    BK_ASSERT(0);
                 }
                 break;
             }

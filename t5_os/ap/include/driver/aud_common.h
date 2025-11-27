@@ -179,6 +179,47 @@ bk_err_t bk_aud_register_aud_isr(aud_isr_id_t isr_id, aud_isr_t isr);
 
 
 /**
+ * @brief     config mic0 analog gain
+ *
+ * This API config mic0 analog gain.
+ *
+ * @param ana_mic0_gain
+ *
+ * @return
+ *    - BK_OK: succeed
+ *    - others: other errors.
+ */
+
+bk_err_t bk_aud_set_ana_mic0_gain(uint8_t ana_mic0_gain);
+
+/**
+ * @brief     config mic1 analog gain
+ *
+ * This API config mic1 analog gain.
+ *
+ * @param ana_mic1_gain
+ *
+ * @return
+ *    - BK_OK: succeed
+ *    - others: other errors.
+ */
+
+bk_err_t bk_aud_set_ana_mic1_gain(uint8_t ana_mic1_gain);
+
+/**
+ * @brief     config audio dac analog gain
+ *
+ * This API config audio dac analog gain.
+ *
+ * @param ana_dac_gain
+ *
+ * @return
+ *    - BK_OK: succeed
+ *    - others: other errors.
+ */
+bk_err_t bk_aud_set_ana_dac_gain(uint8_t ana_dac_gain);
+
+/**
  * @}
  */
 

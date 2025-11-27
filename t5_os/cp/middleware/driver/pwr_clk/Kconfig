@@ -65,9 +65,6 @@ menu "PWR_CLK"
 	config DIGLDO_LOW_VOLTAGE_ENABLE
 		 bool "enable dig ldo low voltage "
 		default y
-	config CLK_FORCE_MAX_CPU_FREQ_320M
-		 bool "force max cpu frequency 320M"
-		default n
 	config PM_26M_STABILITY_DELAY_TIME_HARDWARE
 		 int "26M CRYSTAL HARDWARE STABILITY DELAY TIME"
 		default 1300
@@ -76,5 +73,8 @@ menu "PWR_CLK"
 	config PM_LV_SUBCORES_ON
 		bool "CPU0 and CPU1,CPU2 ON when enter low voltage"
 		default n
+	config PM_LV_GPIO_WAKEUP_CALL_MAC_CB
+		bool "when gpio wakeup , call mac callback when lv sleep mode"
+		default y
 	endmenu
 

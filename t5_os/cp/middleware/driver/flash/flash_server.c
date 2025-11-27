@@ -22,6 +22,12 @@
 #include <driver/mb_ipc.h>
 #include <driver/mb_ipc_port_cfg.h>
 #include <os/rtos_ext.h>
+#include "modules/pm.h"
+#if CONFIG_FLASH_BYPASS_OTP_OPERATION
+#include "flash_bypass.h"
+#endif
+extern bk_err_t    mb_flash_op_prepare(void);
+extern bk_err_t    mb_flash_op_finish(void);
 
 #if CONFIG_CACHE_ENABLE
 #include "cache.h"
@@ -47,8 +53,7 @@
 
 #define FLASH_SVR_EVENTS         (FLASH_SVR_CONNECT_EVENTS | FLASH_SVR_QUIT_EVENT)
 
-// #define FLASH_SVR_WAIT_TIME      50
-#define FLASH_SVR_WAIT_TIME      200    // Modified by TUYA
+#define FLASH_SVR_WAIT_TIME      50
 
 
 static u8 s_flash_svr_init = 0;
@@ -57,6 +62,9 @@ static rtos_event_ext_t  flash_svr_event;
 
 #ifndef  DYNAMIC_FLASH_BUFFER
 static u8        flash_buff[MAX(FLASH_IPC_READ_SIZE, FLASH_IPC_WRITE_SIZE)];
+#if CONFIG_FLASH_BYPASS_OTP_OPERATION
+static u8        flash_bypass_buff[FLASH_IPC_BYPASS_OTP_SIZE];
+#endif
 #endif
 
 static const uint32_t crc32_table[] =
@@ -333,13 +341,235 @@ static void flash_write_handler(u32 handle, flash_cmd_t *cmd_buff)
 	(void)ret_val;
 }
 
+#if CONFIG_FLASH_BYPASS_OTP_OPERATION
+static void flash_bypass_otp_handler(u32 handle, flash_bypass_otp_ipc_cmd_t *ipc_cmd, uint8_t *data_buff, u8 connect_id)
+{
+	flash_bypass_otp_ctrl_t otp_cfg;
+	bk_err_t ret = BK_OK;
+	bool flash_op_started = false;
+
+	memset(&otp_cfg, 0, sizeof(otp_cfg));
+
+	otp_cfg.otp_idx = ipc_cmd->otp_idx;
+	otp_cfg.addr_offset = ipc_cmd->addr_offset;
+	otp_cfg.read_len = ipc_cmd->read_len;
+	otp_cfg.write_len = ipc_cmd->write_len;
+
+	if(ipc_cmd->cmd == FLASH_BYPASS_OTP_WRITE && data_buff != NULL && ipc_cmd->write_len > 0)
+	{
+		otp_cfg.write_buf = data_buff;
+	}
+
+	if(ipc_cmd->cmd == FLASH_BYPASS_OTP_READ && ipc_cmd->read_len > 0)
+	{
+		#ifdef DYNAMIC_FLASH_BUFFER
+		otp_cfg.read_buf = (uint8_t *)os_malloc(ipc_cmd->read_len);
+		#else
+		if(ipc_cmd->read_len > sizeof(flash_bypass_buff))
+		{
+			flash_error_handler(handle, FLASH_CMD_BYPASS_OTP_OPERATION);
+			TRACE_E(TAG, "%s @%d, buffer overflow!\r\n", __FUNCTION__, __LINE__);
+			return;
+		}
+		otp_cfg.read_buf = flash_bypass_buff;
+		#endif
+
+		if(otp_cfg.read_buf == NULL)
+		{
+			flash_error_handler(handle, FLASH_CMD_BYPASS_OTP_OPERATION);
+			TRACE_E(TAG, "%s @%d, memory overrun!\r\n", __FUNCTION__, __LINE__);
+			return;
+		}
+	}
+
+	// 通知AP侧flash操作开始，防止CPU主频切换导致SPI总线挂死
+	mb_flash_op_prepare();
+	bk_flash_set_operate_status(FLASH_OP_BUSY);
+	flash_op_started = true;
+
+	ret = flash_bypass_otp_operation((flash_bypass_otp_cmd_t)ipc_cmd->cmd, &otp_cfg);
+
+	// 通知AP侧flash操作结束
+	if(flash_op_started)
+	{
+		bk_flash_set_operate_status(FLASH_OP_IDLE);
+		mb_flash_op_finish();
+		flash_op_started = false;
+	}
+
+	ipc_cmd->ret_status = ret;
+
+	int ret_val = mb_ipc_send(handle, FLASH_CMD_BYPASS_OTP_OPERATION, (u8 *)ipc_cmd, sizeof(flash_bypass_otp_ipc_cmd_t), FLASH_SVR_WAIT_TIME);
+
+	if(ret_val != 0)
+	{
+		TRACE_E(TAG, "%s @%d, send response failed, ret_val=%d\r\n", __FUNCTION__, __LINE__, ret_val);
+	}
+
+	if(ipc_cmd->cmd == FLASH_BYPASS_OTP_READ && ret == BK_OK && otp_cfg.read_buf != NULL && ipc_cmd->read_len > 0)
+	{
+		ret_val = mb_ipc_send(handle, FLASH_CMD_BYPASS_OTP_OPERATION, otp_cfg.read_buf, ipc_cmd->read_len, FLASH_SVR_WAIT_TIME);
+
+		if(ret_val != 0)
+		{
+			TRACE_E(TAG, "%s @%d, send read data failed, ret_val=%d\r\n", __FUNCTION__, __LINE__, ret_val);
+			#ifdef DYNAMIC_FLASH_BUFFER
+			if(otp_cfg.read_buf != NULL)
+			{
+				os_free(otp_cfg.read_buf);
+			}
+			#endif
+			return;
+		}
+
+		u32 event = rtos_wait_event_ex(&flash_svr_event, (0x01 << connect_id), 1, FLASH_SVR_WAIT_TIME);
+
+		if(event == 0)
+		{
+			TRACE_E(TAG, "%s @%d, wait for ack event timeout!\r\n", __FUNCTION__, __LINE__);
+			#ifdef DYNAMIC_FLASH_BUFFER
+			if(otp_cfg.read_buf != NULL)
+			{
+				os_free(otp_cfg.read_buf);
+			}
+			#endif
+			return;
+		}
+
+		memset(ipc_cmd, 0, sizeof(flash_bypass_otp_ipc_cmd_t));
+		u8 ack_cmd = INVALID_USER_CMD_ID;
+		ret_val = mb_ipc_recv(handle, &ack_cmd, (u8 *)ipc_cmd, sizeof(flash_bypass_otp_ipc_cmd_t), FLASH_SVR_WAIT_TIME);
+
+		if(ret_val != sizeof(flash_bypass_otp_ipc_cmd_t) || ack_cmd != FLASH_CMD_BYPASS_OTP_OPERATION)
+		{
+			TRACE_E(TAG, "%s @%d, recv ack failed, ack_cmd=%d, ret_val=%d, event=0x%x\r\n", __FUNCTION__, __LINE__, ack_cmd, ret_val, event);
+		}
+		else
+		{
+			memset(ipc_cmd, 0, sizeof(flash_bypass_otp_ipc_cmd_t));
+			ipc_cmd->ret_status = BK_OK;
+			ret_val = mb_ipc_send(handle, FLASH_CMD_BYPASS_OTP_OPERATION, (u8 *)ipc_cmd, sizeof(flash_bypass_otp_ipc_cmd_t), FLASH_SVR_WAIT_TIME);
+			if(ret_val != 0)
+			{
+				TRACE_E(TAG, "%s @%d, send final ack failed, ret_val=%d\r\n", __FUNCTION__, __LINE__, ret_val);
+			}
+		}
+
+		#ifdef DYNAMIC_FLASH_BUFFER
+		if(otp_cfg.read_buf != NULL)
+		{
+			os_free(otp_cfg.read_buf);
+		}
+		#endif
+	}
+
+	#ifdef DYNAMIC_FLASH_BUFFER
+	if(data_buff != NULL && ipc_cmd->cmd == FLASH_BYPASS_OTP_WRITE)
+	{
+		os_free(data_buff);
+	}
+	#endif
+}
+#endif
+
 static void flash_cmd_handler(u32 handle, u8 connect_id)
 {
 	int   recv_len = mb_ipc_get_recv_data_len(handle);
+	u8            user_cmd = mb_ipc_get_user_cmd(handle);
+
+#if CONFIG_FLASH_BYPASS_OTP_OPERATION
+	// if(recv_len == sizeof(flash_bypass_otp_ipc_cmd_t) || recv_len > sizeof(flash_bypass_otp_ipc_cmd_t))
+	if (user_cmd == FLASH_CMD_BYPASS_OTP_OPERATION)
+	{
+		flash_bypass_otp_ipc_cmd_t ipc_cmd;
+		uint8_t *data_buff = NULL;
+		uint32_t data_len = 0;
+
+		memset(&ipc_cmd, 0, sizeof(ipc_cmd));
+
+		if(recv_len > sizeof(ipc_cmd))
+		{
+			uint32_t total_len = recv_len;
+			uint8_t *combined_buff = (uint8_t *)os_malloc(total_len);
+			if(combined_buff == NULL)
+			{
+				flash_error_handler(handle, INVALID_USER_CMD_ID);
+				TRACE_E(TAG, "%s @%d, malloc failed!\r\n", __FUNCTION__, __LINE__);
+				mb_ipc_recv(handle, &user_cmd, NULL, 0, 0);  // discard
+				return;
+			}
+
+			recv_len = mb_ipc_recv(handle, &user_cmd, combined_buff, total_len, 0);
+			TRACE_E(TAG, "%s @%d, recv_len: %d, total_len: %d, user_cmd: %d\r\n", __FUNCTION__, __LINE__, recv_len, total_len, user_cmd);
+			if(recv_len == total_len && user_cmd == FLASH_CMD_BYPASS_OTP_OPERATION)
+			{
+				memcpy(&ipc_cmd, combined_buff, sizeof(ipc_cmd));
+
+				if(ipc_cmd.cmd == FLASH_BYPASS_OTP_WRITE && ipc_cmd.write_len > 0)
+				{
+					data_len = ipc_cmd.write_len;
+					#ifdef DYNAMIC_FLASH_BUFFER
+					data_buff = (uint8_t *)os_malloc(data_len);
+					#else
+					if(data_len > sizeof(flash_bypass_buff))
+					{
+						flash_error_handler(handle, user_cmd);
+						TRACE_E(TAG, "%s @%d, buffer overflow!\r\n", __FUNCTION__, __LINE__);
+						os_free(combined_buff);
+						return;
+					}
+					data_buff = flash_bypass_buff;
+					#endif
+
+					if(data_buff == NULL)
+					{
+						flash_error_handler(handle, user_cmd);
+						TRACE_E(TAG, "%s @%d, memory overrun!\r\n", __FUNCTION__, __LINE__);
+						os_free(combined_buff);
+						return;
+					}
+
+					memcpy(data_buff, combined_buff + sizeof(ipc_cmd), data_len);
+				}
+
+				os_free(combined_buff);
+			}
+			else
+			{
+				flash_error_handler(handle, user_cmd);
+				TRACE_E(TAG, "recv bypass otp WRITE cmd failed! user_cmd=%d, recv_len=%d, expected=%d\r\n", user_cmd, recv_len, total_len);
+				os_free(combined_buff);
+				return;
+			}
+		}
+		else if(recv_len == sizeof(ipc_cmd))
+		{
+			recv_len = mb_ipc_recv(handle, &user_cmd, (u8 *)&ipc_cmd, sizeof(ipc_cmd), 0);
+
+			if(recv_len != sizeof(ipc_cmd) || user_cmd != FLASH_CMD_BYPASS_OTP_OPERATION)
+			{
+				flash_error_handler(handle, user_cmd);
+				TRACE_E(TAG, "recv bypass otp cmd failed! user_cmd=%d, recv_len=%d\r\n", user_cmd, recv_len);
+				return;
+			}
+		}
+		else
+		{
+			mb_ipc_recv(handle, &user_cmd, NULL, 0, 0);
+			flash_error_handler(handle, user_cmd);
+			TRACE_E(TAG, "recv bypass otp cmd length mismatch! recv_len=%d\r\n", recv_len);
+			return;
+		}
+
+		if(user_cmd == FLASH_CMD_BYPASS_OTP_OPERATION)
+		{
+			flash_bypass_otp_handler(handle, &ipc_cmd, data_buff, connect_id);
+			return;
+		}
+	}
+#endif
 
 	flash_cmd_t   cmd_buff;
-	u8            user_cmd = INVALID_USER_CMD_ID;
-
 	memset(&cmd_buff, 0, sizeof(cmd_buff));
 
 	if(recv_len != sizeof( cmd_buff))
@@ -433,9 +663,9 @@ static void flash_svr_connect_handler(u32 handle, u8 connect_id)
 		return;
 	}
 
-	if(cmd_id > MB_IPC_CMD_MAX)
+	if(cmd_id > MB_IPC_CMD_MAX && cmd_id != MB_IPC_SEND_CMD)
 	{
-		TRACE_E(TAG, "cmd-id error %d.\r\n", cmd_id);
+		TRACE_I(TAG, "cmd-id %d (may be internal event, ignoring)\r\n", cmd_id);
 		return;
 	}
 
@@ -447,7 +677,9 @@ static void flash_svr_connect_handler(u32 handle, u8 connect_id)
 
 	if(cmd_id == MB_IPC_SEND_CMD)
 	{
+		bk_pm_module_vote_sleep_ctrl(PM_SLEEP_MODULE_NAME_FLASH_OP,0x0,0x0);
 		flash_cmd_handler(handle, connect_id);
+		bk_pm_module_vote_sleep_ctrl(PM_SLEEP_MODULE_NAME_FLASH_OP,0x1,0x0);
 	}
 	#if 0
 	else if(cmd_id == MB_IPC_DISCONNECT_CMD)

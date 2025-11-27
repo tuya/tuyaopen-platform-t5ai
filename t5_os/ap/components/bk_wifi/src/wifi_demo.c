@@ -52,84 +52,6 @@
 // 	} else
 // 		BK_LOG_ON_ERR(bk_wifi_scan_start(NULL));
 // }
-// #if CONFIG_BRIDGE
-// extern uint8 bridge_is_enabled;
-// #endif
-// int demo_softap_app_init(char *ap_ssid, char *ap_key, char *ap_channel)
-// {
-// 	wifi_ap_config_t ap_config = {0};//WIFI_DEFAULT_AP_CONFIG();
-// 	netif_ip4_config_t ip4_config = {0};
-// 	int len, key_len = 0;
-// 	len = os_strlen(ap_ssid);
-// 	if (ap_key)
-// 		key_len = os_strlen(ap_key);
-// 	if (SSID_MAX_LEN < len) {
-// 		BK_LOGE(TAG, "ssid name more than 32 Bytes\r\n");
-// 		return BK_FAIL;
-// 	}
-// 	if (0 == len) {
-// 		BK_LOGE(TAG, "ssid name must not be null\r\n");
-// 		return BK_FAIL;
-// 	}
-
-// 	if (8 > key_len)
-// 		BK_LOGE(TAG, "key less than 8 Bytes, the security will be set NONE\r\n");
-
-// 	if (64 < key_len) {
-// 		BK_LOGE(TAG, "key more than 64 Bytes\r\n");
-// 		return BK_FAIL;
-// 	}
-// #if CONFIG_BRIDGE
-// 	if (!bridge_is_enabled) {
-// #endif
-// 		os_strcpy(ip4_config.ip, WLAN_DEFAULT_IP);
-// 		os_strcpy(ip4_config.mask, WLAN_DEFAULT_MASK);
-// 		os_strcpy(ip4_config.gateway, WLAN_DEFAULT_GW);
-// 		os_strcpy(ip4_config.dns, WLAN_DEFAULT_GW);
-// #if CONFIG_BRIDGE
-// 	} else {
-// 		os_strcpy(ip4_config.ip, WLAN_ANY_IP);
-// 		os_strcpy(ip4_config.mask, WLAN_ANY_IP);
-// 		os_strcpy(ip4_config.gateway, WLAN_ANY_IP);
-// 		os_strcpy(ip4_config.dns, WLAN_ANY_IP);
-// 	}
-// #endif
-// 	BK_RETURN_ON_ERR(bk_netif_set_ip4_config(NETIF_IF_AP, &ip4_config));
-
-// 	os_strcpy(ap_config.ssid, ap_ssid);
-// 	if (ap_key)
-// 		os_strcpy(ap_config.password, ap_key);
-
-// 	if (ap_channel) {
-// 		int channel;
-// 		char *end;
-
-// 		channel = strtol(ap_channel, &end, 0);
-// 		if (*end) {
-// 			BK_LOGE(TAG, "Invalid number '%s'", ap_channel);
-// 			return BK_FAIL;
-// 		}
-// 		ap_config.channel = channel;
-// 	}
-
-// 	BK_LOGD(TAG, "ssid:%s  key:%s\r\n", ap_config.ssid, ap_config.password);
-// 	BK_RETURN_ON_ERR(bk_wifi_ap_set_config(&ap_config));
-// 	BK_RETURN_ON_ERR(bk_wifi_ap_start());
-// 	return BK_OK;
-// }
-
-// void demo_sta_bssid_app_init(uint8_t *oob_bssid, char *connect_key)
-// {
-// 	wifi_sta_config_t sta_config = WIFI_DEFAULT_STA_CONFIG();
-
-// 	os_memset(sta_config.ssid, 0, sizeof(sta_config.ssid));
-// 	os_memcpy(sta_config.bssid, oob_bssid, 6);
-// 	os_strcpy(sta_config.password, connect_key);
-
-// 	BK_LOGD(TAG, "Scan specified BSSID %pm\r\n", sta_config.bssid);
-// 	BK_LOG_ON_ERR(bk_wifi_sta_set_config(&sta_config));
-// 	BK_LOG_ON_ERR(bk_wifi_sta_start());
-// }
 
 #ifdef CONFIG_CONNECT_THROUGH_PSK_OR_SAE_PASSWORD
 int demo_sta_app_init(char *oob_ssid, u8* psk, char *connect_key)
@@ -153,7 +75,8 @@ int demo_sta_app_init(char *oob_ssid, char *connect_key)
 	}
 #endif
 	os_strcpy(sta_config.ssid, oob_ssid);
-	os_strcpy(sta_config.password, connect_key);
+	if (connect_key)
+		os_strcpy(sta_config.password, connect_key);
 
 	WIFI_LOGD("ssid:%s key:%s\r\n", sta_config.ssid, sta_config.password);
 	BK_LOG_ON_ERR(bk_wifi_sta_set_config(&sta_config));
@@ -542,5 +465,4 @@ int demo_sta_app_init(char *oob_ssid, char *connect_key)
 //             WIFI_LOGD("demo_wifi_mem_apply_init:not support!!\r\n");
 // #endif
 // }
-
 

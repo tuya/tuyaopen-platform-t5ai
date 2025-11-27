@@ -14,7 +14,6 @@
 
 #pragma once
 
-#include "avdk_types.h"
 #include <components/bk_voice_service_types.h>
 
 #ifdef __cplusplus
@@ -25,13 +24,15 @@ typedef struct voice_write *voice_write_handle_t;
 
 typedef struct {
     voice_handle_t voice_handle;                                                    /*!< voice handle */
-    uint32_t pool_size;                                                             /*!< the pool size, used to save speaker data needed to write */
     uint32_t start_threshold;
     uint32_t pause_threshold;
     int task_stack;                                                                 /*!< Task stack size */
     int task_core;                                                                  /*!< Task running in core (0 or 1) */
     int task_prio;                                                                  /*!< Task priority (based on freeRTOS priority) */
     audio_mem_type_t mem_type;                                                      /*!< memory type used, sram, psram or audio heap */
+    audio_buf_type_t write_buf_type;                                                /*!< write buffer type used, frame buffer or ring buffer */
+    int node_size;                                                                  /*!< frame buffer node size or ring buffer pool size*/
+    int node_num;                                                                   /*!< frame buffer node number or 1 for ring buffer */
 } voice_write_cfg_t;
 
 #define VOICE_WRITE_TASK_PRIO           (BEKEN_DEFAULT_WORKER_PRIORITY - 1)
@@ -41,13 +42,15 @@ typedef struct {
 
 #define VOICE_WRITE_CFG_DEFAULT() {                 \
     .voice_handle = NULL,                           \
-    .pool_size = VOICE_WRITE_POOL_SIZE,             \
     .start_threshold = VOICE_WRITE_START_THRESHOLD, \
     .pause_threshold = VOICE_WRITE_PAUSE_THRESHOLD, \
     .task_stack = 2048,                             \
     .task_core = 0,                                 \
     .task_prio = VOICE_READ_TASK_PRIO,              \
     .mem_type = AUDIO_MEM_TYPE_PSRAM,               \
+    .write_buf_type = AUDIO_BUF_TYPE_RB,            \
+    .node_size = VOICE_WRITE_POOL_SIZE,             \
+    .node_num = 1,                                  \
 }
 
 

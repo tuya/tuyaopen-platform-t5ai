@@ -39,7 +39,6 @@
 
 #include "bk_list.h"
 #include "lcd_display_service.h"
-
 #include "mux_pipeline.h"
 #ifdef CONFIG_FREERTOS_SMP
 #include "spinlock.h"
@@ -203,40 +202,40 @@ static void dma2d_transfer_complete_cb(void)
 		rotate_config->dma2d_isr_cnt = 0;
 		rotate_config->rotate_frame->fmt = rotate_config->fmt;
 
-	if ((rotate_config->rot_angle == ROTATE_90) || (rotate_config->rot_angle == ROTATE_270))
-	{
-		rotate_config->rotate_frame->width = rotate_config->jpeg_height;
-		rotate_config->rotate_frame->height = rotate_config->jpeg_width;
-	}
-	else
-	{
-		rotate_config->rotate_frame->width = rotate_config->jpeg_width;
-		rotate_config->rotate_frame->height = rotate_config->jpeg_height;
-	}
-
-	bk_psram_disable_write_through(rotate_config->psram_overwrite_id);
-	if (rotate_config->err_frame || rotate_config->reset_status)
-	{
-		frame_buffer_display_free(rotate_config->rotate_frame);
-		rotate_config->rotate_frame = NULL;
-		rotate_config->err_frame = false;
-	}
-	else
-	{
-#if CONFIG_LVGL
-		if (lvgl_disp_enable) {
-			frame_buffer_display_free(rotate_config->rotate_frame);
+		if ((rotate_config->rot_angle == ROTATE_90) || (rotate_config->rot_angle == ROTATE_270))
+		{
+			rotate_config->rotate_frame->width = rotate_config->jpeg_height;
+			rotate_config->rotate_frame->height = rotate_config->jpeg_width;
 		}
 		else
-#endif
 		{
-			if (lcd_display_frame_request(rotate_config->rotate_frame) != BK_OK)
-			{
+			rotate_config->rotate_frame->width = rotate_config->jpeg_width;
+			rotate_config->rotate_frame->height = rotate_config->jpeg_height;
+		}
+
+		bk_psram_disable_write_through(rotate_config->psram_overwrite_id);
+		if (rotate_config->err_frame || rotate_config->reset_status)
+		{
+			frame_buffer_display_free(rotate_config->rotate_frame);
+			rotate_config->rotate_frame = NULL;
+			rotate_config->err_frame = false;
+		}
+		else
+		{
+#if CONFIG_LVGL
+			if (lvgl_disp_enable) {
 				frame_buffer_display_free(rotate_config->rotate_frame);
 			}
+			else
+#endif
+			{
+				if (lcd_display_frame_request(rotate_config->rotate_frame) != BK_OK)
+				{
+					frame_buffer_display_free(rotate_config->rotate_frame);
+				}
+			}
+			rotate_config->rotate_frame = NULL;
 		}
-		rotate_config->rotate_frame = NULL;
-	}
 
 #if (PIPELINE_ROTATE_CONTINUE == 0)
 		rotate_config->buf[0].state = BUF_IDLE;
@@ -321,6 +320,11 @@ static void rotate_finish_handler(uint32_t param)
 {
 	ROTATE_LINE_END();
 	int ret = BK_OK;
+	if (rotate_config->decoder_buffer == NULL)
+	{
+		LOGE("%s, decoder_buffer is NULL\n", __func__);
+		return;
+	}
 
 	complex_buffer_t *rotate_buf = (complex_buffer_t*)param;
 
@@ -392,6 +396,7 @@ static bk_err_t rotate_memcopy_handler(uint32_t param)
 	{
 		LOGV("%s %d %d %d %d \n", __func__, __LINE__, rotate_config->dma2d_isr_cnt, rotate_buf->index, rotate_config->rotate_buffer->index);
 	}
+
 	rotate_config->dma2d_isr_cnt = rotate_buf->index;
 	if (rotate_buf->index == 1)
 	{
@@ -567,8 +572,8 @@ error:
 
 static void rotate_timer_handle(void *arg1, void *arg2)
 {
-	LOGD("%s, timeout, rotate: %d, %p, %p %d\n", __func__, rotate_config->rotate_ena,
-	rotate_config->decoder_buffer, rotate_config->decoder_buffer->data, rotate_config->dma2d_isr_cnt);
+	LOGW("%s, timeout, rotate: %d, %p, %p %d\n", __func__, rotate_config->rotate_ena,
+		rotate_config->decoder_buffer, rotate_config->decoder_buffer->data, rotate_config->dma2d_isr_cnt);
 	//decoder_mux_dump();
 	rotate_config->reset_status = true;
 	if(rotate_config->rot_mode == HW_ROTATE)
@@ -601,8 +606,6 @@ static void rotate_timer_handle(void *arg1, void *arg2)
 	{
 		LOGE("SW rotate Timeout\n");
 	}
-
-	rtos_unlock_mutex(&rotate_info->lock);
 }
 
 static bk_err_t rotate_no_rotate_direct_copy_handler(uint32_t param)
@@ -619,6 +622,7 @@ static bk_err_t rotate_no_rotate_direct_copy_handler(uint32_t param)
 		LOGE("%s, malloc fail \n", __func__);
 		return BK_FAIL;
 	}
+
 	rotate_copy_request->rotate_buf = rotate_buf;
 	rotate_copy_request->rotate_buf->data = dec_buf->data;
 	rotate_copy_request->rotate_buf->index = dec_buf->index;
@@ -628,6 +632,7 @@ static bk_err_t rotate_no_rotate_direct_copy_handler(uint32_t param)
 		LOGE("%s, malloc fail \n", __func__);
 		os_free(rotate_copy_request);
 	}
+
 	return BK_OK;
 
 	//2:dma2d isr finish send to decode notify
@@ -759,7 +764,6 @@ static bk_err_t rotate_dec_line_complete_handler(uint32_t param)
 		}
 	}
 out:
-
 	os_free(rotate_notify);
 	rotate_notify = NULL;
 	return ret;
@@ -794,13 +798,13 @@ static void rotate_main(beken_thread_arg_t data)
 			switch (msg.event)
 			{
 				case ROTATE_DEC_LINE_NOTIFY:
-				{
 					rotate_dec_line_complete_handler(msg.param);
 					break;
-				}
+
 				case ROTATE_FINISH:
 					rotate_finish_handler(msg.param);  //send to dma2d/DECODE
 					break;
+
 				case ROTATE_NO_ROTATE_DIRECT_COPY:
 					rotate_no_rotate_direct_copy_handler(msg.param);
 					break;
@@ -832,10 +836,8 @@ static void rotate_main(beken_thread_arg_t data)
 				break;
 
 				case ROTATE_MEMCOPY_COMPLETE:
-				{
 					dma2d_memcpy_complete();
 					break;
-				}
 
 				default:
 					break;
@@ -896,17 +898,15 @@ bk_err_t rotate_task_open(rot_open_t *rot_open)
 {
 	int ret = BK_OK;
 
-	rtos_lock_mutex(&rotate_info->lock);
-
 	LOGV("%s %d\n", __func__, __LINE__);
 
 	if (rotate_config != NULL && rotate_config->task_running)
 	{
-		rtos_unlock_mutex(&rotate_info->lock);
 		LOGE("%s, rotate task have been opened!\r\n", __func__);
 		return ret;
 	}
 
+	rtos_lock_mutex(&rotate_info->lock);
 	rotate_config = (rotate_config_t *)os_malloc(sizeof(rotate_config_t));
 	if (rotate_config == NULL)
 	{
@@ -914,7 +914,6 @@ bk_err_t rotate_task_open(rot_open_t *rot_open)
 		LOGE("%s, malloc rotate_config failed\r\n", __func__);
 		return BK_FAIL;
 	}
-	rtos_unlock_mutex(&rotate_info->lock);
 
 	os_memset(rotate_config, 0, sizeof(rotate_config_t));
 
@@ -941,11 +940,10 @@ bk_err_t rotate_task_open(rot_open_t *rot_open)
 	DMA2D_LINE_END();
 
 	ret = rotate_init(rot_open->mode);
-
 	if(ret != BK_OK)
 	{
 		LOGE("%s, rotate pipeline init fail\r\n", __func__);
-		return ret;
+		goto error;
 	}
 
 	///APK select LCD out format is RGB888
@@ -1033,10 +1031,16 @@ bk_err_t rotate_task_open(rot_open_t *rot_open)
 
 	LOGD("%s complete\n", __func__);
 
+	rtos_unlock_mutex(&rotate_info->lock);
+
 	return ret;
 error:
 
-	LOGE("%s error\n", __func__);
+	if (rtos_is_oneshot_timer_init(&rotate_timer))
+	{
+		rtos_deinit_oneshot_timer(&rotate_timer);
+	}
+
 	if (rotate_config->rotate_queue)
 	{
 		rtos_deinit_queue(&rotate_config->rotate_queue);
@@ -1056,9 +1060,10 @@ error:
 		rotate_config = NULL;
 	}
 
+	rtos_unlock_mutex(&rotate_info->lock);
+	LOGE("%s error\n", __func__);
 	return BK_FAIL;
 }
-
 
 void rotate_task_stop(void)
 {
@@ -1084,18 +1089,14 @@ void rotate_task_stop(void)
 bk_err_t rotate_task_close(void)
 {
 	LOGV("%s \n", __func__);
-	if (rotate_info == NULL)
-		return BK_OK;
-	rtos_lock_mutex(&rotate_info->lock);
 
 	if (rotate_config == NULL || !rotate_config->task_running)
 	{
-		rtos_unlock_mutex(&rotate_info->lock);
 		return BK_FAIL;
 	}
 
+	rtos_lock_mutex(&rotate_info->lock);
 	rotate_config->enable = false;
-	rtos_unlock_mutex(&rotate_info->lock);
 
 	rotate_task_stop();
 	rtos_deinit_semaphore(&rotate_config->rot_sem);
@@ -1159,7 +1160,7 @@ bk_err_t rotate_task_close(void)
 
 	os_free(rotate_config);
 	rotate_config = NULL;
-
+	rtos_unlock_mutex(&rotate_info->lock);
 	LOGD("%s complete\n", __func__);
 
 	return BK_OK;
@@ -1170,17 +1171,14 @@ bk_err_t bk_rotate_encode_request(pipeline_encode_request_t *request, mux_callba
 {
 	pipeline_encode_request_t *rotate_request = NULL;
 
-	rtos_lock_mutex(&rotate_info->lock);
-
 	if (rotate_config == NULL || rotate_config->enable == false)
 	{
 		LOGD("%s not open\n", __func__);
-		goto error;
+		return BK_FAIL;
 	}
 
+	rtos_lock_mutex(&rotate_info->lock);
 	rotate_request = (pipeline_encode_request_t *)os_malloc(sizeof(pipeline_encode_request_t));
-
-
 	if (rotate_request == NULL)
 	{
 		LOGD("%s malloc failed\n", __func__);
@@ -1196,6 +1194,7 @@ bk_err_t bk_rotate_encode_request(pipeline_encode_request_t *request, mux_callba
 		LOGD("%s send failed\n", __func__);
 		goto error;
 	}
+
 	rtos_unlock_mutex(&rotate_info->lock);
 
 	return BK_OK;
@@ -1217,7 +1216,6 @@ error:
 	rtos_unlock_mutex(&rotate_info->lock);
 	return BK_FAIL;
 }
-
 
 bk_err_t bk_rotate_pipeline_init(void)
 {
@@ -1248,4 +1246,3 @@ bk_err_t bk_rotate_pipeline_init(void)
 
 	return ret;
 }
-

@@ -58,8 +58,6 @@ OPERATE_RET tuya_ipc_init(void)
 {
     TKL_IPC_CONF_T ipc_conf;
 
-    bk_ipc_init();
-
     ipc_conf.cb = __tuya_ipc_cb;
     OPERATE_RET ret = tkl_ipc_init(&ipc_conf);
     if(ret)

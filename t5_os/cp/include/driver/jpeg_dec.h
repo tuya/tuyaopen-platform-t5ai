@@ -145,7 +145,7 @@ void bk_jpeg_dec_by_line_start(void);
 /**
 * @brief set decode output addr,this api is changed by line decode mode isr
 */
-bk_err_t jpeg_dec_set_dst_addr(unsigned char * output_buf);
+bk_err_t bk_jpeg_dec_set_dst_addr(unsigned char * output_buf);
 
 
 /**

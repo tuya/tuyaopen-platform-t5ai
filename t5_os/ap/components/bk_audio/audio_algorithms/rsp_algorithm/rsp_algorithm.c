@@ -1,4 +1,4 @@
-// Copyright 2022-2023 Beken
+// Copyright 2025-2026 Beken
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,7 +20,7 @@
 #include "task.h"
 
 #include <components/bk_audio/audio_algorithms/rsp_algorithm.h>
-#include <components/bk_audio/audio_pipeline/audio_common.h>
+#include <components/bk_audio/audio_pipeline/audio_types.h>
 #include <components/bk_audio/audio_pipeline/audio_mem.h>
 #include <components/bk_audio/audio_pipeline/audio_error.h>
 #include <components/bk_audio/audio_pipeline/audio_element.h>
@@ -65,9 +65,8 @@
 #define RSP_DATA_DUMP
 #ifdef RSP_DATA_DUMP
 
-/* dump rsp data by uart or tfcard, only choose one */
+/* dump rsp data by uart */
 #define RSP_DATA_DUMP_BY_UART      (0)
-//#define RSP_DATA_DUMP_BY_TFCARD       /* you must sure CONFIG_FATFS=y */
 
 #if RSP_DATA_DUMP_BY_UART
 #include <components/bk_audio/audio_utils/uart_util.h>
@@ -90,13 +89,28 @@ static struct uart_util g_rsp_uart_util = {0};
 
 #endif
 
-#ifdef RSP_DATA_DUMP_BY_TFCARD
-#include "tfcard_util.h"
-static tfcard_util_handle_t g_rsp_tfcard_util_before = NULL;
-static tfcard_util_handle_t g_rsp_tfcard_util_after = NULL;
-#define RSP_DATA_DUMP_TFCARD_BEFORE_NAME    "rsp_before.pcm"
-#define RSP_DATA_DUMP_TFCARD_AFTER_NAME     "rsp_after.pcm"
-#endif
+#if CONFIG_ADK_UTILS
+#define AUD_RSP_DATA_COUNT
+#endif  //CONFIG_ADK_UTILS
+
+#ifdef AUD_RSP_DATA_COUNT
+
+#include <components/bk_audio/audio_utils/count_util.h>
+static count_util_t aud_rsp_count_util = {0};
+#define AUD_RSP_DATA_COUNT_INTERVAL     (1000 * 4)
+#define AUD_RSP_DATA_COUNT_TAG          "AUD_RSP"
+
+#define AUD_RSP_DATA_COUNT_OPEN()               count_util_create(&aud_rsp_count_util, AUD_RSP_DATA_COUNT_INTERVAL, AUD_RSP_DATA_COUNT_TAG)
+#define AUD_RSP_DATA_COUNT_CLOSE()              count_util_destroy(&aud_rsp_count_util)
+#define AUD_RSP_DATA_COUNT_ADD_SIZE(size)       count_util_add_size(&aud_rsp_count_util, size)
+
+#else
+
+#define AUD_RSP_DATA_COUNT_OPEN()
+#define AUD_RSP_DATA_COUNT_CLOSE()
+#define AUD_RSP_DATA_COUNT_ADD_SIZE(size)
+
+#endif  //AUD_RSP_DATA_COUNT
 
 #endif  //RSP_DATA_DUMP
 
@@ -145,6 +159,8 @@ static int _rsp_algorithm_process(audio_element_handle_t self, char *in_buffer, 
     {
         BK_LOGE(TAG, "rsp_data Waring: r_size=%d, in_len=%d \n", r_size, in_len);
     }
+
+	AUD_RSP_DATA_COUNT_ADD_SIZE(r_size);
 	rsp->before_addr = (int16_t *)in_buffer;
 
     RSP_INPUT_END();
@@ -185,6 +201,7 @@ static bk_err_t _rsp_algorithm_destroy(audio_element_handle_t self)
     audio_free(rsp);
 
     RSP_DATA_DUMP_CLOSE();
+    AUD_RSP_DATA_COUNT_CLOSE();
     return BK_OK;
 }
 
@@ -220,7 +237,7 @@ audio_element_handle_t rsp_algorithm_init(rsp_algorithm_cfg_t *config)
 
     /* 20ms, 16bit */
     cfg.out_block_size = config->rsp_cfg.src_rate / 1000 * 2 * 20;
-    cfg.out_block_num  = config->out_block_num;
+    cfg.out_block_num  = config->out_block_num*2;
 	os_printf("[+++]%s, out_block_size:%d, block_num:%d\n", __func__, cfg.out_block_size, cfg.out_block_num);
 
     {
@@ -253,6 +270,7 @@ audio_element_handle_t rsp_algorithm_init(rsp_algorithm_cfg_t *config)
     }
 
     RSP_DATA_DUMP_OPEN();
+    AUD_RSP_DATA_COUNT_OPEN();
 
     return el;
 _rsp_algorithm_init_exit:

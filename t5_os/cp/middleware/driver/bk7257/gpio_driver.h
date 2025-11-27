@@ -59,8 +59,10 @@ bk_err_t gpio_jtag_sel(gpio_jtag_map_group_t gpio_jtag_sel_mode);
 bk_err_t gpio_dump_map_dev_cfg(void);
 #endif
 
+#if CONFIG_GPIO_DEFAULT_SET_SUPPORT
 bk_err_t gpio_check_dev_match(gpio_id_t gpio_id, gpio_dev_t dev);
 bk_err_t gpio_check_capacity_match(gpio_id_t gpio_id, uint8_t expect_capacity);
+#endif
 
 #if CONFIG_GPIO_RETENTION_SUPPORT
 bk_err_t gpio_retention_map_set(gpio_id_t id, gpio_output_state_e output);

@@ -264,6 +264,7 @@ void bk_wdt_force_feed(void)
 	wdt_hal_force_feed();
 }
 
+
 void bk_wdt_force_reboot(void)
 {
 	GLOBAL_INT_DECLARATION();

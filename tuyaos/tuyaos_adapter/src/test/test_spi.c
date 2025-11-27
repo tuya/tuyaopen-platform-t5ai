@@ -12,6 +12,7 @@
 #include "tkl_system.h"
 #include "tkl_memory.h"
 #include "tkl_spi.h"
+#include "tkl_system.h"
 #include "tkl_semaphore.h"
 
 #define SPI_TEST_MASTER_PORT    0
@@ -26,7 +27,6 @@ static TKL_SEM_HANDLE __test_spi_complete_sem = NULL;
 #define TEST_SPI_RECV   0
 #define TEST_SPI_SEND   1
 
-static uint32_t spi_test_step = 0;
 
 void __spi_event_cb(TUYA_SPI_NUM_E port, TUYA_SPI_IRQ_EVT_E event)
 {
@@ -273,4 +273,107 @@ __spi_error_exit:
     return;
 }
 
+VOID_T spi_tx_done_cb(TUYA_QSPI_NUM_E port, TUYA_QSPI_IRQ_EVT_E event)
+{
+    bk_printf("----------qspi_tx_done_cb:%x,%x \r\n", port, event);
+}
+
+#define BSP_LCD_H_RES              (128)
+#define BSP_LCD_V_RES              (128)
+
+#define LCD_SPI_BD_PIN      GPIO_25
+
+#define LCD_SPI_RESET_PIN      GPIO_6
+bk_err_t lcd_spi_hardware_reset(void)
+{
+    gpio_dev_unmap(LCD_SPI_BD_PIN);
+    gpio_dev_map(LCD_SPI_BD_PIN, 0);
+    bk_gpio_enable_pull(LCD_SPI_BD_PIN);
+    bk_gpio_pull_up(LCD_SPI_BD_PIN);
+    rtos_delay_milliseconds(20);
+    bk_gpio_pull_down(LCD_SPI_BD_PIN);
+    rtos_delay_milliseconds(200);
+    bk_gpio_pull_up(LCD_SPI_BD_PIN);
+    rtos_delay_milliseconds(120);
+
+
+    gpio_dev_unmap(LCD_SPI_RESET_PIN);
+    gpio_dev_map(LCD_SPI_RESET_PIN, 0);
+    bk_gpio_enable_pull(LCD_SPI_RESET_PIN);
+    bk_gpio_pull_up(LCD_SPI_RESET_PIN);
+    rtos_delay_milliseconds(20);
+    bk_gpio_pull_down(LCD_SPI_RESET_PIN);
+    rtos_delay_milliseconds(200);
+    bk_gpio_pull_up(LCD_SPI_RESET_PIN);
+    rtos_delay_milliseconds(120);
+
+    return BK_OK;
+}
+
+
+void cli_spi_2_3_cmd(char *pcWriteBuffer, int xWriteBufferLen, int argc, char **argv)
+{
+    int i,j = 0;
+    int port = 2;
+    TUYA_SPI_BASE_CFG_T cfg;
+
+    bk_printf("argc: %d\r\n cmd: ", argc);
+    for (int i = 0; i < argc; i++) {
+        bk_printf("%s ", argv[i]);
+    }
+    bk_printf("\r\n");
+
+    memset(&cfg, 0, sizeof(TUYA_SPI_BASE_CFG_T));
+    cfg.freq_hz = 10000000;
+    cfg.role = TUYA_SPI_ROLE_MASTER;
+    cfg.mode = TUYA_SPI_MODE0;
+
+    lcd_spi_hardware_reset();
+
+    if (argc == 3) {
+        if (!os_strcmp(argv[2], "2")) {
+            port = 2;
+        } else if (!os_strcmp(argv[2], "3")) {
+            port = 3;
+        }
+    }
+    tkl_spi_init(port, &cfg);
+
+    uint8_t *data = (uint8_t *)psram_malloc(BSP_LCD_H_RES * BSP_LCD_V_RES * 2);
+    for(i = 0; i < BSP_LCD_H_RES * BSP_LCD_V_RES; i ++) {
+        data[2 * i] = 0xf8;
+        data[2*i + 1] = 0x00;
+    }
+
+    // bk_printf("%x, %x, %x, %x, %x, %x, %x, %x \r\n", data[1016], data[1017],data[1018],data[1019],data[1020],data[1021],data[1022],data[1023]);
+    if (!os_strcmp(argv[1], "test")) {
+        tkl_spi_irq_init(port, spi_tx_done_cb);
+        tkl_spi_irq_enable(port);
+        tkl_spi_send(port, data, 256);
+    } else if (!os_strcmp(argv[1], "irq_send")) {
+
+        tkl_spi_irq_init(port, spi_tx_done_cb);
+        tkl_spi_irq_enable(port);
+        tkl_spi_send(port, data, 2);
+
+        tkl_spi_send(port, data, BSP_LCD_H_RES * BSP_LCD_V_RES * 2);
+
+    } else if (!os_strcmp(argv[1], "send")) {
+        tkl_spi_send(port, data, 256);
+    } else if (!os_strcmp(argv[1], "recv")) {
+        memset(data, 0, 1024);
+        tkl_spi_recv(port, data, 1024);
+        for (int i = 0; i < 1024; i ++) {
+            bk_printf(" %x", data[i]);
+        }
+    } else {
+    }
+    tkl_system_sleep(2000);
+    tkl_spi_irq_disable(port);
+    tkl_spi_deinit(port);
+
+    psram_free(data);
+    return;
+
+}
 

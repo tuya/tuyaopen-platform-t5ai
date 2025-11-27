@@ -135,14 +135,14 @@ endif() # CONFIG_USB_CDC_ACM_DEMO
 
 endif() # CONFIG_USB
 
-if (CONFIG_USB_CDC_MODEM)
+if (CONFIG_USB_CDC_ACM_DEMO)
     list (APPEND incs
         example/usb_cdc_acm
     )
     list (APPEND srcs
-        example/usb_cdc_acm/bk_usb_cdc_modem.c
+        example/usb_cdc_acm/bk_usb_cdc_demo.c
     )
-endif() # CONFIG_USB_CDC_MODEM
+endif() # CONFIG_USB_CDC_ACM_DEMO
 
 if (CONFIG_ATE_TEST)
 	list(APPEND incs
@@ -154,4 +154,4 @@ if (CONFIG_ATE_TEST)
 		)
 endif() # CONFIG_ATE
 
-armino_component_register(SRCS "${srcs}" INCLUDE_DIRS "${incs}" PRIV_REQUIRES bk_common driver)
+armino_component_register(SRCS "${srcs}" INCLUDE_DIRS "${incs}" PRIV_REQUIRES bk_modem bk_common driver)

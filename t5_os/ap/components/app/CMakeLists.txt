@@ -22,9 +22,15 @@ if (CONFIG_NTP_SYNC_RTC)
 	)
 endif()
 
+if (CONFIG_FTP_SERVER)
+	list(APPEND srcs
+	ftp/ftpd.c
+	)
+endif()
+
 #TODO fix main
 armino_component_register(SRCS "${srcs}"
 	INCLUDE_DIRS "${incs}"
 	REQUIRES bk_wifi bk_cli
-	PRIV_REQUIRES bk_common littlefs lwip_intf_v2_1
+	PRIV_REQUIRES bk_common littlefs lwip_intf_v2_1 bk_vfs
 	)
