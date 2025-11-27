@@ -170,9 +170,9 @@ bk_err_t bk_netif_get_ip4_config(netif_if_t ifx, netif_ip4_config_t *ip4_config)
 	os_strcpy(ip4_config->gateway, inet_ntoa(addr.ipv4.gw));
 	os_strcpy(ip4_config->dns, inet_ntoa(addr.ipv4.dns1));
 
-    bk_printf("--- trace ip: %s, mask: %s, gw: %s, dns: %s\r\n",
-            ip4_config->ip, ip4_config->mask,
-            ip4_config->gateway, ip4_config->dns);
+    // bk_printf("--- trace ip: %s, mask: %s, gw: %s, dns: %s\r\n",
+    //         ip4_config->ip, ip4_config->mask,
+    //         ip4_config->gateway, ip4_config->dns);
 
 	return BK_OK;
 }
