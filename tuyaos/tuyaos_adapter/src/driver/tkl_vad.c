@@ -16,7 +16,7 @@
 /***********************************************************
 ************************macro define************************
 ***********************************************************/
-#define AEC_VAD_FRAME_SIZE     (640) // 20ms 16kHz 16bit mono
+#define AEC_VAD_FRAME_SIZE (640) // 20ms 16kHz 16bit mono
 
 /***********************************************************
 ***********************typedef define***********************
@@ -35,6 +35,7 @@ extern void rnn_vad_destroy(void *obj);
 extern void rnn_vad_start(void *obj);
 extern void rnn_vad_stop(void *obj);
 extern float rnn_vad_process(void *obj, short *x);
+extern void rnn_vad_set_callback(void *obj, float threshold);
 /***********************************************************
 ***********************variable define**********************
 ***********************************************************/
@@ -57,7 +58,7 @@ static OPERATE_RET __tkl_aec_vad_process(int16_t *mic_data, int16_t *ref_data, i
     }
 
     if (__s_speex_aec_handle) {
-        speex_aes_process(__s_speex_aec_handle, (short*)mic_data, (short*)ref_data, (short*)out_data);
+        speex_aes_process(__s_speex_aec_handle, (short *)mic_data, (short *)ref_data, (short *)out_data);
     }
 
     if (__s_speex_aec_handle && __s_rnn_vad_handle && __s_linearaec) {
@@ -68,19 +69,42 @@ static OPERATE_RET __tkl_aec_vad_process(int16_t *mic_data, int16_t *ref_data, i
         } else if (!has_vad && __s_aec_vad_flag != TKL_VAD_STATUS_NONE) {
             // tkl_log_output("################ [vad stop] ################\r\n");
             __s_aec_vad_flag = TKL_VAD_STATUS_NONE;
-        } 
+        }
 
-        speex_get_param(__s_speex_aec_handle, NULL, (short*)__s_linearaec);
+        speex_get_param(__s_speex_aec_handle, NULL, (short *)__s_linearaec);
     }
 
     return rt;
+}
+
+OPERATE_RET tkl_vad_set_threshold(TKL_AUDIO_VAD_THRESHOLD_E level)
+{
+    if (__s_rnn_vad_handle) {
+        switch (level) {
+        case TKL_AUDIO_VAD_HIGH:
+            rnn_vad_set_callback(__s_rnn_vad_handle, -40);
+            break;
+        case TKL_AUDIO_VAD_MID:
+            rnn_vad_set_callback(__s_rnn_vad_handle, -60);
+            break;
+        case TKL_AUDIO_VAD_LOW:
+            rnn_vad_set_callback(__s_rnn_vad_handle, -80);
+            break;
+        default:
+            break;
+        }
+
+        return OPRT_OK;
+    }
+
+    return OPRT_RESOURCE_NOT_READY;
 }
 
 OPERATE_RET tkl_vad_init(TKL_VAD_CONFIG_T *config)
 {
     OPERATE_RET rt = OPRT_OK;
 
-    if(NULL == config) {
+    if (NULL == config) {
         return OPRT_INVALID_PARM;
     }
 
@@ -94,6 +118,7 @@ OPERATE_RET tkl_vad_init(TKL_VAD_CONFIG_T *config)
 
     if (__s_rnn_vad_handle == NULL) {
         __s_rnn_vad_handle = rnn_vad_create();
+        tkl_vad_set_threshold(TKL_AUDIO_VAD_MID);
         if (__s_rnn_vad_handle == NULL) {
             tkl_log_output("__s_rnn_vad_handle create failed\r\n");
             goto __err_exit;
@@ -107,7 +132,7 @@ OPERATE_RET tkl_vad_init(TKL_VAD_CONFIG_T *config)
             tkl_log_output("__s_linearaec psram malloc failed\r\n");
             goto __err_exit;
         }
-#else   
+#else
         __s_linearaec = tkl_system_malloc(AEC_VAD_FRAME_SIZE * 2);
         if (NULL == __s_linearaec) {
             tkl_log_output("__s_linearaec malloc failed\r\n");
