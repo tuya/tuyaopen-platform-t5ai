@@ -91,8 +91,10 @@ bk_err_t bk_netif_set_ip4_config(netif_if_t ifx, const netif_ip4_config_t *ip4_c
 	}
 
 	if (ifx == NETIF_IF_STA) {
+        bk_printf("cp set sta ip: %s, mask: %s, gw: %s, dns: %s\r\n", config->ip, config->mask, config->gateway, config->dns);
 		ip_address_set(1 /*STA*/, 0/*static IP*/, config->ip, config->mask, config->gateway, config->dns);
 	} else if (ifx == NETIF_IF_AP) {
+        bk_printf("cp set ap ip: %s, mask: %s, gw: %s, dns: %s\r\n", config->ip, config->mask, config->gateway, config->dns);
 		ip_address_set(0 /*AP*/, 0/*static IP*/, config->ip, config->mask, config->gateway, config->dns);
 	} else {
 		return BK_ERR_NETIF_IF;
