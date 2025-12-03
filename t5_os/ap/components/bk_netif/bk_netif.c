@@ -105,6 +105,7 @@ bk_err_t netif_validate_ip4_config(const netif_ip4_config_t *ip4_config)
 	return BK_OK;
 }
 
+netif_ip4_config_t tuya_ap_ip4_config;
 bk_err_t bk_netif_set_ip4_config(netif_if_t ifx, const netif_ip4_config_t *ip4_config)
 {
 	netif_ip4_config_t *config = (netif_ip4_config_t*)ip4_config;
@@ -118,6 +119,7 @@ bk_err_t bk_netif_set_ip4_config(netif_if_t ifx, const netif_ip4_config_t *ip4_c
 	if (ifx == NETIF_IF_STA) {
 		ip_address_set(1 /*STA*/, 0/*static IP*/, config->ip, config->mask, config->gateway, config->dns);
 	} else if (ifx == NETIF_IF_AP) {
+        memcpy(&tuya_ap_ip4_config, ip4_config, sizeof(netif_ip4_config_t));
 		ip_address_set(0 /*AP*/, 0/*static IP*/, config->ip, config->mask, config->gateway, config->dns);
 	} else if (ifx == NETIF_IF_ETH) {
 		ip_address_set(3 /*ETH*/, 0/*static IP*/, config->ip, config->mask, config->gateway, config->dns);

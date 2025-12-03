@@ -1,8 +1,8 @@
 /*
  * Copyright 2020-2025 Beken
  *
- * @file wdrv_api.c 
- * 
+ * @file wdrv_api.c
+ *
  * @brief Beken Wi-Fi Driver Command Control Entry
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -477,6 +477,7 @@ static bk_err_t wifi_ap_set_config(const wifi_ap_config_t *ap_config)
     return BK_OK;
 }
 
+extern netif_ip4_config_t tuya_ap_ip4_config;
 bk_err_t bk_wifi_ap_set_config(const wifi_ap_config_t *ap_config)
 {
     int ret = BK_OK;
@@ -487,10 +488,17 @@ bk_err_t bk_wifi_ap_set_config(const wifi_ap_config_t *ap_config)
 
     WDRV_LOGD("ap configuring\n");
 
-    os_strcpy(ip4_config.ip, WLAN_DEFAULT_IP);
-    os_strcpy(ip4_config.mask, WLAN_DEFAULT_MASK);
-    os_strcpy(ip4_config.gateway, WLAN_DEFAULT_GW);
-    os_strcpy(ip4_config.dns, WLAN_DEFAULT_GW);
+    // Modified by TUYA Start
+    // os_strcpy(ip4_config.ip, WLAN_DEFAULT_IP);
+    // os_strcpy(ip4_config.mask, WLAN_DEFAULT_MASK);
+    // os_strcpy(ip4_config.gateway, WLAN_DEFAULT_GW);
+    // os_strcpy(ip4_config.dns, WLAN_DEFAULT_GW);
+
+    os_strcpy(ip4_config.ip, tuya_ap_ip4_config.ip);
+    os_strcpy(ip4_config.mask, tuya_ap_ip4_config.mask);
+    os_strcpy(ip4_config.gateway, tuya_ap_ip4_config.gateway);
+    os_strcpy(ip4_config.dns, tuya_ap_ip4_config.dns);
+    // Modified by TUYA End
 
     BK_RETURN_ON_ERR(bk_netif_set_ip4_config(NETIF_IF_AP, &ip4_config));
 
@@ -1444,7 +1452,7 @@ bk_err_t bk_wifi_monitor_register_ind(uint8_t * msg_payload)
 
     pbuf = (struct pbuf*)((uint8_t*)msg_payload + sizeof(uint32_t) - sizeof(cpdu_t) - sizeof(wdrv_rx_msg) - sizeof(struct pbuf));
     struct monitor_struct* mon_hdr = (struct monitor_struct*)(pbuf + 1);
-    
+
     len = mon_hdr->para[0];
     frame = (const uint8_t*)mon_hdr->para[2];
     frame_info = (const wifi_frame_info_t *)mon_hdr->para[1];
@@ -1493,7 +1501,7 @@ bk_err_t bk_wifi_filter_register_ind(uint8_t * msg_payload)
 
     pbuf = (struct pbuf*)((uint8_t*)msg_payload + sizeof(uint32_t) - sizeof(cpdu_t) - sizeof(wdrv_rx_msg) - sizeof(struct pbuf));
     struct filter_struct* filter_hdr = (struct filter_struct*)(pbuf + 1);
-    
+
     len = filter_hdr->para[0];
     frame = (const uint8_t*)filter_hdr->para[2];
     frame_info = (const wifi_frame_info_t *)filter_hdr->para[1];
@@ -1870,7 +1878,7 @@ void bk_br_start_internal(void* data)
         os_strcpy(ap_config.ssid, bridge_config.bridge_ssid);
         os_memset(&link_sta_status, 0x0, sizeof(link_sta_status));
         bk_wifi_sta_get_link_status(&link_sta_status);
-        if (link_sta_status.security == WIFI_SECURITY_NONE) { 
+        if (link_sta_status.security == WIFI_SECURITY_NONE) {
             // do not set the key for softap
         } else if (bridge_config.key) {
             os_strcpy(ap_config.password, bridge_config.key);
