@@ -984,7 +984,7 @@ static flash_line_mode_t flash_bypass_set_line_mode(flash_line_mode_t line_mode)
 	return old_line_mode;
 }
 
-#if (CONFIG_CPU_CNT <= 1)
+#if (CONFIG_CPU_CNT <= 1) // Modified by TUYA
 bk_err_t flash_bypass_otp_operation(flash_bypass_otp_cmd_t cmd, flash_bypass_otp_ctrl_t *param)
 {
 	bk_err_t ret = BK_OK;
@@ -1030,7 +1030,7 @@ bk_err_t flash_bypass_otp_operation(flash_bypass_otp_cmd_t cmd, flash_bypass_otp
 	return ret;
 }
 #endif
-#endif
+#endif // Modified by TUYA
 #else /*CONFIG_SOC_BK7236XX*/
 
 void flash_bypass_init(void) {

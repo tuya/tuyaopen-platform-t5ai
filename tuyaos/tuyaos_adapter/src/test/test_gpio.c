@@ -21,26 +21,30 @@ static void __gpio_cmd_usage(void)
 }
 
 static TaskHandle_t __relay_test_thread = NULL;
+static TUYA_GPIO_NUM_E __relay_pin = 56;
 static void __ralay_test_func(void *arg)
 {
+    if (__relay_pin == 56 || __relay_pin == 0) {
+        bk_printf("error relay pin %d\r\n", __relay_pin);
+        return;
+    }
     TUYA_GPIO_BASE_CFG_T cfg;
 
     cfg.direct = TUYA_GPIO_OUTPUT;
     cfg.level = TUYA_GPIO_LEVEL_LOW;
 
-    tkl_gpio_init(GPIO_16, &cfg);
-    tkl_gpio_init(GPIO_18, &cfg);
+    tkl_gpio_init(__relay_pin, &cfg);
 
-    bk_printf("relay test, P16/P18 opt in 10s\r\n");
-    tkl_system_sleep(5 * 1000);
+    bk_printf("relay test, P%d/P18, 10s\r\n", __relay_pin);
+    tkl_system_sleep(2 * 1000);
 
     while(1) {
-        bk_printf("relay test, set P16 1\r\n");
-        tkl_gpio_write(GPIO_16, TUYA_GPIO_LEVEL_HIGH);
-        tkl_system_sleep(8 * 1000);
-        bk_printf("relay test, set P16 0\r\n");
-        tkl_gpio_write(GPIO_16, TUYA_GPIO_LEVEL_LOW);
-        tkl_system_sleep(100);
+        bk_printf("relay test, set P%d 1\r\n", __relay_pin);
+        tkl_gpio_write(__relay_pin, TUYA_GPIO_LEVEL_HIGH);
+        tkl_system_sleep(10 * 1000);
+        bk_printf("relay test, set P%d 0\r\n", __relay_pin);
+        tkl_gpio_write(__relay_pin, TUYA_GPIO_LEVEL_LOW);
+        tkl_system_sleep(10 * 1000);
     }
 }
 
@@ -65,6 +69,11 @@ void cli_gpio_cmd(char *pcWriteBuffer, int xWriteBufferLen, int argc, char **arg
         cfg.direct = TUYA_GPIO_OUTPUT;
     else if (!strcmp("irq", argv[2]))
         irq = 1;
+    else if (!strcmp("relay", argv[2])) {
+        __relay_pin = pin_id;
+        xTaskCreate(__ralay_test_func, "relay", 4096, NULL, 5, &__relay_test_thread);
+        return;
+    }
     else {
         __gpio_cmd_usage();
         return;
@@ -106,9 +115,6 @@ void cli_gpio_cmd(char *pcWriteBuffer, int xWriteBufferLen, int argc, char **arg
         }
         tkl_gpio_init(pin_id, &cfg);
     }
-
-
-    // xTaskCreate(__ralay_test_func, "relay", 4096, NULL, 5, &__relay_test_thread);
 
     return;
 }

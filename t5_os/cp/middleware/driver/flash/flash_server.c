@@ -23,11 +23,13 @@
 #include <driver/mb_ipc_port_cfg.h>
 #include <os/rtos_ext.h>
 #include "modules/pm.h"
+// Modified by TUYA Start       1
 #if CONFIG_FLASH_BYPASS_OTP_OPERATION
 #include "flash_bypass.h"
 #endif
 extern bk_err_t    mb_flash_op_prepare(void);
 extern bk_err_t    mb_flash_op_finish(void);
+// Modified by TUYA End       1
 
 #if CONFIG_CACHE_ENABLE
 #include "cache.h"
@@ -62,9 +64,11 @@ static rtos_event_ext_t  flash_svr_event;
 
 #ifndef  DYNAMIC_FLASH_BUFFER
 static u8        flash_buff[MAX(FLASH_IPC_READ_SIZE, FLASH_IPC_WRITE_SIZE)];
+// Modified by TUYA Start       2
 #if CONFIG_FLASH_BYPASS_OTP_OPERATION
 static u8        flash_bypass_buff[FLASH_IPC_BYPASS_OTP_SIZE];
 #endif
+// Modified by TUYA End       2
 #endif
 
 static const uint32_t crc32_table[] =
@@ -341,6 +345,7 @@ static void flash_write_handler(u32 handle, flash_cmd_t *cmd_buff)
 	(void)ret_val;
 }
 
+// Modified by TUYA Start   3
 #if CONFIG_FLASH_BYPASS_OTP_OPERATION
 static void flash_bypass_otp_handler(u32 handle, flash_bypass_otp_ipc_cmd_t *ipc_cmd, uint8_t *data_buff, u8 connect_id)
 {
@@ -570,6 +575,7 @@ static void flash_cmd_handler(u32 handle, u8 connect_id)
 #endif
 
 	flash_cmd_t   cmd_buff;
+    // Modified by TUYA End     3
 	memset(&cmd_buff, 0, sizeof(cmd_buff));
 
 	if(recv_len != sizeof( cmd_buff))
@@ -663,11 +669,13 @@ static void flash_svr_connect_handler(u32 handle, u8 connect_id)
 		return;
 	}
 
+    // Modified by TUYA Start   4
 	if(cmd_id > MB_IPC_CMD_MAX && cmd_id != MB_IPC_SEND_CMD)
 	{
 		TRACE_I(TAG, "cmd-id %d (may be internal event, ignoring)\r\n", cmd_id);
 		return;
 	}
+    // Modified by TUYA End   4
 
 	u8  src =0, dst = 0;
 

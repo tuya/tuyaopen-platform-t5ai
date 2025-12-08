@@ -74,7 +74,7 @@ uint32_t spinlock_acquire(volatile spinlock_t *slock, int32_t timeout)
 		return flag;
 	}
 
-	if(lock_core_id != SPINLOCK_CORE_ID_UNINITILIZE 
+	if(lock_core_id != SPINLOCK_CORE_ID_UNINITILIZE
 		&& lock_core_id != 0
 		&& lock_core_id != 1
 	) {
@@ -340,12 +340,13 @@ spinlock_t *spinlock_mem_dynamic_alloc()
 exit:
 	if(find_out)
 	{
-	    spinlock_init(&s_spinlock_mem[(i * 32) + j]);		
+	    spinlock_init(&s_spinlock_mem[(i * 32) + j]);
         lock_p = &s_spinlock_mem[(i * 32) + j];
 	}
 	else
 	{
-		BK_LOGD(NULL, "%s fail:spinlock doesn't free? or increase CONFIG_SPINLOCK_DYNAMIC_CNT\r\n", __func__);
+		// BK_LOGD(NULL, "%s fail:spinlock doesn't free? or increase CONFIG_SPINLOCK_DYNAMIC_CNT\r\n", __func__);
+		bk_printf("%s fail:spinlock doesn't free? or increase CONFIG_SPINLOCK_DYNAMIC_CNT, current: %d\r\n", __func__, CONFIG_SPINLOCK_DYNAMIC_CNT);
 		BK_ASSERT(0);	//please check whether some spinlock doesn't free, or increases CONFIG_SPINLOCK_DYNAMIC_CNT value
 	}
 
@@ -374,7 +375,7 @@ bk_err_t spinlock_mem_dynamic_free(spinlock_t *slock)
 	}
 
 	int_level = rtos_disable_int();
-	spin_lock(&s_spinlock_memlock);	
+	spin_lock(&s_spinlock_memlock);
 #if CONFIG_SPINLOCK_DEBUG
     spinlock_release_debug_res(slock);
 #endif

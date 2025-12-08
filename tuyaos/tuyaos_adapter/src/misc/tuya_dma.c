@@ -1040,6 +1040,9 @@ OPERATE_RET tkl_dma_memcpy(void *out, const void *in, UINT32_T len)
 void tkl_dma_isr_common(dma_unit_t dma_unit_id, UINT32_T id)
 {
     dma_hal_t *hal = &g_dma[dma_unit_id].hal;
+    if (g_dma[dma_unit_id].id_init_bits == 0) {
+        return;
+    }
     if (dma_hal_is_finish_interrupt_triggered(hal, id)) {
         if (g_dma_finish_isr[dma_unit_id][id]) {
             dma_hal_clear_finish_interrupt_status(hal, id);

@@ -33,6 +33,19 @@
 #define I2C_WRITE_WAIT_MAX_MS    (500)
 #define I2C_READ_WAIT_MAX_MS     (500)
 
+
+#define I2C1_GROUP0_SCL_PIN    GPIO_0
+#define I2C1_GROUP0_SDA_PIN    GPIO_1
+
+#define I2C1_GROUP1_SCL_PIN    GPIO_14
+#define I2C1_GROUP1_SDA_PIN    GPIO_15
+
+#define I2C1_GROUP2_SCL_PIN    GPIO_38
+#define I2C1_GROUP2_SDA_PIN    GPIO_39
+
+#define I2C1_GROUP3_SCL_PIN    GPIO_42
+#define I2C1_GROUP3_SDA_PIN    GPIO_43
+
 #if 0
 #define I2C_SCL_INIT()      __sw_i2c_scl_init(i2c_pin.scl)
 #define I2C_SCL_H()         __sw_i2c_write(i2c_pin.scl, TUYA_GPIO_LEVEL_HIGH)
@@ -500,25 +513,21 @@ int32 __check_i2c_pin_isvalid(UCHAR_T port)
     switch (port)
     {
     case 0:
-        if ((sg_i2c_pin[port].scl == I2C0_LL_SCL_PIN) && (sg_i2c_pin[port].sda == I2C0_LL_SDA_PIN))
-        {
+        if ((sg_i2c_pin[port].scl == I2C0_LL_SCL_PIN) && (sg_i2c_pin[port].sda == I2C0_LL_SDA_PIN)){
             isvalid = 1;
         }
-
         break;
     case 1:
-        if ((sg_i2c_pin[port].scl == I2C1_LL_SCL_PIN) && (sg_i2c_pin[port].sda == I2C1_LL_SDA_PIN))
-        {
+        if ((sg_i2c_pin[port].scl == I2C1_GROUP0_SCL_PIN) && (sg_i2c_pin[port].sda == I2C1_GROUP0_SDA_PIN)) {
+            isvalid = 1;
+        } else if ((sg_i2c_pin[port].scl == I2C1_GROUP1_SCL_PIN) && (sg_i2c_pin[port].sda == I2C1_GROUP1_SDA_PIN)) {
+            isvalid = 1;
+        } else if ((sg_i2c_pin[port].scl == I2C1_GROUP2_SCL_PIN) && (sg_i2c_pin[port].sda == I2C1_GROUP2_SDA_PIN)) {
+            isvalid = 1;
+        } else if ((sg_i2c_pin[port].scl == I2C1_GROUP3_SCL_PIN) && (sg_i2c_pin[port].sda == I2C1_GROUP3_SDA_PIN)) {
             isvalid = 1;
         }
         break;
-    case 2:
-        if ((sg_i2c_pin[port].scl == I2C1_LL_SCL_PIN) && (sg_i2c_pin[port].sda == I2C1_LL_SDA_PIN))
-        {
-            isvalid = 1;
-        }
-        break;
-
     default:
         break;
     }
@@ -550,7 +559,7 @@ OPERATE_RET tkl_i2c_init(UCHAR_T port, CONST TUYA_IIC_BASE_CFG_T *cfg)
     }
 
     if ((sg_i2c_pin[port].scl == TUYA_GPIO_NUM_MAX) || (sg_i2c_pin[port].sda == TUYA_GPIO_NUM_MAX) || (__check_i2c_pin_isvalid(port))) {
-        bk_printf("use hardware i2c port %d!\n", port);
+        bk_printf("i2c pin not set, use hardware i2c port %d!\n", port);
 	    i2c_config_t i2c_cfg = {0};
         bk_i2c_driver_init();
 

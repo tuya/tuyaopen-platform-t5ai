@@ -41,10 +41,10 @@ typedef struct
 #define FLH_BLOCK_SZ            PARTITION_SIZE
 
 
-#define APPLICATION_START               0x10000
-#define APPLICATION_SIZE                ((2040 + 2448 + 352 + 2040 + 8)* 1024)
+#define APPLICATION_START               0x20000
+#define APPLICATION_SIZE                ((1088 + 3808 + 2940)* 1024)
 
-#define OTA_START                       0x6c9000
+#define OTA_START                       0x7c9000
 #define OTA_SIZE                        (8 * 1024)
 
 #if defined(KV_PROTECTED_ENABLE) && (KV_PROTECTED_ENABLE==1)
