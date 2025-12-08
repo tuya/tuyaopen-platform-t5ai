@@ -45,6 +45,7 @@ static TKL_FRAME_PUT_CB user_mic_cb = NULL;
 static TKL_FRAME_SPK_CB user_spk_cb = NULL;
 static INT32_T board_spk_gpio = 56;
 static INT32_T board_spk_gpio_polarity = 0;     // 喇叭静音时候电平
+static INT32_T tkl_bk_vad_enable = 1;
 
 extern void *tkl_system_psram_malloc(size_t size);
 extern void tkl_system_psram_free(void *ptr);
@@ -130,6 +131,15 @@ static void __tkl_ai_error_cleanup(void)
 
     bk_printf("tkl audio init error, clean resource complete\r\n");
 }
+
+// for test
+// mic测试时候，如果使能原厂vad，一段时间检测不到声音后，
+// 底层会停止上应用层输出数据
+void tkl_ai_disable_vendor_vad(void)
+{
+    tkl_bk_vad_enable = 0;
+}
+
 /**
  * @brief ai init
  *
@@ -255,6 +265,7 @@ OPERATE_RET tkl_ai_init(TKL_AUDIO_CONFIG_T *pconfig, INT32_T count)
         if (pconfig->card == TKL_AUDIO_TYPE_DUAL) {
             aec_v3_alg_cfg.dual_ch = 1;
         }
+        aec_v3_alg_cfg.vad_cfg.vad_enable = tkl_bk_vad_enable;
         if(aec_v3_alg_cfg.vad_cfg.vad_enable) {
             voice_cfg.enc_common.frame_in_ms = TIME_SAMPLE_MS;
             voice_cfg.enc_common.frame_in_size = frame_size;

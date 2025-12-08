@@ -43,7 +43,8 @@ static void count_util_callback(void *param)
 
     count_util->data_size = count_util->data_size / 1024 / (count_util->timer_interval / 1000);
 
-    LOGD("[%s] data_size: %d(Bytes), %uKB/s \n", count_util->tag, temp, count_util->data_size);
+    // LOGD("[%s] data_size: %d(Bytes), %uKB/s \n", count_util->tag, temp, count_util->data_size);
+    bk_printf("[%s] data_size: %d(Bytes), %uKB/s \n", count_util->tag, temp, count_util->data_size);    // Modified by TUYA
     count_util->data_size  = 0;
 }
 

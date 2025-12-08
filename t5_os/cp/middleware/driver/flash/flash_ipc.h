@@ -12,7 +12,7 @@ enum
 	FLASH_CMD_READ_DONE,
 	FLASH_CMD_WRITE,
 	FLASH_CMD_FAST_ERASE,
-	FLASH_CMD_BYPASS_OTP_OPERATION,
+	FLASH_CMD_BYPASS_OTP_OPERATION,     // Modified by TUYA
 } ;
 
 typedef struct
@@ -28,6 +28,7 @@ typedef struct
 #define FLASH_IPC_READ_SIZE     0x200
 #define FLASH_IPC_WRITE_SIZE    0x200
 
+// Modified by TUYA Start
 #if CONFIG_FLASH_BYPASS_OTP_OPERATION
 #include "flash_bypass.h"
 
@@ -40,8 +41,9 @@ typedef struct {
 	int16_t  ret_status;
 } flash_bypass_otp_ipc_cmd_t;
 
-#define FLASH_IPC_BYPASS_OTP_SIZE  1024  
+#define FLASH_IPC_BYPASS_OTP_SIZE  1024
 #endif
+// Modified by TUYA End
 #endif //_FLASH_IPC_H_
 // eof
 

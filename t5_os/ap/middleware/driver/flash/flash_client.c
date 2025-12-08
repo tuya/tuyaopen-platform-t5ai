@@ -21,9 +21,11 @@
 #include "flash_ipc.h"
 #include <driver/mb_ipc.h>
 #include <driver/mb_ipc_port_cfg.h>
+// Modified by TUYA Start
 #if CONFIG_FLASH_BYPASS_OTP_OPERATION
 #include "flash_bypass.h"
 #endif
+// Modified by TUYA End
 
 #if CONFIG_CACHE_ENABLE
 #include "cache.h"
@@ -31,7 +33,7 @@
 
 #define TAG		"flash_c"
 
-#define LOCAL_TRACE    (0)
+#define LOCAL_TRACE    (1)
 
 #define FLASH_OPERATE_TIMEOUT         2000
 
@@ -215,9 +217,11 @@ bk_err_t bk_flash_erase_sector(uint32_t address)
 	int  ret_val = BK_FAIL;
 	int  line_num;
 
+// Modified by TUYA Start
 #if !LOCAL_TRACE
 	(void)line_num;
 #endif
+// Modified by TUYA End
 
 	if(bk_flash_driver_init() != BK_OK)
 		return BK_FAIL;
@@ -298,9 +302,11 @@ static bk_err_t flash_read_bytes(uint32_t address, uint8_t *user_buf, uint32_t s
 	int  ret_val = BK_FAIL;
 	int  line_num;
 
+// Modified by TUYA Start
 #if !LOCAL_TRACE
 	(void)line_num;
 #endif
+// Modified by TUYA End
 
 	if(size > 0xFFFF)
 		return BK_FAIL;
@@ -415,15 +421,15 @@ static bk_err_t flash_read_bytes_retry(uint32_t address, uint8_t *user_buf, uint
 {
 	int  try_cnt = 0;
 	int  ret_val = BK_OK;
-	
+
 	while(1)
 	{
 		ret_val = flash_read_bytes(address, user_buf, size);
-		
+
 		if(ret_val == BK_OK)
 			break;
 
-		try_cnt++;			
+		try_cnt++;
 		if(try_cnt >= 2)
 			return ret_val;
 		else
@@ -465,9 +471,11 @@ static bk_err_t flash_write_bytes(uint32_t address, const uint8_t *user_buf, uin
 	int  ret_val = BK_FAIL;
 	int  line_num;
 
+// Modified by TUYA Start
 #if !LOCAL_TRACE
 	(void)line_num;
 #endif
+// Modified by TUYA End
 
 	if(size > 0xFFFF)
 		return BK_FAIL;
@@ -602,9 +610,11 @@ bk_err_t bk_flash_erase_fast(uint32_t erase_off, uint32_t len)
 	int  ret_val = BK_FAIL;
 	int  line_num;
 
+// Modified by TUYA Start
 #if !LOCAL_TRACE
 	(void)line_num;
-#endif	
+#endif
+// Modified by TUYA End
 
 	if(bk_flash_driver_init() != BK_OK)
 		return BK_FAIL;
@@ -671,6 +681,7 @@ erase_fast_exit:
 	return ret_val;
 }
 
+// Modified by TUYA Start
 #if CONFIG_FLASH_BYPASS_OTP_OPERATION && (CONFIG_CPU_CNT > 1)
 
 #ifndef FLASH_BYPASS_OTP_IPC_RETRY_MAX
@@ -859,3 +870,5 @@ bypass_otp_exit:
 	return BK_FAIL;
 }
 #endif
+// Modified by TUYA End
+

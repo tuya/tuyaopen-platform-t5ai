@@ -10,9 +10,11 @@
 #include <soc/soc.h>
 #include "flash_driver.h"
 #include "flash_hal.h"
+// Modified by TUYA Start   1
 #if CONFIG_INT_WDT
 #include <driver/wdt.h>
 #endif
+// Modified by TUYA End
 
 #if CONFIG_SOC_BK7236XX
 #define SPI_R_0X2(_id)  (SPI_R_BASE(_id) + 2 * 0x04)
@@ -24,8 +26,10 @@ __attribute__((section(".iram"))) int flash_bypass_op_write(uint8_t *op_code, ui
 	uint32_t int_status = 0;
 	int exceptional_flag = 0;
 	uint32_t reg_sys_clk_en_0xc, reg_sys_clk_sel_0xa;
+    // Modified by TUYA Start   2
 	uint32_t timeout_count = 0;
 	const uint32_t MAX_TIMEOUT_COUNT = 1000000;
+    // Modified by TUYA End
 
 	int_status =  rtos_disable_int();
 
@@ -44,17 +48,19 @@ __attribute__((section(".iram"))) int flash_bypass_op_write(uint8_t *op_code, ui
 	/*step 3, config spi master*/
 	/*     3.1 clear spi fifo content*/
 	reg = REG_READ(SPI_R_INT_STATUS(0));
-	timeout_count = 0;
+	timeout_count = 0;              // Modified by TUYA
 	while (reg & SPI_STATUS_RXFIFO_RD_READY) {
 		REG_READ(SPI_R_DATA(0));
 		reg = REG_READ(SPI_R_INT_STATUS(0));
 
+        // Modified by TUYA Start   3
 		timeout_count++;
 		if (timeout_count > MAX_TIMEOUT_COUNT) {
 			reg = REG_READ(SPI_R_INT_STATUS(0));
 			REG_WRITE(SPI_R_INT_STATUS(0), reg);
 			break;
-		}		
+		}
+        // Modified by TUYA End
 	}
 	/*     3.2 disable spi block, and backup */
 	reg_sys_clk_en_0xc = reg = REG_READ(SYS_R_ADD_X(0xc));
@@ -96,7 +102,7 @@ __attribute__((section(".iram"))) int flash_bypass_op_write(uint8_t *op_code, ui
 	reg = 0xC00100; // spien  msten  spi_clk=1---13M
 	REG_WRITE(SPI_R_CTRL(0), reg);
 
-	for(volatile int k=0; k<200; k++);
+	for(volatile int k=0; k<200; k++);  // Modified by TUYA
 	/*step 4, gpio(14/15/16/17) are set as high-impedance state or input state */
 
 	/*step 5, switch flash interface to spi
@@ -118,6 +124,7 @@ __attribute__((section(".iram"))) int flash_bypass_op_write(uint8_t *op_code, ui
 		reg |= (SPI_CFG_TX_EN | SPI_CFG_TX_FIN_INT_EN);
 		REG_WRITE(SPI_R_CFG(0), reg);
 
+        // Modified by TUYA Start   4
 		for(volatile int k=0; k<500; k++);
 
 		// read status register twice, ensure the latest hardware status
@@ -128,15 +135,15 @@ __attribute__((section(".iram"))) int flash_bypass_op_write(uint8_t *op_code, ui
 			REG_WRITE(SPI_R_DATA(0), *op_code);
 			for(volatile int m=0; m<50; m++);
 		} else {
- 			exceptional_flag = -1;
- 			goto wr_exceptional;
- 		}
+			exceptional_flag = -1;
+			goto wr_exceptional;
+		}
 
 		/*      6.3:waiting for TXFIFO_EMPTY interrupt*/
 		// wait for a short time before waiting for the interrupt, ensure the data has been written to the FIFO
 		for(volatile int k=0; k<200; k++);
 
-		timeout_count = 0;		
+		timeout_count = 0;
 		while (1) {
 			// read status register twice, ensure the latest hardware status
 			reg = REG_READ(SPI_R_INT_STATUS(0));
@@ -148,8 +155,9 @@ __attribute__((section(".iram"))) int flash_bypass_op_write(uint8_t *op_code, ui
 			if (timeout_count > MAX_TIMEOUT_COUNT) {
 				exceptional_flag = -3;
 				goto wr_exceptional;
-			}				
+			}
 		}
+        // Modified by TUYA End
 
 		/*      6.4:release cs*/
 		reg = REG_READ(SPI_R_CFG(0));
@@ -159,16 +167,18 @@ __attribute__((section(".iram"))) int flash_bypass_op_write(uint8_t *op_code, ui
 
 		// cler stat and fifo
 		reg = REG_READ(SPI_R_INT_STATUS(0));
-		timeout_count = 0;
+		timeout_count = 0;                      // Modified by TUYA
 		while (reg & SPI_STATUS_RXFIFO_RD_READY) {
 			REG_READ(SPI_R_DATA(0));
 			reg = REG_READ(SPI_R_INT_STATUS(0));
+            // Modified by TUYA Start   5
 			timeout_count++;
 			if (timeout_count > MAX_TIMEOUT_COUNT) {
 				reg = REG_READ(SPI_R_INT_STATUS(0));
 				REG_WRITE(SPI_R_INT_STATUS(0), reg);
 				break;
-			}			
+			}
+            // Modified by TUYA End
 		}
 		reg = REG_READ(SPI_R_INT_STATUS(0));
 		REG_WRITE(SPI_R_INT_STATUS(0), reg);
@@ -191,16 +201,20 @@ __attribute__((section(".iram"))) int flash_bypass_op_write(uint8_t *op_code, ui
 
 	/*      7.2:write tx fifo*/
 	// write tx first
+    // Modified by TUYA Start   6
 	// add delay after writing the configuration register, ensure the configuration takes effect, especially after CPU frequency switching
 	// use volatile loop to ensure the compiler does not optimize away the delay, increase the delay time to ensure the configuration stability
 	for(volatile int k=0; k<500; k++);
 
+    // Modified by TUYA End
 	for (int i = 0, wait = 0; i < tx_len; ) {
+        // Modified by TUYA Start   7
 		// read status register twice, ensure the latest hardware status
 		reg = REG_READ(SPI_R_INT_STATUS(0));
+        // Modified by TUYA End
 		reg = REG_READ(SPI_R_INT_STATUS(0));
 		if ((reg & SPI_STATUS_TXFIFO_WR_READY) == 0) {
-			for(volatile int j=0; j<2000; j++);
+			for(volatile int j=0; j<2000; j++);         // Modified by TUYA
 			wait++;
 			if(wait > 100) {
 				exceptional_flag = -2;
@@ -209,17 +223,21 @@ __attribute__((section(".iram"))) int flash_bypass_op_write(uint8_t *op_code, ui
 		} else {
 			wait = 0;
 			REG_WRITE(SPI_R_DATA(0), tx_buf[i]);
+            // Modified by TUYA Start   8
 			// add delay after writing the data to the FIFO, ensure the data is stable
-			for(volatile int m=0; m<50; m++);			
+			for(volatile int m=0; m<50; m++);
+            // Modified by TUYA End
 			i++;
 		}
 	}
 
 	/*      7.3:waiting for TXFIFO_EMPTY interrupt*/
+    // Modified by TUYA Start   9
 	// wait for a short time before waiting for the interrupt, ensure all data has been written to the FIFO
 	for(volatile int k=0; k<200; k++);
 
-	timeout_count = 0;	
+	timeout_count = 0;
+    // Modified by TUYA End
 	while (1) {
 		// read status register twice, ensure the latest hardware status
 		reg = REG_READ(SPI_R_INT_STATUS(0));
@@ -227,11 +245,13 @@ __attribute__((section(".iram"))) int flash_bypass_op_write(uint8_t *op_code, ui
 		if (reg & SPI_STATUS_TX_FINISH_INT)
 			break;
 
+        // Modified by TUYA Start   10
 		timeout_count++;
 		if (timeout_count > MAX_TIMEOUT_COUNT) {
 			exceptional_flag = -3;
 			goto wr_exceptional;
-		}			
+		}
+        // Modified by TUYA End
 	}
 
 	/*      7.4:release cs*/
@@ -243,17 +263,19 @@ __attribute__((section(".iram"))) int flash_bypass_op_write(uint8_t *op_code, ui
 
 	// cler stat and fifo
 	reg = REG_READ(SPI_R_INT_STATUS(0));
-	timeout_count = 0;
+	timeout_count = 0;          // Modified by TUYA
 	while (reg & SPI_STATUS_RXFIFO_RD_READY) {
 		REG_READ(SPI_R_DATA(0));
 		reg = REG_READ(SPI_R_INT_STATUS(0));
 
+        // Modified by TUYA Start   11
 		timeout_count++;
 		if (timeout_count > MAX_TIMEOUT_COUNT) {
 			reg = REG_READ(SPI_R_INT_STATUS(0));
 			REG_WRITE(SPI_R_INT_STATUS(0), reg);
 			break;
-		}		
+		}
+        // Modified by TUYA End
 	}
 	reg = REG_READ(SPI_R_INT_STATUS(0));
 	REG_WRITE(SPI_R_INT_STATUS(0), reg);
@@ -279,8 +301,10 @@ wr_exceptional:
 	REG_WRITE(SPI_R_CFG(0), reg_cfg);
 	REG_WRITE(SPI_R_0X2(0), reg_0x2);
 
+    // Modified by TUYA Start   12
 	//restore reg_cksel_core and reg_ckdiv_core
 	//REG_WRITE(SYS_R_ADD_X(0x8), (backup_reg & ~(0x30)) | (reg_cksel_core << 4) | (reg_ckdiv_core << 0));
+    // Modified by TUYA End
 
 	/*step 11, enable interrupt*/
 	rtos_enable_int(int_status);
@@ -297,8 +321,10 @@ __attribute__((section(".iram"))) int flash_bypass_op_read(uint8_t *tx_buf, uint
 	uint32_t int_status = 0;
 	int exceptional_flag = 0;
 	uint32_t reg_sys_clk_en_0xc, reg_sys_clk_sel_0xa;
+    // Modified by TUYA Start   13
 	uint32_t timeout_count = 0;
-	const uint32_t MAX_TIMEOUT_COUNT = 1000000;	
+	const uint32_t MAX_TIMEOUT_COUNT = 1000000;
+    // Modified by TUYA End
 
 	int_status =  rtos_disable_int();
 
@@ -317,17 +343,19 @@ __attribute__((section(".iram"))) int flash_bypass_op_read(uint8_t *tx_buf, uint
 	/*step 3, config spi master*/
 	/*     3.1 clear spi fifo content*/
 	reg = REG_READ(SPI_R_INT_STATUS(0));
-	timeout_count = 0;
+	timeout_count = 0;          // Modified by TUYA
 	while (reg & SPI_STATUS_RXFIFO_RD_READY) {
 		REG_READ(SPI_R_DATA(0));
 		reg = REG_READ(SPI_R_INT_STATUS(0));
 
+        // Modified by TUYA Start   14
 		timeout_count++;
 		if (timeout_count > MAX_TIMEOUT_COUNT) {
 			reg = REG_READ(SPI_R_INT_STATUS(0));
 			REG_WRITE(SPI_R_INT_STATUS(0), reg);
 			break;
-		}		
+		}
+        // Modified by TUYA End
 	}
 	/*     3.2 disable spi block, and backup */
 	reg_sys_clk_en_0xc = reg = REG_READ(SYS_R_ADD_X(0xc));
@@ -368,8 +396,10 @@ __attribute__((section(".iram"))) int flash_bypass_op_read(uint8_t *tx_buf, uint
 	// set to spi config directly
 	reg = 0xC00100; // spien  msten  spi_clk=1---13M
 	REG_WRITE(SPI_R_CTRL(0), reg);
+    // Modified by TUYA Start   15
 	// add delay after writing the configuration register, ensure the configuration takes effect, especially after CPU frequency switching
-	for(volatile int k=0; k<200; k++);	
+	for(volatile int k=0; k<200; k++);
+    // Modified by TUYA End
 
 	/*step 4, gpio(14/15/16/17) are set as high-impedance state or input state */
 
@@ -401,9 +431,10 @@ __attribute__((section(".iram"))) int flash_bypass_op_read(uint8_t *tx_buf, uint
 
 	/*      7.2:write tx fifo*/
 	// write tx first
+    // Modified by TUYA Start   16
 	// add delay after writing the configuration register, ensure the configuration takes effect, especially after CPU frequency switching
 	// increase the delay time to ensure the configuration stability
-	for(volatile int k=0; k<500; k++);	
+	for(volatile int k=0; k<500; k++);
 	int tx_cnt = 0;
 	int rx_cnt = 0;
 	int wait = 0;
@@ -412,7 +443,7 @@ __attribute__((section(".iram"))) int flash_bypass_op_read(uint8_t *tx_buf, uint
 		reg = REG_READ(SPI_R_INT_STATUS(0));
 		reg = REG_READ(SPI_R_INT_STATUS(0));
 		if ((reg & SPI_STATUS_TXFIFO_WR_READY) == 0) {
-			for(int j=0; j<2000; j++);
+			for(int j=0; j<2000; j++);      // Modified by TUYA
 			wait++;
 			if(wait > 100) {
 				//restore reg_cksel_core and reg_ckdiv_core
@@ -424,9 +455,10 @@ __attribute__((section(".iram"))) int flash_bypass_op_read(uint8_t *tx_buf, uint
 			wait = 0;
 			REG_WRITE(SPI_R_DATA(0), tx_buf[i]);
 			// add delay after writing the data to the FIFO, ensure the data is stable
-			for(volatile int m=0; m<50; m++);			
+			for(volatile int m=0; m<50; m++);
 			i++;
 		}
+        // Modified by TUYA End
 
 		reg = REG_READ(SPI_R_INT_STATUS(0));
 		if ((reg & SPI_STATUS_RXFIFO_RD_READY)) {
@@ -445,11 +477,13 @@ __attribute__((section(".iram"))) int flash_bypass_op_read(uint8_t *tx_buf, uint
 	// read rx, send 0xff
 	wait = 0;
 	for (int i = 0; i < rx_len; ) {
+        // Modified by TUYA Start   17
 		// read status register twice, ensure the latest hardware status
 		reg = REG_READ(SPI_R_INT_STATUS(0));
+        // Modified by TUYA End
 		reg = REG_READ(SPI_R_INT_STATUS(0));
 		if ((reg & SPI_STATUS_TXFIFO_WR_READY) == 0) {
-			for(int j=0; j<2000; j++);
+			for(int j=0; j<2000; j++);      // Modified by TUYA
 			wait++;
 			if(wait > 100) {
 				exceptional_flag = -2;
@@ -458,8 +492,10 @@ __attribute__((section(".iram"))) int flash_bypass_op_read(uint8_t *tx_buf, uint
 		} else {
 			wait = 0;
 			REG_WRITE(SPI_R_DATA(0), 0xff);
+            // Modified by TUYA Start   18
 			// add delay after writing the data to the FIFO, ensure the data is stable
-			for(volatile int m=0; m<50; m++);			
+			for(volatile int m=0; m<50; m++);
+            // Modified by TUYA End
 			i++;
 		}
 
@@ -478,13 +514,15 @@ __attribute__((section(".iram"))) int flash_bypass_op_read(uint8_t *tx_buf, uint
 	}
 
 	/*      7.3:waiting for TXFIFO_EMPTY interrupt*/
+    // Modified by TUYA Start   19
 	// wait for a short time before waiting for the interrupt, ensure all data has been written to the FIFO
 	for(volatile int k=0; k<200; k++);
 
-	timeout_count = 0;	
+	timeout_count = 0;
 	while (1) {
 		// read status register twice, ensure the latest hardware status
 		reg = REG_READ(SPI_R_INT_STATUS(0));
+     // Modified by TUYA End
 		reg = REG_READ(SPI_R_INT_STATUS(0));
 		if (reg & SPI_STATUS_TX_FINISH_INT)
 			break;
@@ -498,12 +536,14 @@ __attribute__((section(".iram"))) int flash_bypass_op_read(uint8_t *tx_buf, uint
 			}
 		}
 
+        // Modified by TUYA Start   20
 		timeout_count++;
 		if (timeout_count > MAX_TIMEOUT_COUNT) {
 			exceptional_flag = -3;
 			goto wr_exceptional;
-		}			
-		
+		}
+        // Modified by TUYA End
+
 	}
 
 	wait = 0;
@@ -519,7 +559,7 @@ __attribute__((section(".iram"))) int flash_bypass_op_read(uint8_t *tx_buf, uint
 
 			wait = 0;
 		} else {
-			for(int j=0; j<2000; j++);
+			for(int j=0; j<2000; j++);              // Modified by TUYA
 			wait++;
 			if(wait > 100) {
 				break;
@@ -541,6 +581,7 @@ wr_exceptional:
 
 	// cler stat and fifo
 	reg = REG_READ(SPI_R_INT_STATUS(0));
+    // Modified by TUYA Start   21
 	timeout_count = 0;
 	while (reg & SPI_STATUS_RXFIFO_RD_READY) {
 		REG_READ(SPI_R_DATA(0));
@@ -551,7 +592,8 @@ wr_exceptional:
 			reg = REG_READ(SPI_R_INT_STATUS(0));
 			REG_WRITE(SPI_R_INT_STATUS(0), reg);
 			break;
-		}		
+		}
+    // Modified by TUYA End
 	}
 	reg = REG_READ(SPI_R_INT_STATUS(0));
 	REG_WRITE(SPI_R_INT_STATUS(0), reg);
@@ -609,6 +651,7 @@ static bk_err_t flash_bypass_op_read_and_check(uint8_t *tx_buf, uint32_t tx_len,
 	}
 
 	os_memset(err_buf, 0x00, rx_len);
+    // Modified by TUYA Start   22
 	os_memset(rx_buf1, 0xFF, rx_len);
 	os_memset(rx_buf2, 0xFF, rx_len);
 
@@ -634,7 +677,7 @@ static bk_err_t flash_bypass_op_read_and_check(uint8_t *tx_buf, uint32_t tx_len,
 		// add delay between two reads, ensure the first read is completed
 		bk_delay_us(5000);  // 5ms delay between two reads
 		ret1 = flash_bypass_op_read(tx_buf, tx_len, rx_buf1, rx_len);
-		bk_delay_us(5000); 
+		bk_delay_us(5000);
 		ret2 = flash_bypass_op_read(tx_buf, tx_len, rx_buf2, rx_len);
 
 		// if flash_bypass_op_read ok, it will return ret >= 0
@@ -681,7 +724,7 @@ static bk_err_t flash_bypass_op_read_and_check(uint8_t *tx_buf, uint32_t tx_len,
 			read_success = true;
 			if (i > 0) {
 				FLASH_BYPASS_LOGI("%s read data consistent after %d retries\r\n", __func__, i);
-			}			
+			}
 			break;
 		} else {
 			// output more detailed error information, help to distinguish between read failure and data inconsistency
@@ -699,7 +742,7 @@ static bk_err_t flash_bypass_op_read_and_check(uint8_t *tx_buf, uint32_t tx_len,
 				read_success = true;
 				os_memcpy(rx_buf2, rx_buf1, rx_len);
 				break;
-			}			
+			}
 		}
 	}
 
@@ -736,8 +779,9 @@ static bk_err_t flash_bypass_op_read_and_check(uint8_t *tx_buf, uint32_t tx_len,
 
 	if (ff_buf) {
 		os_free(ff_buf);
-	}	
+	}
 
+    // Modified by TUYA End     22
 read_check_exit:
 	if (rx_buf1) {
 		os_free(rx_buf1);
@@ -1028,6 +1072,7 @@ static bk_err_t flash_bypass_otp_write_without_read(flash_bypass_otp_ctrl_t *otp
 	tx_buf[3] = (otp_addr >>  0) & 0xff;
 	os_memcpy(tx_buf + CMD_FLASH_BYPASS_OTP_WRITE_HEAD_LEN, otp_cfg->write_buf, otp_cfg->write_len);
 
+    // Modified by TUYA Start   23
 	// write retry mechanism, retry FLASH_BYPASS_OTP_WRITE_RETRY_MAX times(default 3)
 	for (uint8_t retry = 0; retry < FLASH_BYPASS_OTP_WRITE_RETRY_MAX; retry++) {
 		flash_bypass_wait_work_in_progress_end();
@@ -1052,6 +1097,7 @@ static bk_err_t flash_bypass_otp_write_without_read(flash_bypass_otp_ctrl_t *otp
 	} else {
 		flash_bypass_wait_work_in_progress_end();
 	}
+    // Modified by TUYA End     23
 
 write_exit:
 	if (tx_buf) {
@@ -1079,8 +1125,10 @@ static bk_err_t flash_bypass_otp_write(flash_bypass_otp_ctrl_t *otp_cfg)
 	}
 	ret = flash_bypass_otp_read(otp_read_cfg, 0);
 	if (ret != BK_OK) {
+    // Modified by TUYA Start   24
 		FLASH_BYPASS_LOGW("%s STEP1 fail: read OTP failed (read verification issue, not write failure)\r\n", __func__);
  		ret = BK_FAIL;
+    // Modified by TUYA End   24
 		goto otp_write_exit;
 	}
 
@@ -1088,8 +1136,8 @@ static bk_err_t flash_bypass_otp_write(flash_bypass_otp_ctrl_t *otp_cfg)
 	flash_bypass_otp_ctrl_t *otp_earse_cfg = &otp_op_cfg;
 	ret = flash_bypass_otp_earse_and_check(otp_earse_cfg);
 	if (ret != BK_OK) {
-			FLASH_BYPASS_LOGW("%s fail\r\n", __func__);
- 			ret = BK_FAIL;
+		FLASH_BYPASS_LOGW("%s fail\r\n", __func__);
+		ret = BK_FAIL;
 		goto otp_write_exit;
 	}
 
@@ -1121,8 +1169,9 @@ static bk_err_t flash_bypass_otp_write(flash_bypass_otp_ctrl_t *otp_cfg)
 		os_memcpy(otp_write_cfg.write_buf, otp_temp_cfg->write_buf + i * FLASH_BYPASS_OTP_PAGE_LENGTH, FLASH_BYPASS_OTP_PAGE_LENGTH);
 		ret = flash_bypass_otp_write_without_read(&otp_write_cfg);
 		if (ret != BK_OK) {
+    // Modified by TUYA Start   25
 			FLASH_BYPASS_LOGW("%s STEP4 fail: write operation failed at page %d (actual write failure)\r\n", __func__, i);
- 			ret = BK_FAIL;
+			ret = BK_FAIL;
 			goto otp_write_exit;
 		}
 	}
@@ -1154,6 +1203,7 @@ static bk_err_t flash_bypass_otp_write(flash_bypass_otp_ctrl_t *otp_cfg)
 	if (verify_cfg.read_buf) {
 		os_free(verify_cfg.read_buf);
 	}
+    // Modified by TUYA End   25
 
 otp_write_exit:
 	if (otp_read_cfg->read_buf) {
@@ -1250,7 +1300,9 @@ bk_err_t flash_bypass_otp_operation(flash_bypass_otp_cmd_t cmd, flash_bypass_otp
 
 	switch(cmd) {
 		case FLASH_BYPASS_OTP_READ:
+            // Modified by TUYA Start   26
 			ret = flash_bypass_otp_read(otp_cfg, 0);
+            // Modified by TUYA End   26
 			break;
 
 		case FLASH_BYPASS_OTP_EARSE:
@@ -1281,7 +1333,7 @@ bk_err_t flash_bypass_otp_operation(flash_bypass_otp_cmd_t cmd, flash_bypass_otp
 void flash_bypass_init(void) {
 	char *text_ptr, temp_buf = 0;
 	uint32_t reg;
-	
+
 	/*step 2, resident cache*/
 	REG_WRITE(SPI_R_CTRL(0), 0);
 	do {
@@ -1321,7 +1373,9 @@ void flash_bypass_init(void) {
 	gpio_dev_unmap(SPI0_LL_MISO_PIN);
 }
 
+// Modified by TUYA Start   27
 __attribute__((section(".iram"))) void flash_bypass_quad_enable(void)
+// Modified by TUYA End   27
 {
 	uint32_t reg;
 	uint32_t reg_ctrl, reg_dat;
@@ -1400,7 +1454,9 @@ __attribute__((section(".iram"))) void flash_bypass_quad_enable(void)
 }
 
 
+// Modified by TUYA Start   28
 __attribute__((section(".iram"))) void flash_bypass_quad_test(uint32_t quad_enable, uint32_t delay_cycle1, uint32_t delay_cycle2)
+// Modified by TUYA End   28
 {
 	uint32_t reg;
 	uint32_t reg_ctrl, reg_dat;

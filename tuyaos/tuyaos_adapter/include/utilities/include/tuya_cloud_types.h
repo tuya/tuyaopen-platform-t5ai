@@ -1549,16 +1549,43 @@ typedef struct
     void    *arg;
 } TUYA_DVP_FRAME_MANAGE_T;
 
+// H.264 编码质量参数
 typedef struct {
-    uint16_t fps;
-    uint16_t width;
-    uint16_t height;
+    UINT8_T enable;
+    UINT8_T init_qp;
+    UINT8_T i_min_qp;
+    UINT8_T i_max_qp;
+    UINT8_T p_min_qp;
+    UINT8_T p_max_qp;
+	UINT16_T i_block_bits;
+	UINT16_T p_block_bits;
+} H264_CFG;
+
+// JPEG 编码质量参数
+typedef struct {
+    UINT8_T enable;
+    UINT16_T max_size; // uint: KB
+    UINT16_T min_size; // uint: KB
+} JPEG_CFG;
+
+typedef struct
+{
+    JPEG_CFG jpeg_cfg;
+    H264_CFG h264_cfg;
+} TUYA_DVP_ENCODED_QUALITY;
+
+typedef struct {
+    UINT16_T fps;
+    UINT16_T width;
+    UINT16_T height;
     TUYA_DVP_SYNC_MODE sync_polarity;
     TUYA_CAMERA_OUTPUT_MODE output_mode;
+    TUYA_DVP_ENCODED_QUALITY encoded_quality;
 } TUYA_DVP_CFG_T;
+
 /**
  * @brief timer num
- * 
+ *
  */
 typedef enum {
     TUYA_TIMER_NUM_0,		    // TIMER 0

@@ -3362,7 +3362,12 @@ FRESULT f_mount (
 
 	res = find_volume(&path, &fs, 0);	/* Force mounted the volume */
     if (FR_OK != res) {
+#if FF_FS_LOCK != 0
+        clear_lock(fs);
+#endif
+#if FF_FS_REENTRANT
         ff_del_syncobj(fs->sobj);
+#endif
         fs->sobj = NULL;
         FatFs[vol] = NULL;
         return res;

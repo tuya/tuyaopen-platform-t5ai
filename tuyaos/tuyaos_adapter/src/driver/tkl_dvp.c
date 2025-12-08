@@ -544,21 +544,18 @@ static void __dvp_yuv_eof_handler(yuv_buf_unit_t id, void *param)
     g_dvp_module_manage.base_frame->is_frame_complete = true;
     g_dvp_module_manage.base_frame->total_frame_len = g_dvp_module_manage.base_frame_len;
     TUYA_DVP_FRAME_MANAGE_T *new_frame = dvp_frame_assign_cb(g_dvp_module_manage.base_frame_fmt);
-    if(new_frame == NULL) {
-        bk_printf("cant create new frame\r\n");
-        return;
+    if (new_frame)
+    {
+		new_frame->width = dvp_cfg->width;
+		new_frame->height = dvp_cfg->height;
+		new_frame->frame_fmt = g_dvp_module_manage.base_frame_fmt;
+		new_frame->data_len = g_dvp_module_manage.base_frame_len;
+        new_frame->is_frame_complete = false;
+        if (dvp_frame_post_cb)
+            dvp_frame_post_cb(g_dvp_module_manage.base_frame);
+
+		g_dvp_module_manage.base_frame = new_frame;
     }
-
-    new_frame->width = dvp_cfg->width;
-    new_frame->height = dvp_cfg->height;
-    new_frame->frame_fmt = g_dvp_module_manage.base_frame_fmt;
-    new_frame->data_len = g_dvp_module_manage.base_frame_len;
-    new_frame->is_frame_complete = false;
-
-    if (dvp_frame_post_cb)
-        dvp_frame_post_cb(g_dvp_module_manage.base_frame);
-
-    g_dvp_module_manage.base_frame = new_frame;
 
     bk_yuv_buf_set_em_base_addr((UINT32_T)g_dvp_module_manage.base_frame->data);
 }
@@ -959,6 +956,16 @@ OPERATE_RET tkl_dvp_init(TUYA_DVP_CFG_T *dvp_cfg, UINT32_T clk)
     __dvp_isr_register(cfg);
 
     yuv_mode_t work_mode = g_dvp_module_manage.cur_work_mode;
+
+    if (work_mode == JPEG_MODE && dvp_cfg->encoded_quality.jpeg_cfg.enable)
+    {
+        JPEG_CFG *jpeg_cfg = &cfg->encoded_quality.jpeg_cfg;
+        UINT16_T max_bytes = (jpeg_cfg->max_size << 10) & 0xFFFF;
+        UINT16_T min_bytes = (jpeg_cfg->min_size << 10) & 0xFFFF;
+        bk_jpeg_enc_encode_config(1, max_bytes, min_bytes);
+        PR_DEBUG("JPEG ENCODE CFG SET: max size: %ld byte, min size: %ld byte\r\n", max_bytes, min_bytes);
+    }
+
     bk_yuv_buf_start(work_mode);
     if (work_mode == H264_MODE)
         bk_h264_encode_enable();

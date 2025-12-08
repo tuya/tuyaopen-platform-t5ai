@@ -99,13 +99,13 @@ static const struct cli_command tuya_cli_commands[] = {
     {"xt",      "test",             cli_test_cmd},
     {"lfs",     "little fs test",   cli_littlefs_cmd},
     {"xsd",     "sd card test",     cli_sdcard_test_cmd},
+    {"xgpio",   "gpio test",        cli_gpio_cmd},
 #if 0
     {"xid",     "set mac",          cli_tmp_cmd},
 #if 1
     {"xadc",    "adc test",         cli_adc_cmd},
 #endif
     {"xwifi",   "wifi test",        cli_wifi_cmd},
-    {"xgpio",   "gpio test",        cli_gpio_cmd},
     {"xlcd",    "lcd test",         cli_xlcd_cmd},
     {"xpwm",    "pwm test",         cli_pwm_cmd},
     // {"xmt",     "media test",       cli_tuya_media_cmd},
