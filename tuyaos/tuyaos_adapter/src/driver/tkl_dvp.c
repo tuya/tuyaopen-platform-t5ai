@@ -963,7 +963,7 @@ OPERATE_RET tkl_dvp_init(TUYA_DVP_CFG_T *dvp_cfg, UINT32_T clk)
         UINT16_T max_bytes = (jpeg_cfg->max_size << 10) & 0xFFFF;
         UINT16_T min_bytes = (jpeg_cfg->min_size << 10) & 0xFFFF;
         bk_jpeg_enc_encode_config(1, max_bytes, min_bytes);
-        PR_DEBUG("JPEG ENCODE CFG SET: max size: %ld byte, min size: %ld byte\r\n", max_bytes, min_bytes);
+        bk_printf("JPEG ENCODE CFG SET: max size: %ld byte, min size: %ld byte\r\n", max_bytes, min_bytes);
     }
 
     bk_yuv_buf_start(work_mode);
