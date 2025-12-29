@@ -685,7 +685,7 @@ erase_fast_exit:
 #if CONFIG_FLASH_BYPASS_OTP_OPERATION && (CONFIG_CPU_CNT > 1)
 
 #ifndef FLASH_BYPASS_OTP_IPC_RETRY_MAX
-#define FLASH_BYPASS_OTP_IPC_RETRY_MAX 3
+#define FLASH_BYPASS_OTP_IPC_RETRY_MAX 8
 #endif
 
 bk_err_t flash_bypass_otp_operation(flash_bypass_otp_cmd_t cmd, flash_bypass_otp_ctrl_t *param)
