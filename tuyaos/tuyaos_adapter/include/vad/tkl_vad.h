@@ -43,6 +43,8 @@ typedef enum {
 ********************function declaration********************
 ***********************************************************/
 
+OPERATE_RET tkl_vad_set_threshold(TKL_AUDIO_VAD_THRESHOLD_E level);
+
 OPERATE_RET tkl_vad_init(TKL_VAD_CONFIG_T *config);
 
 OPERATE_RET tkl_vad_feed(uint8_t *data, uint32_t len);
