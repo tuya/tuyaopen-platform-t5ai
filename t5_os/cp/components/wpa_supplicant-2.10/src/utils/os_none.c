@@ -10,13 +10,13 @@
  * return an error value. os_internal.c can be used as another starting point
  * or reference since it has example implementation of many of these functions.
  */
-
 #include <common/bk_include.h>
 #include "bk_fake_clock.h"
 
 #include "includes.h"
 #include "utils/os.h"
 #include <components/system.h>
+#include <sys/types.h>
 #ifdef IEEE8021X_EAPOL
 #include "xfile.h"
 #endif

@@ -41,7 +41,20 @@ extern "C" {
 #include <stdint.h>
 
 /* FreeRTOS types include */
-#include "FreeRTOS_POSIX_types.h"
+#ifndef _FREERTOS_POSIX_INTERNAL_TYPES_H_
+    /* Try to include FreeRTOS_POSIX_types.h, but provide fallback if not found */
+    #if __has_include("FreeRTOS_POSIX_types.h")
+        #include "FreeRTOS_POSIX_types.h"
+    #else
+        /* Fallback: define minimal types if FreeRTOS_POSIX_types.h is not available */
+        typedef void * PthreadMutexType_t;
+        typedef void * PthreadCondType_t;
+        typedef void * PosixSemType_t;
+        typedef void * PthreadMutexAttrType_t;
+        typedef void * PthreadAttrType_t;
+        typedef void * PthreadBarrierType_t;
+    #endif
+#endif
 
 /**
  * @brief Used for system times in clock ticks or CLOCKS_PER_SEC.
