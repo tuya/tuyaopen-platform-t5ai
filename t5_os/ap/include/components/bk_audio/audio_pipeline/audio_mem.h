@@ -16,6 +16,8 @@
 #ifndef _AUDIO_MEM_H_
 #define _AUDIO_MEM_H_
 
+#include <stdint.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
