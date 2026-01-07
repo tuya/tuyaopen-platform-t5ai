@@ -15,7 +15,6 @@
 #include "sdkconfig.h"
 #include "gpio_map.h"
 #include "tkl_gpio.h"
-#include "posix/time.h"
 
 /****************************************************************************
  * Pre-processor Definitions
