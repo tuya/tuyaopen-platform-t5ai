@@ -130,8 +130,8 @@ extern void bk_printf(const char *fmt, ...);
 ***********************************************************/
 static volatile uint32_t delay_us = 10;
 static SR_I2C_GPIO_T sg_i2c_pin[TUYA_I2C_NUM_MAX] = {
-    {TUYA_GPIO_NUM_MAX, TUYA_GPIO_NUM_MAX},
-    {TUYA_GPIO_NUM_MAX, TUYA_GPIO_NUM_MAX},
+    {TUYA_GPIO_NUM_20,  TUYA_GPIO_NUM_21},
+    {TUYA_GPIO_NUM_14,  TUYA_GPIO_NUM_15},
     {TUYA_GPIO_NUM_MAX, TUYA_GPIO_NUM_MAX},
     {TUYA_GPIO_NUM_MAX, TUYA_GPIO_NUM_MAX},
     {TUYA_GPIO_NUM_MAX, TUYA_GPIO_NUM_MAX},
