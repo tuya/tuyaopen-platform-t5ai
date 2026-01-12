@@ -187,6 +187,28 @@ __err_exit:
     tkl_thread_release(tmp_thread);
 }
 
+static void __tkl_asr_post(uint8_t force)
+{
+    if(tuya_ring_buff_used_size_get(sg_asr_mgr.rb) >= TKL_ASR_DETECT_FRAME || force) {
+        tkl_semaphore_post(sg_asr_mgr.sem);
+    }
+}
+
+static void __tkl_asr_drop(VOID)
+{
+    if (!sg_asr_mgr.init || !sg_asr_mgr.enable) {
+        return;
+    }
+
+    uint32_t rblen =  tuya_ring_buff_used_size_get(sg_asr_mgr.rb);
+    if (rblen >= TKL_ASR_VAD_FRAME) {
+        uint32_t drop_len   = rblen - TKL_ASR_VAD_FRAME;
+        tkl_mutex_lock(sg_asr_mgr.mutex);
+        tuya_ring_buff_discard(sg_asr_mgr.rb, drop_len);
+        tkl_mutex_unlock(sg_asr_mgr.mutex);
+    }
+}
+
 OPERATE_RET tkl_asr_init(void)
 {
     OPERATE_RET rt = OPRT_OK;
@@ -233,12 +255,12 @@ OPERATE_RET tkl_asr_enable(void)
 
 OPERATE_RET tkl_asr_disable(void)
 {
+    sg_asr_mgr.enable = false;
+
     tkl_mutex_lock(sg_asr_mgr.mutex);
     tuya_ring_buff_reset(sg_asr_mgr.rb);
     tkl_mutex_unlock(sg_asr_mgr.mutex);
 
-    sg_asr_mgr.enable = false;
-    
     return OPRT_OK;
 }
 
@@ -279,19 +301,10 @@ OPERATE_RET tkl_asr_feed_with_vad(uint8_t *data, uint16_t datalen, uint8_t vadfl
     //!  0 - 1 > vad on
     //!  1 - 1 > vad ing
     //！ 1 - 0 > vad end, vad_change = 1, force post
-    if(vad_change) {
-        tkl_semaphore_post(sg_asr_mgr.sem);
-    }else if(sg_asr_mgr.vadflag) {
-        if(tuya_ring_buff_used_size_get(sg_asr_mgr.rb) >= TKL_ASR_DETECT_FRAME) {
-            tkl_semaphore_post(sg_asr_mgr.sem);
-        }
-    }
-
-    uint32_t rblen =  tuya_ring_buff_used_size_get(sg_asr_mgr.rb);
-    if (rblen >= TKL_ASR_VAD_FRAME) {
-        //drop the oldest data
-        uint32_t drop_len   = rblen - TKL_ASR_VAD_FRAME;
-        tuya_ring_buff_discard(sg_asr_mgr.rb, drop_len);
+    if(sg_asr_mgr.vadflag || vad_change) {
+        __tkl_asr_post(vad_change);
+    }else {
+        __tkl_asr_drop();
     }
 
     return OPRT_OK;
