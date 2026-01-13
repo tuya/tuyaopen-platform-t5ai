@@ -47,8 +47,6 @@ OPERATE_RET tkl_vad_set_threshold(TKL_AUDIO_VAD_THRESHOLD_E level);
 
 OPERATE_RET tkl_vad_init(TKL_VAD_CONFIG_T *config);
 
-OPERATE_RET tkl_vad_feed(uint8_t *data, uint32_t len);
-
 TKL_VAD_STATUS_T tkl_vad_get_status(void);
 
 OPERATE_RET tkl_vad_start(void);
