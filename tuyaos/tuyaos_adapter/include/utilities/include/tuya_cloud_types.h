@@ -19,11 +19,11 @@ Copyright(C),2018-2020, 涂鸦科技 www.tuya.comm
 #include <string.h>
 #include "tuya_error_code.h"
 
-extern void bk_printf(const char *fmt, ...);
-
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+extern void bk_printf(const char *fmt, ...);
 
 typedef int OPERATE_RET;
 typedef long long DLONG_T;

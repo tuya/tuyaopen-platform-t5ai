@@ -55,7 +55,7 @@
 #define SYS_ANA_REG18_RESERVED_BIT_26_30_DEFAULT_VAL           (0x00)
 #define SYS_ANA_REG18_SPI_DACCKPSSEL_DEFAULT_VAL               (0x00)
 
-#define SYS_ANA_REG19_ISEL_DEFAULT_VAL                         (0x02)
+#define SYS_ANA_REG19_ISEL_DEFAULT_VAL                         (0x03)
 #define SYS_ANA_REG19_MICIRSEL1_DEFAULT_VAL                    (0x01)
 #define SYS_ANA_REG19_MICDACIT_DEFAULT_VAL                     (0x00)
 #define SYS_ANA_REG19_MICDACIH_DEFAULT_VAL                     (0x00)
@@ -113,7 +113,7 @@
 #define SYS_ANA_REG21_SOUT0V9_DEFAULT_VAL                      (0x00)
 #define SYS_ANA_REG21_HC0V9_DEFAULT_VAL                        (0x00)
 
-#define SYS_ANA_REG27_ISEL_DEFAULT_VAL                         (0x02)
+#define SYS_ANA_REG27_ISEL_DEFAULT_VAL                         (0x03)
 #define SYS_ANA_REG27_MICIRSEL1_DEFAULT_VAL                    (0x01)
 #define SYS_ANA_REG27_MICDACIT_DEFAULT_VAL                     (0x00)
 #define SYS_ANA_REG27_MICDACIH_DEFAULT_VAL                     (0x00)

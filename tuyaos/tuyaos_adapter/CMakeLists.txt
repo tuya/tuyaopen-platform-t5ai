@@ -215,6 +215,9 @@ if ("${CONFIG_CPU_INDEX}" STREQUAL "1")
 # platform/t5ai/tuyaos/tuyaos_adapter/include/vad/lib/libtal_audio_subsys.a
 target_link_libraries(${COMPONENT_LIB} INTERFACE "$ENV{ARMINO_PATH}/../../tuyaos/tuyaos_adapter/include/vad/lib/libtal_audio_subsys.a")
 
+# platform/t5ai/tuyaos/tuyaos_adapter/include/opus/libopus.a
+target_link_libraries(${COMPONENT_LIB} INTERFACE "$ENV{ARMINO_PATH}/../../tuyaos/tuyaos_adapter/include/opus/libopus.a")
+
 # platform/t5ai/tuyaos/tuyaos_adapter/include/asr/libtutuClear/libtutuClear_wakeup_nihaotuya_xiaozhitongxue_heytuya_hituya_20251024_small_model.a
 target_link_libraries(${COMPONENT_LIB} INTERFACE "$ENV{ARMINO_PATH}/../../tuyaos/tuyaos_adapter/include/asr/libtutuClear/libtutuClear_wakeup_nihaotuya_xiaozhitongxue_heytuya_hituya_20251024_small_model.a")
 # platform/t5ai/tuyaos/tuyaos_adapter/src/misc/mftest/libtal_mftest.a
