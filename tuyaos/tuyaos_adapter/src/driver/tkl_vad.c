@@ -153,15 +153,6 @@ __err_exit:
     return rt;
 }
 
-OPERATE_RET tkl_vad_feed(uint8_t *data, uint32_t len)
-{
-    // Nothing to do
-    // T5 vad feed is called in _aec_v3_algorithm_process() function in
-    // platform/T5AI/t5_os/ap/components/bk_audio/audio_algorithms/aec_v3_algorithm/aec_v3_algorithm.c
-
-    return OPRT_OK;
-}
-
 TKL_VAD_STATUS_T tkl_vad_get_status(void)
 {
     return __s_aec_vad_flag;

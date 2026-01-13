@@ -151,7 +151,6 @@ static OPERATE_RET __dma2d_cfg_init(TKL_DMA2D_FRAME_INFO_T *in_frame, TKL_DMA2D_
         dma2d_cfg->dma2d_height = in_frame->height_cp;
 
 out:
-    bk_printf("dst_frame_xpos_eof:%d dma2d_width=%d, dma2d_height=%d\r\n", dst_frame_xpos_eof, dma2d_cfg->dma2d_width, dma2d_cfg->dma2d_height);
     return OPRT_OK;
 }
 
