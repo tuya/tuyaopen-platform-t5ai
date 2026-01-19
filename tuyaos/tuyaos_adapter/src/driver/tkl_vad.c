@@ -11,6 +11,7 @@
 #include "tkl_system.h"
 #include "tkl_vad.h"
 
+#include "audio_subsys_rnn_vad.h"
 #include "tkl_output.h"
 
 /***********************************************************
@@ -30,12 +31,12 @@ extern void speex_aes_destory(void *obj);
 extern int speex_aes_process(void *obj, short *mic, short *ref, short *aec);
 extern float speex_get_param(void *obj, float *out, short *linearout);
 
-extern void *rnn_vad_create();
-extern void rnn_vad_destroy(void *obj);
-extern void rnn_vad_start(void *obj);
-extern void rnn_vad_stop(void *obj);
-extern float rnn_vad_process(void *obj, short *x);
-extern void rnn_vad_set_callback(void *obj, float threshold);
+// extern void *rnn_vad_create();
+// extern void rnn_vad_destroy(void *obj);
+// extern void rnn_vad_start(void *obj);
+// extern void rnn_vad_stop(void *obj);
+// extern float rnn_vad_process(void *obj, short *x);
+// extern void rnn_vad_set_callback(void *obj, float threshold);
 extern OPERATE_RET tkl_asr_feed_with_vad(uint8_t *data, uint16_t datalen, uint8_t vadflag);
 /***********************************************************
 ***********************variable define**********************
@@ -120,6 +121,10 @@ OPERATE_RET tkl_vad_init(TKL_VAD_CONFIG_T *config)
 
     if (__s_rnn_vad_handle == NULL) {
         __s_rnn_vad_handle = rnn_vad_create();
+        struct _rnn_vad_param_in param = {0};
+        param.min_speech_len = config->speech_min_ms;         //最短语音长度(ms)，太小会导致误报,默认200ms
+        param.max_speech_interval = config->noise_min_ms;   //最大语音间隔(ms) 太小会导致断句过快，默认1000ms
+        rnn_vad_init(&param, __s_rnn_vad_handle);
         tkl_vad_set_threshold(TKL_AUDIO_VAD_MID);
         if (__s_rnn_vad_handle == NULL) {
             tkl_log_output("__s_rnn_vad_handle create failed\r\n");
