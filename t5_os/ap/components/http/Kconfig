@@ -1,0 +1,17 @@
+menu "Http"
+	depends on LWIP_V2_1
+	config HTTP
+		bool "Enable Http"
+		default y
+
+	config HTTP_OTA_WITH_BLE
+		bool "Enable Http Ota With Ble"
+		default n
+
+	config LITE_LOG_ENABLED
+		bool "Enable Lite Log Enable"
+		default n
+		help
+			Enable http log
+		
+endmenu

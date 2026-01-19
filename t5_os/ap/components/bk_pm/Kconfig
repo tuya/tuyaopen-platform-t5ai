@@ -1,0 +1,13 @@
+menu "PM"
+	config PM_ENABLE
+		bool "pm enable"
+		default n
+
+	config PM_SUPER_DEEP_SLEEP
+		bool "Enable super deep sleep"
+		default n
+	config PM_LV_TIME_COST_DEBUG
+		bool "Enable low voltage sleep time cost debug"
+		default n
+endmenu
+

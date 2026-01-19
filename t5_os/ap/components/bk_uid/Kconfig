@@ -1,0 +1,11 @@
+menu "bk_uid"
+
+	config GET_UID_ENABLE
+		bool "Enable get UID"
+		default n
+	
+	config GET_UID_TEST
+		depends on GET_UID_ENABLE
+		bool "Enable get UID test"
+		default n
+endmenu

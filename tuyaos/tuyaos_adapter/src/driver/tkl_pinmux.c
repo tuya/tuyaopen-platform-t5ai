@@ -13,6 +13,7 @@
 
 #include "tkl_pinmux.h"
 #include "driver/hal/hal_adc_types.h"
+#include <driver/gpio_types.h>
 
 /****************************************************************************
  * Pre-processor Definitions
@@ -21,10 +22,31 @@
 /****************************************************************************
  * Private Type Declarations
  ****************************************************************************/
-
+typedef struct{
+    TUYA_PIN_NAME_E pin;
+    TUYA_PIN_FUNC_E func;
+    gpio_dev_t      dev;
+}TUYA_PIN_FUNC_MAP_T;
 /****************************************************************************
  * Private Data Declarations
  ****************************************************************************/
+
+static TUYA_PIN_FUNC_MAP_T pin_func_map[] = {
+    {TUYA_IO_PIN_17,  TUYA_SPI0_MISO,      GPIO_DEV_SPI0_MISO},
+    {TUYA_IO_PIN_16,  TUYA_SPI0_MOSI,      GPIO_DEV_SPI0_MOSI},
+    {TUYA_IO_PIN_14,  TUYA_SPI0_CLK,       GPIO_DEV_SPI0_SCK},
+    {TUYA_IO_PIN_15,  TUYA_SPI0_CS,        GPIO_DEV_SPI0_CSN},
+    {TUYA_IO_PIN_2,   TUYA_SDIO_HOST_CLK,  GPIO_DEV_SDIO_HOST_CLK},
+    {TUYA_IO_PIN_3,   TUYA_SDIO_HOST_CMD,  GPIO_DEV_SDIO_HOST_CMD},
+    {TUYA_IO_PIN_4,   TUYA_SDIO_HOST_D0,   GPIO_DEV_SDIO_HOST_DATA0},
+    {TUYA_IO_PIN_5,   TUYA_SDIO_HOST_D1,   GPIO_DEV_SDIO_HOST_DATA1},
+    {TUYA_IO_PIN_6,   TUYA_SDIO_HOST_D2,   GPIO_DEV_SDIO_HOST_DATA2},
+    {TUYA_IO_PIN_7,   TUYA_SDIO_HOST_D3,   GPIO_DEV_SDIO_HOST_DATA3},
+    {TUYA_IO_PIN_30,  TUYA_UART2_RX,       GPIO_DEV_UART2_RXD},
+    {TUYA_IO_PIN_31,  TUYA_UART2_TX,       GPIO_DEV_UART2_TXD},
+    {TUYA_IO_PIN_20,  TUYA_IIC0_SCL,       GPIO_DEV_I2C0_SCL},
+    {TUYA_IO_PIN_21,  TUYA_IIC0_SDA,       GPIO_DEV_I2C0_SDA},
+};
 
 /****************************************************************************
  * Private Functions
@@ -33,8 +55,21 @@
 /****************************************************************************
  * Public Function Prototypes
  ****************************************************************************/
-extern void __tkl_i2c_set_scl_pin(TUYA_I2C_NUM_E port, const TUYA_PIN_NAME_E scl_pin);
-extern void __tkl_i2c_set_sda_pin(TUYA_I2C_NUM_E port, const TUYA_PIN_NAME_E sda_pin);
+extern VOID_T __tkl_i2c_set_scl_pin(TUYA_I2C_NUM_E port, const TUYA_PIN_NAME_E scl_pin);
+extern VOID_T __tkl_i2c_set_sda_pin(TUYA_I2C_NUM_E port, const TUYA_PIN_NAME_E sda_pin);
+extern gpio_id_t tkl_gpio_get_bk_gpio_id(TUYA_GPIO_NUM_E pin_id);
+
+TUYA_PIN_FUNC_MAP_T *tkl_pinmux_get_func_map(TUYA_PIN_FUNC_E pin_func)
+{
+    for (int i = 0; i < sizeof(pin_func_map) / sizeof(TUYA_PIN_FUNC_MAP_T); i++) {
+        if (pin_func_map[i].func == pin_func) {
+            return &pin_func_map[i];
+        }
+    }
+
+    return NULL;
+}
+
 
 /**
  * @brief tuya io pinmux func
@@ -85,16 +120,39 @@ OPERATE_RET tkl_io_pinmux_config(TUYA_PIN_NAME_E pin, TUYA_PIN_FUNC_E pin_func)
             __tkl_i2c_set_sda_pin(TUYA_I2C_NUM_5, pin);
             break;
 #endif
+
+        case TUYA_SPI0_MISO:
+        case TUYA_SPI0_MOSI:
+        case TUYA_SPI0_CLK: 
+        case TUYA_SPI0_CS:
+        case TUYA_SDIO_HOST_CLK:
+        case TUYA_SDIO_HOST_CMD:
+        case TUYA_SDIO_HOST_D0:
+        case TUYA_SDIO_HOST_D1:
+        case TUYA_SDIO_HOST_D2:
+        case TUYA_SDIO_HOST_D3:
+        case TUYA_UART2_RX:
+        case TUYA_UART2_TX: {
+            TUYA_PIN_FUNC_MAP_T *map = tkl_pinmux_get_func_map(pin_func);
+            if(map == NULL) {
+                bk_printf("pin_func %d not found\r\n", pin_func);
+                return OPRT_INVALID_PARM;
+            }
+
+            map->pin = pin;
+        }
+            break;
+            
         default:
             break;
-    
+
     }
     return OPRT_OK;
 }
-int tkl_io_pin_to_func(uint32_t pin, TUYA_PIN_TYPE_E pin_type)
+INT32_T tkl_io_pin_to_func(UINT32_T pin, TUYA_PIN_TYPE_E pin_type)
 {
-	int port_channel = OPRT_NOT_SUPPORTED;
-    
+	INT32_T port_channel = OPRT_NOT_SUPPORTED;
+
     switch (pin_type) {
         case TUYA_IO_TYPE_PWM:                  // all pwm channels belong to one port
             if (TUYA_IO_PIN_18 == pin) {
@@ -107,6 +165,20 @@ int tkl_io_pin_to_func(uint32_t pin, TUYA_PIN_TYPE_E pin_type)
                 port_channel = 3;
             } else if (TUYA_IO_PIN_36 == pin) {
                 port_channel = 4;
+            } else if (TUYA_IO_PIN_19 == pin) {
+                port_channel = 5;
+            } else if (TUYA_IO_PIN_8 == pin) {
+                port_channel = 6;
+            } else if (TUYA_IO_PIN_9 == pin) {
+                port_channel = 7;
+            } else if (TUYA_IO_PIN_25 == pin) {
+                port_channel = 8;
+            } else if (TUYA_IO_PIN_33 == pin) {
+                port_channel = 9;
+            } else if (TUYA_IO_PIN_35 == pin) {
+                port_channel = 10;
+            } else if (TUYA_IO_PIN_37 == pin) {
+                port_channel = 11;
             }
             break;
         case TUYA_IO_TYPE_ADC:
@@ -114,8 +186,16 @@ int tkl_io_pin_to_func(uint32_t pin, TUYA_PIN_TYPE_E pin_type)
                 port_channel = ADC_1;
             } else if (TUYA_IO_PIN_24 == pin) {
                 port_channel = ADC_2;
+            } else if (TUYA_IO_PIN_23 == pin) {
+                port_channel = ADC_3;
             } else if (TUYA_IO_PIN_28 == pin) {
                 port_channel = ADC_4;
+            } else if (TUYA_IO_PIN_22 == pin) {
+                port_channel = ADC_5;
+            } else if (TUYA_IO_PIN_21 == pin) {
+                port_channel = ADC_6;
+            } else if (TUYA_IO_PIN_8 == pin) {
+                port_channel = ADC_10;
             } else if (TUYA_IO_PIN_13 == pin) {
                 port_channel = ADC_15;
             } else if (TUYA_IO_PIN_12 == pin) {
@@ -145,4 +225,15 @@ int tkl_io_pin_to_func(uint32_t pin, TUYA_PIN_TYPE_E pin_type)
     return port_channel;
 }
 
+gpio_id_t ty_get_dev_io(gpio_dev_t dev)
+{
+    TUYA_PIN_FUNC_MAP_T *map;
 
+    for (int i = 0; i < sizeof(pin_func_map) / sizeof(TUYA_PIN_FUNC_MAP_T); i++) {
+        if (pin_func_map[i].dev == dev) {
+            return tkl_gpio_get_bk_gpio_id(pin_func_map[i].pin);
+        }
+    }
+
+    return GPIO_NUM;
+}

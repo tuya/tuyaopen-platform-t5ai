@@ -1,0 +1,27 @@
+menu "Littlefs"
+	config LITTLEFS
+		bool "Enable Littlefs"
+		default n
+
+	choice LITTLEFS_PARTITION
+		depends on LITTLEFS
+		prompt "choose partition"
+		default LITTLEFS_NO_CONFIG_PARTITION
+
+		config LITTLEFS_USE_LITTLEFS_PARTITION
+			depends on LITTLEFS
+			bool "use littlefs partition as littlefs partition"
+		config LITTLEFS_USE_USR_CONFIG_PARTITION
+			depends on LITTLEFS
+			bool "use usr_config partition as littlefs partition"
+		config LITTLEFS_NO_CONFIG_PARTITION
+			depends on LITTLEFS
+			bool "no config littlefs partition"
+
+	config LFS_THREADSAFE
+		depends on "LITTLEFS"
+		bool "Thread safe"
+		default y
+
+	endchoice
+endmenu

@@ -8,7 +8,7 @@
 
 /* We need to keep keys and values */
 typedef struct _hashmap_element{
-    char* key;
+    CHAR_T* key;
     ANY_T data;
     HLIST_NODE node;
 } HASHMAP_ELEMENT_T;
@@ -16,8 +16,8 @@ typedef struct _hashmap_element{
 /* A hashmap has some maximum size and current size,
  * as well as the data to hold. */
 typedef struct _hashmap_map{
-    int size;
-    int table_size;
+    INT_T size;
+    INT_T table_size;
     HLIST_HEAD *list;
 } HASHMAP_T;
 
@@ -66,7 +66,7 @@ typedef struct _hashmap_map{
   /*                                                                        */
   /*  --------------------------------------------------------------------  */
 
-static unsigned long crc32_tab[] = {
+STATIC ULONG_T crc32_tab[] = {
       0x00000000L, 0x77073096L, 0xee0e612cL, 0x990951baL, 0x076dc419L,
       0x706af48fL, 0xe963a535L, 0x9e6495a3L, 0x0edb8832L, 0x79dcb8a4L,
       0xe0d5e91eL, 0x97d2d988L, 0x09b64c2bL, 0x7eb17cbdL, 0xe7b82d07L,
@@ -122,10 +122,10 @@ static unsigned long crc32_tab[] = {
     };
 
 /* Return a 32-bit CRC of the contents of the buffer. */
-static unsigned long __crc32_hashmap(const uint8_t *s, uint32_t len)
+STATIC ULONG_T __crc32_hashmap(CONST UCHAR_T *s, UINT_T len)
 {
-    uint32_t i;
-    unsigned long crc32val;
+    UINT_T i;
+    ULONG_T crc32val;
     
     crc32val = 0;
     for (i = 0;  i < len;  i ++) {
@@ -139,9 +139,9 @@ static unsigned long __crc32_hashmap(const uint8_t *s, uint32_t len)
 /*
  * Hashing function for a string
  */
-uint32_t __hashmap_hash_int(HASHMAP_T * m, char* keystring)
+UINT_T __hashmap_hash_int(HASHMAP_T * m, CHAR_T* keystring)
 {
-    unsigned long key = __crc32_hashmap((uint8_t*)(keystring), strlen(keystring));
+    ULONG_T key = __crc32_hashmap((UCHAR_T*)(keystring), strlen(keystring));
 
     /* Robert Jenkins' 32 bit Mix Function */
     key += (key << 12);
@@ -159,7 +159,7 @@ uint32_t __hashmap_hash_int(HASHMAP_T * m, char* keystring)
     return key % m->table_size;
 }
 
-static HASHMAP_ELEMENT_T *__hash_find_next_element(HASHMAP_ELEMENT_T *curr)
+STATIC HASHMAP_ELEMENT_T *__hash_find_next_element(HASHMAP_ELEMENT_T *curr)
 {
     HLIST_NODE *pos = NULL;
     HASHMAP_ELEMENT_T *tmp_element = NULL;
@@ -172,9 +172,9 @@ static HASHMAP_ELEMENT_T *__hash_find_next_element(HASHMAP_ELEMENT_T *curr)
     return NULL;
 }
 
-static HASHMAP_ELEMENT_T *__hash_find(HASHMAP_T *m, char* key)
+STATIC HASHMAP_ELEMENT_T *__hash_find(HASHMAP_T *m, CHAR_T* key)
 {
-    int curr = __hashmap_hash_int(m, key);
+    INT_T curr = __hashmap_hash_int(m, key);
     HLIST_HEAD *list = &(m->list[curr]);
     if(tuya_hlist_empty(list)) {
         return NULL;
@@ -198,7 +198,7 @@ static HASHMAP_ELEMENT_T *__hash_find(HASHMAP_T *m, char* key)
  * @param[in] table_size the hash table size
  * @return a new empty hashmap 
  */
-MAP_T tuya_hashmap_new(uint32_t table_size)
+MAP_T tuya_hashmap_new(UINT_T table_size)
 {
     if(0 == table_size) {
         return NULL;
@@ -237,14 +237,14 @@ err:
  * 
  * @note For same key, it does not replace it. it is inserted in the head of the list
  */
-int tuya_hashmap_put(MAP_T in, const char* key ,const ANY_T data)
+INT_T tuya_hashmap_put(MAP_T in, CONST CHAR_T* key ,CONST ANY_T data)
 {
     HASHMAP_ELEMENT_T *element = (HASHMAP_ELEMENT_T *)tkl_system_malloc(sizeof(HASHMAP_ELEMENT_T));
     if(NULL == element) {
         return MAP_OMEM;
     }
     memset(element,0,sizeof(HASHMAP_ELEMENT_T));
-    element->key = (char *)key;
+    element->key = (CHAR_T *)key;
     element->data = data;
 
     int curr = 0;
@@ -265,10 +265,10 @@ int tuya_hashmap_put(MAP_T in, const char* key ,const ANY_T data)
  * @param[out] arg the first value that the key matches
  * @return MAP_OK on success, others on failed, please refer to the define of hashmap error code  
  */
-int tuya_hashmap_get(MAP_T in, const char* key, ANY_T *arg)
+INT_T tuya_hashmap_get(MAP_T in, CONST CHAR_T* key, ANY_T *arg)
 {
     HASHMAP_T *m = (HASHMAP_T *) in;
-    HASHMAP_ELEMENT_T *element = __hash_find(m,(char *)key);
+    HASHMAP_ELEMENT_T *element = __hash_find(m,(CHAR_T *)key);
     if(NULL == element) {
         *arg = NULL;
         return MAP_MISSING;
@@ -288,7 +288,7 @@ int tuya_hashmap_get(MAP_T in, const char* key, ANY_T *arg)
  * 
  * @note if arg_iterator is NULL, fetch the first element, otherwise, fetch the next element
  */
-int tuya_hashmap_data_traversal(MAP_T in, const char* key, ANY_T_ITER *arg_iterator)
+INT_T tuya_hashmap_data_traversal(MAP_T in, CONST CHAR_T* key, ANY_T_ITER *arg_iterator)
 {
     HASHMAP_T *m = (HASHMAP_T *) in;
     HASHMAP_ELEMENT_T *element = NULL;
@@ -320,7 +320,7 @@ int tuya_hashmap_data_traversal(MAP_T in, const char* key, ANY_T_ITER *arg_itera
  * 
  * @note if data is NULL,then delete the first note match key.if data is not null, then delete the node match key and data.
  */
-int tuya_hashmap_remove(MAP_T in, char* key, ANY_T data)
+INT_T tuya_hashmap_remove(MAP_T in, CHAR_T* key, ANY_T data)
 {
     HASHMAP_T *m = (HASHMAP_T *) in;
     int curr = __hashmap_hash_int(m, key);
@@ -360,7 +360,7 @@ int tuya_hashmap_remove(MAP_T in, char* key, ANY_T data)
  * 
  * @warning must remove all element first, otherwise, it will cause element leak
  */
-void tuya_hashmap_free(MAP_T in)
+VOID_T tuya_hashmap_free(MAP_T in)
 {
     HASHMAP_T* m = (HASHMAP_T*) in;
     if(m->list) {
@@ -377,7 +377,7 @@ void tuya_hashmap_free(MAP_T in)
  * @param[in] in the hashmap
  * @return the current size
  */
-int tuya_hashmap_length(MAP_T in)
+INT_T tuya_hashmap_length(MAP_T in)
 {
     HASHMAP_T* m = (HASHMAP_T *) in;
     if(m != NULL) 

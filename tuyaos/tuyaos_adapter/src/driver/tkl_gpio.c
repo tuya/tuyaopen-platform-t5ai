@@ -33,7 +33,7 @@ static pin_dev_map_t pinmap[] = {
 };
 
 #define PIN_DEV_CHECK_ERROR_RETURN(__PIN, __ERROR)                          \
-    if (__PIN >= sizeof(pinmap)/sizeof(pinmap[0])) {                        \
+    if (__PIN >= sizeof(pinmap)/sizeof(pinmap[0]) || (__PIN == TUYA_GPIO_NUM_10) || (__PIN == TUYA_GPIO_NUM_11)) {                        \
         return __ERROR;                                                     \
     }
 
@@ -47,10 +47,14 @@ extern void bk_printf(const char *fmt, ...);
  *
  * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
  */
-OPERATE_RET tkl_gpio_init(TUYA_GPIO_NUM_E pin_id, const TUYA_GPIO_BASE_CFG_T *cfg)
+OPERATE_RET tkl_gpio_init(TUYA_GPIO_NUM_E pin_id, CONST TUYA_GPIO_BASE_CFG_T *cfg)
 {
     OPERATE_RET ret = OPRT_OK;
+    // TODO
     PIN_DEV_CHECK_ERROR_RETURN(pin_id, OPRT_INVALID_PARM);
+    if (pin_id == TUYA_GPIO_NUM_0) {
+        bk_printf("WARNING: Init gpio0, LOG will be disabled\r\n");
+    }
 
     bk_gpio_driver_init();
     gpio_dev_unmap(pinmap[pin_id].gpio);
@@ -100,6 +104,7 @@ OPERATE_RET tkl_gpio_deinit(TUYA_GPIO_NUM_E pin_id)
 {
     PIN_DEV_CHECK_ERROR_RETURN(pin_id, OPRT_INVALID_PARM);
 
+    gpio_dev_unmap(pinmap[pin_id].gpio);
     //Set gpio to input floating mode
     bk_gpio_disable_interrupt(pinmap[pin_id].gpio);
     bk_gpio_disable_output(pinmap[pin_id].gpio);
@@ -175,9 +180,13 @@ static void __tkl_gpio_irq_cb(gpio_id_t gpio_id)
  *
  * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
  */
-OPERATE_RET tkl_gpio_irq_init(TUYA_GPIO_NUM_E pin_id, const TUYA_GPIO_IRQ_T *cfg)
+OPERATE_RET tkl_gpio_irq_init(TUYA_GPIO_NUM_E pin_id, CONST TUYA_GPIO_IRQ_T *cfg)
 {
     PIN_DEV_CHECK_ERROR_RETURN(pin_id, OPRT_INVALID_PARM);
+
+    if (pin_id == TUYA_GPIO_NUM_0) {
+        bk_printf("WARNING: Init gpio0 irq, LOG will be disabled\r\n");
+    }
 
     gpio_int_type_t trigger;
 
@@ -233,4 +242,11 @@ OPERATE_RET tkl_gpio_irq_disable(TUYA_GPIO_NUM_E pin_id)
     PIN_DEV_CHECK_ERROR_RETURN(pin_id, OPRT_INVALID_PARM);
     bk_gpio_disable_interrupt(pinmap[pin_id].gpio);
     return OPRT_OK;
+}
+
+gpio_id_t tkl_gpio_get_bk_gpio_id(TUYA_GPIO_NUM_E pin_id)
+{
+    PIN_DEV_CHECK_ERROR_RETURN(pin_id, GPIO_NUM);
+    
+    return pinmap[pin_id].gpio;
 }

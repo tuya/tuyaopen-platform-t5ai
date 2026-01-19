@@ -1,0 +1,6 @@
+menu "SLCD"
+	config SLCD
+		bool "Enable SLCD"
+		default n
+endmenu
+

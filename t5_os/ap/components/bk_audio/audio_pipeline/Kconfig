@@ -1,0 +1,49 @@
+menu "Adk"
+	config ADK
+		depends on FREERTOS_USE_QUEUE_SETS
+		bool "Enable Audio Development Kit"
+		default n
+
+	choice ADK_USE_MEMORY
+		depends on ADK
+		prompt "Select ADK use memory"
+		default ADK_USE_PSRAM
+
+		config ADK_USE_SRAM
+			bool "Enable ADK use sram"
+			help
+				ADK use sram memory
+
+		config ADK_USE_PSRAM
+			depends on PSRAM
+			bool "Enable ADK use psram"
+			help
+				ADK use psram memory
+	endchoice
+
+	config ADK_BIND_TASK_TO_CORE
+		depends on ADK && SOC_SMP
+		bool "Enable ADK bind task to cpu core according to module configuration"
+		default n
+
+	config ADK_AUTO_TEST
+		depends on ADK
+		bool "Enable ADK auto test"
+		default n
+
+	config ADK_AUTO_TEST_PIPELINE
+		depends on ADK_AUTO_TEST
+		bool "Enable ADK pipeline auto test "
+		default n
+
+	config ADK_AUTO_TEST_ELEMENT
+		depends on ADK_AUTO_TEST
+		bool "Enable ADK element auto test "
+		default n
+
+	config ADK_AUTO_TEST_EVENT
+		depends on ADK_AUTO_TEST
+		bool "Enable ADK event listener auto test "
+		default n
+
+endmenu

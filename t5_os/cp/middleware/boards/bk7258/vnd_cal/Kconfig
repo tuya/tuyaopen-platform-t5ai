@@ -1,0 +1,13 @@
+menu "VENDOR CAL CONFIG"
+	config VND_CAL
+		bool "Enable vendor cal"
+		default n
+
+	config BLE_USE_HIGH_POWER_LEVEL
+		bool "Enable high power level"
+		default n
+
+	config EPA_ENABLE_FLAG
+		bool "Enable epa"
+		default n
+endmenu

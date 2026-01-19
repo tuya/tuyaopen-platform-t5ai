@@ -1,0 +1,16 @@
+# The bin size whose type is code occupies more space in flash,,,,,
+# The occupied space is: bin size*34/32(and 68K aligned),,,,,
+# s_app represents B partition,,,,,
+# easyflash:beken CP some components use it
+# easyflash_ap:beken AP some components use it
+#Name,Offset,Size,Type,Read,Write
+primary_bootloader,,68k,code,TRUE,FALSE
+primary_cp_app,,1360k,code,TRUE,TRUE
+primary_ap_app,,1156k,code,TRUE,TRUE
+s_app,,2516k,data,TRUE,TRUE
+ota_fina_executive,,4K,data,TRUE,TRUE
+usr_config,,56K,data,TRUE,TRUE
+easyflash,0x7fa000,8K,data,TRUE,TRUE
+easyflash_ap,0x7fc000,8K,data,TRUE,TRUE
+sys_rf,0x7fe000,4k,data,TRUE,TRUE
+sys_net,0x7ff000,4k,data,TRUE,TRUE

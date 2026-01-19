@@ -1,0 +1,21 @@
+menu "Adk::Audio_algorithm::Aec_algorithm"
+	config ADK_AEC_V3_ALGORITHM
+		depends on ADK
+		bool "Enable Audio AEC algorithm"
+		default n
+
+	config ADK_AEC_V3_ALGORITHM_TEST
+		depends on ADK_AEC_ALGORITHM
+		depends on ADK_FATFS_STREAM
+		bool "Enable Audio AEC algorithm test"
+		default n
+	config AUD_AI_NS_SUPPORT
+	        depends on ADK_AEC_V3_ALGORITHM
+		bool "Support AEC AI NS function"
+		default n
+
+	config AUD_AI_NS_USE_STATIC_SRAM
+		depends on AUD_AI_NS_SUPPORT
+		bool "AEC AI NS Extra buffer in SRAM"
+		default n
+endmenu

@@ -1,0 +1,40 @@
+menu "App"
+
+	config DEMO_TEST
+		bool "Enable Demo Test"
+		default n
+
+	#TODO does UPGRADE here means OTA?
+	config FTPD_UPGRADE
+		bool "Enable Ftpd Upgrade"
+		default n
+
+	config OTA_HTTP
+		bool "Enable Ota Http"
+		default y if NO_HOSTED
+		default n if !NO_HOSTED
+
+	#TODO what's the relationship between HTTP and TFTP OTA, exculsive?
+	config OTA_TFTP
+		bool "Enable Ota Tftp"
+		default n
+
+	config NTP_SYNC_RTC
+		depends on AON_RTC
+		bool "Enable Ntp Sync Rtc"
+		default n
+
+	config SECURITY_OTA
+		bool "Enable Seucirty Ota API"
+		default n
+
+	config NTP_SYNC_RTC_TASK_STACK_SIZE
+		int "Set NTP Sync Task Stack Size"
+		default 3072
+		help
+			Stack size of NTP Sync task
+
+	config FTP_SERVER
+		bool "Enable FTP server"
+		default n
+endmenu

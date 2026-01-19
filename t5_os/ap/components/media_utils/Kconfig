@@ -1,0 +1,13 @@
+menu "Media Utils"
+
+
+	config PSRAM_MEDIA_MALLOC_ENABLE
+		depends on PSRAM_AS_SYS_MEMORY
+		bool "multimedia function use malloc psram as mem"
+		default y
+
+	config MEDIA_DEBUG_TIMER_ENABLE
+		depends on MEDIA
+		bool "enable software timer to printf some camera info"
+		default y
+endmenu

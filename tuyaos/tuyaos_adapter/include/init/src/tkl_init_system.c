@@ -10,7 +10,7 @@
 
 #include "tkl_init_system.h"
 
-const TKL_OS_T TKL_OS  = {
+CONST TKL_OS_T TKL_OS  = {
     //! system
     .reset                  = tkl_system_reset,
     .get_free_heap_size     = tkl_system_get_free_heap_size,
@@ -38,9 +38,15 @@ const TKL_OS_T TKL_OS  = {
 #if defined(ENABLE_EXT_RAM) && (ENABLE_EXT_RAM==1)
     .psram_malloc           = tkl_system_psram_malloc,
     .psram_free             = tkl_system_psram_free,
+    .psram_calloc           = tkl_system_psram_calloc,
+    .psram_realloc          = tkl_system_psram_realloc,
+    .psarm_get_free_heap_size = tkl_system_psram_get_free_heap_size,
 #endif
     //! thread
     .thread_create          = tkl_thread_create,
+#if defined(ENABLE_EXT_RAM) && (ENABLE_EXT_RAM==1)
+    .thread_create_in_psram = tkl_thread_create_in_psram,
+#endif
     .thread_release         = tkl_thread_release,
     .thread_set_name        = tkl_thread_set_self_name,
     .thread_get_watermark   = tkl_thread_get_watermark,
@@ -76,7 +82,7 @@ TUYA_WEAK_ATTRIBUTE TKL_OS_T* tkl_os_desc_get()
 }
 
 #ifdef ENABLE_FILE_SYSTEM
-const TKL_FS_T TKL_FS = {
+CONST TKL_FS_T TKL_FS = {
     .fs_mkdir               = tkl_fs_mkdir,
     .fs_mkdir_r             = tkl_fs_mkdir,
     .fs_remove              = tkl_fs_remove,

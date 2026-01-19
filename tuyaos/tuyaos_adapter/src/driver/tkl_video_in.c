@@ -9,55 +9,77 @@
 #include "media_evt.h"
 #include "tkl_video_in.h"
 #include "tkl_semaphore.h"
-#include "tkl_pinmux.h"
-#include "tkl_i2c.h"
-#include "tkl_system.h"
+#include "tuya_cloud_types.h"
 
-extern void tuya_multimedia_power_on(void);
+#define TKL_VI_SENSOR_DVP       0
+#define TKL_VI_SENSOR_UVC       1
+#define TKL_VI_SENSOR_MAX       2
 
 // default
-static uint8_t __vi_uvc_power_pin = TUYA_GPIO_NUM_28;
-static uint8_t __vi_uvc_active_level = TUYA_GPIO_LEVEL_HIGH;
+static TKL_VI_EXT_CONFIG_T camera_conf[TKL_VI_SENSOR_MAX] = {
+    [TKL_VI_SENSOR_DVP] = {
+        .type = TKL_VI_EXT_CONF_CAMERA,
+        .camera = {
+            .camera_type = TKL_VI_CAMERA_TYPE_DVP,
+            .width = 864,
+            .height = 480,
+            .fps = 15,
+            .rotate = TKL_VI_ROTATE_NONE,
+            .power_pin = TUYA_GPIO_NUM_56,
+            .active_level = TUYA_GPIO_LEVEL_HIGH,
+            .i2c = {
+                .clk = TUYA_GPIO_NUM_56,
+                .sda = TUYA_GPIO_NUM_56,
+            }
+        }
+    },
+    [TKL_VI_SENSOR_UVC] = {
+        .type = TKL_VI_EXT_CONF_CAMERA,
+        .camera = {
+            .camera_type = TKL_VI_CAMERA_TYPE_UVC,
+            .width = 864,
+            .height = 480,
+            .fps = 15,
+            .rotate = TKL_VI_ROTATE_NONE,
+            .power_pin = TUYA_GPIO_NUM_56,
+            .active_level = TUYA_GPIO_LEVEL_HIGH,
+        }
+    }
+};
 
-static uint8_t __vi_dvp_power_pin = TUYA_GPIO_NUM_28;
-static uint8_t __vi_dvp_active_level = TUYA_GPIO_LEVEL_HIGH;
-static uint8_t __vi_dvp_i2c_clk = TUYA_GPIO_NUM_6;
-static uint8_t __vi_dvp_i2c_sda = TUYA_GPIO_NUM_7;
+static camera_handle_t vi_handle = NULL;
+static uint8_t vi_uvc_port = 0;
+static uint8_t vi_uvc_status = 0;
+static uint8_t vi_dvp_status = 0;
 
-volatile uint8_t vi_uvc_status = 0;
-volatile uint8_t vi_dvp_status = 0;
+uint8_t tkl_vi_get_status(uint8_t device_type)
+{
+    if (device_type == UVC_CAMERA) {
+        return vi_uvc_status;
+    } else if (device_type == DVP_CAMERA) {
+        return vi_dvp_status;
+    }
+
+    return 0xff;
+}
 
 OPERATE_RET tkl_vi_get_power_info(uint8_t device_type, uint8_t *io, uint8_t *active)
 {
     if (device_type == UVC_CAMERA) {
-        *io = __vi_uvc_power_pin;
-        *active = __vi_uvc_active_level;
+        *io = camera_conf[TKL_VI_SENSOR_UVC].camera.power_pin;
+        *active = camera_conf[TKL_VI_SENSOR_UVC].camera.active_level;
     } else if (device_type == DVP_CAMERA) {
-        *io = __vi_dvp_power_pin;
-        *active = __vi_dvp_active_level;
+        *io = camera_conf[TKL_VI_SENSOR_DVP].camera.power_pin;
+        *active = camera_conf[TKL_VI_SENSOR_DVP].camera.active_level;
     }
 
-    return 0;
-}
-
-int tkl_vi_set_power_info(uint8_t device_type, uint8_t io, uint8_t active)
-{
-    if (device_type == UVC_CAMERA) {
-        __vi_uvc_power_pin = io;
-        __vi_uvc_active_level = active;
-        bk_printf("set vi uvc power info: %d %d\r\n", io, active);
-    } else if (device_type == DVP_CAMERA) {
-        __vi_dvp_power_pin = io;
-        __vi_dvp_active_level = active;
-        bk_printf("set vi dvp power info: %d %d\r\n", io, active);
-    }
     return 0;
 }
 
 int tkl_vi_set_dvp_i2c_pin(uint8_t clk, uint8_t sda)
 {
-    __vi_dvp_i2c_clk = clk;
-    __vi_dvp_i2c_sda = sda;
+    camera_conf[TKL_VI_SENSOR_DVP].camera.i2c.clk = clk;
+    camera_conf[TKL_VI_SENSOR_DVP].camera.i2c.sda = sda;
     bk_printf("set dvp i2c, clk: %d sda: %d\r\n", clk, sda);
 
     tkl_io_pinmux_config(clk, TUYA_IIC0_SCL);
@@ -74,30 +96,9 @@ int tkl_vi_set_dvp_i2c_pin(uint8_t clk, uint8_t sda)
     return 0;
 }
 
-int tkl_vi_get_dvp_i2c_idx(void)
+int tkl_vi_get_dvp_i2c_idx(uint8_t *clk, uint8_t *sda)
 {
     return TUYA_I2C_NUM_0;
-}
-
-void tkl_vi_update_ll_config(TKL_VI_CONFIG_T *pconfig)
-{
-    if (pconfig == NULL)
-        return;
-
-    // TKL_VI_CONFIG_T *conf = (TKL_VI_CONFIG_T *)config;
-    TKL_VI_EXT_CONFIG_T *ext = (TKL_VI_EXT_CONFIG_T *)pconfig->pdata;
-
-    if (ext->type == TKL_VI_EXT_CONF_CAMERA) {
-        if (ext->camera.camera_type == TKL_VI_CAMERA_TYPE_UVC) {
-            __vi_uvc_power_pin    = ext->camera.power_pin;
-            __vi_uvc_active_level = ext->camera.active_level;
-        } else if (ext->camera.camera_type == TKL_VI_CAMERA_TYPE_DVP) {
-            __vi_dvp_power_pin    = ext->camera.power_pin;
-            __vi_dvp_active_level = ext->camera.active_level;
-            __vi_dvp_i2c_clk = ext->camera.i2c.clk;
-            __vi_dvp_i2c_sda = ext->camera.i2c.sda;
-        }
-    }
 }
 
 /**
@@ -108,84 +109,74 @@ void tkl_vi_update_ll_config(TKL_VI_CONFIG_T *pconfig)
 *
 * @return OPRT_OK on success. Others on error, please refer to tkl_error_code.h
 */
-OPERATE_RET tkl_vi_init(TKL_VI_CONFIG_T *pconfig, int count)
+OPERATE_RET tkl_vi_init(TKL_VI_CONFIG_T *pconfig, INT32_T count)
 {
     OPERATE_RET ret;
 
+    if ((pconfig == NULL) || (pconfig->pdata == NULL)) {
+        bk_printf("parameter error\r\n");
+        return OPRT_INVALID_PARM;
+    }
+
+    void *video_handle = NULL;
     media_camera_device_t device = {0};
-    // TODO pconfig->isp.width / pconfig->isp.height
-    // init camera
-    if (pconfig == NULL) {
-        device.type = UVC_CAMERA;
-        device.mode = JPEG_MODE;
-        device.fmt = PIXEL_FMT_JPEG;
-        device.info.resolution.width = 864;
-        device.info.resolution.height = 480;
-        device.info.fps = FPS15;
-    } else {
-        TKL_VI_EXT_CONFIG_T *ext = (TKL_VI_EXT_CONFIG_T *)pconfig->pdata;
-        if (ext->type == TKL_VI_EXT_CONF_CAMERA) {
-            if (ext->camera.camera_type == TKL_VI_CAMERA_TYPE_UVC) {
-                device.type = UVC_CAMERA;
-                device.mode = JPEG_MODE;
-                device.fmt = PIXEL_FMT_JPEG;
-            } else if (ext->camera.camera_type == TKL_VI_CAMERA_TYPE_DVP) {
-                device.type = DVP_CAMERA;
-                device.mode = H264_YUV_MODE;
-                device.fmt = PIXEL_FMT_H264;
-            } else {
-                bk_printf("not support camera type: %d\r\n", ext->camera.camera_type);
-                return OPRT_NOT_SUPPORTED;
-            }
 
-            if (ext->camera.camera_type == TKL_VI_CAMERA_TYPE_UVC) {
-                __vi_uvc_power_pin    = ext->camera.power_pin;
-                __vi_uvc_active_level = ext->camera.active_level;
-            } else if (ext->camera.camera_type == TKL_VI_CAMERA_TYPE_DVP) {
-                __vi_dvp_power_pin    = ext->camera.power_pin;
-                __vi_dvp_active_level = ext->camera.active_level;
-                __vi_dvp_i2c_clk = ext->camera.i2c.clk;
-                __vi_dvp_i2c_sda = ext->camera.i2c.sda;
-            }
+    TKL_VI_EXT_CONFIG_T *ext = (TKL_VI_EXT_CONFIG_T *)pconfig->pdata;
+    if (ext->type == TKL_VI_EXT_CONF_CAMERA) {
+        if (ext->camera.camera_type == TKL_VI_CAMERA_TYPE_UVC) {
+            device.type = UVC_CAMERA;
+            device.port = 1;
+            device.format = IMAGE_MJPEG;
+            memcpy(&camera_conf[TKL_VI_SENSOR_UVC], pconfig->pdata, sizeof(TKL_VI_EXT_CONFIG_T));
+        } else if (ext->camera.camera_type == TKL_VI_CAMERA_TYPE_DVP) {
+            device.type = DVP_CAMERA;
+            device.port = 0;
+            device.format = IMAGE_YUV | IMAGE_H264;
+            memcpy(&camera_conf[TKL_VI_SENSOR_DVP], pconfig->pdata, sizeof(TKL_VI_EXT_CONFIG_T));
+        } else {
+            bk_printf("not support camera type: %d\r\n", ext->camera.camera_type);
+            return OPRT_NOT_SUPPORTED;
+        }
 
-            if (pconfig->isp.fps == 15) {
-                device.info.fps = FPS15;
-            } else if (pconfig->isp.fps == 25) {
-                device.info.fps = FPS25;
-            } else if (pconfig->isp.fps == 30) {
-                device.info.fps = FPS30;
-            } else {
-                bk_printf("not support camera fps: %d\r\n", pconfig->isp.fps);
-                return OPRT_NOT_SUPPORTED;
-            }
+        device.rotate = ext->camera.rotate;
+        device.width  = ext->camera.width;
+        device.height = ext->camera.height;
 
-            device.info.resolution.width  = pconfig->isp.width;
-            device.info.resolution.height = pconfig->isp.height;
+        if (ext->camera.fps == 10) {
+            device.fps = FPS10;
+        } else if (ext->camera.fps == 15) {
+            device.fps = FPS15;
+        } else if (ext->camera.fps == 25) {
+            device.fps = FPS25;
+        } else if (ext->camera.fps == 30) {
+            device.fps = FPS30;
+        } else {
+            bk_printf("not support camera fps: %d\r\n", ext->camera.fps);
+            return OPRT_NOT_SUPPORTED;
         }
     }
 
-    bk_printf("video config:\r\n");
-    bk_printf("\ttype %d, mode %d, fmt %d\r\n", device.type, device.mode, device.fmt);
-    bk_printf("\twidth %d, height %d, fps %d\r\n", device.info.resolution.width, device.info.resolution.height, device.info.fps);
-
-    if (device.type == UVC_CAMERA) {
-        bk_printf("\tpower ctrl: %d %d\r\n", __vi_uvc_power_pin, __vi_uvc_active_level);
-        device.ty_param[0] = __vi_uvc_power_pin;
-        device.ty_param[1] = __vi_uvc_active_level;
-    } else if (device.type == DVP_CAMERA) {
-        bk_printf("\tpower ctrl: %d %d, i2c: %d %d\r\n",
-                __vi_dvp_power_pin, __vi_dvp_active_level, __vi_dvp_i2c_clk, __vi_dvp_i2c_sda);
-        device.ty_param[2] = __vi_dvp_power_pin;
-        device.ty_param[3] = __vi_dvp_active_level;
-        device.ty_param[4] = __vi_dvp_i2c_clk;
-        device.ty_param[5] = __vi_dvp_i2c_sda;
+    ret = media_app_camera_open(&video_handle, &device);
+    if (ret != BK_OK) {
+        bk_printf("%s, %d, open failed...\n", __func__, __LINE__);
+        return OPRT_COM_ERROR;
     }
 
-    if (device.type == UVC_CAMERA)
-        vi_uvc_status = 1;
-    else if (device.type == DVP_CAMERA)
-        vi_dvp_status = 1;
+    ret = media_app_set_rotate(device.rotate);
+    if (ret != OPRT_OK) {
+        return ret;
+    }
 
+    if (device.type == UVC_CAMERA) {
+        vi_uvc_status = 1;
+        lcd_jdec_pipeline_open();
+    } else if (device.type == DVP_CAMERA) {
+        vi_dvp_status = 1;
+        img_service_open();
+    }
+
+    vi_handle = video_handle;
+    vi_uvc_port = device.port;
     return ret;
 }
 
@@ -197,20 +188,28 @@ OPERATE_RET tkl_vi_init(TKL_VI_CONFIG_T *pconfig, int count)
 OPERATE_RET tkl_vi_uninit(TKL_VI_CAMERA_TYPE_E device_type)
 {
     OPERATE_RET ret;
-    camera_type_t type = UNKNOW_CAMERA;
+    camera_handle_t handle = NULL;
 
+    camera_type_t type;
     if (device_type == TKL_VI_CAMERA_TYPE_UVC) {
         type = UVC_CAMERA;
         vi_uvc_status = 2;
-    }
-    else if (device_type == TKL_VI_CAMERA_TYPE_DVP) {
+        lcd_jdec_pipeline_close();
+    } else if (device_type == TKL_VI_CAMERA_TYPE_DVP) {
         type = DVP_CAMERA;
         vi_dvp_status = 2;
+        img_service_close();
     }
-
-    tkl_system_sleep(100);
-
-    ret = media_app_camera_close(type);
+    handle = bk_camera_handle_node_pop();
+    if (handle)
+    {
+        media_app_camera_close(&handle);
+    }
+    else
+    {
+        bk_printf("Pop node failed in %s: %d\r\n", __func__, __LINE__);
+        ret = OPRT_COM_ERROR;
+    }
     return ret;
 }
 

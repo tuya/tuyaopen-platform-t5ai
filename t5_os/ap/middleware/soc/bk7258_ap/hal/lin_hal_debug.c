@@ -1,0 +1,265 @@
+// Copyright 2022-2023 Beken
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+// This is a generated file, if you need to modify it, use the script to
+// generate and modify all the struct.h, ll.h, reg.h, debug_dump.c files!
+
+#include "hal_config.h"
+#include "lin_hw.h"
+#include "lin_hal.h"
+
+#if CFG_HAL_DEBUG_LIN
+typedef void (*lin_dump_fn_t)(void);
+typedef struct {
+	uint32_t start;
+	uint32_t end;
+	lin_dump_fn_t fn;
+} lin_reg_fn_map_t;
+
+static void lin_dump_deviceid(void)
+{
+	SOC_LOGD("deviceid: %8x\r\n", REG_READ(SOC_LIN_REG_BASE + (0x0 << 2)));
+}
+
+static void lin_dump_versionid(void)
+{
+	SOC_LOGD("versionid: %8x\r\n", REG_READ(SOC_LIN_REG_BASE + (0x1 << 2)));
+}
+
+static void lin_dump_global_ctrl(void)
+{
+	lin_global_ctrl_t *r = (lin_global_ctrl_t *)(SOC_LIN_REG_BASE + (0x2 << 2));
+
+	SOC_LOGD("global_ctrl: %8x\r\n", REG_READ(SOC_LIN_REG_BASE + (0x2 << 2)));
+	SOC_LOGD("	soft_rst: %8x\r\n", r->soft_rst);
+	SOC_LOGD("	bypass_cfg: %8x\r\n", r->bypass_cfg);
+	SOC_LOGD("	lin_master: %8x\r\n", r->lin_master);
+	SOC_LOGD("	reserved_bit_3_31: %8x\r\n", r->reserved_bit_3_31);
+}
+
+static void lin_dump_global_status(void)
+{
+	SOC_LOGD("global_status: %8x\r\n", REG_READ(SOC_LIN_REG_BASE + (0x3 << 2)));
+}
+
+static void lin_dump_rsv_4_1f(void)
+{
+	for (uint32_t idx = 0; idx < 28; idx++) {
+		SOC_LOGD("rsv_4_1f: %8x\r\n", REG_READ(SOC_LIN_REG_BASE + ((0x4 + idx) << 2)));
+	}
+}
+
+static void lin_dump_data(void)
+{
+	lin_data_t *r;
+	int i;
+	for (i = 0; i < 8; i++) {
+ 		r = (lin_data_t *)(SOC_LIN_REG_BASE + ((0x20 + i) << 2));
+
+		SOC_LOGD("data0: %8x\r\n", REG_READ(SOC_LIN_REG_BASE + (0x20 << 2)));
+		SOC_LOGD("	byte: %8x\r\n", r->byte);
+		SOC_LOGD("	reserved_bit_8_31: %8x\r\n", r->reserved_bit_8_31);
+	}
+}
+#if 0
+static void lin_dump_data1(void)
+{
+	lin_data1_t *r = (lin_data1_t *)(SOC_LIN_REG_BASE + (0x21 << 2));
+
+	SOC_LOGD("data1: %8x\r\n", REG_READ(SOC_LIN_REG_BASE + (0x21 << 2)));
+	SOC_LOGD("	byte: %8x\r\n", r->byte);
+	SOC_LOGD("	reserved_bit_8_31: %8x\r\n", r->reserved_bit_8_31);
+}
+
+static void lin_dump_data2(void)
+{
+	lin_data2_t *r = (lin_data2_t *)(SOC_LIN_REG_BASE + (0x22 << 2));
+
+	SOC_LOGD("data2: %8x\r\n", REG_READ(SOC_LIN_REG_BASE + (0x22 << 2)));
+	SOC_LOGD("	byte: %8x\r\n", r->byte);
+	SOC_LOGD("	reserved_bit_8_31: %8x\r\n", r->reserved_bit_8_31);
+}
+
+static void lin_dump_data3(void)
+{
+	lin_data3_t *r = (lin_data3_t *)(SOC_LIN_REG_BASE + (0x23 << 2));
+
+	SOC_LOGD("data3: %8x\r\n", REG_READ(SOC_LIN_REG_BASE + (0x23 << 2)));
+	SOC_LOGD("	byte: %8x\r\n", r->byte);
+	SOC_LOGD("	reserved_bit_8_31: %8x\r\n", r->reserved_bit_8_31);
+}
+
+static void lin_dump_data4(void)
+{
+	lin_data4_t *r = (lin_data4_t *)(SOC_LIN_REG_BASE + (0x24 << 2));
+
+	SOC_LOGD("data4: %8x\r\n", REG_READ(SOC_LIN_REG_BASE + (0x24 << 2)));
+	SOC_LOGD("	byte: %8x\r\n", r->byte);
+	SOC_LOGD("	reserved_bit_8_31: %8x\r\n", r->reserved_bit_8_31);
+}
+
+static void lin_dump_data5(void)
+{
+	lin_data5_t *r = (lin_data5_t *)(SOC_LIN_REG_BASE + (0x25 << 2));
+
+	SOC_LOGD("data5: %8x\r\n", REG_READ(SOC_LIN_REG_BASE + (0x25 << 2)));
+	SOC_LOGD("	byte: %8x\r\n", r->byte);
+	SOC_LOGD("	reserved_bit_8_31: %8x\r\n", r->reserved_bit_8_31);
+}
+
+static void lin_dump_data6(void)
+{
+	lin_data6_t *r = (lin_data6_t *)(SOC_LIN_REG_BASE + (0x26 << 2));
+
+	SOC_LOGD("data6: %8x\r\n", REG_READ(SOC_LIN_REG_BASE + (0x26 << 2)));
+	SOC_LOGD("	byte: %8x\r\n", r->byte);
+	SOC_LOGD("	reserved_bit_8_31: %8x\r\n", r->reserved_bit_8_31);
+}
+
+static void lin_dump_data7(void)
+{
+	lin_data7_t *r = (lin_data7_t *)(SOC_LIN_REG_BASE + (0x27 << 2));
+
+	SOC_LOGD("data7: %8x\r\n", REG_READ(SOC_LIN_REG_BASE + (0x27 << 2)));
+	SOC_LOGD("	byte: %8x\r\n", r->byte);
+	SOC_LOGD("	reserved_bit_8_31: %8x\r\n", r->reserved_bit_8_31);
+}
+#endif
+
+static void lin_dump_ctrl(void)
+{
+	lin_ctrl_t *r = (lin_ctrl_t *)(SOC_LIN_REG_BASE + (0x28 << 2));
+
+	SOC_LOGD("ctrl: %8x\r\n", REG_READ(SOC_LIN_REG_BASE + (0x28 << 2)));
+	SOC_LOGD("	start_req: %8x\r\n", r->start_req);
+	SOC_LOGD("	wakeup: %8x\r\n", r->wakeup);
+	SOC_LOGD("	reset_error: %8x\r\n", r->reset_error);
+	SOC_LOGD("	reset_int: %8x\r\n", r->reset_int);
+	SOC_LOGD("	data_ack: %8x\r\n", r->data_ack);
+	SOC_LOGD("	transmit: %8x\r\n", r->transmit);
+	SOC_LOGD("	sleep: %8x\r\n", r->sleep);
+	SOC_LOGD("	stop: %8x\r\n", r->stop);
+	SOC_LOGD("	reserved_8_31: %8x\r\n", r->reserved_8_31);
+}
+
+static void lin_dump_status(void)
+{
+	lin_status_t *r = (lin_status_t *)(SOC_LIN_REG_BASE + (0x29 << 2));
+
+	SOC_LOGD("status: %8x\r\n", REG_READ(SOC_LIN_REG_BASE + (0x29 << 2)));
+	SOC_LOGD("	complete: %8x\r\n", r->complete);
+	SOC_LOGD("	wake_up: %8x\r\n", r->wake_up);
+	SOC_LOGD("	error: %8x\r\n", r->error);
+	SOC_LOGD("	int: %8x\r\n", r->intr);
+	SOC_LOGD("	data_req: %8x\r\n", r->data_req);
+	SOC_LOGD("	aborted: %8x\r\n", r->aborted);
+	SOC_LOGD("	bus_idle_timeout: %8x\r\n", r->bus_idle_timeout);
+	SOC_LOGD("	lin_active: %8x\r\n", r->lin_active);
+	SOC_LOGD("	reserved_8_31: %8x\r\n", r->reserved_8_31);
+}
+
+static void lin_dump_err(void)
+{
+	lin_err_t *r = (lin_err_t *)(SOC_LIN_REG_BASE + (0x2a << 2));
+
+	SOC_LOGD("err: %8x\r\n", REG_READ(SOC_LIN_REG_BASE + (0x2a << 2)));
+	SOC_LOGD("	bit: %8x\r\n", r->bit);
+	SOC_LOGD("	chk: %8x\r\n", r->chk);
+	SOC_LOGD("	timeout: %8x\r\n", r->timeout);
+	SOC_LOGD("	parity: %8x\r\n", r->parity);
+	SOC_LOGD("	reserved_4_31: %8x\r\n", r->reserved_4_31);
+}
+
+static void lin_dump_type(void)
+{
+	lin_type_t *r = (lin_type_t *)(SOC_LIN_REG_BASE + (0x2b << 2));
+
+	SOC_LOGD("type: %8x\r\n", REG_READ(SOC_LIN_REG_BASE + (0x2b << 2)));
+	SOC_LOGD("	data_length: %8x\r\n", r->data_length);
+	SOC_LOGD("	reserved_4_6: %8x\r\n", r->reserved_4_6);
+	SOC_LOGD("	enh_check: %8x\r\n", r->enh_check);
+	SOC_LOGD("	reserved_8_31: %8x\r\n", r->reserved_8_31);
+}
+
+static void lin_dump_btcfg0(void)
+{
+	lin_btcfg0_t *r = (lin_btcfg0_t *)(SOC_LIN_REG_BASE + (0x2c << 2));
+
+	SOC_LOGD("btcfg0: %8x\r\n", REG_READ(SOC_LIN_REG_BASE + (0x2c << 2)));
+	SOC_LOGD("	bt_div1: %8x\r\n", r->bt_div1);
+	SOC_LOGD("	reserved_bit_8_31: %8x\r\n", r->reserved_bit_8_31);
+}
+
+static void lin_dump_btcfg1(void)
+{
+	lin_btcfg1_t *r = (lin_btcfg1_t *)(SOC_LIN_REG_BASE + (0x2d << 2));
+
+	SOC_LOGD("btcfg1: %8x\r\n", REG_READ(SOC_LIN_REG_BASE + (0x2d << 2)));
+	SOC_LOGD("	bt_div2: %8x\r\n", r->bt_div2);
+	SOC_LOGD("	bt_mul: %8x\r\n", r->bt_mul);
+	SOC_LOGD("	prescl1: %8x\r\n", r->prescl1);
+	SOC_LOGD("	reserved_8_31: %8x\r\n", r->reserved_8_31);
+}
+
+static void lin_dump_ident(void)
+{
+	lin_ident_t *r = (lin_ident_t *)(SOC_LIN_REG_BASE + (0x2e << 2));
+
+	SOC_LOGD("ident: %8x\r\n", REG_READ(SOC_LIN_REG_BASE + (0x2e << 2)));
+	SOC_LOGD("	id: %8x\r\n", r->id);
+	SOC_LOGD("	reserved_6_31: %8x\r\n", r->reserved_6_31);
+}
+
+static void lin_dump_tcfg(void)
+{
+	lin_tcfg_t *r = (lin_tcfg_t *)(SOC_LIN_REG_BASE + (0x2f << 2));
+
+	SOC_LOGD("tcfg: %8x\r\n", REG_READ(SOC_LIN_REG_BASE + (0x2f << 2)));
+	SOC_LOGD("	wup_repeat_time: %8x\r\n", r->wup_repeat_time);
+	SOC_LOGD("	bus_inactivity_time: %8x\r\n", r->bus_inactivity_time);
+	SOC_LOGD("	reserved_4_5: %8x\r\n", r->reserved_4_5);
+	SOC_LOGD("	prescl2: %8x\r\n", r->prescl2);
+	SOC_LOGD("	reserved_7_31: %8x\r\n", r->reserved_7_31);
+}
+
+static lin_reg_fn_map_t s_lin_fn[] =
+{
+	{0x0, 0x0, lin_dump_deviceid},
+	{0x1, 0x1, lin_dump_versionid},
+	{0x2, 0x2, lin_dump_global_ctrl},
+	{0x3, 0x3, lin_dump_global_status},
+	{0x4, 0x20, lin_dump_rsv_4_1f},
+	{0x20, 0x27, lin_dump_data},
+	{0x28, 0x28, lin_dump_ctrl},
+	{0x29, 0x29, lin_dump_status},
+	{0x2a, 0x2a, lin_dump_err},
+	{0x2b, 0x2b, lin_dump_type},
+	{0x2c, 0x2c, lin_dump_btcfg0},
+	{0x2d, 0x2d, lin_dump_btcfg1},
+	{0x2e, 0x2e, lin_dump_ident},
+	{0x2f, 0x2f, lin_dump_tcfg},
+	{-1, -1, 0}
+};
+
+void lin_struct_dump(uint32_t start, uint32_t end)
+{
+	uint32_t dump_fn_cnt = sizeof(s_lin_fn)/sizeof(s_lin_fn[0]) - 1;
+
+	for (uint32_t idx = 0; idx < dump_fn_cnt; idx++) {
+		if ((start <= s_lin_fn[idx].start) && (end >= s_lin_fn[idx].end)) {
+			s_lin_fn[idx].fn();
+		}
+	}
+}
+#endif

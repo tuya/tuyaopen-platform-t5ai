@@ -11,7 +11,7 @@
 #include "tkl_init_wired.h"
 
 
-const TKL_WIRED_DESC_T c_wired_desc = {
+CONST TKL_WIRED_DESC_T c_wired_desc = {
     .get_status         = tkl_wired_get_status,
     .set_status_cb      = tkl_wired_set_status_cb,
     .set_ip             = tkl_wired_set_ip,

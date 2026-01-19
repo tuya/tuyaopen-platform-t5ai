@@ -45,7 +45,7 @@
  * 
  * @return length of string
  */
-size_t tuya_strlen(const char *str);
+SIZE_T tuya_strlen(const CHAR_T *str);
 
 /**
  * @brief string copy
@@ -55,7 +55,7 @@ size_t tuya_strlen(const char *str);
  * 
  * @return pointer to the final destination string dest
  */
-char *tuya_strcpy(char *dst, const char *src);
+CHAR_T *tuya_strcpy(CHAR_T *dst, const CHAR_T *src);
 
 /**
  * @brief string cat
@@ -65,7 +65,7 @@ char *tuya_strcpy(char *dst, const char *src);
  * 
  * @return pointer to the final destination string dest
  */
-char *tuya_strcat(char* dst, const char* src);
+CHAR_T *tuya_strcat(CHAR_T* dst, const CHAR_T* src);
 
 /**
  * @brief compare the first n characters of two string
@@ -76,7 +76,7 @@ char *tuya_strcat(char* dst, const char* src);
  * 
  * @return 0 one equal, 1 on s1 longer than s2, -1 on s2 longer than s1
  */
-int tuya_strncasecmp(const char *s1, const char *s2, size_t n);
+INT_T tuya_strncasecmp(const CHAR_T *s1, const CHAR_T *s2, SIZE_T n);
 
 /**
  * @brief compare characters of two string
@@ -86,7 +86,7 @@ int tuya_strncasecmp(const char *s1, const char *s2, size_t n);
  * 
  * @return 0 one equal, 1 on s1 longer than s2, -1 on s2 longer than s1
  */
-int tuya_strcmp(const char *src, const char *dst);
+INT_T tuya_strcmp(const CHAR_T *src, const CHAR_T *dst);
 
 /**
  * @brief convert character to hex, if '0'-'f'/'F' -> 0-15, else 0
@@ -95,7 +95,7 @@ int tuya_strcmp(const char *src, const char *dst);
  * 
  * @return the hex value
  */
-uint8_t tuya_asc2hex(char asccode);
+UCHAR_T tuya_asc2hex(CHAR_T asccode);
 
 /**
  * @brief convert the hex character array to hex array
@@ -106,7 +106,7 @@ uint8_t tuya_asc2hex(char asccode);
  * 
  * @return none
  */
-void tuya_ascs2hex(uint8_t *hex, uint8_t *ascs, int srclen);
+VOID_T tuya_ascs2hex(UCHAR_T *hex, UCHAR_T *ascs, INT_T srclen);
 
 /**
  * @brief convert the input hex array to string array
@@ -118,7 +118,7 @@ void tuya_ascs2hex(uint8_t *hex, uint8_t *ascs, int srclen);
  * @return none
  * @note the size of <str> must >= hexlen * 2, convert example 00-ff -> "00"-"FF"
  */
-void tuya_hex2str(uint8_t *str, uint8_t *hex, int hexlen);
+VOID_T tuya_hex2str(UCHAR_T *str, UCHAR_T *hex, INT_T hexlen);
 
 /**
  * @brief convert the input string to number
@@ -130,7 +130,7 @@ void tuya_hex2str(uint8_t *str, uint8_t *hex, int hexlen);
  * @return none
  * @note the size of <pbDest> must >= nLen * 2, convert example 00-ff -> "00"-"FF"
  */
-BOOL_T tuya_str2num(uint32_t *number, const char *str, uint8_t strlen);
+BOOL_T tuya_str2num(UINT_T *number, const CHAR_T *str, UINT8_T strlen);
 
 /**
  * @brief int number convert to buff 
@@ -141,7 +141,7 @@ BOOL_T tuya_str2num(uint32_t *number, const char *str, uint8_t strlen);
  * 
  * @return the arry length of converted
  */
-uint32_t tuya_int2intArray(uint32_t num, uint8_t *intArray, uint8_t len);
+UINT_T tuya_int2intArray(UINT_T num, UINT8_T *intArray, UINT8_T len);
 
 /**
  * @brief int array convert to a int number 
@@ -152,7 +152,7 @@ uint32_t tuya_int2intArray(uint32_t num, uint8_t *intArray, uint8_t len);
  * 
  * @return the number of converted
  */
-uint32_t tuya_intArray2int(uint8_t *intArray, uint32_t index, uint8_t len);
+UINT_T tuya_intArray2int(UINT8_T *intArray, UINT_T index, UINT8_T len);
 
 /**
  * @note buff reversal function
@@ -161,7 +161,7 @@ uint32_t tuya_intArray2int(uint8_t *intArray, uint32_t index, uint8_t len);
  * 
  * @return none
  */
-void tuya_buff_reverse(uint8_t *buf, uint16_t len);
+VOID_T tuya_buff_reverse(UINT8_T *buf, UINT16_T len);
 
 /**
  * @note data reversal function
@@ -171,10 +171,10 @@ void tuya_buff_reverse(uint8_t *buf, uint16_t len);
  * 
  * @return none
  */
-void tuya_data_reverse(uint8_t *dst, uint8_t *src, uint16_t srclen);
+VOID_T tuya_data_reverse(UINT8_T *dst, UINT8_T *src, UINT16_T srclen);
 
 /**
- * @brief sort the char in the buf according ascii value
+ * @brief sort the CHAR_T in the buf according ascii value
  * 
  * @param[in] is_ascend: sorting mode
  * @param[in] buf: the buffer need to sort
@@ -182,7 +182,7 @@ void tuya_data_reverse(uint8_t *dst, uint8_t *src, uint16_t srclen);
  * 
  * @return none 
  */
-void tuya_byte_sort(uint8_t is_ascend, uint8_t *buf, int len);
+VOID_T tuya_byte_sort(UCHAR_T is_ascend, UCHAR_T *buf, INT_T len);
 
 /**
  * @brief find <ch> in <str>, start find in index <revr_index>, find in reverse order.
@@ -193,7 +193,7 @@ void tuya_byte_sort(uint8_t is_ascend, uint8_t *buf, int len);
  * 
  * @return -2 on not found, -1 on invalid parameter, >=0 on the position of the character to find 
  */
-int tuya_find_char_with_reverse_idx(const char *str, const int index, const char ch);
+INT_T tuya_find_char_with_reverse_idx(const CHAR_T *str, const INT_T index, const CHAR_T ch);
 
 /**
  * @brief calculate the number of bits 1 in a number
@@ -202,7 +202,7 @@ int tuya_find_char_with_reverse_idx(const char *str, const int index, const char
  * 
  * @return number of bits 1
  */
-uint32_t tuya_bit1_count(uint32_t num);
+UINT_T tuya_bit1_count(UINT_T num);
 
 /**
  * @brief the software calculates the number of leading zeros
@@ -211,7 +211,7 @@ uint32_t tuya_bit1_count(uint32_t num);
  * 
  * @return number of leading zeros
  */
-uint32_t tuya_leading_zeros_count(uint32_t num);
+UINT_T tuya_leading_zeros_count(UINT_T num);
 
 /**
  * @brief 8-bit cumulative checksum calculation 
@@ -221,7 +221,7 @@ uint32_t tuya_leading_zeros_count(uint32_t num);
  * 
  * @return 8-bit cumulative checksum
  */
-uint8_t tuya_check_sum8(uint8_t *buf, uint32_t len);
+UINT8_T tuya_check_sum8(UINT8_T *buf, UINT32_T len);
 
 /**
  * @brief 16-bit cumulative checksum calculation 
@@ -231,7 +231,7 @@ uint8_t tuya_check_sum8(uint8_t *buf, uint32_t len);
  * 
  * @return 16-bit cumulative checksum
  */
-uint16_t tuya_check_sum16(uint8_t *buf, uint32_t len);
+UINT16_T tuya_check_sum16(UINT8_T *buf, UINT32_T len);
 
 
 #ifdef __cplusplus

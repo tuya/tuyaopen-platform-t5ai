@@ -7,8 +7,8 @@
 * @copyright Copyright 2021-2030 Tuya Inc. All Rights Reserved.
 *
 */
-#ifndef __TKL_SPI_H__
-#define __TKL_SPI_H__
+#ifndef __TKL_QSPI_H__
+#define __TKL_QSPI_H__
 
 #include "tuya_cloud_types.h"
 #include "tkl_gpio.h"
@@ -46,11 +46,7 @@ OPERATE_RET tkl_qspi_deinit(TUYA_QSPI_NUM_E port);
  *
  * @return  OPRT_OK on success. Others on error, please refer to tuya_error_code.h
  */
-OPERATE_RET tkl_qspi_send(TUYA_QSPI_NUM_E port, void *data, uint16_t size);
-
-OPERATE_RET tkl_qspi_send_cmd(TUYA_QSPI_NUM_E port, uint8_t cmd);
-
-OPERATE_RET tkl_qspi_send_data_indirect_mode(TUYA_QSPI_NUM_E port, uint8_t *data, uint32_t data_len);
+OPERATE_RET tkl_qspi_send(TUYA_QSPI_NUM_E port, VOID_T *data, UINT32_T size);
 
 /**
  * @brief qspi read from addr by mapping mode
@@ -62,7 +58,7 @@ OPERATE_RET tkl_qspi_send_data_indirect_mode(TUYA_QSPI_NUM_E port, uint8_t *data
  *
  * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
  */
-OPERATE_RET tkl_qspi_recv(TUYA_QSPI_NUM_E port, void *data, uint16_t size);
+OPERATE_RET tkl_qspi_recv(TUYA_QSPI_NUM_E port, VOID_T *data, UINT32_T size);
 
 /**
  * @brief qspi command send
@@ -74,16 +70,6 @@ OPERATE_RET tkl_qspi_recv(TUYA_QSPI_NUM_E port, void *data, uint16_t size);
  * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
  */
 OPERATE_RET tkl_qspi_comand(TUYA_QSPI_NUM_E port, TUYA_QSPI_CMD_T *command);
-
-/**
- * @brief adort qspi transfer,or qspi send, or qspi recv
- * 
- * @param[in] port: qspi port
- * 
- * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
- */
-
-OPERATE_RET tkl_qspi_abort_transfer(TUYA_QSPI_NUM_E port);
 
 /**
  * @brief qspi irq init
@@ -113,6 +99,15 @@ OPERATE_RET tkl_qspi_irq_enable(TUYA_QSPI_NUM_E port);
  * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
  */
 OPERATE_RET tkl_qspi_irq_disable(TUYA_QSPI_NUM_E port);
+
+/**
+ * @brief force cs enable / disable
+ *
+ * @param[in] port: qspi port id, id index starts at 0
+ * @param[in] enable: TRUE : enable , FALSE : disable
+ * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
+ */
+OPERATE_RET tkl_qspi_force_cs_pin(TUYA_QSPI_NUM_E port, TUYA_GPIO_LEVEL_E level);
 
 #ifdef __cplusplus
 }

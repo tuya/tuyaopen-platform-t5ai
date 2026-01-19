@@ -1,8 +1,0 @@
-menu "User_driver"
-
-	config FLASH_SIZE_4M
-		depends on FLASH
-		bool "Enable Flash Size 4M"
-		default n
-
-endmenu

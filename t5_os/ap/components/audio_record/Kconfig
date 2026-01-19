@@ -1,0 +1,8 @@
+menu "Audio Record"
+
+	config AUDIO_RECORD
+		depends on AUDIO_ADC
+		bool "Enable Audio Record"
+		default n
+
+endmenu

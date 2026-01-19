@@ -1,0 +1,101 @@
+#
+# Automatically generated file. DO NOT EDIT.
+# Beken IoT Development Framework (BEKEN-ARMINO) Project Configuration
+#
+
+#
+# SOC_CONFIG
+#
+CONFIG_SOC_BK7258=y
+# CONFIG_SOC_BK7258_AP is not set
+# CONFIG_SOC_BK7257 is not set
+# CONFIG_SOC_BK7257_AP is not set
+CONFIG_CPU_CNT=2
+CONFIG_SOC_STR="bk7258_ap"
+CONFIG_SOC_ARCH="cm33"
+CONFIG_SOC_BK7236XX=y
+# CONFIG_SOC_SMP is not set
+# end of SOC_CONFIG
+
+#
+# ARMINO Configuration
+#
+
+#
+# Common Configuration
+#
+
+#
+# Compile/Build
+#
+CONFIG_OBJDUMP=y
+CONFIG_BUILD_DEFAULT_VERSION=y
+# CONFIG_DEBUG_VERSION is not set
+# CONFIG_RELEASE_VERSION is not set
+# end of Compile/Build
+
+#
+# Debug
+#
+CONFIG_ASSERT_IGNORE=y
+# CONFIG_ASSERT_HALT is not set
+# CONFIG_ASSERT_REBOOT is not set
+# CONFIG_JTAG is not set
+# end of Debug
+# end of Common Configuration
+
+#
+# Features Configuration
+#
+CONFIG_NO_HOSTED=y
+# CONFIG_SEMI_HOSTED is not set
+# CONFIG_FULLY_HOSTED is not set
+# CONFIG_WIFI_SENSOR is not set
+# CONFIG_BLUETOOTH is not set
+# end of Features Configuration
+
+#
+# Modules Configuration
+#
+
+#
+# Components Configuration
+#
+
+#
+# Middleware Configuration
+#
+
+#
+# Projects Configuration
+#
+
+#
+# Properties Configuration
+#
+
+#
+# modules::usb
+#
+CONFIG_USB=y
+
+#
+# Modify USB Config
+#
+CONFIG_USB_OS=y
+# CONFIG_USB_NONE is not set
+# end of Modify USB Config
+# end of modules::usb
+
+#
+# AUDIO_AACDEC
+#
+# CONFIG_AUDIO_AACDEC is not set
+# end of AUDIO_AACDEC
+# end of Properties Configuration
+
+#
+# Extra Modules Configuration
+#
+# end of Modules Configuration
+# end of ARMINO Configuration

@@ -1,0 +1,15 @@
+menu "OTP"
+	config OTP_V1
+		bool "Enable OTP_V1"
+		default n
+
+	config PHY_RFCALI_TO_OTP
+		bool "Enable rfcali_to_otp"
+		default n
+		help
+			Use OTP to save rfcali data
+
+	config AON_ENCP
+		bool "Always enable encp"
+		default n
+endmenu

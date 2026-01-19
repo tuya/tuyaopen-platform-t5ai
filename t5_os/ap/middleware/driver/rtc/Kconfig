@@ -1,0 +1,15 @@
+menu "AON_RTC"
+	config AON_RTC
+		bool "Enable AON_RTC"
+		default y
+
+	config AON_RTC_64BIT
+		bool "Enable AON_RTC_64BIT"
+		default y
+
+	config AON_RTC_KEEP_TIME_SUPPORT
+		bool "Enable rtc keep time when enter deepsleep,set data on flash"
+		default n
+
+endmenu
+

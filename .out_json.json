@@ -1,0 +1,727 @@
+{
+    "symbol_map": {
+        "_NO_NAME_0c26b7912894ff1a8e74abb977f7179a_1": {
+            "name": "_NO_NAME_0c26b7912894ff1a8e74abb977f7179a_1",
+            "prompt": "Main menu",
+            "comment": "",
+            "type": 31,
+            "value_type": 0,
+            "user_value": "",
+            "help": "",
+            "default_conditions": [],
+            "select_conditions": [],
+            "range_conditions": [],
+            "reverse_list": [],
+            "depend_on": null,
+            "_assigned": true
+        },
+        "VENDOR_CONFIG": {
+            "name": "VENDOR_CONFIG",
+            "prompt": "vendor config",
+            "comment": "",
+            "type": 7,
+            "value_type": 3,
+            "user_value": "",
+            "help": "",
+            "default_conditions": [
+                {
+                    "value": "y",
+                    "condition": null
+                }
+            ],
+            "select_conditions": [],
+            "range_conditions": [],
+            "reverse_list": [],
+            "depend_on": null,
+            "_assigned": true
+        },
+        "HAVE_PSRAM": {
+            "name": "HAVE_PSRAM",
+            "prompt": "have psram",
+            "comment": "",
+            "type": 7,
+            "value_type": 3,
+            "user_value": "",
+            "help": "",
+            "default_conditions": [
+                {
+                    "value": "y",
+                    "condition": null
+                }
+            ],
+            "select_conditions": [],
+            "range_conditions": [],
+            "reverse_list": [],
+            "depend_on": null,
+            "_assigned": true
+        },
+        "PSRAM_SIZE": {
+            "name": "PSRAM_SIZE",
+            "prompt": "psram size",
+            "comment": "",
+            "type": 7,
+            "value_type": 27,
+            "user_value": "",
+            "help": "",
+            "default_conditions": [
+                {
+                    "value": "8",
+                    "condition": null
+                }
+            ],
+            "select_conditions": [],
+            "range_conditions": [
+                {
+                    "max": 16,
+                    "min": 8,
+                    "condition": null
+                }
+            ],
+            "reverse_list": [
+                "HAVE_PSRAM"
+            ],
+            "depend_on": {
+                "operator": 25,
+                "first": "HAVE_PSRAM",
+                "second": null
+            },
+            "_assigned": true
+        },
+        "_NO_NAME_ee5751c8584e95721489b13b81d464c5_2": {
+            "name": "_NO_NAME_ee5751c8584e95721489b13b81d464c5_2",
+            "prompt": "TKL_CONFIG",
+            "comment": "",
+            "type": 31,
+            "value_type": 0,
+            "user_value": "",
+            "help": "",
+            "default_conditions": [],
+            "select_conditions": [],
+            "range_conditions": [],
+            "reverse_list": [],
+            "depend_on": null,
+            "_assigned": true
+        },
+        "TUYA_DEBUG_FIRMWARE": {
+            "name": "TUYA_DEBUG_FIRMWARE",
+            "prompt": "Generate debug firmware",
+            "comment": "",
+            "type": 7,
+            "value_type": 3,
+            "user_value": "",
+            "help": "",
+            "default_conditions": [
+                {
+                    "value": "n",
+                    "condition": null
+                }
+            ],
+            "select_conditions": [
+                {
+                    "name": "SWD_DEBUG_MODE",
+                    "condition": null
+                }
+            ],
+            "range_conditions": [],
+            "reverse_list": [],
+            "depend_on": null,
+            "_assigned": true
+        },
+        "CPU_INDEX": {
+            "name": "CPU_INDEX",
+            "prompt": "cpu index",
+            "comment": "",
+            "type": 7,
+            "value_type": 27,
+            "user_value": "",
+            "help": "",
+            "default_conditions": [
+                {
+                    "value": "255",
+                    "condition": null
+                }
+            ],
+            "select_conditions": [],
+            "range_conditions": [],
+            "reverse_list": [],
+            "depend_on": null,
+            "_assigned": true
+        },
+        "TUYA_LCD": {
+            "name": "TUYA_LCD",
+            "prompt": "tuya lcd",
+            "comment": "",
+            "type": 7,
+            "value_type": 3,
+            "user_value": "",
+            "help": "",
+            "default_conditions": [
+                {
+                    "value": "y",
+                    "condition": null
+                }
+            ],
+            "select_conditions": [],
+            "range_conditions": [],
+            "reverse_list": [],
+            "depend_on": null,
+            "_assigned": true
+        },
+        "_NO_NAME_ee5751c8584e95721489b13b81d464c5_3": {
+            "name": "_NO_NAME_ee5751c8584e95721489b13b81d464c5_3",
+            "prompt": "TUYA LCD Driver",
+            "comment": "",
+            "type": 31,
+            "value_type": 0,
+            "user_value": "",
+            "help": "",
+            "default_conditions": [],
+            "select_conditions": [],
+            "range_conditions": [],
+            "reverse_list": [
+                "TUYA_LCD"
+            ],
+            "depend_on": {
+                "operator": 25,
+                "first": "TUYA_LCD",
+                "second": null
+            },
+            "_assigned": true
+        },
+        "TUYA_ST7701S": {
+            "name": "TUYA_ST7701S",
+            "prompt": "lcd st7701s",
+            "comment": "",
+            "type": 7,
+            "value_type": 3,
+            "user_value": "",
+            "help": "",
+            "default_conditions": [
+                {
+                    "value": "y",
+                    "condition": null
+                }
+            ],
+            "select_conditions": [],
+            "range_conditions": [],
+            "reverse_list": [
+                "TUYA_LCD"
+            ],
+            "depend_on": {
+                "operator": 25,
+                "first": "TUYA_LCD",
+                "second": null
+            },
+            "_assigned": true
+        },
+        "TUYA_ST7701SN": {
+            "name": "TUYA_ST7701SN",
+            "prompt": "lcd st7701sn",
+            "comment": "",
+            "type": 7,
+            "value_type": 3,
+            "user_value": "",
+            "help": "",
+            "default_conditions": [
+                {
+                    "value": "y",
+                    "condition": null
+                }
+            ],
+            "select_conditions": [],
+            "range_conditions": [],
+            "reverse_list": [
+                "TUYA_LCD"
+            ],
+            "depend_on": {
+                "operator": 25,
+                "first": "TUYA_LCD",
+                "second": null
+            },
+            "_assigned": true
+        },
+        "LCD_SPI_GC9A01": {
+            "name": "LCD_SPI_GC9A01",
+            "prompt": "lcd gc9a01",
+            "comment": "",
+            "type": 7,
+            "value_type": 3,
+            "user_value": "",
+            "help": "",
+            "default_conditions": [
+                {
+                    "value": "y",
+                    "condition": null
+                }
+            ],
+            "select_conditions": [],
+            "range_conditions": [],
+            "reverse_list": [
+                "TUYA_LCD"
+            ],
+            "depend_on": {
+                "operator": 25,
+                "first": "TUYA_LCD",
+                "second": null
+            },
+            "_assigned": true
+        },
+        "_NO_NAME_ee5751c8584e95721489b13b81d464c5_4": {
+            "name": "_NO_NAME_ee5751c8584e95721489b13b81d464c5_4",
+            "prompt": "TUYA LCD Type",
+            "comment": "",
+            "type": 31,
+            "value_type": 0,
+            "user_value": "",
+            "help": "",
+            "default_conditions": [],
+            "select_conditions": [],
+            "range_conditions": [],
+            "reverse_list": [],
+            "depend_on": null,
+            "_assigned": true
+        },
+        "LCD_TYPE": {
+            "name": "LCD_TYPE",
+            "prompt": "lcd type select",
+            "comment": "",
+            "type": 4,
+            "value_type": 3,
+            "user_value": "",
+            "help": "",
+            "default_conditions": [
+                {
+                    "value": "TUYA_LCD_RGB565",
+                    "condition": null
+                }
+            ],
+            "select_conditions": [],
+            "range_conditions": [],
+            "reverse_list": [
+                "TUYA_LCD"
+            ],
+            "depend_on": {
+                "operator": 25,
+                "first": "TUYA_LCD",
+                "second": null
+            },
+            "_assigned": true
+        },
+        "TUYA_LCD_RGB565": {
+            "name": "TUYA_LCD_RGB565",
+            "prompt": "rgb565",
+            "comment": "",
+            "type": 7,
+            "value_type": 3,
+            "user_value": "",
+            "help": "",
+            "default_conditions": [],
+            "select_conditions": [],
+            "range_conditions": [],
+            "reverse_list": [],
+            "depend_on": null,
+            "_assigned": true
+        },
+        "TUYA_LCD_RGB888": {
+            "name": "TUYA_LCD_RGB888",
+            "prompt": "rgb888",
+            "comment": "",
+            "type": 7,
+            "value_type": 3,
+            "user_value": "",
+            "help": "",
+            "default_conditions": [],
+            "select_conditions": [],
+            "range_conditions": [],
+            "reverse_list": [],
+            "depend_on": null,
+            "_assigned": true
+        },
+        "TUYA_PAGE_TILEVIEW": {
+            "name": "TUYA_PAGE_TILEVIEW",
+            "prompt": "Config Tuya GUI Gesture",
+            "comment": "",
+            "type": 7,
+            "value_type": 3,
+            "user_value": "",
+            "help": "",
+            "default_conditions": [
+                {
+                    "value": "n",
+                    "condition": null
+                }
+            ],
+            "select_conditions": [],
+            "range_conditions": [],
+            "reverse_list": [],
+            "depend_on": null,
+            "_assigned": true
+        },
+        "TUYA_TEST_CLI": {
+            "name": "TUYA_TEST_CLI",
+            "prompt": "tuya test",
+            "comment": "",
+            "type": 7,
+            "value_type": 3,
+            "user_value": "",
+            "help": "",
+            "default_conditions": [
+                {
+                    "value": "n",
+                    "condition": null
+                }
+            ],
+            "select_conditions": [],
+            "range_conditions": [],
+            "reverse_list": [],
+            "depend_on": null,
+            "_assigned": true
+        },
+        "VND_CAL_VERSION": {
+            "name": "VND_CAL_VERSION",
+            "prompt": "cal file version",
+            "comment": "",
+            "type": 7,
+            "value_type": 27,
+            "user_value": "",
+            "help": "",
+            "default_conditions": [
+                {
+                    "value": "1",
+                    "condition": null
+                }
+            ],
+            "select_conditions": [],
+            "range_conditions": [
+                {
+                    "max": 3,
+                    "min": 1,
+                    "condition": null
+                }
+            ],
+            "reverse_list": [],
+            "depend_on": null,
+            "_assigned": true
+        },
+        "ENABLE_TUYA_LVGL_TEST_DEMO": {
+            "name": "ENABLE_TUYA_LVGL_TEST_DEMO",
+            "prompt": "enable tuya lvgl test demo",
+            "comment": "",
+            "type": 7,
+            "value_type": 27,
+            "user_value": "",
+            "help": "",
+            "default_conditions": [
+                {
+                    "value": "0",
+                    "condition": null
+                }
+            ],
+            "select_conditions": [],
+            "range_conditions": [
+                {
+                    "max": 1,
+                    "min": 0,
+                    "condition": null
+                }
+            ],
+            "reverse_list": [],
+            "depend_on": null,
+            "_assigned": true
+        },
+        "TUYA_ENABLE_QSPI_FLASH": {
+            "name": "TUYA_ENABLE_QSPI_FLASH",
+            "prompt": "enable tuya qspi flash",
+            "comment": "",
+            "type": 7,
+            "value_type": 3,
+            "user_value": "",
+            "help": "",
+            "default_conditions": [
+                {
+                    "value": "n",
+                    "condition": null
+                }
+            ],
+            "select_conditions": [],
+            "range_conditions": [],
+            "reverse_list": [],
+            "depend_on": null,
+            "_assigned": true
+        },
+        "TUYA_QSPI_FLASH_TYPE": {
+            "name": "TUYA_QSPI_FLASH_TYPE",
+            "prompt": "qspi flash type",
+            "comment": "",
+            "type": 7,
+            "value_type": 47,
+            "user_value": "",
+            "help": "",
+            "default_conditions": [
+                {
+                    "value": "gd25q127c",
+                    "condition": null
+                }
+            ],
+            "select_conditions": [],
+            "range_conditions": [],
+            "reverse_list": [],
+            "depend_on": null,
+            "_assigned": true
+        },
+        "AUDIO_TYPE": {
+            "name": "AUDIO_TYPE",
+            "prompt": "audio type select",
+            "comment": "",
+            "type": 4,
+            "value_type": 3,
+            "user_value": "",
+            "help": "",
+            "default_conditions": [
+                {
+                    "value": "STREAM",
+                    "condition": null
+                }
+            ],
+            "select_conditions": [],
+            "range_conditions": [],
+            "reverse_list": [],
+            "depend_on": null,
+            "_assigned": true
+        },
+        "RAW": {
+            "name": "RAW",
+            "prompt": "raw",
+            "comment": "",
+            "type": 7,
+            "value_type": 3,
+            "user_value": "",
+            "help": "",
+            "default_conditions": [],
+            "select_conditions": [
+                {
+                    "name": "AUDIO_RECORD",
+                    "condition": null
+                },
+                {
+                    "name": "AUDIO_PLAY",
+                    "condition": null
+                }
+            ],
+            "range_conditions": [],
+            "reverse_list": [],
+            "depend_on": null,
+            "_assigned": true
+        },
+        "STREAM": {
+            "name": "STREAM",
+            "prompt": "stream",
+            "comment": "",
+            "type": 7,
+            "value_type": 3,
+            "user_value": "",
+            "help": "",
+            "default_conditions": [],
+            "select_conditions": [
+                {
+                    "name": "ADK_AEC_ALGORITHM",
+                    "condition": null
+                },
+                {
+                    "name": "ADK_G711_ENCODER",
+                    "condition": null
+                },
+                {
+                    "name": "ADK_G711_DECODER",
+                    "condition": null
+                },
+                {
+                    "name": "VOICE_READ_SERVICE",
+                    "condition": null
+                },
+                {
+                    "name": "VOICE_WRITE_SERVICE",
+                    "condition": null
+                },
+                {
+                    "name": "VOICE_SERVICE",
+                    "condition": null
+                },
+                {
+                    "name": "VOICE_SERVICE_USE_PSRAM",
+                    "condition": null
+                },
+                {
+                    "name": "ADK_ONBOARD_MIC_STREAM",
+                    "condition": null
+                },
+                {
+                    "name": "ADK_ONBOARD_SPEAKER_STREAM",
+                    "condition": null
+                }
+            ],
+            "range_conditions": [],
+            "reverse_list": [],
+            "depend_on": null,
+            "_assigned": true
+        }
+    },
+    "root_node": {
+        "name": "_NO_NAME_0c26b7912894ff1a8e74abb977f7179a_1",
+        "type": 31,
+        "prompt": "Main menu",
+        "child_list": [
+            {
+                "name": "VENDOR_CONFIG",
+                "type": 7,
+                "prompt": "vendor config",
+                "child_list": []
+            },
+            {
+                "name": "HAVE_PSRAM",
+                "type": 7,
+                "prompt": "have psram",
+                "child_list": [
+                    {
+                        "name": "PSRAM_SIZE",
+                        "type": 7,
+                        "prompt": "psram size",
+                        "child_list": []
+                    }
+                ]
+            },
+            {
+                "name": "_NO_NAME_ee5751c8584e95721489b13b81d464c5_2",
+                "type": 31,
+                "prompt": "TKL_CONFIG",
+                "child_list": [
+                    {
+                        "name": "TUYA_DEBUG_FIRMWARE",
+                        "type": 7,
+                        "prompt": "Generate debug firmware",
+                        "child_list": []
+                    },
+                    {
+                        "name": "CPU_INDEX",
+                        "type": 7,
+                        "prompt": "cpu index",
+                        "child_list": []
+                    },
+                    {
+                        "name": "TUYA_LCD",
+                        "type": 7,
+                        "prompt": "tuya lcd",
+                        "child_list": [
+                            {
+                                "name": "_NO_NAME_ee5751c8584e95721489b13b81d464c5_3",
+                                "type": 31,
+                                "prompt": "TUYA LCD Driver",
+                                "child_list": [
+                                    {
+                                        "name": "TUYA_ST7701S",
+                                        "type": 7,
+                                        "prompt": "lcd st7701s",
+                                        "child_list": []
+                                    },
+                                    {
+                                        "name": "TUYA_ST7701SN",
+                                        "type": 7,
+                                        "prompt": "lcd st7701sn",
+                                        "child_list": []
+                                    },
+                                    {
+                                        "name": "LCD_SPI_GC9A01",
+                                        "type": 7,
+                                        "prompt": "lcd gc9a01",
+                                        "child_list": []
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        "name": "_NO_NAME_ee5751c8584e95721489b13b81d464c5_4",
+                        "type": 31,
+                        "prompt": "TUYA LCD Type",
+                        "child_list": [
+                            {
+                                "name": "LCD_TYPE",
+                                "type": 4,
+                                "prompt": "lcd type select",
+                                "child_list": [
+                                    {
+                                        "name": "TUYA_LCD_RGB565",
+                                        "type": 7,
+                                        "prompt": "rgb565",
+                                        "child_list": []
+                                    },
+                                    {
+                                        "name": "TUYA_LCD_RGB888",
+                                        "type": 7,
+                                        "prompt": "rgb888",
+                                        "child_list": []
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        "name": "TUYA_PAGE_TILEVIEW",
+                        "type": 7,
+                        "prompt": "Config Tuya GUI Gesture",
+                        "child_list": []
+                    },
+                    {
+                        "name": "TUYA_TEST_CLI",
+                        "type": 7,
+                        "prompt": "tuya test",
+                        "child_list": []
+                    },
+                    {
+                        "name": "VND_CAL_VERSION",
+                        "type": 7,
+                        "prompt": "cal file version",
+                        "child_list": []
+                    },
+                    {
+                        "name": "ENABLE_TUYA_LVGL_TEST_DEMO",
+                        "type": 7,
+                        "prompt": "enable tuya lvgl test demo",
+                        "child_list": []
+                    },
+                    {
+                        "name": "TUYA_ENABLE_QSPI_FLASH",
+                        "type": 7,
+                        "prompt": "enable tuya qspi flash",
+                        "child_list": []
+                    },
+                    {
+                        "name": "TUYA_QSPI_FLASH_TYPE",
+                        "type": 7,
+                        "prompt": "qspi flash type",
+                        "child_list": []
+                    },
+                    {
+                        "name": "AUDIO_TYPE",
+                        "type": 4,
+                        "prompt": "audio type select",
+                        "child_list": [
+                            {
+                                "name": "RAW",
+                                "type": 7,
+                                "prompt": "raw",
+                                "child_list": []
+                            },
+                            {
+                                "name": "STREAM",
+                                "type": 7,
+                                "prompt": "stream",
+                                "child_list": []
+                            }
+                        ]
+                    }
+                ]
+            }
+        ]
+    }
+}

@@ -5,10 +5,20 @@
 #include <driver/lcd.h>
 #include <driver/flash.h>
 #include "lcd_disp_hal.h"
+#include "gpio_map.h"
+
+#define IO_FUNCTION_ENABLE_8080(pin, func)   \
+	do {                                \
+		gpio_dev_unmap(pin);            \
+		gpio_dev_map(pin, func);        \
+		bk_gpio_enable_output(pin);     \
+		bk_gpio_set_capacity(pin,GPIO_DRIVER_CAPACITY_3);    \
+	} while (0)
 
 #define clk_m(a) (a * 1000 * 1000)
 
 TUYA_MCU8080_ISR_CB ty_8080_cb = NULL;
+static lcd_rgb_t *g_mcu = NULL;
 static void __lcd_8080_isr_cb(void)
 {
     flash_op_status_t flash_status = FLASH_OP_IDLE;
@@ -19,7 +29,7 @@ static void __lcd_8080_isr_cb(void)
     }
 }
 
-static OPERATE_RET __rgb_ty_clk_to_bk_clk(uint32_t clk, lcd_clk_t *outclk)
+static OPERATE_RET __rgb_ty_clk_to_bk_clk(UINT32_T clk, lcd_clk_t *outclk)
 {
     lcd_clk_t bk_clk = LCD_30M;
     switch(clk) {
@@ -91,6 +101,53 @@ static OPERATE_RET __rgb_ty_clk_to_bk_clk(uint32_t clk, lcd_clk_t *outclk)
     return 0;
 }
 
+bk_err_t tkl_lcd_mcu_gpio_init(UINT8_T data_bits)
+{
+    bk_printf("%s data_bits:%d\r\n", __func__, data_bits);
+
+    switch (data_bits)
+    {
+    case 18:
+	    IO_FUNCTION_ENABLE_8080(LCD_MCU_D16_PIN, LCD_MCU_D16_FUNC);
+	    IO_FUNCTION_ENABLE_8080(LCD_MCU_D17_PIN, LCD_MCU_D17_FUNC);
+    case 16:
+	    IO_FUNCTION_ENABLE_8080(LCD_MCU_D9_PIN , LCD_MCU_D9_FUNC );
+	    IO_FUNCTION_ENABLE_8080(LCD_MCU_D10_PIN, LCD_MCU_D10_FUNC);
+	    IO_FUNCTION_ENABLE_8080(LCD_MCU_D11_PIN, LCD_MCU_D11_FUNC);
+	    IO_FUNCTION_ENABLE_8080(LCD_MCU_D12_PIN, LCD_MCU_D12_FUNC);
+	    IO_FUNCTION_ENABLE_8080(LCD_MCU_D13_PIN, LCD_MCU_D13_FUNC);
+	    IO_FUNCTION_ENABLE_8080(LCD_MCU_D14_PIN, LCD_MCU_D14_FUNC);
+	    IO_FUNCTION_ENABLE_8080(LCD_MCU_D15_PIN, LCD_MCU_D15_FUNC);
+    case 9:
+	    IO_FUNCTION_ENABLE_8080(LCD_MCU_D8_PIN , LCD_MCU_D8_FUNC );
+    case 8:
+	    IO_FUNCTION_ENABLE_8080(LCD_MCU_D0_PIN, LCD_MCU_D0_FUNC);
+	    IO_FUNCTION_ENABLE_8080(LCD_MCU_D1_PIN, LCD_MCU_D1_FUNC);
+	    IO_FUNCTION_ENABLE_8080(LCD_MCU_D2_PIN, LCD_MCU_D2_FUNC);
+	    IO_FUNCTION_ENABLE_8080(LCD_MCU_D3_PIN, LCD_MCU_D3_FUNC);
+	    IO_FUNCTION_ENABLE_8080(LCD_MCU_D4_PIN, LCD_MCU_D4_FUNC);
+	    IO_FUNCTION_ENABLE_8080(LCD_MCU_D5_PIN, LCD_MCU_D5_FUNC);
+	    IO_FUNCTION_ENABLE_8080(LCD_MCU_D6_PIN, LCD_MCU_D6_FUNC);
+	    IO_FUNCTION_ENABLE_8080(LCD_MCU_D7_PIN, LCD_MCU_D7_FUNC);
+        break;
+    default:
+        break;
+    }
+
+	IO_FUNCTION_ENABLE_8080(LCD_MCU_RDX_PIN, LCD_MCU_RDX_FUNC);
+	IO_FUNCTION_ENABLE_8080(LCD_MCU_WRX_PIN, LCD_MCU_WRX_FUNC);
+	IO_FUNCTION_ENABLE_8080(LCD_MCU_RSX_PIN, LCD_MCU_RSX_FUNC);
+	IO_FUNCTION_ENABLE_8080(LCD_MCU_RESET_PIN, LCD_MCU_RESET_FUNC);
+	IO_FUNCTION_ENABLE_8080(LCD_MCU_CSX_PIN, LCD_MCU_CSX_FUNC);
+
+    bk_gpio_set_capacity(LCD_MCU_RDX_PIN,GPIO_DRIVER_CAPACITY_3);
+    bk_gpio_set_capacity(LCD_MCU_WRX_PIN,GPIO_DRIVER_CAPACITY_3);
+    bk_gpio_set_capacity(LCD_MCU_RESET_PIN,GPIO_DRIVER_CAPACITY_3);
+    bk_gpio_set_capacity(LCD_MCU_RSX_PIN,GPIO_DRIVER_CAPACITY_3);
+    bk_gpio_set_capacity(LCD_MCU_CSX_PIN,GPIO_DRIVER_CAPACITY_3);
+	return BK_OK;
+}
+
 /**
  * @brief 8080 init
  * 
@@ -117,14 +174,15 @@ OPERATE_RET tkl_8080_init(TUYA_8080_BASE_CFG_T *cfg)
     bk_device.init = NULL;
     bk_device.lcd_off = NULL;
 
-    lcd_mcu_t mcu8080 = {0, NULL, NULL, NULL, NULL, NULL};
-    if(__rgb_ty_clk_to_bk_clk(cfg->clk, &mcu8080.clk) != 0) {
+    g_mcu = tkl_system_psram_malloc(sizeof(lcd_mcu_t));
+    memset(g_mcu, 0, sizeof(lcd_mcu_t));
+    if(__rgb_ty_clk_to_bk_clk(cfg->clk, &g_mcu->clk) != 0) {
         bk_printf("clk error %d\r\n",cfg->clk );
         return -2;
     }
 
-    bk_device.mcu= &mcu8080;
-
+    bk_device.mcu= g_mcu;
+    tkl_lcd_mcu_gpio_init(cfg->data_bits);
     bk_err_t ret = lcd_driver_init(&bk_device);
     lcd_hal_8080_start_transfer(0);
 
@@ -141,7 +199,8 @@ OPERATE_RET tkl_8080_deinit(void)
 {
     bk_err_t ret = lcd_driver_deinit();
     
-
+    tkl_system_psram_free(g_mcu);
+    g_mcu = NULL;
     return ret;
 }
 
@@ -169,7 +228,7 @@ OPERATE_RET tkl_8080_irq_cb_register(TUYA_MCU8080_ISR_CB cb)
  *
  * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
  */
-OPERATE_RET tkl_8080_ppi_set(uint16_t width, uint16_t height)
+OPERATE_RET tkl_8080_ppi_set(UINT16_T width, UINT16_T height)
 {
     lcd_driver_ppi_set(width, height);
     bk_printf("%s : width %d, height  %d\r\n",__func__, width, height);
@@ -249,7 +308,7 @@ OPERATE_RET tkl_8080_transfer_stop(void)
  *
  * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
  */
-OPERATE_RET tkl_8080_cmd_send(uint32_t cmd)
+OPERATE_RET tkl_8080_cmd_send(UINT32_T cmd)
 {
     lcd_hal_8080_cmd_param_count(1);
     lcd_hal_8080_write_cmd(cmd);
@@ -266,7 +325,7 @@ OPERATE_RET tkl_8080_cmd_send(uint32_t cmd)
  *
  * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
  */
-OPERATE_RET tkl_8080_cmd_send_with_param(uint32_t cmd, uint32_t *param, uint8_t param_cnt)
+OPERATE_RET tkl_8080_cmd_send_with_param(UINT32_T cmd, UINT32_T *param, UINT8_T param_cnt)
 {
     lcd_hal_8080_cmd_send(param_cnt, cmd, param);
 

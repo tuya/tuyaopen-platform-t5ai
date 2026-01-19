@@ -1,0 +1,21 @@
+{
+    "magic": "BEKEN",
+    "version": "0.1",
+    "count": 2,
+    "section": [
+        {
+            "firmware": "cm-app.bin",
+            "version": "2M.1220",
+            "partition": "app",
+            "start_addr": "0x00010000",
+            "size": "128K"
+        },
+        {
+            "firmware": "ca-app.bin",
+            "version": "2M.1220",
+            "partition": "app2",
+            "start_addr": "0x00030000",
+            "size": "128K"
+        }
+    ]
+}

@@ -1,0 +1,37 @@
+menu "QSPI"
+	config QSPI
+		bool "Enable QSPI"
+		default n
+
+	config QSPI_STATIS
+		bool "Enable QSPI Statis"
+		default n
+
+	config QSPI_MST_FLASH
+		bool "Enable QSPI Flash"
+		depends on QSPI
+		default n
+		help
+			BEKEN Chip sets QSPI interface as a master device, the slave device is a flash,
+			then BEKEN Chip can access the flash with QSPI interface.
+			The application can read/writes data to flash directly by QSPI Flash API,
+			or reads/writes by file system API if enable relates macro, I.E. CONFIG_FATFS, CONFIG_LITTLEFS, CONFIG_VFS...
+
+	config QSPI_FLASH_GD
+		depends on QSPI_MST_FLASH
+		bool "Enable GD Flash"
+		default n
+
+	config QSPI_TEST
+		depends on QSPI && DRIVER_TEST
+		bool "Enable qspi test"
+		default n
+
+	config QSPI_LINE_MODE
+		int "qspi line mode choose"
+		range 1 8
+		default 4
+		help
+		The value should be changed if need to change qspi line mode
+endmenu
+

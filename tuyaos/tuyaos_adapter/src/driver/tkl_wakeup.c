@@ -17,6 +17,7 @@
 #include <driver/aon_rtc.h>
 #endif
 
+#include "driver/pm_ap_core.h"
 #define WAKEUP_SOURCE_CNT   6
 
 static TUYA_WAKEUP_SOURCE_BASE_CFG_T  *wakeup_source = NULL;
@@ -25,7 +26,7 @@ extern void bk_printf(const char *fmt, ...);
 
 alarm_info_t rtc_alarm;
 
-static int __save_wakeup_node(const TUYA_WAKEUP_SOURCE_BASE_CFG_T  *param)
+static int __save_wakeup_node(CONST TUYA_WAKEUP_SOURCE_BASE_CFG_T  *param)
 {
     int i = 0;
 
@@ -64,7 +65,11 @@ static int __save_wakeup_node(const TUYA_WAKEUP_SOURCE_BASE_CFG_T  *param)
 }
 
 #if CONFIG_GPIO_WAKEUP_SUPPORT
-static void __gpio_wakeup_source_set(gpio_id_t id, TUYA_GPIO_WAKE_TYPE_E level)
+void tkl_pm_demo_gpio_callback(gpio_id_t gpio_id)
+{
+    bk_printf("%s %d\r\n", __func__, __LINE__);
+}
+static void __gpio_wakeup_source_set(gpio_id_t gpio_id, TUYA_GPIO_WAKE_TYPE_E level)
 {
     gpio_int_type_t int_type = GPIO_INT_TYPE_FALLING_EDGE;
 
@@ -87,32 +92,31 @@ static void __gpio_wakeup_source_set(gpio_id_t id, TUYA_GPIO_WAKE_TYPE_E level)
             break;
     }
 
-    bk_gpio_register_wakeup_source(id, int_type);
+    // bk_gpio_register_isr(gpio_id, tkl_pm_demo_gpio_callback);
+    bk_gpio_register_wakeup_source(gpio_id, int_type);
     bk_pm_wakeup_source_set(PM_WAKEUP_SOURCE_INT_GPIO, NULL);
 }
 #endif //CONFIG_GPIO_WAKEUP_SUPPORT
 
 #if CONFIG_AON_RTC
+static pm_ap_rtc_info_t low_power_info = {0};
+static bk_err_t tkl_pm_rtc_sleep_wakeup_callback(pm_sleep_mode_e sleep_mode,pm_wakeup_source_e wake_source,void* param_p)
+{
+    bk_printf("%s %d\r\n", __func__, __LINE__);
+    return 0;
+}
+
 static void __rtc_wakeup_source_set(uint32_t ms)
 {
-    uint32_t rtc_ms_tick = bk_rtc_get_clock_freq()/1000;
-    aon_pmu_drv_lpo_src_set(PM_LPO_SRC_ROSC);
+    // TODO
+    bk_printf("TODO RTC WAKEUP\r\n");
 
-    memcpy(rtc_alarm.name, "low_vol",sizeof("low_vol"));
-    rtc_alarm.period_tick = ms * rtc_ms_tick;
-    rtc_alarm.period_cnt = 1;
-    rtc_alarm.callback = NULL;
-    rtc_alarm.param_p = NULL;
-
-    if(ms < 500) {
-        bk_printf("param %d invalid ! must > %dms.\r\n", ms, 500);
-        return ;
-    }
-    //force unregister previous if doesn't finish.
-    bk_alarm_unregister(AON_RTC_ID_1, rtc_alarm.name);
-    bk_alarm_register(AON_RTC_ID_1, &rtc_alarm);
-    bk_printf("rtc wakeup: %d, %d\r\n", rtc_ms_tick, ms);
-    bk_pm_wakeup_source_set(PM_WAKEUP_SOURCE_INT_RTC, NULL);
+    low_power_info.period_tick  = ms;
+    low_power_info.period_cnt   = 1;
+    low_power_info.callback     = tkl_pm_rtc_sleep_wakeup_callback;
+    low_power_info.param_p      = NULL;
+    bk_printf("---trace %s %d, wakeup data:%p\r\n", __func__, __LINE__, &low_power_info);
+    bk_pm_ap_rtc_regsiter_wakeup(PM_MODE_LOW_VOLTAGE, &low_power_info);
 }
 #endif // CONFIG_AON_RTC
 
@@ -151,7 +155,7 @@ static void tkl_set_ll_wakeup_source(void)
  *
  * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
  */
-OPERATE_RET tkl_wakeup_source_set(const TUYA_WAKEUP_SOURCE_BASE_CFG_T  *param)
+OPERATE_RET tkl_wakeup_source_set(CONST TUYA_WAKEUP_SOURCE_BASE_CFG_T  *param)
 {
     if (param == NULL)
         return OPRT_INVALID_PARM;
@@ -214,11 +218,11 @@ OPERATE_RET tkl_wakeup_source_get(TUYA_WAKEUP_SOURCE_BASE_CFG_T *param, uint32_t
  *
  * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
  */
-OPERATE_RET tkl_wakeup_source_clear(const TUYA_WAKEUP_SOURCE_BASE_CFG_T *param)
+OPERATE_RET tkl_wakeup_source_clear(CONST TUYA_WAKEUP_SOURCE_BASE_CFG_T *param)
 {
     if (wakeup_source == NULL) {
         bk_printf("wakeup source not init, %d\r\n", __LINE__);
-        return OPRT_INVALID_PARM;
+        return OPRT_COM_ERROR;
     }
 
     static char clear_flag = 0;
@@ -226,13 +230,11 @@ OPERATE_RET tkl_wakeup_source_clear(const TUYA_WAKEUP_SOURCE_BASE_CFG_T *param)
     for (int i = 0; i < WAKEUP_SOURCE_CNT; i++) {
         if(wakeup_source[i].source == TUYA_WAKEUP_SOURCE_RTC) {
             if(param->source == TUYA_WAKEUP_SOURCE_RTC) {
-                bk_alarm_unregister(AON_RTC_ID_1, rtc_alarm.name);
                 memset(&wakeup_source[i], 0xFF, sizeof(TUYA_WAKEUP_SOURCE_BASE_CFG_T));
                 clear_flag = 1;
             }
         } else if(wakeup_source[i].source == TUYA_WAKEUP_SOURCE_GPIO) {
             if((param->source == TUYA_WAKEUP_SOURCE_GPIO) && (wakeup_source[i].wakeup_para.gpio_param.gpio_num == param->wakeup_para.gpio_param.gpio_num)) {
-                bk_gpio_unregister_wakeup_source(param->wakeup_para.gpio_param.gpio_num);
                 memset(&wakeup_source[i], 0xFF, sizeof(TUYA_WAKEUP_SOURCE_BASE_CFG_T));
                 clear_flag = 1;
             }

@@ -1,0 +1,13 @@
+Memory region         Used Size  Region Size  %age Used
+           FLASH:        443 KB       896 KB     49.44%
+            IRAM:        1288 B       390 KB      0.32%
+        SPINLOCK:        6300 B        10 KB     61.52%
+             RAM:      112024 B       390 KB     28.05%
+            SWAP:          0 GB         2 KB      0.00%
+           ITCM0:         128 B      16352 B      0.78%
+           DTCM0:          0 GB      16380 B      0.00%
+           ITCM1:          0 GB      16352 B      0.00%
+           DTCM1:          0 GB      16380 B      0.00%
+           ITCM2:          0 GB      16352 B      0.00%
+           DTCM2:          0 GB      16380 B      0.00%
+           PSRAM:          0 GB        64 MB      0.00%

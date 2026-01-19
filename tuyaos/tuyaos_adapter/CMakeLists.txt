@@ -17,13 +17,16 @@ endmacro()
 #add tuya include dir
 set(incs
     "include"
+    "src/misc"
     "include/adc"
+    "include/atomic"
     "include/bluetooth"
     "include/cellular"
     "include/flash"
     "include/gpio"
     "include/hci"
     "include/i2c"
+    "include/i2s"
     "include/init/include"
     "include/media"
     "include/network"
@@ -32,8 +35,10 @@ set(incs
     "include/rtc/include"
     "include/security"
     "include/spi/include"
+    "include/qspi"
     "include/system"
     "include/timer"
+    "include/touch"
     "include/uart"
     "include/utilities/include"
     "include/vad"
@@ -41,15 +46,17 @@ set(incs
     "include/wakeup"
     "include/watchdog"
     "include/wifi"
-    "include/tal_compatible"
+
     "include/wired"
     "include/ipc"
     "include/asr"
-    "include/asr/wanson_asr"
+    "include/asr/libtutuClear"
     "include/rgb"
-    "include/qspi"
     "include/mcu8080"
-    "../../t5_os/bk_idk/components/bk_modem/include"
+    "include/dvp"
+    "include/dma2d"
+    "include/jpeg_codec"
+
 )
 
 string(REPLACE " " ";" TUYA_HEADER_DIR_LIST $ENV{TUYA_HEADER_DIR})
@@ -58,86 +65,163 @@ foreach(head ${TUYA_HEADER_DIR_LIST})
 	list(APPEND incs ${head})
 endforeach()
 
-# if (CONFIG_TUYA_LCD)
-#     list(APPEND srcs "src/driver/tkl_display.c")
-# endif()
-
-#add tuya adapter src
-if ("${CONFIG_CPU_INDEX}" STREQUAL "0")
-    list(APPEND srcs
-        src/driver/tkl_wakeup.c
-        src/driver/tkl_lwip_0.c
-        src/driver/tkl_wifi_0.c
-        src/driver/tkl_hci_0.c
-    )
-endif()
-
-if (CONFIG_SYS_CPU1)
-    list(APPEND srcs
-        src/driver/tkl_lwip_1.c
-        src/driver/tkl_wifi_1.c
-        src/driver/tkl_hci_1.c
-        src/system/tkl_fs.c
-        src/misc/fs_init.c
-        src/misc/dhcpserver.c
-        src/driver/tkl_video_enc.c
-        src/driver/tkl_video_in.c
-        src/driver/tkl_audio.c
-        src/system/tkl_ota.c
-    )
-endif() # CONFIG_SYS_CPU1
-
-if (NOT "${CONFIG_CPU_INDEX}" STREQUAL "2")
-list(APPEND srcs
-    src/driver/tkl_flash.c
-    src/driver/tkl_rtc.c
-    src/driver/tkl_spi.c
-    src/driver/tkl_gpio.c
-    src/driver/tkl_i2c.c
-    src/driver/tkl_timer.c
-    src/driver/tkl_ipc.c
-    src/driver/tkl_qspi.c
+set(srcs
     src/system/tkl_memory.c
     src/system/tkl_mutex.c
     src/system/tkl_network.c
     src/system/tkl_output.c
     src/system/tkl_queue.c
     src/system/tkl_semaphore.c
-    src/system/tkl_sleep.c
     src/system/tkl_system.c
     src/system/tkl_thread.c
-    src/driver/tkl_pinmux.c
-    src/misc/bk_adapter.c
-    src/misc/qflash.c
-    src/misc/sflash.c
-    src/misc/tuya_tkl_ipc.c
-    src/driver/tkl_vad.c
-    src/driver/tkl_adc.c
-    src/driver/tkl_pwm.c
-    src/driver/tkl_uart.c
+    src/system/tkl_atomic.c
+    src/system/tkl_task_notify.c
     src/driver/tkl_watchdog.c
-    src/driver/encrypt.c
-    src/driver/tkl_wired.c
-    src/driver/tkl_cellular.c
-    src/driver/tkl_asr.c
-    src/driver/tkl_rgb.c
-    src/driver/tkl_8080.c
+    src/driver/tkl_ipc.c
+    src/misc/tuya_tkl_ipc.c
+    include/init/src/tkl_init_cellular.c
+    include/init/src/tkl_init_system.c
 )
 
-file(GLOB_RECURSE utilities_srcs "$ENV{ARMINO_PATH}/../../tuyaos/tuyaos_adapter/include/utilities/src/*.c")
-list(APPEND srcs ${utilities_srcs})
+if ("${CONFIG_CPU_INDEX}" STREQUAL "0")
+    list(APPEND srcs src/driver/tkl_hci_0.c)
+    if (CONFIG_TUYA_TEST_CLI)
+        list(APPEND incs src/test/test_media)
+        list(APPEND srcs src/test/cli_tuya_test_0.c)
+    endif() # CONFIG_TUYA_TEST_CLI
+else()
+    list(APPEND srcs
+        src/driver/tkl_wifi.c
+        src/driver/tkl_wired.c
+        src/driver/tkl_hci_1.c
+        src/driver/tkl_video_enc.c
+        src/driver/tkl_video_in.c
+        src/driver/tkl_mic.c
+        src/driver/tkl_speaker.c
+        src/driver/tkl_audio.c
+	src/driver/tkl_cellular.c
+        src/driver/tkl_vad.c
+        src/driver/tkl_asr.c
+        src/driver/tkl_pinmux.c
+        src/driver/tkl_rgb.c
+        src/driver/tkl_8080.c
+        src/driver/tkl_adc.c
+        src/driver/tkl_pwm.c
+        src/driver/tkl_uart.c
+        src/driver/tkl_flash.c
+        src/driver/tkl_otp_flash.c
+        src/driver/tkl_rtc.c
+        src/driver/tkl_spi.c
+        src/driver/tkl_qspi.c
+        src/driver/tkl_gpio.c
+        src/driver/tkl_i2c.c
+        src/driver/tkl_timer.c
+        src/driver/tkl_touch.c
+        # src/driver/tkl_wired.c
+        src/driver/tkl_i2s.c
+        src/driver/tkl_dma2d.c
+        src/driver/tkl_dvp.c
+        src/driver/tkl_jpeg_codec.c
 
-endif()
+        src/misc/encrypt.c
+        src/misc/fs_init.c
+        src/misc/dhcpserver.c
+        src/misc/qflash.c
+        src/misc/sflash.c
+        src/misc/bk_adapter.c
+        src/misc/tuya_dma.c
 
-armino_component_register(SRCS "${srcs}" INCLUDE_DIRS "${incs}" REQUIRES bk_common bk_log multimedia bk_usb bk_draw_blend media_service lvgl bk_vfs bk_cli lwip_intf_v2_1)
+
+        src/system/tkl_fs.c
+        src/system/tkl_ota.c
+        src/system/tkl_sleep.c
+        src/system/ota_head.c
+
+        src/driver/tkl_wakeup.c
+    )
+
+    file(GLOB_RECURSE utilities_srcs "$ENV{ARMINO_PATH}/../../tuyaos/tuyaos_adapter/include/utilities/src/*.c")
+    list(APPEND srcs ${utilities_srcs})
+
+    if (CONFIG_TUYA_TEST_CLI)
+        list(APPEND incs
+            src/test/test_media
+            src/test/coremark
+            src/test/coremark/posix
+        )
+        list(APPEND srcs
+            # src/test/test_adc.c
+            # src/test/test_audio.c
+            # src/test/test_lcd.c
+            # src/test/test_pwm.c
+            # src/test/test_qspi.c
+            # src/test/test_mp3.c
+            # src/test/test_timer.c
+            # src/test/test_usb.c
+            # src/test/test_spi.c
+            # src/test/test_ringbuffer/rb.c
+            src/test/test_common.c
+            # src/test/test_media.c
+            # src/test/test_mic.c
+            # src/test/test_speaker.c
+            # src/test/test_i2s.c
+            # src/test/test_mtd.c
+            # src/test/test_i2s.c
+            # src/test/test_mtd/qspi_flash_GD5F1G.c
+            # src/test/test_media/test_media_audio.c
+            # src/test/test_media/test_media_camera.c
+            # src/test/test_media/test_media_h264.c
+            # src/test/test_media/test_media_lcd.c
+            # src/test/test_lp.c
+            # src/test/test_eth.c
+            # src/test/test_iperf.c
+            # src/test/test_mem.c
+            # src/test/test_dwt.c
+            # src/test/test_wifi.c
+            # src/test/test_dvp/dvp_gc2145.c
+            # src/test/test_dvp/test_dvp.c
+            # src/test/coremark/core_list_join.c
+            # src/test/coremark/core_main.c
+            # src/test/coremark/core_matrix.c
+            # src/test/coremark/core_state.c
+            # src/test/coremark/core_util.c
+            # src/test/coremark/posix/core_portme.c
+            # src/test/test_gpio.c
+            # src/test/test_sdcard.c
+            # src/test/test_littlefs.c
+            src/test/cli_tuya_test_1.c
+        )
+    endif() # CONFIG_TUYA_TEST_CLI
+
+endif() 
+
+if ("$ENV{ARMINO_SOC}" STREQUAL "bk7258")
+    set(priv_requires_list bk_common bk_log bk_cli lwip_intf_v2_1 os_source)
+elseif ("$ENV{ARMINO_SOC}" STREQUAL "bk7258_ap")
+    set(priv_requires_list bk_common bk_modem bk_log bk_cli lwip_intf_v2_1 os_source lvgl display_service bk_vfs multimedia media_service bk_draw_blend bk_usb audio_record audio_play)
+else()
+    message(FATAL_ERROR soc:"$ENV{ARMINO_SOC}" is not valid!)
+endif() # CONFIG_CPU_INDEX
+
+armino_component_register(
+    SRCS ${srcs}
+    INCLUDE_DIRS ${incs}
+    PRIV_REQUIRES ${priv_requires_list}
+)
 
 #add tuya lib
-if (CONFIG_SYS_CPU1)
+if ("${CONFIG_CPU_INDEX}" STREQUAL "1")
 
-# platform/t5ai/tuyaos/tuyaos_adapter/include/vad/lib/libvad.a
-target_link_libraries(${COMPONENT_LIB} INTERFACE "$ENV{ARMINO_PATH}/../../tuyaos/tuyaos_adapter/include/vad/lib/libvad.a")
-# platform/t5ai/tuyaos/tuyaos_adapter/include/asr/wanson_asr/libasrfst.a
-target_link_libraries(${COMPONENT_LIB} INTERFACE "$ENV{ARMINO_PATH}/../../tuyaos/tuyaos_adapter/include/asr/wanson_asr/libasrfst.a")
+# platform/t5ai/tuyaos/tuyaos_adapter/include/vad/lib/libaudio_subsys.a
+target_link_libraries(${COMPONENT_LIB} INTERFACE "$ENV{ARMINO_PATH}/../../tuyaos/tuyaos_adapter/include/vad/lib/libaudio_subsys.a")
+
+# platform/t5ai/tuyaos/tuyaos_adapter/include/opus/libopus.a
+target_link_libraries(${COMPONENT_LIB} INTERFACE "$ENV{ARMINO_PATH}/../../tuyaos/tuyaos_adapter/include/opus/libopus.a")
+
+# platform/t5ai/tuyaos/tuyaos_adapter/include/asr/libtutuClear/libtutuClear_wakeup_nihaotuya_xiaozhitongxue_heytuya_hituya_20251024_small_model.a
+target_link_libraries(${COMPONENT_LIB} INTERFACE "$ENV{ARMINO_PATH}/../../tuyaos/tuyaos_adapter/include/asr/libtutuClear/libtutuClear_wakeup_nihaotuya_xiaozhitongxue_heytuya_hituya_20251024_small_model.a")
+# platform/t5ai/tuyaos/tuyaos_adapter/src/misc/mftest/libtal_mftest.a
+target_link_libraries(${COMPONENT_LIB} INTERFACE "$ENV{ARMINO_PATH}/../../tuyaos/tuyaos_adapter/src/misc/mftest/libtal_mftest.a")
 
 set(tuya_libs "$ENV{TUYA_LIBS}")
 string(REPLACE " " ";" tuya_libs "${tuya_libs}")

@@ -26,29 +26,29 @@ extern "C" {
 *
 * @return 
 */
-void tkl_log_output(const char *format, ...);
+VOID_T tkl_log_output(CONST CHAR_T *format, ...);
 
 /**
 * @brief Close log port
 *
-* @param void
+* @param VOID
 *
 * @note This API is used for closing log port.
 *
 * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
 */
-OPERATE_RET tkl_log_close(void);
+OPERATE_RET tkl_log_close(VOID_T);
 
 /**
 * @brief Open log port
 *
-* @param void
+* @param VOID
 *
 * @note This API is used for openning log port.
 *
 * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
 */
-OPERATE_RET tkl_log_open(void);
+OPERATE_RET tkl_log_open(VOID_T);
 
 #ifdef __cplusplus
 }

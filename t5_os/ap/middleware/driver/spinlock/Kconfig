@@ -1,0 +1,24 @@
+menu "SPINLOCK"
+	config SPINLOCK
+		bool "Enable SPINLOCK"
+		default y
+
+	config SPINLOCK_SECTION
+		bool "Enable SPINLOCK special section,only SMP needs to enble it"
+		default n
+
+	config SPINLOCK_DYNAMIC_CNT
+		int "How many spinlocks maybe dynamic allocated by the system"
+		default 160
+
+	config SPINLOCK_STATIC_CNT
+		int "How many spinlocks maybe static allocated by the system"
+		default 64
+    
+    config SPINLOCK_DEBUG
+        depends on SPINLOCK_SECTION
+        bool "Enable Spinlock Debug"
+        default n 
+
+endmenu
+

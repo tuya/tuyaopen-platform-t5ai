@@ -1,0 +1,15 @@
+# The bin size whose type is code occupies more space in flash,,,,,
+# The occupied space is: bin size*34/32(and 68K aligned),,,,,
+# easyflash:beken CP some components use it
+# easyflash_ap:beken AP some components use it
+#Name,Offset,Size,Type,Read,Write
+primary_bootloader,         ,   68k,    code,TRUE,FALSE
+primary_cp_app,             ,   1224k,  code,TRUE,FALSE
+primary_ap_app,             ,   3876k,  code,TRUE,FALSE
+ota,                        ,   1780K,  data,TRUE,TRUE
+ota_mgr,            0x6c9000,   8K,     data,TRUE,TRUE
+usr_config,         0x6cb000,   1024K,  data,TRUE,TRUE
+res,                0x7cb000,   8K,     data,TRUE,TRUE
+tuya_data,          0x7cd000,   196K,   data,TRUE,TRUE
+sys_rf,             0x7fe000,   4k,     data,TRUE,TRUE
+sys_net,            0x7ff000,   4k,     data,TRUE,TRUE

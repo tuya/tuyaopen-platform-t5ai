@@ -1,0 +1,3 @@
+config CONSOLE
+	bool "Enable console"
+	default n

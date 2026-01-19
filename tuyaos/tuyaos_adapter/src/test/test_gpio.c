@@ -8,7 +8,7 @@
 #include "cli.h"
 #include "cli_tuya_test.h"
 
-extern OPERATE_RET tkl_gpio_init(TUYA_GPIO_NUM_E pin_id, const TUYA_GPIO_BASE_CFG_T *cfg);
+extern OPERATE_RET tkl_gpio_init(TUYA_GPIO_NUM_E pin_id, CONST TUYA_GPIO_BASE_CFG_T *cfg);
 static void __gpio_irq_test(void *args)
 {
     bk_printf("--- [%s %d]\r\n", __func__, __LINE__);
@@ -18,6 +18,34 @@ static void __gpio_cmd_usage(void)
 {
     bk_printf("xgpio input|output [gpio num] 0|1\r\n");
     bk_printf("xgpio irq [gpio num] [rase|fall|low|high|start|stop]\r\n");
+}
+
+static TaskHandle_t __relay_test_thread = NULL;
+static TUYA_GPIO_NUM_E __relay_pin = 56;
+static void __ralay_test_func(void *arg)
+{
+    if (__relay_pin == 56 || __relay_pin == 0) {
+        bk_printf("error relay pin %d\r\n", __relay_pin);
+        return;
+    }
+    TUYA_GPIO_BASE_CFG_T cfg;
+
+    cfg.direct = TUYA_GPIO_OUTPUT;
+    cfg.level = TUYA_GPIO_LEVEL_LOW;
+
+    tkl_gpio_init(__relay_pin, &cfg);
+
+    bk_printf("relay test, P%d/P18, 10s\r\n", __relay_pin);
+    tkl_system_sleep(2 * 1000);
+
+    while(1) {
+        bk_printf("relay test, set P%d 1\r\n", __relay_pin);
+        tkl_gpio_write(__relay_pin, TUYA_GPIO_LEVEL_HIGH);
+        tkl_system_sleep(10 * 1000);
+        bk_printf("relay test, set P%d 0\r\n", __relay_pin);
+        tkl_gpio_write(__relay_pin, TUYA_GPIO_LEVEL_LOW);
+        tkl_system_sleep(10 * 1000);
+    }
 }
 
 void cli_gpio_cmd(char *pcWriteBuffer, int xWriteBufferLen, int argc, char **argv)
@@ -41,6 +69,11 @@ void cli_gpio_cmd(char *pcWriteBuffer, int xWriteBufferLen, int argc, char **arg
         cfg.direct = TUYA_GPIO_OUTPUT;
     else if (!strcmp("irq", argv[2]))
         irq = 1;
+    else if (!strcmp("relay", argv[2])) {
+        __relay_pin = pin_id;
+        xTaskCreate(__ralay_test_func, "relay", 4096, NULL, 5, &__relay_test_thread);
+        return;
+    }
     else {
         __gpio_cmd_usage();
         return;

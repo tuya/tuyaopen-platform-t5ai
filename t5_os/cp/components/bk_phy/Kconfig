@@ -1,0 +1,16 @@
+#TODO optimize it
+menu "Bk_Phy"
+
+	config PHY_LOG_ENABLE
+		bool "Enable voltage detect"
+		default n
+
+	config PHY_SERVER
+		bool "Enable PHY server"
+		default y
+
+	config PHY_MB
+		bool "Enable PHY mailbox"
+		default y
+
+endmenu

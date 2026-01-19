@@ -1,0 +1,63 @@
+menu "RGB LCD"
+
+	config LCD_GC9503V
+		depends on LCD
+		bool "Enable LCD_GC9503V API"
+		default n
+
+	config LCD_H050IWV
+		depends on LCD
+		bool "Enable LCD_H050IWV API"
+		default n
+
+	config LCD_HX8282
+		depends on LCD
+		bool "Enable LCD_HX8282 API"
+		default n
+
+	config LCD_MD0430R
+		depends on LCD
+		bool "Enable LCD_MD0430R API"
+		default n
+
+	config LCD_MD0700R
+		depends on LCD
+		bool "Enable LCD_MD0700R API"
+		default n
+
+	config LCD_NT35512
+		depends on LCD
+		bool "Enable LCD_NT35512 API"
+		default n
+
+	config LCD_NT35510
+		depends on LCD
+		bool "Enable LCD_NT35510 API"
+		default n
+
+	config LCD_ST7282
+		depends on LCD
+		bool "Enable LCD_ST7282 API"
+		default n
+
+	config LCD_ST7701S_LY
+		depends on LCD
+		bool "Enable LCD_ST7701S_LY API"
+		default n
+
+	config LCD_ST7701S
+		depends on LCD
+		bool "Enable LCD_ST7701S API"
+		default n
+   
+	config LCD_ST7701SN
+		depends on LCD
+		bool "Enable LCD_ST7701SN API"
+		default n
+
+	config LCD_AML01
+		depends on LCD
+		bool "Enable LCD_AML01 API"
+		default n
+
+endmenu

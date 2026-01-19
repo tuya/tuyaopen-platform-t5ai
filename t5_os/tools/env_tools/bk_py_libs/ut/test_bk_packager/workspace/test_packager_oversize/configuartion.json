@@ -1,0 +1,14 @@
+{
+    "magic": "FreeRTOS",
+    "version": "0.1",
+    "count": 4,
+    "section": [
+        {
+            "firmware": "oversize.bin",
+            "version": "2M.1220",
+            "partition": "bootloader",
+            "start_addr": "0x00000000",
+            "size": "128"
+        }
+    ]
+}

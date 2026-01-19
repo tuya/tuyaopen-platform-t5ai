@@ -29,7 +29,7 @@ typedef struct {
  *
  * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
  */
-OPERATE_RET tkl_queue_create_init(TKL_QUEUE_HANDLE *queue, int msgsize, int msgcount)
+OPERATE_RET tkl_queue_create_init(TKL_QUEUE_HANDLE *queue, INT_T msgsize, INT_T msgcount)
 {
     if (!queue) {
         return OPRT_OS_ADAPTER_INVALID_PARM;
@@ -54,7 +54,7 @@ OPERATE_RET tkl_queue_create_init(TKL_QUEUE_HANDLE *queue, int msgsize, int msgc
  *
  * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
  */
-OPERATE_RET tkl_queue_post(const TKL_QUEUE_HANDLE queue, void *data, uint32_t timeout)
+OPERATE_RET tkl_queue_post(CONST TKL_QUEUE_HANDLE queue, VOID_T *data, UINT_T timeout)
 {
     int ret = pdPASS;
 
@@ -67,7 +67,7 @@ extern uint32_t platform_is_in_interrupt_context( void );
         if (timeout == TKL_QUEUE_WAIT_FROEVER) {
             ret = xQueueSend(queue, data, portMAX_DELAY);
         } else {
-            uint32_t ticks = timeout / portTICK_RATE_MS;
+            UINT_T ticks = timeout / portTICK_RATE_MS;
 
             if (ticks == 0) {
                 ticks = 1;
@@ -96,7 +96,7 @@ extern uint32_t platform_is_in_interrupt_context( void );
  *
  * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
  */
-OPERATE_RET tkl_queue_fetch(const TKL_QUEUE_HANDLE queue, void *msg, uint32_t timeout)
+OPERATE_RET tkl_queue_fetch(CONST TKL_QUEUE_HANDLE queue, VOID_T *msg, UINT_T timeout)
 {
     void *dummyptr;
     int ret = pdPASS;
@@ -112,7 +112,7 @@ OPERATE_RET tkl_queue_fetch(const TKL_QUEUE_HANDLE queue, void *msg, uint32_t ti
     if (timeout == TKL_QUEUE_WAIT_FROEVER) {
         ret = xQueueReceive(queue, msg, portMAX_DELAY);
     } else {
-        uint32_t ticks = timeout / portTICK_RATE_MS;
+        UINT_T ticks = timeout / portTICK_RATE_MS;
 
         if (ticks == 0) {
             ticks = 1;
@@ -133,9 +133,9 @@ OPERATE_RET tkl_queue_fetch(const TKL_QUEUE_HANDLE queue, void *msg, uint32_t ti
  *
  * @param[in] queue the message queue handle
  *
- * @return void
+ * @return VOID_T
  */
-void tkl_queue_free(const TKL_QUEUE_HANDLE queue)
+VOID_T tkl_queue_free(CONST TKL_QUEUE_HANDLE queue)
 {
     if (!queue) {
         return ;

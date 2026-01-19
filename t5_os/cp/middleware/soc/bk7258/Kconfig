@@ -1,0 +1,39 @@
+menu "bk7258"
+
+	config ITCM_SIZE
+		hex "Total ITCM size"
+		default 0x4000
+
+	config DTCM_SIZE
+		hex "Total DTCM size"
+		default 0x4000
+
+	config ANA_REG_WRITE_POLL_REG_B
+		bool "Write analog register polls sys reg0xb"
+		default y
+
+	config PM_HAL_DEBUG
+		bool "Enable PM hal debug"
+		default n
+
+	config PM_HAL_CTRL
+		bool "Enable PM hal debug"
+		default n
+
+        config TZ
+                bool "Supported TrustZone"
+                default y
+
+        config SPE
+                int "Enable SPE"
+                default 0
+
+	config RX_OPTIMIZE
+		bool "Optimize rx current"
+		default n
+
+	config BT_REUSE_MEDIA_MEMORY
+		bool "BT reuse media memory at beging of cpu1"
+		default n
+
+endmenu

@@ -1,0 +1,28 @@
+{
+    "FLASH_CAPACITY": "8M",
+    "internel_partitions": [
+        "primary_bootloader",
+        "primary_cp_app",
+        "primary_ap_app",
+        "sys_rf",
+        "sys_net",
+        "ota",
+        "usr_config",
+        "easyflash",
+        "easyflash_ap"
+    ],
+    "patitions_limit": [
+        {
+            "name": "primary_bootloader",
+            "index": 0
+        },
+        {
+            "name": "primary_cp_app",
+            "index": 1
+        },
+        {
+            "name": "primary_ap_app",
+            "index": 2
+        }
+    ]
+}

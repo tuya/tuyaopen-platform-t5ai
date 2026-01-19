@@ -2,7 +2,7 @@
 #include <driver/pwm.h>
 #include <driver/pwm_types.h>
 
-#define TUYA_PWM_ID_MAX 6
+#define TUYA_PWM_ID_MAX 12
 #define __PWM_FREQ2PERIOD(x) ((unsigned int)((26000000.0/x)))
 
 static pwm_group_t pwm_group = PWM_GROUP_ID_INVALID;
@@ -29,7 +29,25 @@ pwm_chan_t ty_to_bk_pwm(TUYA_PWM_NUM_E ch_id)
             pwm = PWM_ID_10;
         break;
         case TUYA_PWM_NUM_5:
+            pwm = PWM_ID_1;
+        break;
+        case TUYA_PWM_NUM_6:
+            pwm = PWM_ID_2;
+        break;
+        case TUYA_PWM_NUM_7:
             pwm = PWM_ID_3;
+        break;
+        case TUYA_PWM_NUM_8:
+            pwm = PWM_ID_5;
+        break;
+        case TUYA_PWM_NUM_9:
+            pwm = PWM_ID_7;
+        break;
+        case TUYA_PWM_NUM_10:
+            pwm = PWM_ID_9;
+        break;
+        case TUYA_PWM_NUM_11:
+            pwm = PWM_ID_11;
         break;
         default:
         break;
@@ -46,7 +64,7 @@ pwm_chan_t ty_to_bk_pwm(TUYA_PWM_NUM_E ch_id)
  *
  * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
  */
-OPERATE_RET tkl_pwm_init(TUYA_PWM_NUM_E ch_id, const TUYA_PWM_BASE_CFG_T *cfg)
+OPERATE_RET tkl_pwm_init(TUYA_PWM_NUM_E ch_id, CONST TUYA_PWM_BASE_CFG_T *cfg)
 {
     unsigned int period;
     unsigned int duty;
@@ -160,7 +178,7 @@ OPERATE_RET tkl_pwm_stop(TUYA_PWM_NUM_E ch_id)
  *
  * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
  */
-OPERATE_RET tkl_pwm_duty_set(TUYA_PWM_NUM_E ch_id, uint32_t duty)
+OPERATE_RET tkl_pwm_duty_set(TUYA_PWM_NUM_E ch_id, UINT32_T duty)
 {
     unsigned int period;
     unsigned int curr_duty;
@@ -204,7 +222,7 @@ OPERATE_RET tkl_pwm_duty_set(TUYA_PWM_NUM_E ch_id, uint32_t duty)
  *
  * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
  */
-OPERATE_RET tkl_pwm_frequency_set(TUYA_PWM_NUM_E ch_id, uint32_t frequency)
+OPERATE_RET tkl_pwm_frequency_set(TUYA_PWM_NUM_E ch_id, UINT32_T frequency)
 {
     unsigned int period;
     unsigned int curr_duty;
@@ -282,7 +300,7 @@ OPERATE_RET tkl_pwm_polarity_set(TUYA_PWM_NUM_E ch_id, TUYA_PWM_POLARITY_E polar
  *
  * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
  */
-OPERATE_RET tkl_pwm_multichannel_start(TUYA_PWM_NUM_E *ch_id, uint8_t num)
+OPERATE_RET tkl_pwm_multichannel_start(TUYA_PWM_NUM_E *ch_id, UINT8_T num)
 {
     unsigned int period;
     unsigned int duty[2] = {0};
@@ -360,7 +378,7 @@ OPERATE_RET tkl_pwm_multichannel_start(TUYA_PWM_NUM_E *ch_id, uint8_t num)
  *
  * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
  */
-OPERATE_RET tkl_pwm_multichannel_stop(TUYA_PWM_NUM_E *ch_id, uint8_t num)
+OPERATE_RET tkl_pwm_multichannel_stop(TUYA_PWM_NUM_E *ch_id, UINT8_T num)
 {
     if (ch_id[0] != mult_chid[0] || ch_id[1] != mult_chid[1]) {
         return OPRT_INVALID_PARM;
@@ -380,7 +398,7 @@ OPERATE_RET tkl_pwm_multichannel_stop(TUYA_PWM_NUM_E *ch_id, uint8_t num)
  *
  * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
  */
-OPERATE_RET tkl_pwm_info_set(TUYA_PWM_NUM_E ch_id, const TUYA_PWM_BASE_CFG_T *info)
+OPERATE_RET tkl_pwm_info_set(TUYA_PWM_NUM_E ch_id, CONST TUYA_PWM_BASE_CFG_T *info)
 {
     unsigned int period;
     unsigned int duty;
@@ -447,5 +465,6 @@ OPERATE_RET tkl_pwm_info_get(TUYA_PWM_NUM_E ch_id, TUYA_PWM_BASE_CFG_T *info)
     info->duty = pwm_cfg[ch_id].duty;
     info->frequency = pwm_cfg[ch_id].frequency;
     info->polarity = pwm_cfg[ch_id].polarity;
-    return OPRT_NOT_SUPPORTED;
+	
+    return OPRT_OK;
 }

@@ -8,6 +8,8 @@
  *
  */
 
+#include "sdkconfig.h"
+#include "tuya_cloud_types.h"
 #include "tkl_thread.h"
 #include "FreeRTOS.h"
 #include "task.h"
@@ -15,12 +17,6 @@
 #include "portmacro.h"
 #include "projdefs.h"
 
-extern BaseType_t xTaskCreateInPsram( TaskFunction_t pxTaskCode,
-                        const char * const pcName, /*lint !e971 Unqualified char types are allowed for strings and single characters only. */
-                        const configSTACK_DEPTH_TYPE usStackDepth,
-                        void * const pvParameters,
-                        UBaseType_t uxPriority,
-                        TaskHandle_t * const pxCreatedTask );
 /**
 * @brief Create thread
 *
@@ -36,24 +32,68 @@ extern BaseType_t xTaskCreateInPsram( TaskFunction_t pxTaskCode,
 * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
 */
 OPERATE_RET tkl_thread_create(TKL_THREAD_HANDLE* thread,
-                           const char* name,
-                           uint32_t stack_size,
-                           uint32_t priority,
+                           CONST CHAR_T* name,
+                           UINT_T stack_size,
+                           UINT_T priority,
                            THREAD_FUNC_T func,
-                           void* const arg)
+                           VOID_T* CONST arg)
 {
     if (!thread) {
         return OPRT_INVALID_PARM;
     }
-    
+
     BaseType_t ret = 0;
-    ret = xTaskCreateInPsram(func, name, stack_size / sizeof(portSTACK_TYPE), (void *const)arg, priority, (TaskHandle_t * const )thread);
+#if (CONFIG_FREERTOS_SMP)
+    // ret = xTaskCreatePinnedToCore(func, name, stack_size / sizeof(portSTACK_TYPE), (void *const)arg, priority, (TaskHandle_t * const )thread, tskNO_AFFINITY);
+    ret = xTaskCreateInPsram(func, name, stack_size / sizeof(portSTACK_TYPE), (void *const)arg, priority, (TaskHandle_t * const )thread, tskNO_AFFINITY);
+#else
+    ret = xTaskCreate(func, name, stack_size / sizeof(portSTACK_TYPE), (void *const)arg, priority, (TaskHandle_t * const )thread);
+#endif
     if (ret != pdPASS) {
         return OPRT_OS_ADAPTER_THRD_CREAT_FAILED;
     }
 
     return OPRT_OK;
 }
+
+#if (CONFIG_FREERTOS_SMP)
+/**
+* @brief Create thread
+*
+* @param[out] thread: thread handle
+* @param[in] affinity: thread bind cpu id
+* @param[in] name: thread name
+* @param[in] stack_size: stack size of thread
+* @param[in] priority: priority of thread
+* @param[in] func: the main thread process function
+* @param[in] arg: the args of the func, can be null
+*
+* @note This API is used for creating thread.
+*
+* @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
+*/
+OPERATE_RET tkl_thread_smp_create(TKL_THREAD_HANDLE* thread,
+                           UINT_T coreID,
+                           CONST CHAR_T* name,
+                           UINT_T stack_size,
+                           UINT_T priority,
+                           THREAD_FUNC_T func,
+                           VOID_T* CONST arg)
+{
+    //smp仅支持核1、2
+    if (!thread || (coreID > (CONFIG_CPU_CNT - 1))) {
+        return OPRT_INVALID_PARM;
+    }
+
+    BaseType_t ret = 0;
+    ret = xTaskCreatePinnedToCore(func, name, stack_size / sizeof(portSTACK_TYPE), (void *const)arg, priority, (TaskHandle_t * const )thread, coreID);
+    if (ret != pdPASS) {
+        return OPRT_OS_ADAPTER_THRD_CREAT_FAILED;
+    }
+
+    return OPRT_OK;
+}
+#endif
 
 /**
 * @brief Terminal thread and release thread resources
@@ -85,8 +125,9 @@ OPERATE_RET tkl_thread_release(TKL_THREAD_HANDLE thread)
 *
 * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
 */
-OPERATE_RET tkl_thread_get_watermark(TKL_THREAD_HANDLE thread, uint32_t* watermark)
+OPERATE_RET tkl_thread_get_watermark(TKL_THREAD_HANDLE thread, UINT_T* watermark)
 {
+    // TODO
     *watermark = uxTaskGetStackHighWaterMark(thread) * sizeof( StackType_t );
     return OPRT_OK;
 }
@@ -115,7 +156,7 @@ OPERATE_RET tkl_thread_get_id(TKL_THREAD_HANDLE *thread)
 *
 * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
 */
-OPERATE_RET tkl_thread_set_self_name(const char* name)
+OPERATE_RET tkl_thread_set_self_name(CONST CHAR_T* name)
 {
     if (!name) {
         return OPRT_INVALID_PARM;
@@ -151,9 +192,14 @@ OPERATE_RET tkl_thread_is_self(TKL_THREAD_HANDLE thread, BOOL_T* is_self)
 */
 OPERATE_RET tkl_thread_diagnose(TKL_THREAD_HANDLE thread)
 {
-    return OPRT_NOT_SUPPORTED;
+    extern void tkl_system_task_info_dump(void);
+    tkl_system_task_info_dump();
+
+    return OPRT_OK;
 }
 
+#if defined(ENABLE_EXT_RAM) && (ENABLE_EXT_RAM==1)
+#if  (CONFIG_CPU_INDEX != 0)
 /**
 * @brief Create thread in PSRAM
 *
@@ -169,22 +215,31 @@ OPERATE_RET tkl_thread_diagnose(TKL_THREAD_HANDLE thread)
 * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
 */
 OPERATE_RET tkl_thread_create_in_psram(TKL_THREAD_HANDLE* thread,
-                           const char* name,
-                           uint32_t stack_size,
-                           uint32_t priority,
+                           CONST CHAR_T* name,
+                           UINT_T stack_size,
+                           UINT_T priority,
                            THREAD_FUNC_T func,
-                           void* const arg)
+                           VOID_T* CONST arg)
 {
     if (!thread) {
         return OPRT_INVALID_PARM;
     }
 
+#if (CONFIG_FREERTOS_SMP == 1)
     BaseType_t ret = 0;
-    ret = xTaskCreateInPsram(func, name, stack_size / sizeof(portSTACK_TYPE), (void *const)arg, priority, (TaskHandle_t * const )thread);
+    // TODO Create thread in psram
+    ret = xTaskCreateInPsram(func, name, stack_size / sizeof(portSTACK_TYPE), (void *const)arg, priority, (TaskHandle_t * const )thread, tskNO_AFFINITY);
     if (ret != pdPASS) {
         return OPRT_OS_ADAPTER_THRD_CREAT_FAILED;
     }
+#else
+    #error tkl_thread_create_in_psram 111111111111111111111111111
+    return OPRT_NOT_SUPPORTED;
+#endif // CONFIG_FREERTOS_SMP
 
     return OPRT_OK;
 }
+#endif  // CONFIG_CPU_INDEX != 0
+
+#endif // defined(ENABLE_EXT_RAM) && (ENABLE_EXT_RAM==1)
 

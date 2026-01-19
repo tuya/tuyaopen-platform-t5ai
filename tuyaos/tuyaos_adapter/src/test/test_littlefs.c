@@ -8,10 +8,19 @@
 #include "task.h"
 #include "tuya_cloud_types.h"
 #include "tkl_system.h"
+#include "tkl_fs.h"
+#include "tal_mtd_service.h"
+#include <driver/qspi.h>
+#include <driver/qspi_flash.h>
+#include "qspi_hal.h"
+#include <driver/qspi.h>
+#include <driver/qspi_flash_common.h>
+
 
 #if CONFIG_QSPI
 #define QSPI_FLASH_ADDR    0
-#define QSPI_FLASH_PREFIX  "/"
+#define QSPI_FLASH_PREFIX  "/ext-flash"
+#define INNER_QSPI_FLASH_PREFIX  "/inner-flash"
 
 volatile static uint8_t huge_file_test_in_progress = 0;
 
@@ -21,21 +30,40 @@ static void __cli_lfs_mkfs(void)
     char *fs_name = NULL;
     int ret;
 
-    qspi_driver_desc_t *qflash_dev = tuya_qspi_device_query(CONFIG_TUYA_QSPI_FLASH_TYPE);
+
+    fs_name = "littlefs";
+#ifdef CONFIG_TUYA_USE_MTD
+
+extern MTD_DEVICE_T *tuya_mtd_device_query(const char *name);
+    MTD_DEVICE_T *mtd_dev = tuya_mtd_device_query(CONFIG_TUYA_QSPI_FLASH_TYPE);
+    bk_printf("mkfs mtd\r\n");
+    partition.part_flash.start_addr = QSPI_FLASH_ADDR;
+    partition.part_flash.size = mtd_dev->nand_dev.total_size;
+    partition.part_flash.page_size = mtd_dev->nand_dev.page_size;
+    partition.part_flash.block_size = mtd_dev->nand_dev.block_size;
+#else
+    qspi_driver_desc_t *qflash_dev = tuya_qspi_device_query("gd5f1g");
     if (qflash_dev == NULL) {
         bk_printf("Not found qspi flash %s\r\n", CONFIG_TUYA_QSPI_FLASH_TYPE);
         return;
     }
 
+    static int __qspi_has_inited = 0;
+    if (__qspi_has_inited == 0) {
+        qflash_init();
+        __qspi_has_inited = 1;
+    }
+    bk_printf("\r\nfull chip erase %s\r\n", CONFIG_TUYA_QSPI_FLASH_TYPE);
+    qflash_erase(0, qflash_dev->total_size);
+
     bk_printf("mkfs on qspi flash, total size: %d, block size: %d\r\n",
             qflash_dev->total_size, qflash_dev->block_size);
-
-    fs_name = "littlefs";
-    partition.part_type = LFS_QSPI_FLASH;
     partition.part_flash.start_addr = QSPI_FLASH_ADDR;
     partition.part_flash.size = qflash_dev->total_size;
     partition.part_flash.page_size = qflash_dev->page_size;
     partition.part_flash.block_size = qflash_dev->block_size;
+#endif
+    partition.part_type = LFS_QSPI_FLASH;
     partition.mount_path = QSPI_FLASH_PREFIX;
 
     ret = mkfs("PART_NONE", fs_name, &partition);
@@ -44,46 +72,40 @@ static void __cli_lfs_mkfs(void)
 
 static void __cli_lfs_mount(void)
 {
-    struct bk_little_fs_partition partition;
-    char *fs_name = NULL;
-    int ret;
-
-    qspi_driver_desc_t *qflash_dev = tuya_qspi_device_query(CONFIG_TUYA_QSPI_FLASH_TYPE);
-    if (qflash_dev == NULL) {
-        bk_printf("Not found qspi flash gd5f1g\r\n");
-        return;
-    }
-
-    bk_printf("mount on qspi flash, total size: %d, block size: %d\r\n",
-            qflash_dev->total_size, qflash_dev->block_size);
-
-    fs_name = "littlefs";
-    partition.part_type = LFS_QSPI_FLASH;
-    partition.part_flash.start_addr = QSPI_FLASH_ADDR;
-    partition.part_flash.size = qflash_dev->total_size;
-    partition.part_flash.page_size = qflash_dev->page_size;
-    partition.part_flash.block_size = qflash_dev->block_size;
-    partition.mount_path = QSPI_FLASH_PREFIX;
-    ret = mount("SOURCE_NONE", partition.mount_path, fs_name, 0, &partition);
-    bk_printf("mount ret:%d\r\n", ret);
+    int ret = test_fs_mount(QSPI_FLASH_PREFIX, DEV_EXT_FLASH);
+    bk_printf("mount %s ret:%d\r\n", QSPI_FLASH_PREFIX, ret);
 }
 
 static void __cli_lfs_mount_inner(void)
 {
-    extern int littlefs_mount(const char *mount_path, int type);
-    littlefs_mount("/", LFS_FLASH);
+    int ret = test_fs_mount(INNER_QSPI_FLASH_PREFIX, DEV_INNER_FLASH);
+    bk_printf("mount %s ret:%d\r\n", INNER_QSPI_FLASH_PREFIX, ret);
+}
+
+static void __cli_lfs_umount_inner(void)
+{
+    int ret = test_fs_unmount(INNER_QSPI_FLASH_PREFIX);
+    bk_printf("umount %s ret:%d\r\n", INNER_QSPI_FLASH_PREFIX, ret);
 }
 
 static void __cli_lfs_umount(void)
 {
-    int ret;
-    ret = umount("/");
-    bk_printf("umount ret:%d\r\n", ret);
+    int ret = test_fs_unmount(QSPI_FLASH_PREFIX);
+    bk_printf("umount %s ret:%d\r\n", QSPI_FLASH_PREFIX, ret);
 }
 
-static void __cli_lfs_read(char *file_path, uint8_t *buf, uint32_t len)
+static void __cli_lfs_read(char *path, uint8_t *buf, uint32_t len)
 {
-    int fd = open(file_path, O_RDONLY);
+    char fp[64] = {'\0'};
+
+    if (path == NULL) {
+        bk_printf("read failed, no file name spec\r\n");
+        return;
+    }
+
+    sprintf(fp, "%s/%s", QSPI_FLASH_PREFIX, path);
+
+    int fd = open(fp, O_RDONLY);
     if(fd < 0)
     {
         bk_printf("[%s][%d] open fail:%d\r\n", __FUNCTION__, __LINE__, fd);
@@ -104,9 +126,18 @@ static void __cli_lfs_read(char *file_path, uint8_t *buf, uint32_t len)
 #endif
 }
 
-static void __cli_lfs_write(const char *file_path, const uint8_t *buf, uint32_t size, int mode)
+static void __cli_lfs_write(const char *path, const uint8_t *buf, uint32_t size, int mode)
 {
-    int fd = open(file_path, O_RDWR | O_CREAT);
+    char fp[64] = {'\0'};
+
+    if (path == NULL) {
+        bk_printf("write failed, no file name spec\r\n");
+        return;
+    }
+
+    sprintf(fp, "%s/%s", QSPI_FLASH_PREFIX, path);
+
+    int fd = open(fp, O_RDWR | O_CREAT);
     if(fd < 0)
     {
         bk_printf("[%s][%d] open fail:%d\r\n", __FUNCTION__, __LINE__, fd);
@@ -128,13 +159,28 @@ static void __cli_lfs_write(const char *file_path, const uint8_t *buf, uint32_t 
 #endif
 }
 
-DIR *dirp = NULL;
-static void __cli_lfs_closedir(DIR *dirp)
+static void __cli_lfs_unlink(const char *path)
 {
-    if (dirp == NULL)
+    char fp[64] = {'\0'};
+
+    if (path == NULL) {
+        bk_printf("unlink failed, no file name spec\r\n");
+        return;
+    }
+
+    sprintf(fp, "%s/%s", QSPI_FLASH_PREFIX, path);
+
+    unlink(fp);
+}
+
+
+DIR *lfs_test_dirp = NULL;
+static void __cli_lfs_closedir(DIR *lfs_test_dirp)
+{
+    if (lfs_test_dirp == NULL)
         return;
 
-    closedir(dirp);
+    closedir(lfs_test_dirp);
 }
 static void __cli_lfs_mkdir(const char *dir)
 {
@@ -144,14 +190,14 @@ static void __cli_lfs_mkdir(const char *dir)
         return;
     }
 
-    if (dirp != NULL) {
+    if (lfs_test_dirp != NULL) {
         // close last opened dir
-        __cli_lfs_closedir(dirp);
-        dirp = NULL;
+        __cli_lfs_closedir(lfs_test_dirp);
+        lfs_test_dirp = NULL;
     }
 
-    dirp = opendir(dir);
-    if (dirp == NULL) {
+    lfs_test_dirp = opendir(dir);
+    if (lfs_test_dirp == NULL) {
         bk_printf("[%s][%d] no %s found, mkdir\r\n", __FUNCTION__, __LINE__, dir);
         // mkdir
         int fd = mkdir(dir, O_RDWR | O_CREAT);
@@ -170,7 +216,11 @@ int last_file_fd = -1;
 void cli_littlefs_cmd(char *pcWriteBuffer, int xWriteBufferLen, int argc, char **argv)
 {
     if (argc < 2) {
-        bk_printf("Usage: xmt open|close lvgl|uvc|lcd|h264|audio\r\n");
+        bk_printf("Usage: lfs mkfs\r\n");
+        bk_printf("       lfs mount|umount\r\n");
+        bk_printf("       mkdir [dir name] | rmdir [dir name]\r\n");
+        bk_printf("       read [file] | write [file] [data] | unlink [file]\r\n");
+        bk_printf("       wt [len], write file test\r\n");
         return;
     }
     bk_printf("argc: %d\r\n cmd: ", argc);
@@ -189,10 +239,12 @@ void cli_littlefs_cmd(char *pcWriteBuffer, int xWriteBufferLen, int argc, char *
         __cli_lfs_mkfs();
     } else if (!os_strcmp(argv[1], "mount")) {
         __cli_lfs_mount();
-    } else if (!os_strcmp(argv[1], "inner-mount")) {
-        __cli_lfs_mount_inner();
     } else if (!os_strcmp(argv[1], "umount")) {
         __cli_lfs_umount();
+    } else if (!os_strcmp(argv[1], "inner-mount")) {
+        __cli_lfs_mount_inner();
+    } else if (!os_strcmp(argv[1], "inner-umount")) {
+        __cli_lfs_umount_inner();
     } else if (!os_strcmp(argv[1], "open")) {
         if (argv[2] == NULL) {
             bk_printf("no file name\r\n");
@@ -229,7 +281,7 @@ void cli_littlefs_cmd(char *pcWriteBuffer, int xWriteBufferLen, int argc, char *
             return;
         }
          //TODO if file exist
-        unlink(argv[2]);
+        __cli_lfs_unlink(argv[2]);
     } else if (!os_strcmp(argv[1], "read")) {
         if (argv[2] == NULL) {
             bk_printf("no file name\r\n");
@@ -349,20 +401,20 @@ void cli_littlefs_cmd(char *pcWriteBuffer, int xWriteBufferLen, int argc, char *
             wbuf[i] = i;
         }
 
-        extern SYS_TIME_T tkl_system_get_millisecond(void);
+        extern SYS_TIME_T tkl_system_get_millisecond(VOID_T);
         do {
             bk_printf("============> test start, %d\r\n", test_cnt++);
 
             bk_printf("====== write ====== \r\n");
             SYS_TIME_T t0 = tkl_system_get_millisecond();
-            __cli_lfs_write("/test_file", wbuf, test_buf_len, 0);
+            __cli_lfs_write("test_file", wbuf, test_buf_len, 0);
             SYS_TIME_T t1 = tkl_system_get_millisecond();
             bk_printf("====== write time: %lld = %lld - %lld\r\n", t1 - t0, t1, t0);
 
             memset(check_buf, 0x5a, test_buf_len);
             bk_printf("====== read ======\r\n");
             SYS_TIME_T t2 = tkl_system_get_millisecond();
-            __cli_lfs_read("/test_file", check_buf, test_buf_len);
+            __cli_lfs_read("test_file", check_buf, test_buf_len);
             SYS_TIME_T t3 = tkl_system_get_millisecond();
             bk_printf("====== read time: %lld = %lld - %lld\r\n", t3 - t2, t3, t2);
 
@@ -374,7 +426,7 @@ void cli_littlefs_cmd(char *pcWriteBuffer, int xWriteBufferLen, int argc, char *
             }
 
             bk_printf("====== delete ====== \r\n");
-            unlink("/test_file");
+            __cli_lfs_unlink("test_file");
 
             bk_printf("<============ test end\r\n\r\n");
             tkl_system_sleep(50);

@@ -1,0 +1,6 @@
+
+config EVENT_TASK_STACK_SIZE
+    int "Set Event Task Stack Size"
+    default 3072
+    help
+        Stack size of Event task

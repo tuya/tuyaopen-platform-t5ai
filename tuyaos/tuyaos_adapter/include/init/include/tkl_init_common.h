@@ -29,8 +29,8 @@ extern "C" {
  * @brief the description of tuya kernel adapter layer rtc
  */
 typedef struct {
-    OPERATE_RET     (*init)                 (void);
-    OPERATE_RET     (*deinit)               (void);
+    OPERATE_RET     (*init)                 (VOID_T);
+    OPERATE_RET     (*deinit)               (VOID_T);
     OPERATE_RET     (*time_get)             (TIME_T *time_sec);
     OPERATE_RET     (*time_set)             (TIME_T  time_sec);
 } TKL_RTC_DESC_T;
@@ -40,7 +40,7 @@ typedef struct {
  *
  * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
  */
-TKL_RTC_DESC_T* tkl_rtc_desc_get(void);
+TKL_RTC_DESC_T* tkl_rtc_desc_get(VOID_T);
 #endif
 
 #ifdef ENABLE_WATCHDOG
@@ -48,9 +48,9 @@ TKL_RTC_DESC_T* tkl_rtc_desc_get(void);
  * @brief the description of tuya kernel adapter layer watchdog
  */
 typedef struct {
-    uint32_t          (*init)                 (TUYA_WDOG_BASE_CFG_T *cfg);
-    OPERATE_RET     (*deinit)               (void);
-    OPERATE_RET     (*refresh)              (void);
+    UINT_T          (*init)                 (TUYA_WDOG_BASE_CFG_T *cfg);
+    OPERATE_RET     (*deinit)               (VOID_T);
+    OPERATE_RET     (*refresh)              (VOID_T);
 } TKL_WATCHDOG_DESC_T;
 
 /**
@@ -58,7 +58,7 @@ typedef struct {
  *
  * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
  */
-TKL_WATCHDOG_DESC_T* tkl_watchdog_desc_get(void);
+TKL_WATCHDOG_DESC_T* tkl_watchdog_desc_get(VOID_T);
 #endif
 
 #ifdef ENABLE_FLASH
@@ -66,11 +66,11 @@ TKL_WATCHDOG_DESC_T* tkl_watchdog_desc_get(void);
  * @brief the description of tuya kernel adapter layer flash
  */
 typedef struct {
-    OPERATE_RET     (*read)                 (const uint32_t addr, uint8_t *dst, const uint32_t size);
-    OPERATE_RET     (*write)                (const uint32_t addr, const uint8_t *src, const uint32_t size);
-    OPERATE_RET     (*erase)                (const uint32_t addr, const uint32_t size);
-    OPERATE_RET     (*lock)                 (const uint32_t addr, const uint32_t size);
-    OPERATE_RET     (*unlock)               (const uint32_t addr, const uint32_t size);
+    OPERATE_RET     (*read)                 (CONST UINT_T addr, UCHAR_T *dst, CONST UINT_T size);
+    OPERATE_RET     (*write)                (CONST UINT_T addr, CONST UCHAR_T *src, CONST UINT_T size);
+    OPERATE_RET     (*erase)                (CONST UINT_T addr, CONST UINT_T size);
+    OPERATE_RET     (*lock)                 (CONST UINT_T addr, CONST UINT_T size);
+    OPERATE_RET     (*unlock)               (CONST UINT_T addr, CONST UINT_T size);
     OPERATE_RET     (*get_one_type_info)    (TUYA_FLASH_TYPE_E type, TUYA_FLASH_BASE_INFO_T* info);
 } TKL_FLASH_DESC_T;
 
@@ -79,7 +79,7 @@ typedef struct {
  *
  * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
  */
-TKL_FLASH_DESC_T* tkl_flash_desc_get(void);
+TKL_FLASH_DESC_T* tkl_flash_desc_get(VOID_T);
 #endif
 
 #ifdef __cplusplus

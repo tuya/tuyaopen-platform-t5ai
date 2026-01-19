@@ -1,0 +1,49 @@
+menu "ASR Service"
+
+	config ASR_SERVICE
+		bool "Enable ASR Service"
+		depends on ADK && ADK_RAW_STREAM && ADK_ONBOARD_MIC_STREAM && ADK_ONBOARD_SPEAKER_STREAM && (ADK_AEC_ALGORITHM || ADK_AEC_V3_ALGORITHM) && WANSON_ASR
+		default n
+		help
+			Enable ASR Service Interface API used for ASR
+	
+	choice ASR_SERVICE_USE_MEMORY
+		depends on ASR_SERVICE
+		prompt "Select asr service use memory"
+		default ASR_SERVICE_USE_SRAM
+
+		config ASR_SERVICE_USE_SRAM
+			bool "Enable asr service use sram"
+			help
+				asr service use sram memory
+
+		config ASR_SERVICE_USE_PSRAM
+			depends on PSRAM
+			bool "Enable asr service use psram"
+			help
+				asr service use psram memory
+	endchoice
+
+	choice ASR_SERVICE_MIC
+		depends on ASR_SERVICE
+		prompt "Select asr service with mic"
+		default ASR_SERVICE_WITH_MIC
+
+		config ASR_SERVICE_WITH_MIC
+			bool "Enable asr service with mic"
+			help
+				asr service with mic
+
+		config ASR_SERVICE_NO_MIC
+			bool "Enable asr service no mic"
+			help
+				the mic will be opened by other modules, the asr src is from the mic multioutput.
+	endchoice
+
+	config AUD_ASR_READ_SERVICE
+		depends on ASR_SERVICE 
+		bool "Enable Audio ASR Service"
+		default n
+		help
+			Enable Aud asr Service to read service mic data
+endmenu

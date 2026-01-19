@@ -1,0 +1,12 @@
+menu "Adk::Audio_algorithm::EQ_algorithm"
+	config ADK_EQ_ALGORITHM
+		depends on ADK
+		bool "Enable Audio EQ algorithm"
+		default n
+
+	config ADK_EQ_ALGORITHM_TEST
+		depends on ADK_EQ_ALGORITHM && ADK_ARRAY_STREAM && ADK_UART_STREAM
+		bool "Enable Audio EQ algorithm test"
+		default n
+
+endmenu

@@ -31,11 +31,8 @@ void cli_usb_cmd(char *pcWriteBuffer, int xWriteBufferLen, int argc, char **argv
     }
 
     do {
-        status = media_app_get_usb_connect_status();
-        if (status) {
-            bk_printf("found\r\n\r\n");
-            break;
-        }
+        bk_printf("\r\n\r\nTODO ... Get USB Status\r\n\r\n");
+
         bk_printf("not found, next\r\n\r\n");
         tkl_system_sleep(50);
     } while (count++ < 10);

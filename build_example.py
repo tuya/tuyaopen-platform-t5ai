@@ -5,6 +5,7 @@
 # $2 - user cmd: build/clean/...
 
 import os
+import subprocess
 import sys
 import json
 
@@ -12,19 +13,20 @@ from tools.util import (
     copy_file, need_settarget, record_target,
     calc_md5sum, do_subprocess, get_system_name
 )
-from tools.do_with_assets import do_with_assets
+from tools.download_toolchain import get_toolchain_package_info
 
 
-def clean(build_root):
+def clean(build_root, toolchain_folder_path, bash_path):
     '''
     make clean
     make clean -C ./bk_idk/
     '''
-    cmd = f"cd {build_root} && make clean"
-    do_subprocess(cmd)
-
-    bk_idf_path = os.path.join(build_root, "bk_idk")
-    cmd = f"cd {bk_idf_path} && make clean"
+    build_root = build_root.replace("\\", "/")
+    toolchain_folder_path = toolchain_folder_path.replace("\\", "/")
+    cmd = f"export TUYA_TOOLCHAIN_PATH={toolchain_folder_path}; "
+    cmd += f"cd {build_root}; make clean"
+    if os.path.exists(bash_path):  # only for windows
+        cmd = f"{bash_path} -c '{cmd}'"
     do_subprocess(cmd)
     pass
 
@@ -57,13 +59,13 @@ def set_environment(root, build_param_path, param_data):
 
 
 def check_bootloader_bin(build_root) -> bool:
-    boot_file = os.path.join(build_root, "bk_idk",
+    boot_file = os.path.join(build_root, "cp",
                              "components", "bk_libs",
                              "bk7258", "bootloader",
                              "normal_bootloader",
                              "bootloader.bin")
     real_md5sum = calc_md5sum(boot_file)
-    exp_md5sum = "f8f45b0779a8269fa089ac84ebd9c149"
+    exp_md5sum = "eed24a0637a4e96749aba006807eb3b7"
     if real_md5sum != exp_md5sum:
         print(f"Error md5sum: real[{real_md5sum}], expectation[{exp_md5sum}]")
         return False
@@ -74,13 +76,6 @@ def check_bootloader_bin(build_root) -> bool:
 def setup_build(root, build_root, build_param_path, param_data):
     set_environment(root, build_param_path, param_data)
 
-    gen_file = os.path.join(build_root, "bk_idk",
-                            "tools", "build_tools",
-                            "part_table_tools",
-                            "config", "gen_files_list.txt")
-    with open(gen_file, "w", encoding='utf-8') as f:
-        f.write("")
-
     if not check_bootloader_bin(build_root):
         print("Error: check bootloader bin failed.")
         return False
@@ -88,18 +83,17 @@ def setup_build(root, build_root, build_param_path, param_data):
     return True
 
 
-def build(build_root, target, app_name, app_ver) -> bool:
-    cmd = f"cd {build_root} && make {target}"
-
-    project_dir = os.path.join("..", "projects", "tuya_app")
-    cmd += f" PROJECT_DIR={project_dir}"
-
-    build_dir = os.path.join("..", "build")
-    cmd += f" BUILD_DIR={build_dir}"
-
+def build(build_root, toolchain_folder_path, bash_path,
+          target, app_name, app_ver) -> bool:
+    build_root = build_root.replace("\\", "/")
+    toolchain_folder_path = toolchain_folder_path.replace("\\", "/")
+    cmd = f"export TUYA_TOOLCHAIN_PATH={toolchain_folder_path}; "
+    cmd += f"cd {build_root}; make {target} PROJECT=tuya_app"
     cmd += f" APP_NAME={app_name}"
     cmd += f" APP_VERSION={app_ver}"
     cmd += " -j"
+    if os.path.exists(bash_path):  # only for windows
+        cmd = f"{bash_path} -c '{cmd}'"
 
     ret = do_subprocess(cmd)
 
@@ -109,84 +103,115 @@ def build(build_root, target, app_name, app_ver) -> bool:
     return True
 
 
-def _merge_bin(pad_size, app_bin, app1_bin, ua_file_bin):
-    with open(ua_file_bin, 'wb') as outfile:
-        with open(app_bin, 'rb') as f:
-            outfile.write(f.read())
-        outfile.write(b'\xff' * pad_size)
-        with open(app1_bin, 'rb') as f:
-            outfile.write(f.read())
-    pass
+def create_ua_file(build_root, target, ua_bin_file):
+    build_path = os.path.join(build_root, "build", target, "tuya_app")
+    cp_bin = os.path.join(build_path, target, "app.bin")
+    ap_bin = os.path.join(build_path, f"{target}_ap", "app.bin")
+
+    project_path = os.path.join(build_root, "projects", "tuya_app")
+    partition_file = os.path.join(project_path, "partitions",
+                                  target, "auto_partitions.csv")
+    create_ua_py = os.path.join(project_path, "tuya_scripts",
+                                "create_ua_file.py")
+
+    cmd = f"python {create_ua_py} {partition_file} {cp_bin} {ap_bin}  \
+--ua_file={ua_bin_file}"
+
+    if 0 != do_subprocess(cmd):
+        print("Error: create_ua_file.py failed.")
+        return False
+
+    return True
+
+
+def get_section_offset(build_root, map_file, section_name):
+    get_section_offset_py = os.path.join(build_root, "projects", "tuya_app",
+                                         "tuya_scripts", "get_map_section.py")
+
+    try:
+        result = subprocess.run(
+            ["python", get_section_offset_py, map_file, section_name],
+            capture_output=True,
+            text=True,
+            check=True
+        )
+        return result.stdout.strip()
+    except subprocess.CalledProcessError as e:
+        print(f"执行脚本失败: {e.stderr}")
+        return None
+    except FileNotFoundError:
+        print(f"错误: 未找到脚本 {get_section_offset_py}")
+        return None
+
+
+def create_ug_file(build_root, target, ua_bin_file, ug_bin_file):
+    ap_map_file = os.path.join(build_root, "build", target, "tuya_app",
+                               f"{target}_ap", "app.map")
+
+    ap_ty_section_addr = get_section_offset(build_root, ap_map_file,
+                                            "_ty_section_start")
+    ap_start_section_addr = get_section_offset(build_root, ap_map_file,
+                                               "__vector_core0_table")
+
+    # 1MB (1048576)
+    split_point = int(ap_ty_section_addr, 10) \
+        - int(ap_start_section_addr, 10) \
+        + 1048576
+
+    print(f"ap_start_section_addr: {ap_start_section_addr}")
+    print(f"ap_ty_section_addr: {ap_ty_section_addr}")
+    print(f"split_point: {split_point}")
+
+    scripts_path = os.path.join(build_root, "projects", "tuya_app",
+                                "tuya_scripts")
+    ota_bin_tool = os.path.join(scripts_path, "diff2ya")
+    format_bin_py = os.path.join(scripts_path, "format_up_bin.py")
+
+    bin_path = os.path.dirname(ug_bin_file)
+    tmp_bin_file = os.path.join(bin_path, "tmp_ug_file.bin")
+
+    cmd = f"python {format_bin_py} {ua_bin_file} {tmp_bin_file} \
+6b8000 1000 0 1000 10D0 {split_point} -v"
+
+    if 0 != do_subprocess(cmd):
+        print("Error: format bin failed.")
+        return False
+
+    cmd = f"{ota_bin_tool} {tmp_bin_file} {tmp_bin_file} {ug_bin_file} 0"
+    if 0 != do_subprocess(cmd):
+        print("Error: ota bin failed.")
+        return False
+
+    return True
 
 
 def copy_assets(build_root, target, param_data):
-    build_path = os.path.join(build_root, "build", target)
+    build_path = os.path.join(build_root, "build", target,
+                              "tuya_app", "package")
     app_all_bin = os.path.join(build_path, "all-app.bin")
     if not os.path.exists(app_all_bin):
         print(f"Error: Not found {app_all_bin}.")
         return False
 
-    app_bin = os.path.join(build_path, "app.bin")
-    bin_size = os.stat(app_bin).st_size
-    max_size = 1740800
-    if bin_size > max_size:
-        print(f"Error: bin file is too big, limit {max_size}, act {bin_size}.")
-        return False
-
-    pad_size = max_size - bin_size
     ua_file_bin = os.path.join(build_path, "ua_file.bin")
-    app1_bin = os.path.join(build_path, "app1.bin")
-    _merge_bin(pad_size, app_bin, app1_bin, ua_file_bin)
-    total_size = os.stat(ua_file_bin).st_size
+    ug_file_bin = os.path.join(build_path, "ug_file.bin")
 
-    print(f"ofs: {bin_size}")
-    print(f"pad_bytes_size: {pad_size}")
-    print(f"total_size: {total_size}")
-
-    project_dir = os.path.join(
-        build_root, "projects", "tuya_app")
-    format_bin_py = os.path.join(
-        project_dir, "tuya_scripts", "format_up_bin.py")
-    app_ug_bin = os.path.join(build_path, "app_ug.bin")
-    cmd = f"python {format_bin_py} {ua_file_bin} {app_ug_bin} \
-500000 1000 0 1000 18D0 {max_size}"
-    if 0 != do_subprocess(cmd):
-        print("Error: format_bin_py failed.")
-        return False
-
-#     diff_ota_bin_py = os.path.join(project_dir, "tuya_scripts", "diff2ya.py")
-#     app_ota_ug_bin = os.path.join(build_path, "app_ota_ug.bin")
-#     cmd = f"python {diff_ota_bin_py} {app_ug_bin} \
-# {app_ug_bin} {app_ota_ug_bin} 0"
-#     if 0 != do_subprocess(cmd):
-#         print("Error: diff_ota_bin_py failed.")
-#         return False
+    create_ua_file(build_root, target, ua_file_bin)
+    create_ug_file(build_root, target, ua_file_bin, ug_file_bin)
 
     app_name = param_data["CONFIG_PROJECT_NAME"]
     app_ver = param_data["CONFIG_PROJECT_VERSION"]
     output_path = param_data["BIN_OUTPUT_DIR"]
+    debug_path = os.path.join(output_path, "debug")
     os.makedirs(output_path, exist_ok=True)
+    os.makedirs(debug_path, exist_ok=True)
     try:
         copy_file(app_all_bin,
                   os.path.join(output_path, f"{app_name}_QIO_{app_ver}.bin"))
         copy_file(ua_file_bin,
                   os.path.join(output_path, f"{app_name}_UA_{app_ver}.bin"))
-        # copy_file(app_ota_ug_bin,
-        #           os.path.join(output_path, f"{app_name}_UG_{app_ver}.bin"))
-        copy_file(os.path.join(build_path, "app.elf"),
-                  os.path.join(output_path, f"{app_name}_{app_ver}.elf"))
-        copy_file(os.path.join(build_path, "app.map"),
-                  os.path.join(output_path, f"{app_name}_{app_ver}.map"))
-        copy_file(os.path.join(build_path, "app.nm"),
-                  os.path.join(output_path, f"{app_name}_{app_ver}.nm"))
-        copy_file(os.path.join(build_path, "app.txt"),
-                  os.path.join(output_path, f"{app_name}_{app_ver}.txt"))
-        copy_file(os.path.join(build_path, "size_map.txt"),
-                  os.path.join(output_path, "size_map.txt"))
-        copy_file(os.path.join(build_path, "size_map_detail.csv"),
-                  os.path.join(output_path, "size_map_detail.csv"))
-        copy_file(os.path.join(build_path, "size_map_total.csv"),
-                  os.path.join(output_path, "size_map_total.csv"))
+        copy_file(ug_file_bin,
+                  os.path.join(output_path, f"{app_name}_UG_{app_ver}.bin"))
     except Exception as e:
         print(f"Error: copy assets: {str(e)}")
         return False
@@ -195,7 +220,8 @@ def copy_assets(build_root, target, param_data):
 
 
 def do_with_compile(root, build_root, user_cmd,
-                    target, build_param_path, param_data):
+                    target, build_param_path, param_data,
+                    toolchain_folder_path, bash_path):
     # Setup build
     if not setup_build(root, build_root, build_param_path, param_data):
         sys.exit(1)
@@ -204,14 +230,15 @@ def do_with_compile(root, build_root, user_cmd,
     app_target_file = os.path.join(build_root, ".app")
     app_name = param_data["CONFIG_PROJECT_NAME"]
     if "clean" == user_cmd or need_settarget(app_target_file, app_name):
-        clean(build_root)
+        clean(build_root, toolchain_folder_path, bash_path)
         if "clean" == user_cmd:
             sys.exit(0)
 
     # build project
     record_target(app_target_file, app_name)
     app_ver = param_data["CONFIG_PROJECT_VERSION"]
-    if not build(build_root, target, app_name, app_ver):
+    if not build(build_root, toolchain_folder_path, bash_path,
+                 target, app_name, app_ver):
         sys.exit(1)
     pass
 
@@ -228,6 +255,7 @@ def main():
     user_cmd = sys.argv[2]
     target = "bk7258"
 
+    # setup environment
     root = os.path.dirname(os.path.abspath(__file__))
     build_root = os.path.join(root, "t5_os")
     build_param_file = os.path.join(build_param_path, "build_param.json")
@@ -235,12 +263,21 @@ def main():
     if not len(param_data):
         sys.exit(1)
 
-    if "linux" == get_system_name():
-        do_with_compile(root, build_root, user_cmd, target,
-                        build_param_path, param_data)
-    else:
-        do_with_assets(root, build_root, user_cmd,
-                       target, param_data)
+    # toolchain folder path
+    platform_root = os.path.abspath(os.path.join(root, ".."))
+    toolchain_root = os.path.join(platform_root, "tools")
+    toolchain_package_info = get_toolchain_package_info()
+    toolchain_folder = toolchain_package_info["folder"]
+    toolchain_folder_path = os.path.join(toolchain_root, toolchain_folder)
+
+    # bash path
+    bash_path = ""
+    if "windows" == get_system_name():
+        bash_path = os.path.join(root, "tools", "bash", "bin", "bash.exe")
+
+    do_with_compile(root, build_root, user_cmd, target,
+                    build_param_path, param_data,
+                    toolchain_folder_path, bash_path)
 
     # copy asset
     if not copy_assets(build_root, target, param_data):

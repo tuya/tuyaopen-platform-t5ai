@@ -1,0 +1,56 @@
+menu "Bk_ble"
+	depends on BLUETOOTH
+
+	config BT
+		bool "Enable Bt"
+		default n
+
+	config BLE
+		bool "Enable Ble"
+		default y
+
+	choice BLE_STACK
+		prompt "Select Ble Version"
+		depends on (BLE || BT)
+		default BLE_5_X
+
+		config BLE_5_X
+			bool "BLE 5.X"
+		config BLE_4_2
+			bool "BLE 4.2"
+		config BTDM_5_2
+			bool "BTDM 5.2"
+		config BTDM_5_2_MINDTREE
+			bool "BTDM 5.2 Mindtree Host"
+	endchoice
+
+	config BTDM_CONTROLLER_ONLY
+		bool "BTDM controller only"
+		default y
+
+	config BLUETOOTH_RELEASE_CODESIZE
+		bool "reduce ble stack size"
+		depends on BLE
+		default n
+		help
+			This option is used to reduce ble stack size for IoT scenarios that
+			only use ble provisioning network.It supports two ble advertise,
+			one ble link, and ble scan at the same time.it does not support SMP and central role.
+			when config this option,BLUETOOTH_BLE_SLAVE_ONLY will be invalid.
+
+	config BLUETOOTH_BLE_SLAVE_ONLY
+		bool "only supports ble slave"
+		depends on !BLUETOOTH_RELEASE_CODESIZE
+		default n
+
+    config BLUETOOTH_BLE_DISCOVER_AUTO
+        bool "auto ble discover. Only used when single ble host"
+        default y
+    config BLUETOOTH_SUPPORT_LPO_ROSC
+        bool "support lpo rosc"
+        default n
+    config BLUETOOTH_SUPPORT_IPC
+        bool "bt support ipc"
+        default y
+
+endmenu

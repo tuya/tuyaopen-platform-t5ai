@@ -1,0 +1,82 @@
+menu "Voice Service"
+
+	config VOICE_SERVICE
+		bool "Enable Voice Service"
+		depends on ADK && ADK_RAW_STREAM && (ADK_ONBOARD_MIC_STREAM || ADK_ONBOARD_DUAL_DMIC_MIC_STREAM) && ADK_ONBOARD_SPEAKER_STREAM && ADK_G711_ENCODER && ADK_G711_DECODER && (ADK_AEC_ALGORITHM || ADK_AEC_V3_ALGORITHM)
+		default n
+		help
+			Enable Voice Service Interface API used for voice call
+	
+	choice VOICE_SERVICE_USE_MEMORY
+		depends on VOICE_SERVICE
+		prompt "Select voice service use memory"
+		default VOICE_SERVICE_USE_SRAM
+
+		config VOICE_SERVICE_USE_SRAM
+			bool "Enable voice service use sram"
+			help
+				Voice service use sram memory
+
+		config VOICE_SERVICE_USE_PSRAM
+			depends on PSRAM
+			bool "Enable Voice service use psram"
+			help
+				Voice service use psram memory
+	endchoice
+
+	config VOICE_READ_SERVICE
+		depends on VOICE_SERVICE 
+		bool "Enable Voice Read Service"
+		default n
+		help
+			Enable Voice Service to read voice service mic data
+
+	config VOICE_WRITE_SERVICE
+		depends on VOICE_SERVICE 
+		bool "Enable Voice Write Service"
+		default n
+		help
+			Enable Voice Service to write voice service speaker data
+
+	config VOICE_SERVICE_TEST
+		depends on VOICE_READ_SERVICE && VOICE_WRITE_SERVICE
+		bool "Enable Voice Service Test"
+		default n
+		help
+			Enable Voice Service test to test voice service by cli command
+
+	config VOICE_SERVICE_AAC_ENCODER
+		depends on ADK_AAC_ENCODER
+		bool "Enable Voice Service Support AAC Encoder"
+		default n
+
+	config VOICE_SERVICE_AAC_DECODER
+		depends on ADK_AAC_DECODER
+		bool "Enable Voice Service Support AAC Decoder"
+		default n
+
+	config VOICE_SERVICE_G722_ENCODER
+		depends on ADK_G722_ENCODER
+		bool "Enable Voice Service Support G722 Encoder"
+		default n
+
+	config VOICE_SERVICE_G722_DECODER
+		depends on ADK_G722_DECODER
+		bool "Enable Voice Service Support G722 Decoder"
+		default n
+
+	config VOICE_SERVICE_EQ
+		depends on ADK_EQ_ALGORITHM
+		bool "Enable Voice Service Support EQ"
+		default n
+
+	config VOICE_SERVICE_OPUS_ENCODER
+		depends on ADK_OPUS_ENCODER
+		bool "Enable Voice Service Support Opus Encoder"
+		default n
+
+	config VOICE_SERVICE_OPUS_DECODER
+		depends on ADK_OPUS_DECODER
+		bool "Enable Voice Service Support Opus Decoder"
+		default n
+endmenu

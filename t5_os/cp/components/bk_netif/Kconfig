@@ -1,0 +1,12 @@
+menu "Bk_netif"
+
+	config BK_NETIF
+		depends on WIFI_ENABLE
+		bool "Enable Bk Netif" 
+		default y
+
+	config NETIF_LWIP
+		depends on BK_NETIF
+		bool "Netif use LWIP"
+		default y
+endmenu

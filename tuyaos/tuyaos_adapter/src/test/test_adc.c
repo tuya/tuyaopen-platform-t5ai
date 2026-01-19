@@ -8,60 +8,115 @@
 #include "cli.h"
 #include "cli_tuya_test.h"
 
+#include "FreeRTOS.h"
+#include "task.h"
+
 #include "bk_saradc.h"
 #include <driver/adc.h>
 #include "adc_statis.h"
 #include <os/os.h>
 #include "sys_driver.h"
 #include "tuya_cloud_types.h"
+#include "tkl_adc.h"
+#include "tkl_pinmux.h"
+
+
+static TaskHandle_t __test_adc_thread = NULL;
+static void __test_tuya_adc(void *arg)
+{
+#define ADC_CHAN_NUM    2
+#define ADC_CONV_TIMES  8
+
+    uint8_t chan_list[ADC_CHAN_NUM] = {24,25};
+    TUYA_ADC_BASE_CFG_T tkl_cfg;
+
+    memset(&tkl_cfg, 0, sizeof(tkl_cfg));
+
+    INT32_T adc_chan1 = tkl_io_pin_to_func(24, TUYA_IO_TYPE_ADC);
+    INT32_T adc_chan2 = tkl_io_pin_to_func(25, TUYA_IO_TYPE_ADC);
+
+    tkl_cfg.ch_list.data = BIT(adc_chan1 & 0xFF);
+    tkl_cfg.ch_list.data |= BIT(adc_chan2 & 0xFF);
+
+    tkl_cfg.ch_nums = ADC_CHAN_NUM;
+    tkl_cfg.type = TUYA_ADC_INNER_SAMPLE_VOL;
+    tkl_cfg.width = 12;
+    tkl_cfg.mode = TUYA_ADC_CONTINUOUS;
+    tkl_cfg.conv_cnt = ADC_CONV_TIMES;
+    tkl_adc_init(0, &tkl_cfg);
+
+    INT32_T buffer[ADC_CHAN_NUM][ADC_CONV_TIMES] = {0};
+
+    while (1) {
+        memset(buffer, 0, sizeof(buffer));
+
+        tkl_adc_read_voltage(0, (INT32_T *)buffer, ADC_CHAN_NUM * ADC_CONV_TIMES);
+
+        for (int i = 0; i < ADC_CHAN_NUM; i++) {
+            bk_printf("ch: %2d, %4d, %4d, %4d, %4d, %4d, %4d, %4d, %4d\r\n", chan_list[i],
+                    buffer[i][0], buffer[i][1], buffer[i][2], buffer[i][3],
+                    buffer[i][4], buffer[i][5], buffer[i][6], buffer[i][7]);
+        }
+
+        tkl_system_sleep(10);
+    }
+}
 
 void cli_adc_cmd(char *pcWriteBuffer, int xWriteBufferLen, int argc, char **argv)
 {
-    int32_t buf[10];
-    TUYA_ADC_BASE_CFG_T cfg;
-    uint16_t value   = 0;
-    float cali_value = 0;
-    adc_chan_t adc_chan = ADC_4;
+#if 0
+#define ADC_CHAN_NUM    5
+#define ADC_CONV_TIMES  8
 
-    static uint8_t is_init = 0;
+    uint8_t chan_list[ADC_CHAN_NUM] = {25, 24, 28, 12, 13};
+    TUYA_ADC_BASE_CFG_T tkl_cfg;
+    INT32_T adc_chan0 = tkl_io_pin_to_func(12, TUYA_IO_TYPE_ADC);
+    INT32_T adc_chan1 = tkl_io_pin_to_func(13, TUYA_IO_TYPE_ADC);
+    INT32_T adc_chan2 = tkl_io_pin_to_func(24, TUYA_IO_TYPE_ADC);
+    INT32_T adc_chan3 = tkl_io_pin_to_func(25, TUYA_IO_TYPE_ADC);
+    INT32_T adc_chan4 = tkl_io_pin_to_func(28, TUYA_IO_TYPE_ADC);
 
-    memset(buf, 0, sizeof(buf));
+    tkl_cfg.ch_list.data = BIT(adc_chan0 & 0xFF);
+    tkl_cfg.ch_list.data |= BIT(adc_chan1 & 0xFF);
+    tkl_cfg.ch_list.data |= BIT(adc_chan2 & 0xFF);
+    tkl_cfg.ch_list.data |= BIT(adc_chan3 & 0xFF);
+    tkl_cfg.ch_list.data |= BIT(adc_chan4 & 0xFF);
 
-    if (!is_init) {
-        BK_LOG_ON_ERR(bk_adc_driver_init());
-        is_init = 1;
+    tkl_cfg.ch_nums = ADC_CHAN_NUM;
+    tkl_cfg.type = TUYA_ADC_INNER_SAMPLE_VOL;
+    tkl_cfg.width = 12;
+    tkl_cfg.mode = TUYA_ADC_CONTINUOUS;
+    tkl_cfg.conv_cnt = ADC_CONV_TIMES;
+    tkl_adc_init(0, &tkl_cfg);
+
+    INT32_T buffer[ADC_CHAN_NUM][ADC_CONV_TIMES] = {0};
+    memset(buffer, 0, sizeof(buffer));
+
+    tkl_adc_read_voltage(0, (INT32_T *)buffer, ADC_CHAN_NUM * ADC_CONV_TIMES);
+    uint8_t outbuf[128] = {0};
+
+    snprintf(outbuf, 128, "%s", "adc input voltage:\r\n");
+    tkl_log_output(outbuf);
+
+    for (int i = 0; i < ADC_CHAN_NUM; i++) {
+        memset(outbuf, 0, 128);
+        snprintf(outbuf, 128, "ch: %2d, %4d, %4d, %4d, %4d, %4d, %4d, %4d, %4d\r\n", chan_list[i],
+                buffer[i][0], buffer[i][1], buffer[i][2], buffer[i][3],
+                buffer[i][4], buffer[i][5], buffer[i][6], buffer[i][7]);
+        tkl_log_output(outbuf);
     }
 
-    BK_LOG_ON_ERR(bk_adc_acquire());
-    sys_drv_set_ana_pwd_gadc_buf(1);
-    BK_LOG_ON_ERR(bk_adc_init(adc_chan));
-    adc_config_t config = {0};
-
-    config.chan = adc_chan;
-    config.adc_mode = 3;
-    config.src_clk = 1;
-    config.clk = 0x30e035;
-    config.saturate_mode = 4;
-    config.steady_ctrl= 7;
-    config.adc_filter = 0;
-    if(config.adc_mode == ADC_CONTINUOUS_MODE) {
-        config.sample_rate = 0;
-    }
-
-    BK_LOG_ON_ERR(bk_adc_set_config(&config));
-    BK_LOG_ON_ERR(bk_adc_enable_bypass_clalibration());
-    BK_LOG_ON_ERR(bk_adc_start());
-    BK_LOG_ON_ERR(bk_adc_read(&value, 1000));
-
-    cali_value = bk_adc_data_calculate(value, adc_chan);
-
-    bk_adc_stop();
-    sys_drv_set_ana_pwd_gadc_buf(0);
-    bk_adc_deinit(adc_chan);
-    bk_adc_release();
-    bk_printf("adc read: %d, %f\r\n", value, (uint32_t)(cali_value * 1000));
-
-//    BK_LOG_ON_ERR(bk_adc_driver_deinit());
+    // bk_printf("adc input voltage:\r\n");
+    // for (int i = 0; i < ADC_CHAN_NUM; i++) {
+    //     bk_printf("ch: %d, ", chan_list[i]);
+    //     for (int j = 0; j < ADC_CONV_TIMES; j++) {
+    //         bk_printf(" %d", buffer[i][j]);
+    //     }
+    //     bk_printf("\r\n");
+    // }
+    // bk_printf("\r\n");
+#endif
+    xTaskCreate(__test_tuya_adc, "tadc", 4096, NULL, 5, &__test_adc_thread);
 }
 
 

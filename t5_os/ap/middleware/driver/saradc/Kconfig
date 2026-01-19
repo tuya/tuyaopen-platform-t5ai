@@ -1,0 +1,26 @@
+menu "SARADC"
+	config SARADC
+		bool "Enable SARADC"
+		default y
+
+	config SARADC_CLIENT
+		bool "Enable SARADC client"
+		depends on SARADC
+		default y
+
+	config SARADC_MB
+		bool "Enable SARADC mailbox"
+		depends on SARADC
+		default n
+
+	config SARADC_TEST
+		depends on SARADC
+		bool "Enable SARADC test"
+		default y
+
+	config SARADC_EXAMPLE
+		depends on SARADC
+		bool "Enable SARADC example"
+		default n
+
+endmenu

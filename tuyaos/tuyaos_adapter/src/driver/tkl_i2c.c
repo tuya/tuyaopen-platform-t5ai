@@ -21,14 +21,30 @@
 #include "sys_driver.h"
 
 #include "tkl_gpio.h"
-#include "tal_log.h"
 #include "tkl_i2c.h"
+#include "tkl_mutex.h"
 
 /***********************************************************
 ************************macro define************************
 ***********************************************************/
 #define I2C_WRITE           0
 #define I2C_READ            1
+#define I2C_SLAVE_ADDR           0x42
+#define I2C_WRITE_WAIT_MAX_MS    (500)
+#define I2C_READ_WAIT_MAX_MS     (500)
+
+
+#define I2C1_GROUP0_SCL_PIN    GPIO_0
+#define I2C1_GROUP0_SDA_PIN    GPIO_1
+
+#define I2C1_GROUP1_SCL_PIN    GPIO_14
+#define I2C1_GROUP1_SDA_PIN    GPIO_15
+
+#define I2C1_GROUP2_SCL_PIN    GPIO_38
+#define I2C1_GROUP2_SDA_PIN    GPIO_39
+
+#define I2C1_GROUP3_SCL_PIN    GPIO_42
+#define I2C1_GROUP3_SDA_PIN    GPIO_43
 
 #if 0
 #define I2C_SCL_INIT()      __sw_i2c_scl_init(i2c_pin.scl)
@@ -91,8 +107,9 @@ typedef struct {
 } SR_I2C_GPIO_T;
 
 typedef struct {
-    uint8_t addr_width;
-    uint8_t delay_us;
+    UCHAR_T addr_width;
+    UCHAR_T delay_us;
+    TKL_MUTEX_HANDLE mutex;
 } SR_I2C_CONFIG_T;
 
 /***********************************************************
@@ -113,15 +130,15 @@ extern void bk_printf(const char *fmt, ...);
 ***********************************************************/
 static volatile uint32_t delay_us = 10;
 static SR_I2C_GPIO_T sg_i2c_pin[TUYA_I2C_NUM_MAX] = {
-    {TUYA_GPIO_NUM_20, TUYA_GPIO_NUM_21},
-    {TUYA_GPIO_NUM_0, TUYA_GPIO_NUM_1},
+    {TUYA_GPIO_NUM_20,  TUYA_GPIO_NUM_21},
+    {TUYA_GPIO_NUM_14,  TUYA_GPIO_NUM_15},
     {TUYA_GPIO_NUM_MAX, TUYA_GPIO_NUM_MAX},
     {TUYA_GPIO_NUM_MAX, TUYA_GPIO_NUM_MAX},
     {TUYA_GPIO_NUM_MAX, TUYA_GPIO_NUM_MAX},
     {TUYA_GPIO_NUM_MAX, TUYA_GPIO_NUM_MAX}
 };
 static SR_I2C_CONFIG_T sg_i2c_cfg[TUYA_I2C_NUM_MAX] = {0};
-
+static i2c_config_t g_i2c_hal_cfg[I2C_ID_MAX] = {0};
 /***********************************************************
 ***********************function define**********************
 ***********************************************************/
@@ -132,7 +149,7 @@ static SR_I2C_CONFIG_T sg_i2c_cfg[TUYA_I2C_NUM_MAX] = {0};
  *
  * @return none
  */
-static void __sw_i2c_scl_init(TUYA_GPIO_NUM_E pin)
+static VOID_T __sw_i2c_scl_init(TUYA_GPIO_NUM_E pin)
 {
     TUYA_GPIO_BASE_CFG_T pin_cfg = {
         .mode = TUYA_GPIO_PUSH_PULL,
@@ -150,7 +167,7 @@ static void __sw_i2c_scl_init(TUYA_GPIO_NUM_E pin)
  *
  * @return none
  */
-static void __sw_i2c_sda_init(TUYA_GPIO_NUM_E pin, BOOL_T in)
+static VOID_T __sw_i2c_sda_init(TUYA_GPIO_NUM_E pin, BOOL_T in)
 {
     TUYA_GPIO_BASE_CFG_T pin_cfg;
     if (in) {
@@ -187,7 +204,7 @@ static TUYA_GPIO_LEVEL_E __sw_i2c_sda_read(TUYA_GPIO_NUM_E pin)
  *
  * @return none
  */
-static void __sw_i2c_write(TUYA_GPIO_NUM_E pin, TUYA_GPIO_LEVEL_E level)
+static VOID_T __sw_i2c_write(TUYA_GPIO_NUM_E pin, TUYA_GPIO_LEVEL_E level)
 {
     tkl_gpio_write(pin, level);
 }
@@ -199,7 +216,7 @@ static void __sw_i2c_write(TUYA_GPIO_NUM_E pin, TUYA_GPIO_LEVEL_E level)
  *
  * @return none
  */
-static void __sw_i2c_start(SR_I2C_GPIO_T i2c_pin)
+static VOID_T __sw_i2c_start(SR_I2C_GPIO_T i2c_pin)
 {
     I2C_SCL_H();
     I2C_SDA_H();
@@ -218,7 +235,7 @@ static void __sw_i2c_start(SR_I2C_GPIO_T i2c_pin)
  *
  * @return none
  */
-static void __sw_i2c_stop(SR_I2C_GPIO_T i2c_pin)
+static VOID_T __sw_i2c_stop(SR_I2C_GPIO_T i2c_pin)
 {
     I2C_SCL_L();
     I2C_SDA_INIT_OUT();
@@ -239,7 +256,7 @@ static void __sw_i2c_stop(SR_I2C_GPIO_T i2c_pin)
  *
  * @return none
  */
-static void __sw_i2c_ack(SR_I2C_GPIO_T i2c_pin)
+static VOID_T __sw_i2c_ack(SR_I2C_GPIO_T i2c_pin)
 {
     I2C_SCL_L();
     I2C_SDA_INIT_OUT();
@@ -258,7 +275,7 @@ static void __sw_i2c_ack(SR_I2C_GPIO_T i2c_pin)
  *
  * @return none
  */
-static void __sw_i2c_no_ack(SR_I2C_GPIO_T i2c_pin)
+static VOID_T __sw_i2c_no_ack(SR_I2C_GPIO_T i2c_pin)
 {
     I2C_SCL_L();
     I2C_SDA_INIT_OUT();
@@ -285,7 +302,7 @@ static BOOL_T __sw_i2c_get_ack(SR_I2C_GPIO_T i2c_pin)
     I2C_DELAY(1);
 
     while (I2C_SDA_READ()) {
-        if (timeout_count >= 500000) {
+        if (timeout_count >= 1000) {    // 10ms
             __sw_i2c_stop(i2c_pin);
             bk_printf("wait ack timeout %d\r\n", I2C_SDA_READ());
             return FALSE;
@@ -309,9 +326,9 @@ static BOOL_T __sw_i2c_get_ack(SR_I2C_GPIO_T i2c_pin)
  *
  * @return none
  */
-static void __sw_i2c_send_byte(SR_I2C_GPIO_T i2c_pin, uint8_t data)
+static VOID_T __sw_i2c_send_byte(SR_I2C_GPIO_T i2c_pin, uint8_t data)
 {
-    uint8_t i = 0;
+    UCHAR_T i = 0;
 
     I2C_SCL_L();
     I2C_SDA_INIT_OUT();
@@ -339,10 +356,10 @@ static void __sw_i2c_send_byte(SR_I2C_GPIO_T i2c_pin, uint8_t data)
  *
  * @return read byte
  */
-static uint8_t __sw_i2c_read_byte(SR_I2C_GPIO_T i2c_pin, BOOL_T need_ack)
+static UCHAR_T __sw_i2c_read_byte(SR_I2C_GPIO_T i2c_pin, BOOL_T need_ack)
 {
-    uint8_t read_byte = 0x00;
-    uint8_t i = 0;
+    UCHAR_T read_byte = 0x00;
+    UCHAR_T i = 0;
 
     I2C_SCL_L();
     I2C_SDA_INIT_IN();
@@ -377,7 +394,7 @@ static uint8_t __sw_i2c_read_byte(SR_I2C_GPIO_T i2c_pin, BOOL_T need_ack)
  *
  * @return operation result
  */
-static int __sw_i2c_write_data(uint8_t port, uint16_t addr, const uint8_t *buf, uint8_t len, BOOL_T xfer_pending)
+static INT_T __sw_i2c_write_data(UCHAR_T port, USHORT_T addr, const UCHAR_T *buf, UCHAR_T len, BOOL_T xfer_pending)
 {
     __sw_i2c_start(sg_i2c_pin[port]);
 
@@ -387,7 +404,7 @@ static int __sw_i2c_write_data(uint8_t port, uint16_t addr, const uint8_t *buf, 
         return -1;
     }
 
-    for (uint8_t i = 0; i < len; i++) {
+    for (UCHAR_T i = 0; i < len; i++) {
         __sw_i2c_send_byte(sg_i2c_pin[port], buf[i]);
         if (!__sw_i2c_get_ack(sg_i2c_pin[port])) {
             __sw_i2c_stop(sg_i2c_pin[port]);
@@ -412,9 +429,9 @@ static int __sw_i2c_write_data(uint8_t port, uint16_t addr, const uint8_t *buf, 
  *
  * @return operation result
  */
-static int __sw_i2c_read_data(uint8_t port, uint16_t addr, uint8_t *buf, uint8_t len, BOOL_T xfer_pending)
+static INT_T __sw_i2c_read_data(UCHAR_T port, USHORT_T addr, UCHAR_T *buf, UCHAR_T len, BOOL_T xfer_pending)
 {
-    uint8_t i;
+    UCHAR_T i;
     __sw_i2c_start(sg_i2c_pin[port]);
 
     __sw_i2c_send_byte(sg_i2c_pin[port], (addr << 1) | I2C_READ);
@@ -441,7 +458,7 @@ static int __sw_i2c_read_data(uint8_t port, uint16_t addr, uint8_t *buf, uint8_t
  *
  * @return operation result
  */
-static void __sw_i2c_init(SR_I2C_GPIO_T i2c_pin)
+static VOID_T __sw_i2c_init(SR_I2C_GPIO_T i2c_pin)
 {
     I2C_SCL_INIT();
     I2C_SDA_INIT_OUT();
@@ -459,7 +476,7 @@ static void __sw_i2c_init(SR_I2C_GPIO_T i2c_pin)
  *
  * @return void
  * */
-void __tkl_i2c_set_scl_pin(TUYA_I2C_NUM_E port, const TUYA_PIN_NAME_E scl_pin)
+VOID_T __tkl_i2c_set_scl_pin(TUYA_I2C_NUM_E port, const TUYA_PIN_NAME_E scl_pin)
 {
     if (port >= TUYA_I2C_NUM_MAX) {
         return;
@@ -478,7 +495,7 @@ void __tkl_i2c_set_scl_pin(TUYA_I2C_NUM_E port, const TUYA_PIN_NAME_E scl_pin)
  *
  * @return void
  * */
-void __tkl_i2c_set_sda_pin(TUYA_I2C_NUM_E port, const TUYA_PIN_NAME_E sda_pin)
+VOID_T __tkl_i2c_set_sda_pin(TUYA_I2C_NUM_E port, const TUYA_PIN_NAME_E sda_pin)
 {
     if (port >= TUYA_I2C_NUM_MAX) {
         return;
@@ -486,6 +503,37 @@ void __tkl_i2c_set_sda_pin(TUYA_I2C_NUM_E port, const TUYA_PIN_NAME_E sda_pin)
 
     sg_i2c_pin[port].sda = sda_pin;
 }
+
+int32 __check_i2c_pin_isvalid(UCHAR_T port)
+{
+    int32 isvalid = 0;
+    if (port >= I2C_ID_MAX) {
+        return isvalid;
+    }
+    switch (port)
+    {
+    case 0:
+        if ((sg_i2c_pin[port].scl == I2C0_LL_SCL_PIN) && (sg_i2c_pin[port].sda == I2C0_LL_SDA_PIN)){
+            isvalid = 1;
+        }
+        break;
+    case 1:
+        if ((sg_i2c_pin[port].scl == I2C1_GROUP0_SCL_PIN) && (sg_i2c_pin[port].sda == I2C1_GROUP0_SDA_PIN)) {
+            isvalid = 1;
+        } else if ((sg_i2c_pin[port].scl == I2C1_GROUP1_SCL_PIN) && (sg_i2c_pin[port].sda == I2C1_GROUP1_SDA_PIN)) {
+            isvalid = 1;
+        } else if ((sg_i2c_pin[port].scl == I2C1_GROUP2_SCL_PIN) && (sg_i2c_pin[port].sda == I2C1_GROUP2_SDA_PIN)) {
+            isvalid = 1;
+        } else if ((sg_i2c_pin[port].scl == I2C1_GROUP3_SCL_PIN) && (sg_i2c_pin[port].sda == I2C1_GROUP3_SDA_PIN)) {
+            isvalid = 1;
+        }
+        break;
+    default:
+        break;
+    }
+    return isvalid;
+}
+
 /**
  * @brief i2c init
  *
@@ -494,7 +542,7 @@ void __tkl_i2c_set_sda_pin(TUYA_I2C_NUM_E port, const TUYA_PIN_NAME_E sda_pin)
  *
  * @return OPRT_OK on success, others on error
  */
-OPERATE_RET tkl_i2c_init(uint8_t port, const TUYA_IIC_BASE_CFG_T *cfg)
+OPERATE_RET tkl_i2c_init(UCHAR_T port, CONST TUYA_IIC_BASE_CFG_T *cfg)
 {
     if (port >= TUYA_I2C_NUM_MAX) {
         return OPRT_INVALID_PARM;
@@ -504,30 +552,63 @@ OPERATE_RET tkl_i2c_init(uint8_t port, const TUYA_IIC_BASE_CFG_T *cfg)
         bk_printf("check i2c pin whether used by other function.\n");
     }
 
-    if ((sg_i2c_pin[port].scl == TUYA_GPIO_NUM_MAX) || (sg_i2c_pin[port].sda == TUYA_GPIO_NUM_MAX)) {
-        bk_printf("i2c pin not set, please use tkl_io_pinmux_config first!\n");
-        return OPRT_INVALID_PARM;
+    if(NULL == sg_i2c_cfg[port].mutex) {
+        if(OPRT_OK != tkl_mutex_create_init(&sg_i2c_cfg[port].mutex)) {
+            return OPRT_OS_ADAPTER_MUTEX_CREAT_FAILED;
+        }
     }
 
-    if (cfg->role == TUYA_IIC_MODE_SLAVE) {
-        bk_printf("i2c slave mode not supported!\n");
-        return OPRT_NOT_SUPPORTED;
-    }
+    if ((sg_i2c_pin[port].scl == TUYA_GPIO_NUM_MAX) || (sg_i2c_pin[port].sda == TUYA_GPIO_NUM_MAX) || (__check_i2c_pin_isvalid(port))) {
+        bk_printf("i2c pin not set, use hardware i2c port %d!\n", port);
+	    i2c_config_t i2c_cfg = {0};
+        bk_i2c_driver_init();
 
-    if (cfg->speed == TUYA_IIC_BUS_SPEED_100K) {
-        sg_i2c_cfg[port].delay_us = 10;
-    }else {
-        sg_i2c_cfg[port].delay_us = 1;
-    }
+        if (cfg->speed == TUYA_IIC_BUS_SPEED_100K) {
+	        i2c_cfg.baud_rate = I2C_BAUD_RATE_100KHZ;
+        }else {
+	        i2c_cfg.baud_rate = I2C_BAUD_RATE_400KHZ;
+        }
 
-    if (cfg->addr_width == TUYA_IIC_ADDRESS_7BIT)
-        sg_i2c_cfg[port].addr_width = 7;
-    else {
-        sg_i2c_cfg[port].addr_width = 10;
-        return OPRT_NOT_SUPPORTED;
-    }
+        if (cfg->addr_width == TUYA_IIC_ADDRESS_7BIT)
+	        i2c_cfg.addr_mode = I2C_ADDR_MODE_7BIT;
+        else {
+	        i2c_cfg.addr_mode = I2C_ADDR_MODE_10BIT;
+            return OPRT_NOT_SUPPORTED;
+        }
+        if (!g_i2c_hal_cfg[port].slave_addr)
+        {
+	        i2c_cfg.slave_addr = I2C_SLAVE_ADDR;
+        }
+        else
+        {
+            i2c_cfg.slave_addr = g_i2c_hal_cfg[port].slave_addr;
+        }
 
-    __sw_i2c_init(sg_i2c_pin[port]);
+    	tkl_mutex_lock(sg_i2c_cfg[port].mutex);
+        bk_i2c_init(port, &i2c_cfg);
+		tkl_mutex_unlock(sg_i2c_cfg[port].mutex);
+    } else {
+        if (cfg->role == TUYA_IIC_MODE_SLAVE) {
+            bk_printf("i2c slave mode not supported!\n");
+            return OPRT_NOT_SUPPORTED;
+        }
+        if (cfg->speed == TUYA_IIC_BUS_SPEED_100K) {
+            sg_i2c_cfg[port].delay_us = 10;
+        }else {
+            sg_i2c_cfg[port].delay_us = 1;
+        }
+
+        if (cfg->addr_width == TUYA_IIC_ADDRESS_7BIT)
+            sg_i2c_cfg[port].addr_width = 7;
+        else {
+            sg_i2c_cfg[port].addr_width = 10;
+            return OPRT_NOT_SUPPORTED;
+        }
+
+    	tkl_mutex_lock(sg_i2c_cfg[port].mutex);
+    	__sw_i2c_init(sg_i2c_pin[port]);
+    	tkl_mutex_unlock(sg_i2c_cfg[port].mutex);
+    }
 
     return OPRT_OK;
 }
@@ -539,16 +620,25 @@ OPERATE_RET tkl_i2c_init(uint8_t port, const TUYA_IIC_BASE_CFG_T *cfg)
  *
  * @return OPRT_OK on success, others on error
  */
-OPERATE_RET tkl_i2c_deinit(uint8_t port)
+OPERATE_RET tkl_i2c_deinit(UCHAR_T port)
 {
-    if (port >= TUYA_I2C_NUM_MAX) {
+    if (port >= TUYA_I2C_NUM_MAX || NULL == sg_i2c_cfg[port].mutex) {
+        bk_printf("i2c port %d is invalid\n", port);
         return OPRT_INVALID_PARM;
     }
 
-    tkl_gpio_deinit(sg_i2c_pin[port].scl);
-    tkl_gpio_deinit(sg_i2c_pin[port].sda);
-    sg_i2c_pin[port].scl = TUYA_GPIO_NUM_MAX;
-    sg_i2c_pin[port].sda = TUYA_GPIO_NUM_MAX;
+    if ((sg_i2c_pin[port].scl == TUYA_GPIO_NUM_MAX) || (sg_i2c_pin[port].sda == TUYA_GPIO_NUM_MAX) || (__check_i2c_pin_isvalid(port))) {
+        bk_i2c_deinit(port);
+        bk_i2c_driver_deinit();
+    } else {
+        tkl_gpio_deinit(sg_i2c_pin[port].scl);
+        tkl_gpio_deinit(sg_i2c_pin[port].sda);
+        sg_i2c_pin[port].scl = TUYA_GPIO_NUM_MAX;
+        sg_i2c_pin[port].sda = TUYA_GPIO_NUM_MAX;
+    }	
+
+    tkl_mutex_release(sg_i2c_cfg[port].mutex);
+    sg_i2c_cfg[port].mutex = NULL;
 
     return OPRT_OK;
 }
@@ -601,19 +691,28 @@ OPERATE_RET tkl_i2c_irq_disable(TUYA_I2C_NUM_E port)
  * @param[in] xfer_pending: xfer_pending: TRUE : not send stop condition, FALSE : send stop condition.
  * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
  */
-OPERATE_RET tkl_i2c_master_send(TUYA_I2C_NUM_E port, uint16_t dev_addr, const void *data, uint32_t size, BOOL_T xfer_pending)
+OPERATE_RET tkl_i2c_master_send(TUYA_I2C_NUM_E port, USHORT_T dev_addr, CONST VOID_T *data, UINT_T size, BOOL_T xfer_pending)
 {
     int ret;
 
-    if (port >= TUYA_I2C_NUM_MAX) {
+    if (port >= TUYA_I2C_NUM_MAX || NULL == sg_i2c_cfg[port].mutex) {
         bk_printf("i2c port %d is invalid\n", port);
         return OPRT_INVALID_PARM;
     }
 
-    delay_us = sg_i2c_cfg[port].delay_us;
-    ret = __sw_i2c_write_data(port, dev_addr, data, (uint8_t)size, xfer_pending);
-    if(ret < 0)
+    // bk_printf("iic write %02x %02x %d\n", dev_addr, *(uint8_t *)data, size);
+    tkl_mutex_lock(sg_i2c_cfg[port].mutex);
+    if ((sg_i2c_pin[port].scl == TUYA_GPIO_NUM_MAX) || (sg_i2c_pin[port].sda == TUYA_GPIO_NUM_MAX) || (__check_i2c_pin_isvalid(port))) {
+        ret = bk_i2c_master_write(port, dev_addr, data, size, I2C_WRITE_WAIT_MAX_MS);
+    } else {
+        delay_us = sg_i2c_cfg[port].delay_us;
+        ret = __sw_i2c_write_data(port, dev_addr, data, (UCHAR_T)size, xfer_pending);
+    }
+    tkl_mutex_unlock(sg_i2c_cfg[port].mutex);
+    if (ret < 0)
         return OPRT_COM_ERROR;
+
+    // bk_printf("iic write %02x %02x %d\n", dev_addr, *(uint8_t *)data, size);
 
     return OPRT_OK;
 }
@@ -628,7 +727,8 @@ OPERATE_RET tkl_i2c_master_send(TUYA_I2C_NUM_E port, uint16_t dev_addr, const vo
  * @param[in] xfer_pending: TRUE : not send stop condition, FALSE : send stop condition.
  * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
  */
-OPERATE_RET tkl_i2c_master_receive(TUYA_I2C_NUM_E port, uint16_t dev_addr, void *data, uint32_t size, BOOL_T xfer_pending)
+OPERATE_RET tkl_i2c_master_receive(TUYA_I2C_NUM_E port, USHORT_T dev_addr, VOID_T *data, UINT_T size,
+                                   BOOL_T xfer_pending)
 {
     int ret;
     if (port >= TUYA_I2C_NUM_MAX) {
@@ -636,11 +736,19 @@ OPERATE_RET tkl_i2c_master_receive(TUYA_I2C_NUM_E port, uint16_t dev_addr, void 
         return OPRT_INVALID_PARM;
     }
 
-    delay_us = sg_i2c_cfg[port].delay_us;
-    ret = __sw_i2c_read_data(port, dev_addr, data, (uint8_t)size, xfer_pending);
-    if(ret < 0)
+    tkl_mutex_lock(sg_i2c_cfg[port].mutex);
+    if ((sg_i2c_pin[port].scl == TUYA_GPIO_NUM_MAX) || (sg_i2c_pin[port].sda == TUYA_GPIO_NUM_MAX) || (__check_i2c_pin_isvalid(port))) {
+        ret = bk_i2c_master_read(port, dev_addr, data, size, I2C_READ_WAIT_MAX_MS);
+    } else {
+        delay_us = sg_i2c_cfg[port].delay_us;
+        ret = __sw_i2c_read_data(port, dev_addr, data, (UCHAR_T)size, xfer_pending);
+    }
+
+    tkl_mutex_unlock(sg_i2c_cfg[port].mutex);
+    if (ret < 0)
         return OPRT_COM_ERROR;
 
+    // bk_printf("iic read %02x %02x\n", dev_addr, *(uint8_t *)data);
     return OPRT_OK;
 }
 /**
@@ -651,9 +759,14 @@ OPERATE_RET tkl_i2c_master_receive(TUYA_I2C_NUM_E port, uint16_t dev_addr, void 
  *
  * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
  */
-OPERATE_RET tkl_i2c_set_slave_addr(TUYA_I2C_NUM_E port, uint16_t dev_addr)
+OPERATE_RET tkl_i2c_set_slave_addr(TUYA_I2C_NUM_E port, USHORT_T dev_addr)
 {
-    return OPRT_NOT_SUPPORTED;
+    if (__check_i2c_pin_isvalid(port)) {
+        g_i2c_hal_cfg[port].slave_addr = dev_addr;
+        return OPRT_OK;
+    } else {
+        return OPRT_NOT_SUPPORTED;
+    }
 }
 
 /**
@@ -665,7 +778,7 @@ OPERATE_RET tkl_i2c_set_slave_addr(TUYA_I2C_NUM_E port, uint16_t dev_addr)
  * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
  */
 
-OPERATE_RET tkl_i2c_slave_send(TUYA_I2C_NUM_E port, const void *data, uint32_t size)
+OPERATE_RET tkl_i2c_slave_send(TUYA_I2C_NUM_E port, CONST VOID_T *data, UINT_T size)
 {
     return OPRT_NOT_SUPPORTED;
 }
@@ -679,7 +792,7 @@ OPERATE_RET tkl_i2c_slave_send(TUYA_I2C_NUM_E port, const void *data, uint32_t s
  * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
  */
 
-OPERATE_RET tkl_i2c_slave_receive(TUYA_I2C_NUM_E port, void *data, uint32_t size)
+OPERATE_RET tkl_i2c_slave_receive(TUYA_I2C_NUM_E port, VOID_T *data, UINT_T size)
 {
     return OPRT_NOT_SUPPORTED;
 }
@@ -719,7 +832,7 @@ OPERATE_RET  tkl_i2c_reset(TUYA_I2C_NUM_E port)
  * tkl_i2c_slave_send:number of data bytes transmitted
  * tkl_i2c_slave_receive:number of data bytes received and acknowledged
  */
-int32_t tkl_i2c_get_data_count(TUYA_I2C_NUM_E port)
+INT32_T tkl_i2c_get_data_count(TUYA_I2C_NUM_E port)
 {
     return OPRT_NOT_SUPPORTED;
 }
@@ -731,7 +844,7 @@ int32_t tkl_i2c_get_data_count(TUYA_I2C_NUM_E port)
  * @param[in]       args    args associated with the command
  * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
  */
-OPERATE_RET tkl_i2c_ioctl(TUYA_I2C_NUM_E port, uint32_t cmd,  void *args)
+OPERATE_RET tkl_i2c_ioctl(TUYA_I2C_NUM_E port, UINT_T cmd,  VOID_T *args)
 {
     return OPRT_NOT_SUPPORTED;
 }

@@ -1,0 +1,22 @@
+menu "Display Service"
+
+	config MEDIA_DISPLAY_SERVICE
+		depends on MEDIA
+		bool "Enable Display Service"
+		default y
+
+	config LCD_SPI_DISPLAY
+		depends on SPI
+		bool "Enable LCD SPI Display"
+		default y
+
+	config LCD_QSPI_DISPLAY
+		depends on LCD_QSPI
+		bool "Enable LCD QSPI Display"
+		default y
+
+	config LCD_EXAMPLE
+		depends on SPI
+		bool "Enable LCD SPI Display"
+		default n
+endmenu

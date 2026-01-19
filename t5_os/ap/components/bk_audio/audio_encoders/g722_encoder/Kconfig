@@ -1,0 +1,12 @@
+menu "Adk::Audio_encoders::G722_encoder"
+    config ADK_G722_ENCODER
+        depends on ADK
+        bool "Enable Audio G722 encoder"
+        default n
+
+    config ADK_G722_ENCODER_TEST
+        depends on ADK_G722_ENCODER && ADK_ARRAY_STREAM && ADK_UART_STREAM
+        bool "Enable Audio G722 encoder test"
+        default n
+
+endmenu

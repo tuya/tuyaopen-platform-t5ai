@@ -2,10 +2,10 @@
 #include "tuya_cloud_types.h"
 #include "tkl_flash.h"
 
-#include "tkl_mutex.h"
 #include "tkl_output.h"
 #include <common/bk_typedef.h>
 #include "driver/flash.h"
+#include "tkl_mutex.h"
 
 typedef struct
 {
@@ -14,12 +14,6 @@ typedef struct
     unsigned long   start;
     unsigned long   current;
 } TUYA_OS_STORAGE_TIMER;
-
-typedef struct {
-    char *uuid;
-    char *authkey;
-} tuya_iot_license_t;
-
 //flash 最大持续处理时间
 #define FLASH_MAX_HANDLE_KEEP_TIME 10000    //10s
 
@@ -47,10 +41,10 @@ typedef struct {
 #define FLH_BLOCK_SZ            PARTITION_SIZE
 
 
-#define APPLICATION_START               0x10000
-#define APPLICATION_SIZE                ((2040 + 2448 + 352 + 2040 + 8)* 1024)
+#define APPLICATION_START               0x20000
+#define APPLICATION_SIZE                ((1088 + 3808 + 2940)* 1024)
 
-#define OTA_START                       0x6c9000
+#define OTA_START                       0x7c9000
 #define OTA_SIZE                        (8 * 1024)
 
 #if defined(KV_PROTECTED_ENABLE) && (KV_PROTECTED_ENABLE==1)
@@ -132,7 +126,7 @@ OPERATE_RET tkl_flash_set_protect(const BOOL_T enable)
 *
 * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
 */
-OPERATE_RET tkl_flash_read(uint32_t addr, uint8_t *dst, uint32_t size)
+OPERATE_RET tkl_flash_read(UINT_T addr, UCHAR_T *dst, UINT_T size)
 {
     if (NULL == dst) {
         return OPRT_INVALID_PARM;
@@ -167,7 +161,7 @@ static unsigned int __uni_flash_is_protect_all(void)
 *
 * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
 */
-OPERATE_RET tkl_flash_write(uint32_t addr, const uint8_t *src, uint32_t size)
+OPERATE_RET tkl_flash_write(UINT_T addr, CONST UCHAR_T *src, UINT_T size)
 {
     if (NULL == src) {
         return OPRT_INVALID_PARM;
@@ -196,7 +190,7 @@ OPERATE_RET tkl_flash_write(uint32_t addr, const uint8_t *src, uint32_t size)
 *
 * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
 */
-OPERATE_RET tkl_flash_erase(uint32_t addr, uint32_t size)
+OPERATE_RET tkl_flash_erase(UINT_T addr, UINT_T size)
 {
     unsigned short start_sec = (addr / PARTITION_SIZE);
     unsigned short end_sec = ((addr + size - 1) / PARTITION_SIZE);
@@ -229,7 +223,7 @@ OPERATE_RET tkl_flash_erase(uint32_t addr, uint32_t size)
 *
 * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
 */
-OPERATE_RET tkl_flash_lock(uint32_t addr, uint32_t size)
+OPERATE_RET tkl_flash_lock(UINT_T addr, UINT_T size)
 {
     return OPRT_NOT_SUPPORTED;
 }
@@ -244,7 +238,7 @@ OPERATE_RET tkl_flash_lock(uint32_t addr, uint32_t size)
 *
 * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
 */
-OPERATE_RET tkl_flash_unlock(uint32_t addr, uint32_t size)
+OPERATE_RET tkl_flash_unlock(UINT_T addr, UINT_T size)
 {
     return OPRT_NOT_SUPPORTED;
 }
@@ -325,16 +319,3 @@ OPERATE_RET tkl_flash_get_one_type_info(TUYA_FLASH_TYPE_E type, TUYA_FLASH_BASE_
 
 }
 
-/**
- * @brief tuya_iot_license_read
- *
- * @param[in] license: iot license struct pointer
- *
- * @note This API is used for read license .
- *
- * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
- */
-int tuya_iot_license_read(tuya_iot_license_t *license)
-{
-    return OPRT_NOT_SUPPORTED;
-}

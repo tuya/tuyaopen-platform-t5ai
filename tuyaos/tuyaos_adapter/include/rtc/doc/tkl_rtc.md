@@ -11,14 +11,14 @@
 ### 1.tkl_rtc_init
 
 ```
-OPERATE_RET tkl_rtc_init(void);
+OPERATE_RET tkl_rtc_init(VOID_T);
 ```
 
 - 功能描述:
   - 初始化rtc，返回初始化结果 。
   
 - 参数:
-  - void 
+  - VOID_T 
   
 - 返回值:
   - OPRT_OK 成功，其他请参考文件tuya_error_code.h定义部分。
@@ -26,13 +26,13 @@ OPERATE_RET tkl_rtc_init(void);
 ### 2.tkl_rtc_deinit
 
 ```
-OPERATE_RET tkl_rtc_deinit(void);
+OPERATE_RET tkl_rtc_deinit(VOID_T);
 ```
 
 - 功能描述:
   - rtc反初始化，停止rtc
 - 参数:
-  - void
+  - VOID_T
 - 返回值:
   - OPRT_OK 成功，其他请参考文件tuya_error_code.h定义部分。
 
@@ -85,7 +85,7 @@ OPERATE_RET tkl_rtc_time_get(TIME_T *time_sec);
 
 ```c
 /*初始化RTC*/
-tkl_rtc_init(void);
+tkl_rtc_init(VOID_T);
 
 /*设置RTC时间*/
 TIME_T time_sec_set = 0x1000000;
@@ -96,7 +96,7 @@ TIME_T time_sec_get
 tkl_rtc_time_get(&time_sec_get);
 
 /*反初始化RTC*/
-tkl_rtc_deinit(void);
+tkl_rtc_deinit(VOID_T);
 
 ```
 

@@ -6,6 +6,7 @@
 #include "uart_statis.h"
 #include "bk_uart.h"
 #include <components/log.h>
+#include "uart_hal.h"
 
 #define CLI_GETCHAR_TIMEOUT           (120000)
 
@@ -123,6 +124,18 @@ OPERATE_RET tkl_uart_deinit(TUYA_UART_NUM_E port_id)
         return OPRT_INVALID_PARM;
     }
     bk_uart_deinit(port);
+
+    tkl_gpio_deinit(uart_hal_get_tx_pin(port));
+    tkl_gpio_deinit(uart_hal_get_rx_pin(port));
+
+    TUYA_GPIO_BASE_CFG_T gpio_cfg;
+    gpio_cfg.direct = TUYA_GPIO_INPUT;
+    gpio_cfg.level = TUYA_GPIO_LEVEL_HIGH;
+    gpio_cfg.mode = TUYA_GPIO_PULLDOWN;
+    tkl_gpio_init(uart_hal_get_tx_pin(port), &gpio_cfg);
+    gpio_cfg.mode = TUYA_GPIO_FLOATING;
+    tkl_gpio_init(uart_hal_get_rx_pin(port), &gpio_cfg);
+
     return OPRT_OK;
 }
 
@@ -140,7 +153,7 @@ OPERATE_RET tkl_uart_deinit(TUYA_UART_NUM_E port_id)
  * @return return > 0: number of data written; return <= 0: write errror
  */
 
-int tkl_uart_write(TUYA_UART_NUM_E port_id, void *buff, uint16_t len)
+INT_T tkl_uart_write(TUYA_UART_NUM_E port_id, VOID_T *buff, UINT16_T len)
 {
     uart_id_t port;
 
@@ -171,7 +184,7 @@ int tkl_uart_write(TUYA_UART_NUM_E port_id, void *buff, uint16_t len)
  *
  * @return return >= 0: number of data read; return < 0: read errror
  */
-int tkl_uart_read(TUYA_UART_NUM_E port_id, void *buff, uint16_t len)
+INT_T tkl_uart_read(TUYA_UART_NUM_E port_id, VOID_T *buff, UINT16_T len)
 {
     uart_id_t port;
 
@@ -227,7 +240,7 @@ OPERATE_RET tkl_uart_set_rx_flowctrl(TUYA_UART_NUM_E port_id, BOOL_T enable)
 TUYA_UART_IRQ_CB tkl_rx_cb = NULL;
 static void uart_isr_t_cb(uart_id_t id, void  *param) {
     if (NULL != tkl_rx_cb) {
-        tkl_rx_cb((uint32_t)id);
+        tkl_rx_cb((UINT_T)id);
     }
 }
 /**
@@ -242,7 +255,7 @@ static void uart_isr_t_cb(uart_id_t id, void  *param) {
  *
  * @return none
  */
-void tkl_uart_rx_irq_cb_reg(TUYA_UART_NUM_E port_id, TUYA_UART_IRQ_CB rx_cb)
+VOID_T tkl_uart_rx_irq_cb_reg(TUYA_UART_NUM_E port_id, TUYA_UART_IRQ_CB rx_cb)
 {
     int port_num = TUYA_UART_GET_PORT_NUMBER(port_id);
     uart_id_t port;
@@ -282,7 +295,7 @@ void tkl_uart_rx_irq_cb_reg(TUYA_UART_NUM_E port_id, TUYA_UART_IRQ_CB rx_cb)
  *
  * @return none
  */
-void tkl_uart_tx_irq_cb_reg(TUYA_UART_NUM_E port_id, TUYA_UART_IRQ_CB tx_cb)
+VOID_T tkl_uart_tx_irq_cb_reg(TUYA_UART_NUM_E port_id, TUYA_UART_IRQ_CB tx_cb)
 {
 
 }
