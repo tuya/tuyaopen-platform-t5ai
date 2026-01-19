@@ -58,30 +58,45 @@ static qspi_driver_t s_tkl_qspi[SOC_QSPI_UNIT_NUM] = {
 };
 static struct qspi_init_config qspi_infos[TUYA_QSPI_NUM_MAX] = {0};
 
-#define QSPI_SET_PIN(id) do {\
+#define QSPI_SET_PIN(id, data_lines) do {\
 	gpio_dev_unmap(QSPI##id##_LL_CSN_PIN);\
 	gpio_dev_unmap(QSPI##id##_LL_CLK_PIN);\
 	gpio_dev_unmap(QSPI##id##_LL_IO0_PIN);\
-	gpio_dev_unmap(QSPI##id##_LL_IO1_PIN);\
-	gpio_dev_unmap(QSPI##id##_LL_IO2_PIN);\
-	gpio_dev_unmap(QSPI##id##_LL_IO3_PIN);\
+	if ((data_lines) == TUYA_QSPI_2WIRE) {\
+	    gpio_dev_unmap(QSPI##id##_LL_IO1_PIN);\
+	} else if ((data_lines) == TUYA_QSPI_4WIRE) {\
+	    gpio_dev_unmap(QSPI##id##_LL_IO2_PIN);\
+	    gpio_dev_unmap(QSPI##id##_LL_IO3_PIN);\
+	} \
 	gpio_dev_map(QSPI##id##_LL_CSN_PIN, GPIO_DEV_QSPI##id##_CSN);\
 	gpio_dev_map(QSPI##id##_LL_CLK_PIN, GPIO_DEV_QSPI##id##_CLK);\
 	gpio_dev_map(QSPI##id##_LL_IO0_PIN, GPIO_DEV_QSPI##id##_IO0);\
-	gpio_dev_map(QSPI##id##_LL_IO1_PIN, GPIO_DEV_QSPI##id##_IO1);\
-	gpio_dev_map(QSPI##id##_LL_IO2_PIN, GPIO_DEV_QSPI##id##_IO2);\
-	gpio_dev_map(QSPI##id##_LL_IO3_PIN, GPIO_DEV_QSPI##id##_IO3);\
+	if ((data_lines) == TUYA_QSPI_2WIRE) {\
+		gpio_dev_map(QSPI##id##_LL_IO1_PIN, GPIO_DEV_QSPI##id##_IO1);\
+	} else if ((data_lines) == TUYA_QSPI_4WIRE) {\
+		gpio_dev_map(QSPI##id##_LL_IO1_PIN, GPIO_DEV_QSPI##id##_IO1);\
+		gpio_dev_map(QSPI##id##_LL_IO2_PIN, GPIO_DEV_QSPI##id##_IO2);\
+		gpio_dev_map(QSPI##id##_LL_IO3_PIN, GPIO_DEV_QSPI##id##_IO3);\
+	} \
 	bk_gpio_pull_up(QSPI##id##_LL_CSN_PIN);\
 	bk_gpio_pull_up(QSPI##id##_LL_IO0_PIN);\
-	bk_gpio_pull_up(QSPI##id##_LL_IO1_PIN);\
-	bk_gpio_pull_up(QSPI##id##_LL_IO2_PIN);\
-	bk_gpio_pull_up(QSPI##id##_LL_IO3_PIN);\
+	if ((data_lines) == TUYA_QSPI_2WIRE) {\
+		bk_gpio_pull_up(QSPI##id##_LL_IO1_PIN);\
+	} else if ((data_lines) == TUYA_QSPI_4WIRE) {\
+		bk_gpio_pull_up(QSPI##id##_LL_IO1_PIN);\
+		bk_gpio_pull_up(QSPI##id##_LL_IO2_PIN);\
+		bk_gpio_pull_up(QSPI##id##_LL_IO3_PIN);\
+	} \
 	bk_gpio_set_capacity(QSPI##id##_LL_CSN_PIN, 3);\
 	bk_gpio_set_capacity(QSPI##id##_LL_CLK_PIN, 3);\
 	bk_gpio_set_capacity(QSPI##id##_LL_IO0_PIN, 3);\
-	bk_gpio_set_capacity(QSPI##id##_LL_IO1_PIN, 3);\
-	bk_gpio_set_capacity(QSPI##id##_LL_IO2_PIN, 3);\
-	bk_gpio_set_capacity(QSPI##id##_LL_IO3_PIN, 3);\
+	if ((data_lines) == TUYA_QSPI_2WIRE) {\
+		bk_gpio_set_capacity(QSPI##id##_LL_IO1_PIN, 3);\
+	} else if ((data_lines) == TUYA_QSPI_4WIRE) {\
+		bk_gpio_set_capacity(QSPI##id##_LL_IO1_PIN, 3);\
+		bk_gpio_set_capacity(QSPI##id##_LL_IO2_PIN, 3);\
+		bk_gpio_set_capacity(QSPI##id##_LL_IO3_PIN, 3);\
+	} \
 } while(0)
 
 static inline uint32_t qspi_enter_critical()
@@ -300,20 +315,20 @@ static void qspi_clock_disable(qspi_id_t id)
 	}
 }
 
-static void qspi_init_gpio(qspi_id_t id)
+static void qspi_init_gpio(qspi_id_t id, uint8_t data_lines)
 {
 	switch (id) {
 	case QSPI_ID_0:
-		QSPI_SET_PIN(0);
+		QSPI_SET_PIN(0, data_lines);
 		break;
 #if (SOC_QSPI_UNIT_NUM > 1)
 	case QSPI_ID_1:
-		QSPI_SET_PIN(1);
+		QSPI_SET_PIN(1, data_lines);
 		break;
 #endif
 #if (SOC_QSPI_UNIT_NUM > 2)
 	case QSPI_ID_2:
-		QSPI_SET_PIN(2);
+		QSPI_SET_PIN(2, data_lines  );
 		break;
 #endif
 	default:
@@ -350,7 +365,13 @@ static void qspi_clock_enable(qspi_id_t id)
  OPERATE_RET tkl_qspi_init(TUYA_QSPI_NUM_E port, const TUYA_QSPI_BASE_CFG_T *cfg)
  {
     qspi_config_t config = {0};
-    if ((port > TUYA_QSPI_NUM_MAX) || (cfg == NULL)) {
+    if ((port >= TUYA_QSPI_NUM_MAX) || (cfg == NULL)) {
+        return OPRT_INVALID_PARM;
+    }
+
+    if ((cfg->dma_data_lines != TUYA_QSPI_1WIRE) &&
+        (cfg->dma_data_lines != TUYA_QSPI_2WIRE) &&
+        (cfg->dma_data_lines != TUYA_QSPI_4WIRE)) {
         return OPRT_INVALID_PARM;
     }
 
@@ -362,7 +383,7 @@ static void qspi_clock_enable(qspi_id_t id)
     //     return OPRT_COM_ERROR;
  
     os_memset(&config, 0, sizeof(config));
-    os_memset(&s_tkl_qspi[port], 0, sizeof(s_tkl_qspi));
+    os_memset(&s_tkl_qspi[port], 0, sizeof(qspi_driver_t));
     s_tkl_qspi[port].hal.id = port;
     qspi_hal_init(&s_tkl_qspi[port].hal);
     
@@ -418,7 +439,7 @@ static void qspi_clock_enable(qspi_id_t id)
 	}
 
     qspi_clock_enable(port);
-    qspi_init_gpio(port);
+    qspi_init_gpio(port, cfg->dma_data_lines);
     qspi_interrupt_enable(port);
     qspi_hal_init_common(&s_tkl_qspi[port].hal);
 
@@ -487,7 +508,7 @@ static void qspi_clock_enable(qspi_id_t id)
   */
  OPERATE_RET tkl_qspi_deinit(TUYA_QSPI_NUM_E port)
  {
-     if (port > TUYA_QSPI_NUM_MAX) {
+     if (port >= TUYA_QSPI_NUM_MAX) {
          return OPRT_INVALID_PARM;
      }
 
@@ -579,7 +600,7 @@ bk_err_t bk_lcd_qspi_quad_write_stops(qspi_id_t qspi_id)
     TUYA_QSPI_CMD_T sd_command;
     uint32_t level = 0U;
 
-    if ((data == NULL) || (port > TUYA_QSPI_NUM_MAX)) {
+    if ((data == NULL) || (port >= TUYA_QSPI_NUM_MAX)) {
         return OPRT_INVALID_PARM;
     }
     if (qspi_infos[port].qspi_enable != 1) {
@@ -633,7 +654,7 @@ bk_err_t bk_lcd_qspi_quad_write_stops(qspi_id_t qspi_id)
  {
      bk_err_t ret = BK_OK;
 
-     if ((data == NULL) || (port > TUYA_QSPI_NUM_MAX) || (size > MAX_QSPI_FIFO_SIZE)) {
+     if ((data == NULL) || (port >= TUYA_QSPI_NUM_MAX) || (size > MAX_QSPI_FIFO_SIZE)) {
          return OPRT_INVALID_PARM;
      }
      if (qspi_infos[port].qspi_enable != 1) {
@@ -706,7 +727,7 @@ static uint32_t line_data_get(TUYA_QSPI_WIRE_MODE_E cmdlines, uint8_t cmd_len, T
     UINT32_T c_h = 0;
 
     qspi_cmd_t cmd = {0};
-    if ((command == NULL) || (port > TUYA_QSPI_NUM_MAX)) {
+    if ((command == NULL) || (port >= TUYA_QSPI_NUM_MAX)) {
         return OPRT_INVALID_PARM;
     }
     if (qspi_infos[port].qspi_enable != 1) {
@@ -860,7 +881,7 @@ static uint32_t line_data_get(TUYA_QSPI_WIRE_MODE_E cmdlines, uint8_t cmd_len, T
   */
  OPERATE_RET tkl_qspi_irq_init(TUYA_QSPI_NUM_E port, TUYA_QSPI_IRQ_CB cb)
  {
-     if (port > TUYA_QSPI_NUM_MAX) {
+     if (port >= TUYA_QSPI_NUM_MAX) {
          return OPRT_INVALID_PARM;
      }
      if (qspi_infos[port].is_send_use_dma != TRUE){
@@ -881,7 +902,7 @@ static uint32_t line_data_get(TUYA_QSPI_WIRE_MODE_E cmdlines, uint8_t cmd_len, T
   */
  OPERATE_RET tkl_qspi_irq_enable(TUYA_QSPI_NUM_E port)
  {
-     if (port > TUYA_QSPI_NUM_MAX) {
+     if (port >= TUYA_QSPI_NUM_MAX) {
          return OPRT_INVALID_PARM;
      }
      if (qspi_infos[port].is_send_use_dma != TRUE){
@@ -904,7 +925,7 @@ static uint32_t line_data_get(TUYA_QSPI_WIRE_MODE_E cmdlines, uint8_t cmd_len, T
   */
  OPERATE_RET tkl_qspi_irq_disable(TUYA_QSPI_NUM_E port)
  {
-     if (port > TUYA_QSPI_NUM_MAX) {
+     if (port >= TUYA_QSPI_NUM_MAX) {
          return OPRT_INVALID_PARM;
      }
      if (qspi_infos[port].is_send_use_dma != TRUE){
