@@ -37,7 +37,7 @@ extern float speex_get_param(void *obj, float *out, short *linearout);
 // extern void rnn_vad_stop(void *obj);
 // extern float rnn_vad_process(void *obj, short *x);
 // extern void rnn_vad_set_callback(void *obj, float threshold);
-extern OPERATE_RET tkl_asr_feed_with_vad(uint8_t *data, uint16_t datalen, uint8_t vadflag);
+extern OPERATE_RET tkl_kws_feed_with_vad(uint8_t *data, uint16_t datalen, uint8_t vadflag);
 /***********************************************************
 ***********************variable define**********************
 ***********************************************************/
@@ -74,7 +74,7 @@ static OPERATE_RET __tkl_aec_vad_process(int16_t *mic_data, int16_t *ref_data, i
         }
 
         speex_get_param(__s_speex_aec_handle, NULL, (short *)__s_linearaec);
-        tkl_asr_feed_with_vad(__s_linearaec, __s_frame_size, __s_aec_vad_flag==TKL_VAD_STATUS_SPEECH?1:0);
+        tkl_kws_feed_with_vad(__s_linearaec, __s_frame_size, __s_aec_vad_flag==TKL_VAD_STATUS_SPEECH?1:0);
     }
 
     return rt;

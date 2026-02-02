@@ -49,8 +49,8 @@ set(incs
 
     "include/wired"
     "include/ipc"
-    "include/asr"
-    "include/asr/libtutuClear"
+    "include/kws"
+    "include/kws/libtutuClear"
     "include/rgb"
     "include/mcu8080"
     "include/dvp"
@@ -101,7 +101,7 @@ else()
         src/driver/tkl_audio.c
 	src/driver/tkl_cellular.c
         src/driver/tkl_vad.c
-        src/driver/tkl_asr.c
+        src/driver/tkl_kws.c
         src/driver/tkl_pinmux.c
         src/driver/tkl_rgb.c
         src/driver/tkl_8080.c
@@ -218,8 +218,8 @@ target_link_libraries(${COMPONENT_LIB} INTERFACE "$ENV{ARMINO_PATH}/../../tuyaos
 # platform/t5ai/tuyaos/tuyaos_adapter/include/opus/libopus.a
 target_link_libraries(${COMPONENT_LIB} INTERFACE "$ENV{ARMINO_PATH}/../../tuyaos/tuyaos_adapter/include/opus/libopus.a")
 
-# platform/t5ai/tuyaos/tuyaos_adapter/include/asr/libtutuClear/libtutuClear_wakeup_nihaotuya_xiaozhitongxue_heytuya_hituya_20251024_small_model.a
-target_link_libraries(${COMPONENT_LIB} INTERFACE "$ENV{ARMINO_PATH}/../../tuyaos/tuyaos_adapter/include/asr/libtutuClear/libtutuClear_wakeup_nihaotuya_xiaozhitongxue_heytuya_hituya_20251024_small_model.a")
+# platform/t5ai/tuyaos/tuyaos_adapter/include/kws/libtutuClear/libtutuClear_wakeup_nihaotuya_xiaozhitongxue_heytuya_hituya_20251024_small_model.a
+target_link_libraries(${COMPONENT_LIB} INTERFACE "$ENV{ARMINO_PATH}/../../tuyaos/tuyaos_adapter/include/kws/libtutuClear/libtutuClear_wakeup_nihaotuya_xiaozhitongxue_heytuya_hituya_20251024_small_model.a")
 # platform/t5ai/tuyaos/tuyaos_adapter/src/misc/mftest/libtal_mftest.a
 target_link_libraries(${COMPONENT_LIB} INTERFACE "$ENV{ARMINO_PATH}/../../tuyaos/tuyaos_adapter/src/misc/mftest/libtal_mftest.a")
 
