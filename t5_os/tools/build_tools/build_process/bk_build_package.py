@@ -8,6 +8,16 @@ from pathlib import Path
 from bk_build_summary import bk_build_summary
 from bk_sdk.bk_curr_project import curr_project
 
+# Modified by TUYA Start
+import sys
+project_path = os.environ.get('TUYA_PROJECT_DIR', '').strip()
+# TuyaOpen
+tuya_package_path = os.path.join(project_path, 't5_os/projects/tuya_app/tuya_scripts')
+sys.path.insert(0, tuya_package_path)
+from tuya_package import tuya_package_process
+from tuya_package import firmware_info
+# Modified by TUYA End
+
 logger = logging.getLogger(Path(__file__).name)
 
 
@@ -87,10 +97,27 @@ def main():
     all_app_bin = firmware_package()
     curr_project.build_summary = f"firmware: {all_app_bin}\n"
     curr_project.post_package()
+
+    # Modified by TUYA Start
     try:
-        gen_build_summary(curr_project.build_summary)
-    except Exception:
-        logger.warning("skip generating build summary info")
+        curr_project.build_summary = firmware_info()
+        # 添加 --verbose 参数到 sys.argv 以显示详细输出
+        # sys.argv.append('--verbose')
+        ret = tuya_package_process()
+        if ret != 0:
+            logger.error(f"TUYA打包失败，返回码: {ret}")
+            sys.exit(ret)
+    except Exception as e:
+        logger.error(f"TUYA打包异常: {e}")
+        import traceback
+        traceback.print_exc()
+        sys.exit(1)
+    # Modified by TUYA End
+
+    # try:
+    #     gen_build_summary(curr_project.build_summary)
+    # except Exception:
+    #     logger.warning("skip generating build summary info")
 
 
 if __name__ == "__main__":

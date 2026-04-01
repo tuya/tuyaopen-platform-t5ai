@@ -52,6 +52,9 @@ def set_environment(root, build_param_path, param_data):
     os.environ["TUYA_LIBS_DIR"] = param_data["OPEN_LIBS_DIR"]
     os.environ["TUYA_LIBS"] = param_data["PLATFORM_NEED_LIBS"]
     os.environ["TUYA_APP_NAME"] = param_data["CONFIG_PROJECT_NAME"]
+    os.environ["TUYA_APP_VERSION"] = param_data["CONFIG_PROJECT_VERSION"]
+    # TuyaOpen: 传递输出目录给 tuya_package.py
+    os.environ["TUYA_BIN_OUTPUT_DIR"] = param_data["BIN_OUTPUT_DIR"]
     open_root = param_data["OPEN_ROOT"]
     board_path = os.path.join(open_root, "boards", "T5AI")
     os.environ["TUYAOS_BOARD_PATH"] = board_path
@@ -279,9 +282,9 @@ def main():
                     build_param_path, param_data,
                     toolchain_folder_path, bash_path)
 
-    # copy asset
-    if not copy_assets(build_root, target, param_data):
-        sys.exit(1)
+    # TuyaOpen: 打包和复制已由 tuya_package.py 在 make package 阶段完成，此处跳过
+    # if not copy_assets(build_root, target, param_data):
+    #     sys.exit(1)
 
     sys.exit(0)
 

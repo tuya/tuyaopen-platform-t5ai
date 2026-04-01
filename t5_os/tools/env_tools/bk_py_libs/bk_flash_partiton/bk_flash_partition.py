@@ -65,6 +65,9 @@ class bk_flash_partition:
         for part in self.part_info:
             if "bootloader" in part.Name and part.Execute:
                 part.Name = "bootloader"
+            elif "tuyaboot" in part.Name and part.Execute:  # Modified by TUYA
+                # tuyaboot partition uses bl2.bin
+                part.Name = "tuyaboot"
             elif part.Execute:
                 part.Name = "application" + (str(app_count) if app_count else "")
                 app_count += 1

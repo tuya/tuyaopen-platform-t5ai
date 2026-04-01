@@ -76,9 +76,9 @@ endif
 ifdef BK_JENKINS_ID
     MAKEFLAGS += -j2
 endif
-
+# Modified by TUYA
 ifndef PRINT_SUMMARY
-	PRINT_SUMMARY := 1
+	PRINT_SUMMARY := 0
 endif
 
 .PHONY: all_targets
@@ -205,5 +205,11 @@ clean:
 	@rm -rf $(ARMINO_CP_DIR)/build
 	@mv .tmp_build build
 	@cd -
+
+distclean: clean
+	@cd ../
+	@echo "delete python env & __pycache__"
+	@rm -rf projects/tuya_app/tuya_build_env
+	@find . -type d -name "__pycache__" -print0 | xargs -0 rm -rf 2>/dev/null
 # Modified by TUYA End
 

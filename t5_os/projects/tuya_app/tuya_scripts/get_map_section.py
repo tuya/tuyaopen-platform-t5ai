@@ -14,7 +14,7 @@ def extract_address(line):
         return int(address, 16)
     else:
         raise ValueError("No address found in line")
-    
+
 def find_address_in_map_file(file_path, search_string):
     address = None
     with open(file_path, 'r') as file:

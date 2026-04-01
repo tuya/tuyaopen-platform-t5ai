@@ -2,14 +2,13 @@
     "FLASH_CAPACITY": "8M",
     "internel_partitions": [
         "primary_bootloader",
+        "primary_tuyaboot",
         "primary_cp_app",
         "primary_ap_app",
         "sys_rf",
         "sys_net",
         "ota",
-        "usr_config",
-        "easyflash",
-        "easyflash_ap"
+        "usr_config"
     ],
     "patitions_limit": [
         {
@@ -17,12 +16,16 @@
             "index": 0
         },
         {
-            "name": "primary_cp_app",
+            "name": "primary_tuyaboot",
             "index": 1
         },
         {
-            "name": "primary_ap_app",
+            "name": "primary_cp_app",
             "index": 2
+        },
+        {
+            "name": "primary_ap_app",
+            "index": 3
         }
     ]
 }
