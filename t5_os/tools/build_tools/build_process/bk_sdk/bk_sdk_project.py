@@ -203,3 +203,21 @@ class bk_sdk_project(bk_project):
         from .bk_ota_pack import handle_bootloader_bin
 
         handle_bootloader_bin(pack_dir)
+
+    # Modified by TUYA Start
+    def copy_binaries_to_pack_dir(self, pack_dir: Path) -> None:
+        """Override to copy bl2.bin (tuyaboot) in addition to other binaries"""
+        # Copy bootloader and app binaries
+        super().copy_binaries_to_pack_dir(pack_dir)
+
+        # Copy bl2.bin as tuyaboot.bin
+        bl2_src = self.sdk_path / "projects/tuya_app/tuya_scripts/files/bl2.bin"
+        tuyaboot_dst = pack_dir / "tuyaboot.bin"
+        if bl2_src.exists():
+            self._copy_binaries(bl2_src, tuyaboot_dst)
+        else:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.warning(f"bl2.bin not found at {bl2_src}, skipping tuyaboot.bin")
+
+    # Modified by TUYA End

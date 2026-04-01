@@ -15,13 +15,18 @@ echo TARGET_PLATFORM=$TARGET_PLATFORM
 echo APP_PATH=$APP_PATH
 echo USER_CMD=$USER_CMD
 
-export TUYA_APP_PATH=$APP_PATH
-export TUYA_APP_NAME=$APP_BIN_NAME
+USER_SW_VER=`echo $APP_VERSION | cut -d'-' -f1`
 
 p=$(pwd);p1=${p%%/vendor*};echo $p1
-export TUYA_PROJECT_DIR=$p1
 
-USER_SW_VER=`echo $APP_VERSION | cut -d'-' -f1`
+export TUYA_PROJECT_DIR=$p1
+export TUYA_APP_PATH=$APP_PATH
+export TUYA_APP_NAME=$APP_BIN_NAME
+export TUYA_APP_VERSION=$USER_SW_VER
+export TUYA_APP_PLATFORM=$TARGET_PLATFORM
+
+current_env_inifo=$(uname -a)
+echo "env info: ${current_env_inifo}"
 
 APP_DIR_temp=$(echo $APP_PROJ_PATH)
 if [ "x$APP_DIR_temp" != "x" ];then
@@ -52,7 +57,7 @@ else
     make clean
 fi
 
-if [ x$USER_CMD = "xclean" ];then
+function_clean() {
     # save sdkconfig.h
     mkdir -p .tmp_build/bk7258/tuya_app/bk7258/armino_as_lib/bk7258/config/
     mkdir -p .tmp_build/bk7258/tuya_app/bk7258/config/
@@ -66,7 +71,10 @@ if [ x$USER_CMD = "xclean" ];then
 
     make clean
     mv .tmp_build build
+}
 
+if [ x$USER_CMD = "xclean" ];then
+    function_clean
     echo "*************************************************************************"
     echo "************************CLEAN SUCCESS************************************"
     echo "*************************************************************************"
@@ -202,33 +210,30 @@ else
     export PYTHONPATH=${TUYA_PROJECT_DIR}/vendor/T5/toolchain/site-packages:${PYTHONPATH}
 fi
 
-
 # 业务需求：提前初始化gpio
-echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! TODO app_resource_config.json"
-# app_config_file=${TUYA_PROJECT_DIR}/apps/$APP_BIN_NAME/app_resource_config.json
-# out_file_path=${TUYA_APP_DEMO_PATH}/config/
-# vendor_config_file=${TUYA_APP_DEMO_PATH}/tuya_scripts/tuya_default_config.json
-# vendor_convert_script=${TUYA_PROJECT_DIR}/vendor/T5/t5_os/${TUYA_APP_DEMO_PATH}/tuya_scripts/tuya_default_config.py
-# echo "python3 ${vendor_convert_script} ${out_file_path} ${vendor_config_file} ${app_config_file}"
-# if [ -f $app_config_file ]; then
-#     if ! python3 ${vendor_convert_script} ${out_file_path} ${vendor_config_file} ${app_config_file}; then
-#         echo "update config error"
-#         exit -1
-#     fi
-# else
-#     echo "no app config, used default"
-# fi
-# 
-# if [ -f ${out_file_path}/usr_gpio_cfg0.h ]; then
-#     mv ${out_file_path}/usr_gpio_cfg0.h ${out_file_path}/bk7258/usr_gpio_cfg.h
-# fi
-#
-# if [ -f ${out_file_path}/usr_gpio_cfg1.h ]; then
-#     mv ${out_file_path}/usr_gpio_cfg1.h ${out_file_path}/bk7258_ap/usr_gpio_cfg.h
-# fi
-# 
-# modified_config=${TUYA_PROJECT_DIR}/vendor/T5/t5_os/${TUYA_APP_DEMO_PATH}/tuya_scripts/tuya_modified_config.sh
-# bash ${modified_config} ${app_config_file} ${out_file_path}
+app_config_file=${TUYA_PROJECT_DIR}/apps/$APP_BIN_NAME/app_resource_config.json
+export TUYA_APP_CONFIG_FILE=${app_config_file}
+default_gpio_config_file=${TUYA_APP_DEMO_PATH}/tuya_scripts/tuya_default_gpio_config.json
+update_gpio_config_script=${TUYA_PROJECT_DIR}/vendor/T5/t5_os/${TUYA_APP_DEMO_PATH}/tuya_scripts/user_gpio_config.py
+gpio_config_file=${TUYA_APP_DEMO_PATH}/ap/config/${TARGET_PLATFORM}_ap/usr_gpio_cfg.h
+echo "python3 ${update_gpio_config_script} ${app_config_file} ${default_gpio_config_file} -o ${gpio_config_file}"
+if ! python3 ${update_gpio_config_script} ${app_config_file} ${default_gpio_config_file} -o ${gpio_config_file}; then
+    echo "update config error"
+    exit -1
+fi
+
+# compress_mode_file=${TUYA_APP_DEMO_PATH}/tuya_scripts/files/tuya_ota_compress_table.csv
+# partition_mode_file=${TUYA_APP_DEMO_PATH}/tuya_scripts/files/tuya_ota_partition_table.csv
+# 解析 app_resource_config.json 文件，获取ota模式
+# 目标文件: vendor/T5/t5_os/projects/tuya_app/partitions/bk7258/auto_partitions.csv
+# 判断文件是否相投，不相同则需要覆盖替换文件，并在t5_os目录下执行make clean操作
+# 如果是纯压缩模式，把 compress_mode_file文件覆盖auto_partitions.csv
+# 如果是分段模式，把 partition_mode_file文件覆盖auto_partitions.csv
+tuya_partition_table_select=${TUYA_PROJECT_DIR}/vendor/T5/t5_os/${TUYA_APP_DEMO_PATH}/tuya_scripts/tuya_partition_table_select.py
+if ! python3 ${tuya_partition_table_select} ${app_config_file}; then
+    echo "select partition table error"
+    exit -1
+fi
 
 echo "Start Compile"
 
@@ -241,121 +246,41 @@ if [ "x$res" != "x0" ]; then
     exit -1
 fi
 
-echo "Start Combined"
-
-OUTPUT_PATH=""
-if [ "x${CI_PACKAGE_PATH}" != "x" ]; then
-    OUTPUT_PATH=${CI_PACKAGE_PATH}
-else
-    OUTPUT_PATH=../../../apps/$APP_BIN_NAME/output/$USER_SW_VER
-fi
-
-if [ ! -d "$OUTPUT_PATH" ]; then
-    mkdir -p $OUTPUT_PATH
-fi
-
-DEBUG_FILE_PATH=${OUTPUT_PATH}/debug
-if [ ! -d "$DEBUG_FILE_PATH" ]; then
-    mkdir -p $DEBUG_FILE_PATH
-fi
-
-if [ ! -d "${DEBUG_FILE_PATH}/${TARGET_PLATFORM}" ]; then
-    mkdir -p ${DEBUG_FILE_PATH}/${TARGET_PLATFORM}
-fi
-
-if [ ! -d "${DEBUG_FILE_PATH}/${TARGET_PLATFORM}_ap" ]; then
-    mkdir -p ${DEBUG_FILE_PATH}/${TARGET_PLATFORM}_ap
-fi
-
-
-if [ -e "build/bk7258/tuya_app/package/all-app.bin" ]; then
-    set -e
-
-    TUYA_DIFF_OTA_BIN_TOOL=${TUYA_APP_DEMO_PATH}/tuya_scripts/diff2ya
-    TUYA_FIRMWARE_CHECK=${TUYA_APP_DEMO_PATH}/tuya_scripts/firmware_check.py
-    TUYA_FORMAT_BIN_TOOL=${TUYA_APP_DEMO_PATH}/tuya_scripts/format_up_bin.py
-    TUYA_CREATE_UA_FILE_TOOL=${TUYA_APP_DEMO_PATH}/tuya_scripts/create_ua_file.py
-    TUYA_GET_PARTITION_INFO=${TUYA_APP_DEMO_PATH}/tuya_scripts/get_partition_info.py
-    TUYA_GET_SECTION_OFFSET=${TUYA_APP_DEMO_PATH}/tuya_scripts/get_map_section.py
-
-    cp_bin_file=build/bk7258/tuya_app/bk7258/app.bin
-    ap_bin_file=build/bk7258/tuya_app/bk7258_ap/app.bin
-    bk_all_bin_file=build/bk7258/tuya_app/package/all-app.bin
-    ty_final_bin_file=build/bk7258/tuya_app/package/prod.bin
-    ua_bin_file=build/bk7258/tuya_app/package/ua_file.bin
-    ug_bin_file=build/bk7258/tuya_app/package/ug_file.bin
-    ty_ota_file=build/bk7258/tuya_app/package/ty_ug_file.bin
-    ap_map_file=build/bk7258/tuya_app/bk7258_ap/app.map
-    partiton_file=${TUYA_APP_DEMO_PATH}/partitions/bk7258/auto_partitions.csv
-
-    ap_ty_section_addr=$(python3 ${TUYA_GET_SECTION_OFFSET} ${ap_map_file} _ty_section_start)
-    ap_start_section_addr=$(python3 ${TUYA_GET_SECTION_OFFSET} ${ap_map_file} __vector_core0_table)
-
-    split_point=$(printf "%d" "$((${ap_ty_section_addr}-${ap_start_section_addr}+1048576))") # cp + ap_without_ts2
-
-    echo "ap_start_section_addr: ${ap_start_section_addr}"
-    echo "ap_ty_section_addr: ${ap_ty_section_addr}"
-    echo "split_point: ${split_point}"
-
-    python3 ${TUYA_CREATE_UA_FILE_TOOL} ${partiton_file} ${cp_bin_file} ${ap_bin_file} --ua_file=${ua_bin_file}
-
-    # python3 ${TUYA_FORMAT_BIN_TOOL} ${ua_bin_file} ${ug_bin_file} 460000 1000 0 1000 10D0 $split_point -v
-    python3 ${TUYA_FORMAT_BIN_TOOL} ${ua_bin_file} ${ug_bin_file} 6b8000 1000 0 1000 10D0 $split_point -v
-
-    ./${TUYA_DIFF_OTA_BIN_TOOL} ${ug_bin_file} ${ug_bin_file} ${ty_ota_file} 0 > /dev/null
-
-    user_fs_bin=${TUYA_PROJECT_DIR}/apps/$APP_BIN_NAME/fs.bin
-    if [ -f ${user_fs_bin} ]; then
-        # 获取分区表中文件系统起始地址及长度
-        fs_address=$(python $TUYA_GET_PARTITION_INFO $partiton_file "usr_config" "address")
-        fs_limit_size=$(python $TUYA_GET_PARTITION_INFO $partiton_file "usr_config" "size")
-        # 获取用户文件系统及长度，判断如果与分区表定义长度不一致，则报错
-        fs_actual_size=$(stat -c%s "${user_fs_bin}")
-        if [ $fs_actual_size -ne $fs_limit_size ]; then
-            echo "fs.bin size is $fs_actual_size not equal to $fs_limit_size"
-            exit -3
-        fi
-
-        # 振金平台需求，在烧录文件的末尾添加固件信息，长度128字节内，因此需要截断用户生成的文件系统末尾128字节
-        # !!! 此处需注意，用户文件系统默认1M长度，但是最后128字节不可用
-        fs_trunc_size=$(($fs_limit_size - 128))
-        dd if="$user_fs_bin" of=trunc_fs bs=1 skip=0 count=$fs_trunc_size > /dev/null 2>&1
-
-        # 拼接qio与文件系统，前置判断已经明确app-all.bin符合分区表限制，即all-app.bin不会与文件系统分区重叠
-        all_app_size=$(stat -c%s $bk_all_bin_file)
-        padding_size=$(($fs_address - $all_app_size))
-        echo "merge fs.bin to $fs_address, padding size: $padding_size"
-        dd if=/dev/zero bs=1 count=$padding_size 2>/dev/null | tr '\000' '\377' > padding
-        cat $bk_all_bin_file padding trunc_fs > $ty_final_bin_file   # qio_with_fs.bin
-
-        # 删除临时文件
-        rm padding trunc_fs
+# 分析并输出内存使用信息
+echo "CP Build Info"
+CP_ELF_FILE="build/bk7258/tuya_app/bk7258/app.elf"
+CP_MEMORY_FILE="build/bk7258/tuya_app/bk7258/app_memory.txt"
+if [ -f "${CP_ELF_FILE}" ]; then
+    if [ -f "${CP_MEMORY_FILE}" ]; then
+        # 模式1: 使用 --toolchain_memory_usage_file 参数（链接器生成的内存使用信息）
+        # 需要工具链配置 --print-memory-usage 选项: -Wl,--print-memory-usage > app_memory.txt
+        python3 ${TUYA_APP_DEMO_PATH}/tuya_scripts/tuya_analyze_elf_memory.py "${CP_ELF_FILE}" --toolchain_memory_usage_file "${CP_MEMORY_FILE}"
     else
-        cp $bk_all_bin_file $ty_final_bin_file
+        # 模式2: 直接分析 ELF 文件
+        python3 ${TUYA_APP_DEMO_PATH}/tuya_scripts/tuya_analyze_elf_memory.py "${CP_ELF_FILE}"
     fi
+else
+    echo "Warning: CP ELF file not found: ${CP_ELF_FILE}"
+fi
 
-    cp $ty_final_bin_file                                   $OUTPUT_PATH/$APP_BIN_NAME"_QIO_"$USER_SW_VER.bin
-    cp $ua_bin_file                                         $OUTPUT_PATH/$APP_BIN_NAME"_UA_"$USER_SW_VER.bin
-    cp $ty_ota_file                                         $OUTPUT_PATH/$APP_BIN_NAME"_UG_"$USER_SW_VER.bin
-
-    cp build/bk7258/tuya_app/bk7258/app*                    $DEBUG_FILE_PATH/${TARGET_PLATFORM}
-    cp build/bk7258/tuya_app/bk7258/size_map*               $DEBUG_FILE_PATH/${TARGET_PLATFORM}
-    cp build/bk7258/tuya_app/bk7258/sdkconfig               $DEBUG_FILE_PATH/${TARGET_PLATFORM}
-
-
-    cp build/bk7258/tuya_app/bk7258_ap/app*                 $DEBUG_FILE_PATH/${TARGET_PLATFORM}_ap
-    cp build/bk7258/tuya_app/bk7258_ap/size_map*            $DEBUG_FILE_PATH/${TARGET_PLATFORM}_ap
-    cp build/bk7258/tuya_app/bk7258_ap/sdkconfig            $DEBUG_FILE_PATH/${TARGET_PLATFORM}_ap
-
-    cp "projects/tuya_app/cp/config/bk7258/usr_gpio_cfg.h"  $DEBUG_FILE_PATH/${TARGET_PLATFORM}
-    cp projects/tuya_app/ap/config/bk7258_ap/usr_gpio_cfg.h $DEBUG_FILE_PATH/${TARGET_PLATFORM}_ap
-
-    echo "*************************************************************************"
-    echo "******************$APP_BIN_NAME"_"$USER_SW_VER.bin***********************"
-    echo "*************************************************************************"
-    echo "**********************COMPILE SUCCESS************************************"
-    echo "*************************************************************************"
+echo ""
+echo "AP Build Info"
+AP_ELF_FILE="build/bk7258/tuya_app/bk7258_ap/app.elf"
+AP_MEMORY_FILE="build/bk7258/tuya_app/bk7258_ap/app_memory.txt"
+if [ -f "${AP_ELF_FILE}" ]; then
+    if [ -f "${AP_MEMORY_FILE}" ]; then
+        # 模式1: 使用 --toolchain_memory_usage_file 参数（链接器生成的内存使用信息）
+        python3 ${TUYA_APP_DEMO_PATH}/tuya_scripts/tuya_analyze_elf_memory.py "${AP_ELF_FILE}" --toolchain_memory_usage_file "${AP_MEMORY_FILE}"
+    else
+        # 模式2: 直接分析 ELF 文件
+        python3 ${TUYA_APP_DEMO_PATH}/tuya_scripts/tuya_analyze_elf_memory.py "${AP_ELF_FILE}"
+    fi
+else
+    echo "Warning: AP ELF file not found: ${AP_ELF_FILE}"
 fi
 
 disable_python_env "tuya_build_env"
 
+echo "\n*************************************************************************"
+echo "    $APP_BIN_NAME"_"$USER_SW_VER.bin compile success"
+echo "*************************************************************************"

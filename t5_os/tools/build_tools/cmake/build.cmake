@@ -654,7 +654,7 @@ function(armino_build_executable bin)
         COMMAND "${armino_objcopy}" -O binary "${bin_dir}/${bin}" "${bin_dir}/${bin_name}.bin"
         COMMAND "${armino_readelf}" -a -h -l -S -g -s "${bin_dir}/${bin}" > "${bin_dir}/${bin_name}.txt"
         COMMAND "${armino_nm}" -n -l -C -a -A -g "${bin_dir}/${bin}" > "${bin_dir}/${bin_name}.nm"
-        COMMAND ${objdump_cmd}
+        # COMMAND ${objdump_cmd}    # Modified by TUYA
         DEPENDS ${bin}
         VERBATIM
         WORKING_DIRECTORY ${bin_dir}

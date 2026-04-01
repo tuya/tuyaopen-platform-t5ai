@@ -158,11 +158,16 @@ def pack_ota_app_bin(pack_dir: Path, output_bin: Path):
     with pack_json.open("r") as f:
         apps_part_info = json.load(f)
     sections: list[dict[str, str]] = apps_part_info["section"]
+    # Modified by TUYA Start
+    # Remove bootloader and tuyaboot from OTA package
+    sections_to_remove = []
     for index, part in enumerate(sections):
-        if "bootloader" in part["partition"]:
-            sections.pop(index)
-            apps_part_info["count"] -= 1
-            break
+        if "bootloader" in part["partition"] or "tuyaboot" in part["partition"]:
+            sections_to_remove.append(index)
+    for index in reversed(sections_to_remove):
+        sections.pop(index)
+        apps_part_info["count"] -= 1
+    # Modified by TUYA End
 
     if curr_project.flash_crc_enable:
         for part in sections:
