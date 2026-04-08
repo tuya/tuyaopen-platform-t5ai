@@ -175,8 +175,8 @@ class TuyaPackager:
             'create_ua': f"{self.scripts_dir}/create_ua_file.py",
             'parse_flash': f"{self.scripts_dir}/parse_flash_table.py",
             'get_section': f"{self.scripts_dir}/get_map_section.py",
-            #'smp_ota': f"{self.scripts_dir}/create_ug_file.py",
-            'smp_ota': f"{self.scripts_dir}/create_ug_file",
+            'smp_ota': f"{self.scripts_dir}/create_ug_file.py",
+            # 'smp_ota': f"{self.scripts_dir}/create_ug_file",
             'ota_select': f"{self.scripts_dir}/user_ota_select.py",
         }
 
@@ -302,7 +302,8 @@ class TuyaPackager:
         # TuyaOpen: 仅支持压缩模式
         if ota_mode == "compress":
             cmd = [
-                self.tools['smp_ota'],
+                # self.tools['smp_ota'],
+                sys.executable, self.tools['smp_ota'],
                 self.files['ua_bin'],
                 '-o', self.files['smp_ty_ota'],
                 '--total-size', '8024064',
