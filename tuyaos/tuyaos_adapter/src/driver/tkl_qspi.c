@@ -65,6 +65,7 @@ static struct qspi_init_config qspi_infos[TUYA_QSPI_NUM_MAX] = {0};
 	if ((data_lines) == TUYA_QSPI_2WIRE) {\
 	    gpio_dev_unmap(QSPI##id##_LL_IO1_PIN);\
 	} else if ((data_lines) == TUYA_QSPI_4WIRE) {\
+	    gpio_dev_unmap(QSPI##id##_LL_IO1_PIN);\
 	    gpio_dev_unmap(QSPI##id##_LL_IO2_PIN);\
 	    gpio_dev_unmap(QSPI##id##_LL_IO3_PIN);\
 	} \
