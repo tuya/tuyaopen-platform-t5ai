@@ -47,119 +47,119 @@ typedef enum
 
 typedef struct
 {
-    UINT32_T brightness;                              // brightness
-    UINT32_T saturation;                              // saturation
-    UINT32_T contrast;                                // contrast
-    UINT32_T sharpness;                               // sharpness
-    UINT32_T gamma;                                   // gamma
+    uint32_t brightness;                              // brightness
+    uint32_t saturation;                              // saturation
+    uint32_t contrast;                                // contrast
+    uint32_t sharpness;                               // sharpness
+    uint32_t gamma;                                   // gamma
 }TKL_ISP_FIG_STYLE_CONFIG_T;                          // user style config 
 
 typedef struct                                            
 {                                                         
-    UINT32_T awbMode;                                 // AWB mode, 0-auto, 1-manual, 2-extend style(warm/cool/natural)
-    UINT32_T manualRGain;                             // manual - RGain
-    UINT32_T manualGGain;                             // manual - GGain
-    UINT32_T manualBGain;                             // manual - BGain
-    UINT32_T awbExtendStyle;                          /* extend style，0-2700K，1-3500K，2-4100K，3-5000K，4-6500K */
+    uint32_t awbMode;                                 // AWB mode, 0-auto, 1-manual, 2-extend style(warm/cool/natural)
+    uint32_t manualRGain;                             // manual - RGain
+    uint32_t manualGGain;                             // manual - GGain
+    uint32_t manualBGain;                             // manual - BGain
+    uint32_t awbExtendStyle;                          /* extend style，0-2700K，1-3500K，2-4100K，3-5000K，4-6500K */
 }TKL_ISP_AWB_CONFIG_T;                                /* user AWB style config */
 
 typedef struct                                            
 {                                                         
-    UINT32_T wdrMode;                                 // WDR mode, 0-disable, 1-auto, 2-manual 
-    UINT32_T autoWdrStr;                              // auto WDR strength 
-    UINT32_T manualWdrStr;                            // manual WDR strength
+    uint32_t wdrMode;                                 // WDR mode, 0-disable, 1-auto, 2-manual 
+    uint32_t autoWdrStr;                              // auto WDR strength 
+    uint32_t manualWdrStr;                            // manual WDR strength
 }TKL_ISP_WDR_CONFIG_T;                                // user WDR style config
 
 typedef struct                                            
 {                                                         
-    UINT32_T denoiseMode;                             // denoise mode, 0-auto, 1-adjustable
-    UINT32_T tempDenoiseStr;                          // time domain denoise strength
-    UINT32_T specDenoiseStr;                          // space domain denoise strength
+    uint32_t denoiseMode;                             // denoise mode, 0-auto, 1-adjustable
+    uint32_t tempDenoiseStr;                          // time domain denoise strength
+    uint32_t specDenoiseStr;                          // space domain denoise strength
 }TKL_ISP_DENOISE_CONFIG_T;                            // user denoise config
 
 typedef struct                                            
 {                                                         
-    UINT32_T flipMode;                                // flip, 0-disable, 1-enable
-    UINT32_T mirrorMode;                              // mirror, 0-disable, 1-enable
+    uint32_t flipMode;                                // flip, 0-disable, 1-enable
+    uint32_t mirrorMode;                              // mirror, 0-disable, 1-enable
 }TKL_ISP_MIRROR_FLIP_CONFIG_T;                        // user mirror and flip config
 
 typedef struct                                            
 {                                                         
-    INT32_T cur_irmode;                               // current dn mode
-    UINT32_T dayToNight;                              // day to night threshold
-    UINT32_T nightToDay;                              // night to day threshold
-    UINT32_T dnSwitchOffset;                          // day and night switch offset
-    FLOAT_T offsetR[2];                               // offsetR，R[0] default 0.01
-    FLOAT_T offsetG[2];                               // offsetG，G[0] default 0.01
-    FLOAT_T offsetB[2];                               // offsetB，B[0] default 0.01
-    FLOAT_T coffR[6];                                 // coefficient - R
-    FLOAT_T coffG[6];                                 // coefficient - G
-    FLOAT_T coffB[6];                                 // coefficient - B
+    int32_t cur_irmode;                               // current dn mode
+    uint32_t dayToNight;                              // day to night threshold
+    uint32_t nightToDay;                              // night to day threshold
+    uint32_t dnSwitchOffset;                          // day and night switch offset
+    float offsetR[2];                               // offsetR，R[0] default 0.01
+    float offsetG[2];                               // offsetG，G[0] default 0.01
+    float offsetB[2];                               // offsetB，B[0] default 0.01
+    float coffR[6];                                 // coefficient - R
+    float coffG[6];                                 // coefficient - G
+    float coffB[6];                                 // coefficient - B
 }TKL_ISP_DN_SWITCH_CONFIG_T;                          // ADN config   
 
 /*ISP数据格式*/
 typedef struct
 {
-    FLOAT_T  coffR[6];                                // coefficient - R
-    FLOAT_T  coffG[6];                                // coefficient - G
-    FLOAT_T  coffB[6];                                // coefficient - B
-    UINT16_T GlobalR;                                 // global R mean
-    UINT16_T GlobalG;                                 // global G mean
-    UINT16_T GlobalB;                                 // global B mean
-    UINT16_T RGain;                                   // RGain
-    UINT16_T BGain;                                   // BGain
-    UINT16_T GrGain;                                  // GrGain
-    UINT16_T GbGain;                                  // GbGain
-    INT32_T ExpTime;                                  // sensor exposure time
-    INT32_T AGain;                                    // sensor analog gain
-    INT32_T DGain;                                    // sensor digital gain
-    INT32_T ISPDGain;                                 // ISP gain
-    INT32_T ISO;                                      // sensor total gain, again*dgain*ispdgain
-    INT32_T OverExpFlag;                              // over exposure flag
-    FLOAT_T RGBComponent;                             // sum of RGB
-    FLOAT_T Illumination;                             // temporary illumination
-    FLOAT_T Exposure;                                 // total exposure value
+    float  coffR[6];                                // coefficient - R
+    float  coffG[6];                                // coefficient - G
+    float  coffB[6];                                // coefficient - B
+    uint16_t GlobalR;                                 // global R mean
+    uint16_t GlobalG;                                 // global G mean
+    uint16_t GlobalB;                                 // global B mean
+    uint16_t RGain;                                   // RGain
+    uint16_t BGain;                                   // BGain
+    uint16_t GrGain;                                  // GrGain
+    uint16_t GbGain;                                  // GbGain
+    int32_t ExpTime;                                  // sensor exposure time
+    int32_t AGain;                                    // sensor analog gain
+    int32_t DGain;                                    // sensor digital gain
+    int32_t ISPDGain;                                 // ISP gain
+    int32_t ISO;                                      // sensor total gain, again*dgain*ispdgain
+    int32_t OverExpFlag;                              // over exposure flag
+    float RGBComponent;                             // sum of RGB
+    float Illumination;                             // temporary illumination
+    float Exposure;                                 // total exposure value
 }TKL_ISP_DN_SWITCH_CALC_DATA_T;
 
 typedef struct
 {
-	FLOAT_T R_Return;
-	FLOAT_T G_Return;
-	FLOAT_T B_Return;
+	float R_Return;
+	float G_Return;
+	float B_Return;
 }TKL_ISP_DN_RETURN_T;
 
 typedef struct                                            
 {                                                         
-    UINT32_T smartirMode;                             // SMART-IR mode, 0-disable, 1-auto, 2-manual
-    UINT32_T smartirHtoL[6];                          // high to low power threshold
-    UINT32_T smartirLtoH[6];                          // low to high power threshold
-    UINT32_T smartirPower[6];                         // power of every stages
-    UINT32_T manualSmartirStr;                        // manual smartit strength
+    uint32_t smartirMode;                             // SMART-IR mode, 0-disable, 1-auto, 2-manual
+    uint32_t smartirHtoL[6];                          // high to low power threshold
+    uint32_t smartirLtoH[6];                          // low to high power threshold
+    uint32_t smartirPower[6];                         // power of every stages
+    uint32_t manualSmartirStr;                        // manual smartit strength
 }TKL_ISP_SMARTIR_CONFIG_T;                            // SMART-IR config
 
 typedef struct                                            
 {                                                         
-    UINT32_T shadingMode;                             // shading mode, 0-disable, 1-enable
-    UINT32_T shadingR[255];                             
-    UINT32_T shadingG[255];                               
-    UINT32_T shadingB[255];                           
+    uint32_t shadingMode;                             // shading mode, 0-disable, 1-enable
+    uint32_t shadingR[255];                             
+    uint32_t shadingG[255];                               
+    uint32_t shadingB[255];                           
 }TKL_ISP_SHADING_CONFIG_T;                            // shading config
 
 typedef struct                                            
 {                                                         
-    UINT32_T defogMode;                               // defog mode, 0-disable, 1-enable
-    UINT32_T autoDefogStr;                            // defog strength
+    uint32_t defogMode;                               // defog mode, 0-disable, 1-enable
+    uint32_t autoDefogStr;                            // defog strength
 }TKL_ISP_RESERVED_CONFIG_T;                           // defog config
 
 typedef struct                                            
 {                                                         
-    UINT32_T ispLogEnable;                            // isp debug log, 0-disable, 1-enable
-    UINT32_T ispLogLevel;                             // isp debug level
+    uint32_t ispLogEnable;                            // isp debug log, 0-disable, 1-enable
+    uint32_t ispLogLevel;                             // isp debug level
 }TKL_ISP_DEBUG_CONFIG_T;                              // isp debug config
 
 typedef struct
 {
-    INT32_T irmode;                                       // day and night mode
+    int32_t irmode;                                       // day and night mode
     TKL_ISP_FIG_STYLE_CONFIG_T isp_fig_style_day;         // user style config in day
     TKL_ISP_FIG_STYLE_CONFIG_T isp_fig_style_night;       // user style config in night
     TKL_ISP_AWB_CONFIG_T isp_awb_config;                  // user awb style config
@@ -175,21 +175,21 @@ typedef struct
 typedef struct
 {
     /*AWB*/
-    INT32_T isAwbStable;
-    UINT16_T colorTemp;
-    UINT16_T RGain;
-    UINT16_T BGain;
+    int32_t isAwbStable;
+    uint16_t colorTemp;
+    uint16_t RGain;
+    uint16_t BGain;
     /*AE*/
-    INT32_T isAeStable;
-    UINT32_T US;
-    UINT32_T SensorGain;
-    UINT32_T ISPGain;
-    UINT32_T BV;
-    UINT32_T SceneTarget;
+    int32_t isAeStable;
+    uint32_t US;
+    uint32_t SensorGain;
+    uint32_t ISPGain;
+    uint32_t BV;
+    uint32_t SceneTarget;
     /*ADN*/
-    UINT32_T dayToNight;
-    UINT32_T nightToDay;
-    UINT32_T Illumination;
+    uint32_t dayToNight;
+    uint32_t nightToDay;
+    uint32_t Illumination;
 }TKL_ISP_LOG_INFO_T;                                       // isp debug log info
 
 /**
@@ -240,7 +240,7 @@ OPERATE_RET tkl_vi_isp_set_color_to_gray(TKL_VI_CHN_E chn, int gray_flag);
 *
 * @return OPRT_OK on success. Others on error, please refer to tkl_error_code.h
 */
-OPERATE_RET tkl_vi_dnswitch_get_illumin(TKL_VI_CHN_E chn, TKL_ISP_DN_MODE_E irmode, INT32_T *illumin_result);
+OPERATE_RET tkl_vi_dnswitch_get_illumin(TKL_VI_CHN_E chn, TKL_ISP_DN_MODE_E irmode, int32_t *illumin_result);
 
 /**
 * @brief vi isp get sensor fps
@@ -250,7 +250,7 @@ OPERATE_RET tkl_vi_dnswitch_get_illumin(TKL_VI_CHN_E chn, TKL_ISP_DN_MODE_E irmo
 *
 * @return OPRT_OK on success. Others on error, please refer to tkl_error_code.h
 */
-OPERATE_RET tkl_vi_isp_get_sensor_fps(TKL_VI_CHN_E chn, INT32_T *sensor_fps);
+OPERATE_RET tkl_vi_isp_get_sensor_fps(TKL_VI_CHN_E chn, int32_t *sensor_fps);
 
 /**
 * @brief vi isp set sensor fps
@@ -260,7 +260,7 @@ OPERATE_RET tkl_vi_isp_get_sensor_fps(TKL_VI_CHN_E chn, INT32_T *sensor_fps);
 *
 * @return OPRT_OK on success. Others on error, please refer to tkl_error_code.h
 */
-OPERATE_RET tkl_vi_isp_set_sensor_fps(TKL_VI_CHN_E chn, INT32_T sensor_fps);
+OPERATE_RET tkl_vi_isp_set_sensor_fps(TKL_VI_CHN_E chn, int32_t sensor_fps);
 
 /**
 * @brief vi isp get param
@@ -303,7 +303,7 @@ OPERATE_RET tkl_vi_isp_get_fig_style_config(TKL_VI_CHN_E chn, TKL_ISP_FIG_STYLE_
 *
 * @return OPRT_OK on success. Others on error, please refer to tkl_error_code.h
 */
-OPERATE_RET tkl_vi_isp_set_wdr(TKL_VI_CHN_E chn, INT32_T mode, INT32_T strength);
+OPERATE_RET tkl_vi_isp_set_wdr(TKL_VI_CHN_E chn, int32_t mode, int32_t strength);
 
 /**
 * @brief vi isp get WDR params
@@ -314,7 +314,7 @@ OPERATE_RET tkl_vi_isp_set_wdr(TKL_VI_CHN_E chn, INT32_T mode, INT32_T strength)
 *
 * @return OPRT_OK on success. Others on error, please refer to tkl_error_code.h
 * */
-OPERATE_RET tkl_vi_isp_get_wdr(TKL_VI_CHN_E chn, INT32_T *mode, INT32_T *strength);
+OPERATE_RET tkl_vi_isp_get_wdr(TKL_VI_CHN_E chn, int32_t *mode, int32_t *strength);
 
 #ifdef __cplusplus
 } // extern "C"

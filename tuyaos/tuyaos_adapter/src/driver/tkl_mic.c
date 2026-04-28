@@ -19,7 +19,7 @@
 #define DEFAULT_FRAME_SIZE 640
 #define DEFAULT_POOL_SIZE (DEFAULT_FRAME_SIZE * 2)
 
-static UINT32_T m_mic_gain = 0;
+static uint32_t m_mic_gain = 0;
 #ifdef CONFIG_ADK_ONBOARD_MIC_STREAM
 static audio_element_handle_t m_mic_encode = NULL;
 static audio_pipeline_handle_t m_mic_pipeline = NULL;
@@ -44,9 +44,9 @@ OPERATE_RET tkl_mic_init(TKL_MIC_CFG_T *config)
         return OPRT_INVALID_PARM;
     }
 
-    UINT32_T sample_rate =
+    uint32_t sample_rate =
         config->sample_rate ? config->sample_rate : DEFAULT_SAMPLE_RATE;
-    UINT32_T frame_size =
+    uint32_t frame_size =
         sample_rate * CHANNEL_NUM * TIME_SAMPLE_MS / MS_PER_SEC;
     ;
 #ifdef CONFIG_ADK_ONBOARD_MIC_STREAM
@@ -184,7 +184,7 @@ err:
 
     return OPRT_COM_ERROR;
 #else
-    UINT32_T pool_size = frame_size * 2;
+    uint32_t pool_size = frame_size * 2;
     audio_record_cfg_t mic_config = DEFAULT_AUDIO_RECORD_CONFIG();
     mic_config.bitsPerSample = config->datebits;
     mic_config.adc_gain = config->volume;
@@ -201,9 +201,9 @@ err:
 #endif
 }
 
-INT32_T tkl_mic_start(VOID_T)
+int32_t tkl_mic_start(void)
 {
-    INT32_T ret = OPRT_OK;
+    int32_t ret = OPRT_OK;
 #ifdef CONFIG_ADK_ONBOARD_MIC_STREAM
     if (m_mic_pipeline) {
         ret = audio_pipeline_run(m_mic_pipeline);
@@ -220,9 +220,9 @@ INT32_T tkl_mic_start(VOID_T)
     return ret;
 }
 
-INT32_T tkl_mic_pause(VOID_T)
+int32_t tkl_mic_pause(void)
 {
-    INT32_T ret = OPRT_OK;
+    int32_t ret = OPRT_OK;
 #ifdef CONFIG_ADK_ONBOARD_MIC_STREAM
     if (m_mic_pipeline) {
         ret = audio_pipeline_pause(m_mic_pipeline);
@@ -237,9 +237,9 @@ INT32_T tkl_mic_pause(VOID_T)
     return ret;
 }
 
-INT32_T tkl_mic_resume(VOID_T)
+int32_t tkl_mic_resume(void)
 {
-    INT32_T ret = OPRT_OK;
+    int32_t ret = OPRT_OK;
 #ifdef CONFIG_ADK_ONBOARD_MIC_STREAM
     if (m_mic_pipeline) {
         ret = audio_pipeline_resume(m_mic_pipeline);
@@ -253,9 +253,9 @@ INT32_T tkl_mic_resume(VOID_T)
     return ret;
 }
 
-INT32_T tkl_mic_set_gain(INT32_T gain)
+int32_t tkl_mic_set_gain(int32_t gain)
 {
-    INT32_T ret = OPRT_OK;
+    int32_t ret = OPRT_OK;
     if (gain > 100)
     {
         return OPRT_INVALID_PARM;
@@ -277,14 +277,14 @@ INT32_T tkl_mic_set_gain(INT32_T gain)
     return ret;
 }
 
-INT32_T tkl_mic_get_gain(VOID_T)
+int32_t tkl_mic_get_gain(void)
 {
-    INT32_T ret = OPRT_OK;
-    INT32_T gain = 0;
+    int32_t ret = OPRT_OK;
+    int32_t gain = 0;
 
 #ifdef CONFIG_ADK_ONBOARD_MIC_STREAM
     if (m_mic_stream) {
-        ret = onboard_mic_stream_get_digital_gain(m_mic_stream, (UINT8_T *)&gain);
+        ret = onboard_mic_stream_get_digital_gain(m_mic_stream, (uint8_t *)&gain);
         ret = gain;
     }
 #else
@@ -296,9 +296,9 @@ INT32_T tkl_mic_get_gain(VOID_T)
     return ret;
 }
 
-INT32_T tkl_mic_read(UINT8_T *data, UINT32_T len)
+int32_t tkl_mic_read(uint8_t *data, uint32_t len)
 {
-    INT32_T ret = OPRT_OK;
+    int32_t ret = OPRT_OK;
 #ifdef CONFIG_ADK_ONBOARD_MIC_STREAM
     if (m_raw_mic_stream) {
         ret = raw_stream_read(m_raw_mic_stream, (char *)data, len);
@@ -311,9 +311,9 @@ INT32_T tkl_mic_read(UINT8_T *data, UINT32_T len)
     return ret;
 }
 
-INT32_T tkl_mic_stop(VOID_T)
+int32_t tkl_mic_stop(void)
 {
-    INT32_T ret = OPRT_OK;
+    int32_t ret = OPRT_OK;
 #ifdef CONFIG_ADK_ONBOARD_MIC_STREAM
     if (m_mic_pipeline) {
         if (BK_OK != audio_pipeline_stop(m_mic_pipeline)) {
@@ -334,7 +334,7 @@ INT32_T tkl_mic_stop(VOID_T)
     return ret;
 }
 
-VOID_T tkl_mic_deinit(VOID_T)
+void tkl_mic_deinit(void)
 {
 #ifdef CONFIG_ADK_ONBOARD_MIC_STREAM
     if (BK_OK != audio_pipeline_stop(m_mic_pipeline)) {

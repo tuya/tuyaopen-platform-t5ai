@@ -16,8 +16,8 @@
 extern "C" {
 #endif
 
-typedef VOID_T* TKL_PBUF_HANDLE;
-typedef VOID_T* TKL_NETIF_HANDLE;
+typedef void* TKL_PBUF_HANDLE;
+typedef void* TKL_NETIF_HANDLE;
 
 /**
  * @brief ethernet interface hardware init

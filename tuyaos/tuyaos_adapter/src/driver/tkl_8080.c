@@ -29,7 +29,7 @@ static void __lcd_8080_isr_cb(void)
     }
 }
 
-static OPERATE_RET __rgb_ty_clk_to_bk_clk(UINT32_T clk, lcd_clk_t *outclk)
+static OPERATE_RET __rgb_ty_clk_to_bk_clk(uint32_t clk, lcd_clk_t *outclk)
 {
     lcd_clk_t bk_clk = LCD_30M;
     switch(clk) {
@@ -101,7 +101,7 @@ static OPERATE_RET __rgb_ty_clk_to_bk_clk(UINT32_T clk, lcd_clk_t *outclk)
     return 0;
 }
 
-bk_err_t tkl_lcd_mcu_gpio_init(UINT8_T data_bits)
+bk_err_t tkl_lcd_mcu_gpio_init(uint8_t data_bits)
 {
     bk_printf("%s data_bits:%d\r\n", __func__, data_bits);
 
@@ -228,7 +228,7 @@ OPERATE_RET tkl_8080_irq_cb_register(TUYA_MCU8080_ISR_CB cb)
  *
  * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
  */
-OPERATE_RET tkl_8080_ppi_set(UINT16_T width, UINT16_T height)
+OPERATE_RET tkl_8080_ppi_set(uint16_t width, uint16_t height)
 {
     lcd_driver_ppi_set(width, height);
     bk_printf("%s : width %d, height  %d\r\n",__func__, width, height);
@@ -308,7 +308,7 @@ OPERATE_RET tkl_8080_transfer_stop(void)
  *
  * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
  */
-OPERATE_RET tkl_8080_cmd_send(UINT32_T cmd)
+OPERATE_RET tkl_8080_cmd_send(uint32_t cmd)
 {
     lcd_hal_8080_cmd_param_count(1);
     lcd_hal_8080_write_cmd(cmd);
@@ -325,7 +325,7 @@ OPERATE_RET tkl_8080_cmd_send(UINT32_T cmd)
  *
  * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
  */
-OPERATE_RET tkl_8080_cmd_send_with_param(UINT32_T cmd, UINT32_T *param, UINT8_T param_cnt)
+OPERATE_RET tkl_8080_cmd_send_with_param(uint32_t cmd, uint32_t *param, uint8_t param_cnt)
 {
     lcd_hal_8080_cmd_send(param_cnt, cmd, param);
 

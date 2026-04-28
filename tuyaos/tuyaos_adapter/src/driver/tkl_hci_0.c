@@ -14,9 +14,9 @@
 extern void ble_entry(void);
 extern void bk_printf(const char *fmt, ...);
 
-extern VOID tkl_data_dump(CONST int level,
-        CONST CHAR_T *file, CONST INT_T line, CONST CHAR_T *title,
-        UINT8_T width, UINT8_T *buf, UINT16_T size);
+extern void tkl_data_dump(const int level,
+        const char *file, const int32_t line, const char *title,
+        uint8_t width, uint8_t *buf, uint16_t size);
 
 
 // static TKL_HCI_FUNC_CB s_evt_cb = NULL;
@@ -68,7 +68,7 @@ void tkl_hci_ipc_func(struct ipc_msg_s *msg)
     return;
 }
 
-OPERATE_RET tkl_hci_init(VOID)
+OPERATE_RET tkl_hci_init(void)
 {
 #if TKL_DEBUG == 1
     bk_printf("trace cpu%d %s %d\n", CONFIG_CPU_INDEX, __func__, __LINE__);
@@ -79,7 +79,7 @@ OPERATE_RET tkl_hci_init(VOID)
     return OPRT_OK;
 }
 
-OPERATE_RET tkl_hci_deinit(VOID)
+OPERATE_RET tkl_hci_deinit(void)
 {
 #if TKL_DEBUG == 1
     bk_printf("trace cpu%d %s %d\n", CONFIG_CPU_INDEX, __func__, __LINE__);
@@ -90,7 +90,7 @@ OPERATE_RET tkl_hci_deinit(VOID)
     return OPRT_OK;
 }
 
-OPERATE_RET tkl_hci_reset(VOID)
+OPERATE_RET tkl_hci_reset(void)
 {
 #if TKL_DEBUG == 1
     bk_printf("--- trace hci, in %d %s %d\n", CONFIG_CPU_INDEX, __func__, __LINE__);
@@ -106,7 +106,7 @@ OPERATE_RET tkl_hci_reset(VOID)
     return OPRT_OK;
 }
 
-OPERATE_RET tkl_hci_cmd_packet_send(CONST UCHAR_T *p_buf, USHORT_T buf_len)
+OPERATE_RET tkl_hci_cmd_packet_send(const uint8_t *p_buf, uint16_t buf_len)
 {
 #if TKL_DEBUG >= 5
     bk_printf("%s op 0x%04X\n", __func__, (uint16_t)((((uint16_t)p_buf[1]) << 8) | p_buf[0]));
@@ -137,7 +137,7 @@ OPERATE_RET tkl_hci_cmd_packet_send(CONST UCHAR_T *p_buf, USHORT_T buf_len)
 }
 
 
-OPERATE_RET tkl_hci_acl_packet_send(CONST UCHAR_T *p_buf, USHORT_T buf_len)
+OPERATE_RET tkl_hci_acl_packet_send(const uint8_t *p_buf, uint16_t buf_len)
 {
     if (!bk_bluetooth_get_status()) {
         return OPRT_COM_ERROR;
@@ -229,7 +229,7 @@ static ble_err_t _ble_hci_acl_to_host_cb(uint8_t *buf, uint16_t len)
 }
 
 
-OPERATE_RET tkl_hci_callback_register(CONST TKL_HCI_FUNC_CB hci_evt_cb, CONST TKL_HCI_FUNC_CB acl_pkt_cb)
+OPERATE_RET tkl_hci_callback_register(const TKL_HCI_FUNC_CB hci_evt_cb, const TKL_HCI_FUNC_CB acl_pkt_cb)
 {
 #if TKL_DEBUG == 1
     bk_printf("--- trace hci, in %d %s %d\n", CONFIG_CPU_INDEX, __func__, __LINE__);

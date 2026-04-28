@@ -13,7 +13,7 @@
 #include "tkl_system.h"
 #include "spi_eth_drv.h"
 
-#define IPADDR2STR(__addr)    (UINT8_T)((__addr) >> 24), (UINT8_T)((__addr) >> 16), (UINT8_T)((__addr) >> 8), (__addr) & 0xFF
+#define IPADDR2STR(__addr)    (uint8_t)((__addr) >> 24), (uint8_t)((__addr) >> 16), (uint8_t)((__addr) >> 8), (__addr) & 0xFF
 
 TKL_WIRED_STATUS_CHANGE_CB netif_link_chg_cb = NULL;
 extern TKL_WIRED_BASE_CFG_T eth_cfg;
@@ -144,7 +144,7 @@ OPERATE_RET tkl_wired_get_mac(NW_MAC_S *mac)
  *
  * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
  */
-OPERATE_RET tkl_wired_set_mac(CONST NW_MAC_S *mac)
+OPERATE_RET tkl_wired_set_mac(const NW_MAC_S *mac)
 {
     return OPRT_NOT_SUPPORTED;
 }

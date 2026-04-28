@@ -57,7 +57,7 @@ OPERATE_RET tkl_rgb_irq_cb_register(TUYA_RGB_IRQ_CB cb);
  *
  * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
  */
-OPERATE_RET tkl_rgb_ppi_set(UINT16_T width, UINT16_T height);
+OPERATE_RET tkl_rgb_ppi_set(uint16_t width, uint16_t height);
 
 /**
  * @brief pixel mode set
@@ -75,7 +75,7 @@ OPERATE_RET tkl_rgb_pixel_mode_set(TUYA_DISPLAY_PIXEL_FMT_E mode);//input mode s
  *
  * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
  */
-OPERATE_RET tkl_rgb_base_addr_set(UINT32_T addr);
+OPERATE_RET tkl_rgb_base_addr_set(uint32_t addr);
 
 /**
  * @brief rgb transfer start

@@ -8,7 +8,7 @@
 #include "cli.h"
 #include "cli_tuya_test.h"
 
-extern OPERATE_RET tkl_gpio_init(TUYA_GPIO_NUM_E pin_id, CONST TUYA_GPIO_BASE_CFG_T *cfg);
+extern OPERATE_RET tkl_gpio_init(TUYA_GPIO_NUM_E pin_id, const TUYA_GPIO_BASE_CFG_T *cfg);
 static void __gpio_irq_test(void *args)
 {
     bk_printf("--- [%s %d]\r\n", __func__, __LINE__);

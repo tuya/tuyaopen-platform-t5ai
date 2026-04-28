@@ -22,14 +22,14 @@
 #define ADC_REF_VALUE 3300
 #define SET_CONFIG_DIV  200
 
-static WORD_T adc_buf[ADC_BUF_SIZE];
+static uint16_t adc_buf[ADC_BUF_SIZE];
 
-static UINT8_T g_adc_init[ADC_DEV_CHANNEL_SUM] = {0};
-static UINT8_T g_channel_id_div[ADC_MAX] = {
+static uint8_t g_adc_init[ADC_DEV_CHANNEL_SUM] = {0};
+static uint8_t g_channel_id_div[ADC_MAX] = {
     0, 0, 0, 0, 1, 0, 0, 0,
     0, 0, 0, 0, 0, 0, 0, 0
 };   // 0: no div, 1: div, chan4 default div
-static UINT8_T g_adc_current_ch_num = 0;
+static uint8_t g_adc_current_ch_num = 0;
 static adc_config_t g_config[ADC_DEV_CHANNEL_SUM] = {0};
 static TUYA_ADC_NUM_E adc[ADC_DEV_NUM] = {TUYA_ADC_NUM_MAX};
 
@@ -110,7 +110,7 @@ adc_mode_t ty_to_bk_adc(TUYA_ADC_MODE_E adc_mode)
  */
 OPERATE_RET tkl_adc_init(TUYA_ADC_NUM_E unit_num, TUYA_ADC_BASE_CFG_T *cfg)
 {
-    UINT8_T cnt = 0;
+    uint8_t cnt = 0;
     static uint8_t is_init = 0;
 
     if ((unit_num >= ADC_DEV_NUM) || (cfg->ch_nums > ADC_DEV_CHANNEL_SUM)) {
@@ -189,7 +189,7 @@ OPERATE_RET tkl_adc_deinit(TUYA_ADC_NUM_E unit_num)
  *
  * @return adc width
  */
-UINT8_T tkl_adc_width_get(TUYA_ADC_NUM_E unit_num)
+uint8_t tkl_adc_width_get(TUYA_ADC_NUM_E unit_num)
 {
     return 12;
 }
@@ -203,7 +203,7 @@ UINT8_T tkl_adc_width_get(TUYA_ADC_NUM_E unit_num)
  *
  * @return adc reference voltage(bat: mv)
  */
-UINT32_T tkl_adc_ref_voltage_get(TUYA_ADC_NUM_E port_num)
+uint32_t tkl_adc_ref_voltage_get(TUYA_ADC_NUM_E port_num)
 {
     return ADC_REF_VALUE;
 
@@ -218,10 +218,10 @@ UINT32_T tkl_adc_ref_voltage_get(TUYA_ADC_NUM_E port_num)
  *
  * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
  */
-OPERATE_RET tkl_adc_read_data(TUYA_ADC_NUM_E unit_num, INT32_T *buff, UINT16_T len)
+OPERATE_RET tkl_adc_read_data(TUYA_ADC_NUM_E unit_num, int32_t *buff, uint16_t len)
 {
     OPERATE_RET ret = OPRT_OK;
-    UINT16_T buff_len = 0;
+    uint16_t buff_len = 0;
     unsigned char i = 0;
 
     if (unit_num > ADC_DEV_NUM-1 && adc[unit_num] != unit_num) {
@@ -251,7 +251,7 @@ OPERATE_RET tkl_adc_read_data(TUYA_ADC_NUM_E unit_num, INT32_T *buff, UINT16_T l
     return ret;
 }
 
-OPERATE_RET tkl_adc_read_single_channel(TUYA_ADC_NUM_E unit_num, UINT8_T ch_id, INT32_T *data)
+OPERATE_RET tkl_adc_read_single_channel(TUYA_ADC_NUM_E unit_num, uint8_t ch_id, int32_t *data)
 {
     int curr_ch_index =  0;
     int time_out = BEKEN_WAIT_FOREVER;
@@ -279,7 +279,7 @@ OPERATE_RET tkl_adc_read_single_channel(TUYA_ADC_NUM_E unit_num, UINT8_T ch_id, 
         bk_adc_read_raw(g_config[curr_ch_index].output_buf, g_config[curr_ch_index].output_buf_len, time_out);
 
         for (int i = 0; i < g_config[curr_ch_index].output_buf_len; i++) {
-            data[i] = (INT32_T)g_config[curr_ch_index].output_buf[i];
+            data[i] = (int32_t)g_config[curr_ch_index].output_buf[i];
             //bk_printf("%d ", g_config[curr_ch_index].output_buf[i]);
         }
         //bk_printf("\r\n");
@@ -299,7 +299,7 @@ OPERATE_RET tkl_adc_read_single_channel(TUYA_ADC_NUM_E unit_num, UINT8_T ch_id, 
  *
  * @return temperature(bat: 'C)
  */
-INT32_T tkl_adc_temperature_get(VOID_T)
+int32_t tkl_adc_temperature_get(void)
 {
     return OPRT_NOT_SUPPORTED;
 }
@@ -315,12 +315,12 @@ INT32_T tkl_adc_temperature_get(VOID_T)
  *
  */
 extern UINT16 bk_adc_data_calculate(uint16_t adc_val, uint8_t adc_chan);
-OPERATE_RET tkl_adc_read_voltage(TUYA_ADC_NUM_E port_num, INT32_T *buff, UINT16_T len)
+OPERATE_RET tkl_adc_read_voltage(TUYA_ADC_NUM_E port_num, int32_t *buff, uint16_t len)
 {
-    UINT16_T value   = 0;
+    uint16_t value   = 0;
     float cali_value = 0;
-    UINT8_T read_cnt = 0;
-    UINT16_T buff_len = 0;
+    uint8_t read_cnt = 0;
+    uint16_t buff_len = 0;
 
     if(adc[port_num] != port_num && port_num > ADC_DEV_NUM-1) {
         bk_printf("error port num: %d:%d\r\n", port_num, __LINE__);
@@ -363,7 +363,7 @@ OPERATE_RET tkl_adc_read_voltage(TUYA_ADC_NUM_E port_num, INT32_T *buff, UINT16_
                 extern UINT16 bk_adc_data_calculate(UINT16 adc_val, UINT8 adc_chan);
                 cali_value = bk_adc_data_calculate(value, g_config[i].chan);
 
-                buff[read_cnt] = (INT32_T) (cali_value);
+                buff[read_cnt] = (int32_t) (cali_value);
                 //bk_printf("buff[%d]:%dmv, %f\r\n", read_cnt, buff[read_cnt], cali_value);
                 read_cnt++;
             }
@@ -377,12 +377,12 @@ OPERATE_RET tkl_adc_read_voltage(TUYA_ADC_NUM_E port_num, INT32_T *buff, UINT16_
     return 0;
 }
 
-OPERATE_RET tkl_adc_ioctl(ADC_IOCTL_CMD_E cmd,  VOID *args)
+OPERATE_RET tkl_adc_ioctl(ADC_IOCTL_CMD_E cmd,  void *args)
 {
-    UINT8_T ch_id = ADC_MAX;
+    uint8_t ch_id = ADC_MAX;
 
     if(NULL != args) {
-        ch_id = (UINT8_T)*(UINT8_T *)args;
+        ch_id = (uint8_t)*(uint8_t *)args;
     }
 
     if(ch_id >= ADC_MAX) {

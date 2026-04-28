@@ -21,7 +21,7 @@ OPERATE_RET tkl_ble_mesh_provisioner_init(void);
  * @return  SUCCESS             Successfully mesh reset procedure.
  *          ERROR
  * */
-OPERATE_RET tkl_ble_mesh_stack_reset(UCHAR_T config_reset);
+OPERATE_RET tkl_ble_mesh_stack_reset(uint8_t config_reset);
 
 /**
  * @brief   Register Mesh Event Callback
@@ -29,7 +29,7 @@ OPERATE_RET tkl_ble_mesh_stack_reset(UCHAR_T config_reset);
  * @return  SUCCESS              Register successfully.
  *          ERROR
  * */
-OPERATE_RET tkl_ble_mesh_callback_register(CONST TKL_MESH_EVT_FUNC_CB mesh_evt);
+OPERATE_RET tkl_ble_mesh_callback_register(const TKL_MESH_EVT_FUNC_CB mesh_evt);
 
 /**
  * @brief   We need to set mesh info, include netkey and appkey
@@ -49,7 +49,7 @@ OPERATE_RET tkl_ble_mesh_info_set(TKL_MESH_LOCAL_INFO_T local_info);
  *          
  * @note    the unprovisioned beacon is given through TKL_MESH_EVT_ADV_REPORT event !!!!!!
  */
-OPERATE_RET tkl_ble_mesh_prov_scan(UCHAR_T enable, UINT_T timeout);
+OPERATE_RET tkl_ble_mesh_prov_scan(uint8_t enable, uint32_t timeout);
 
 /**
  * @brief   [Mesh Provisioner]Start to provision one mesh device,(Only Provision Invite)
@@ -67,7 +67,7 @@ OPERATE_RET tkl_ble_mesh_adv_provision_invite(TKL_MESH_DEVICE_INFO_T device);
  * @return  SUCCESS
  *          ERROR
  * */ 
-OPERATE_RET tkl_ble_mesh_node_devkey_add(USHORT_T device_addr, UCHAR_T devkey[16]);
+OPERATE_RET tkl_ble_mesh_node_devkey_add(uint16_t device_addr, uint8_t devkey[16]);
 
 /**
  * @brief   Delete Device key from local database
@@ -76,7 +76,7 @@ OPERATE_RET tkl_ble_mesh_node_devkey_add(USHORT_T device_addr, UCHAR_T devkey[16
  * @return  SUCCESS
  *          ERROR
  * */ 
-OPERATE_RET tkl_ble_mesh_node_devkey_delete(USHORT_T device_addr, UCHAR_T devkey[16]);
+OPERATE_RET tkl_ble_mesh_node_devkey_delete(uint16_t device_addr, uint8_t devkey[16]);
 
 /**
  *@brief    Get Mesh Network NID.
@@ -85,7 +85,7 @@ OPERATE_RET tkl_ble_mesh_node_devkey_delete(USHORT_T device_addr, UCHAR_T devkey
  *@return   SUCCESS: success
  *          ERROR: failure
  */
-OPERATE_RET tkl_ble_mesh_local_get_nid(UCHAR_T netkey[16], UCHAR_T *nid);
+OPERATE_RET tkl_ble_mesh_local_get_nid(uint8_t netkey[16], uint8_t *nid);
 
 /**
  *@brief    Get seq number.
@@ -95,7 +95,7 @@ OPERATE_RET tkl_ble_mesh_local_get_nid(UCHAR_T netkey[16], UCHAR_T *nid);
  *@return   SUCCESS: success, 
  *          ERROR: failure
  */
-OPERATE_RET tkl_ble_mesh_device_get_seq(UINT_T *seq, UINT_T *iv);
+OPERATE_RET tkl_ble_mesh_device_get_seq(uint32_t *seq, uint32_t *iv);
 
 /**
  *@brief    Set seq number.
@@ -103,7 +103,7 @@ OPERATE_RET tkl_ble_mesh_device_get_seq(UINT_T *seq, UINT_T *iv);
  *@return   SUCCESS: success, 
  *          ERROR: failure
  */
-OPERATE_RET tkl_ble_mesh_device_set_seq(UINT_T seq);
+OPERATE_RET tkl_ble_mesh_device_set_seq(uint32_t seq);
 
 /**
  *@brief    Update IV index
@@ -113,14 +113,14 @@ OPERATE_RET tkl_ble_mesh_device_set_seq(UINT_T seq);
  *@return   SUCCESS: success
  *          ERROR: failure
  */
-OPERATE_RET tkl_ble_mesh_device_update_iv_info(UINT_T iv_index, UCHAR_T flags);
+OPERATE_RET tkl_ble_mesh_device_update_iv_info(uint32_t iv_index, uint8_t flags);
 
 /**
  *@brief    set ttl.
  *@param    [in] ttl : ttl number
  *@return   0: success, negetive value: failure
  */
-OPERATE_RET tkl_ble_mesh_local_node_set_ttl(UCHAR_T ttl);
+OPERATE_RET tkl_ble_mesh_local_node_set_ttl(uint8_t ttl);
 
 /**
  *@brief    set local provisioner network transmit parameters.
@@ -130,7 +130,7 @@ OPERATE_RET tkl_ble_mesh_local_node_set_ttl(UCHAR_T ttl);
  *@param    [in] interval_steps : transmission interval = (Network Retransmit Interval Steps + 1) * 10.[4.2.19.2 Network Transmit Interval Steps]
  *@return   0: success, negetive value: failure
  */
-OPERATE_RET tkl_ble_mesh_local_network_transmit_set(UCHAR_T count, UCHAR_T interval_steps);
+OPERATE_RET tkl_ble_mesh_local_network_transmit_set(uint8_t count, uint8_t interval_steps);
 
 /**
  * @brief   [Mesh Provisioner] Send data to mesh node
@@ -169,7 +169,7 @@ OPERATE_RET tkl_ble_mesh_beacon_message_send(TKL_MESH_DEVICE_INFO_T device, TKL_
  * @brief   [Special Command Control] Base on Bluetooth Mesh, We can do some special commands for exchanging some informations.
  * @param   [in] device:        Device Info
  *          [in] opcode         Operations Opcode.
- *          [IN/OUT] args       Post/Push Some Special Commands Data.
+ *          [/] args       Post/Push Some Special Commands Data.
  * @note    For Operations Codes, we can do anythings after exchange from TAL Application
  *          And We define some Opcodes as below for reference.
  *          eg:     0x0000: Get the Telink Proxy Data
@@ -177,12 +177,12 @@ OPERATE_RET tkl_ble_mesh_beacon_message_send(TKL_MESH_DEVICE_INFO_T device, TKL_
  *  * @return  SUCCESS
  *          ERROR
  * */
-OPERATE_RET tkl_ble_mesh_vendor_command_control(TKL_MESH_DEVICE_INFO_T device, USHORT_T opcode, VOID_T *args);
+OPERATE_RET tkl_ble_mesh_vendor_command_control(TKL_MESH_DEVICE_INFO_T device, uint16_t opcode, void *args);
 
 
-OPERATE_RET tkl_ble_mesh_dfu_init(CONST TKL_MESH_DFU_IO_T *p_dfu_io);
+OPERATE_RET tkl_ble_mesh_dfu_init(const TKL_MESH_DFU_IO_T *p_dfu_io);
 
-OPERATE_RET tkl_ble_mesh_dfu_control(TKL_MESH_DFU_OPERATION_E operation, VOID_T *args, USHORT_T args_len);
+OPERATE_RET tkl_ble_mesh_dfu_control(TKL_MESH_DFU_OPERATION_E operation, void *args, uint16_t args_len);
 
 #ifdef __cplusplus
 }

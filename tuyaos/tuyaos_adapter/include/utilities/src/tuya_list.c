@@ -16,10 +16,10 @@
  * @param[in] pNew  the new node
  * @param[in] pPrev the prev node
  * @param[in] pNext the next node
- * @return VOID
+ * @return void
  */
-STATIC VOID __list_add(IN CONST P_LIST_HEAD pNew, IN CONST P_LIST_HEAD pPrev,\
-                       IN CONST P_LIST_HEAD pNext)
+static void __list_add( const P_LIST_HEAD pNew,  const P_LIST_HEAD pPrev,\
+                        const P_LIST_HEAD pNext)
 {
     pNext->prev = pNew;
     pNew->next = pNext;
@@ -32,9 +32,9 @@ STATIC VOID __list_add(IN CONST P_LIST_HEAD pNew, IN CONST P_LIST_HEAD pPrev,\
  * 
  * @param[in] pPrev the prev node
  * @param[in] pNext the next node
- * @return VOID
+ * @return void
  */
-STATIC VOID __list_del(IN CONST P_LIST_HEAD pPrev, IN CONST P_LIST_HEAD pNext)
+static void __list_del( const P_LIST_HEAD pPrev,  const P_LIST_HEAD pNext)
 {
     pNext->prev = pPrev;
     pPrev->next = pNext;
@@ -46,7 +46,7 @@ STATIC VOID __list_del(IN CONST P_LIST_HEAD pPrev, IN CONST P_LIST_HEAD pNext)
  * @param[in] pHead the bidirection list
  * @return 0 means empty, others means empty
  */
-INT_T tuya_list_empty(IN CONST P_LIST_HEAD pHead)
+int32_t tuya_list_empty( const P_LIST_HEAD pHead)
 {
     return pHead->next == pHead;
 }
@@ -56,9 +56,9 @@ INT_T tuya_list_empty(IN CONST P_LIST_HEAD pHead)
  * 
  * @param[in] pNew the new list node
  * @param[in] pHead the bidirection list
- * @return VOID 
+ * @return void 
  */
-VOID tuya_list_add(IN CONST P_LIST_HEAD pNew, IN CONST P_LIST_HEAD pHead)
+void tuya_list_add( const P_LIST_HEAD pNew,  const P_LIST_HEAD pHead)
 {
     __list_add(pNew, pHead, pHead->next);
 }
@@ -68,9 +68,9 @@ VOID tuya_list_add(IN CONST P_LIST_HEAD pNew, IN CONST P_LIST_HEAD pHead)
  * 
  * @param[in] pNew the new list node
  * @param[in] pHead the bidirection list
- * @return VOID 
+ * @return void 
  */
-VOID tuya_list_add_tail(IN CONST P_LIST_HEAD pNew, IN CONST P_LIST_HEAD pHead)
+void tuya_list_add_tail( const P_LIST_HEAD pNew,  const P_LIST_HEAD pHead)
 {
     __list_add(pNew, pHead->prev, pHead);
 }
@@ -80,9 +80,9 @@ VOID tuya_list_add_tail(IN CONST P_LIST_HEAD pNew, IN CONST P_LIST_HEAD pHead)
  * 
  * @param[in] pList the bidirection list need to splice
  * @param[in] pHead the bidirection list
- * @return VOID 
+ * @return void 
  */
-VOID tuya_list_splice(IN CONST P_LIST_HEAD pList, IN CONST P_LIST_HEAD pHead)
+void tuya_list_splice( const P_LIST_HEAD pList,  const P_LIST_HEAD pHead)
 {
     P_LIST_HEAD pFirst = pList->next;
 
@@ -102,9 +102,9 @@ VOID tuya_list_splice(IN CONST P_LIST_HEAD pList, IN CONST P_LIST_HEAD pHead)
  * @brief remove a list node from bidirection list
  * 
  * @param[in] pEntry the list node need to remove
- * @return VOID 
+ * @return void 
  */
-VOID tuya_list_del(IN CONST P_LIST_HEAD pEntry)
+void tuya_list_del( const P_LIST_HEAD pEntry)
 {
     __list_del(pEntry->prev, pEntry->next);
 }
@@ -113,9 +113,9 @@ VOID tuya_list_del(IN CONST P_LIST_HEAD pEntry)
  * @brief remove a list node from bidirection list and initialize it
  * 
  * @param[in] pEntry the list node need to remove and initialize
- * @return VOID 
+ * @return void 
  */
-VOID tuya_list_del_init(IN CONST P_LIST_HEAD pEntry)
+void tuya_list_del_init( const P_LIST_HEAD pEntry)
 {
     __list_del(pEntry->prev, pEntry->next);
     INIT_LIST_HEAD(pEntry);

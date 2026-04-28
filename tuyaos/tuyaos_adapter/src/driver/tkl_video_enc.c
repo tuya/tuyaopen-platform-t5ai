@@ -46,7 +46,7 @@ static void __frame_test_cb(frame_buffer_t *frame)
 *
 * @return OPRT_OK on success. Others on error, please refer to tkl_error_code.h
 */
-OPERATE_RET tkl_venc_init(INT32_T vi_chn, TKL_VENC_CONFIG_T *pconfig, INT32_T count)
+OPERATE_RET tkl_venc_init(int32_t vi_chn, TKL_VENC_CONFIG_T *pconfig, int32_t count)
 {
     // TODO
     if ((pconfig != NULL) && (pconfig->put_cb != NULL)) {

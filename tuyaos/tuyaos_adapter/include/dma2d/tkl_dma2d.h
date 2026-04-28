@@ -27,29 +27,29 @@ typedef enum {
 
 typedef struct
 {
-    UINT16_T      x_axis;
-    UINT16_T      y_axis;
+    uint16_t      x_axis;
+    uint16_t      y_axis;
 }TKL_DMA2D_POINT_T;
 
 typedef struct
 {
     TUYA_FRAME_FMT_E type;                           // [in] : type of pbuf 
     uint8_t     *pbuf;                                // [in out] : frame buffer
-    UINT16_T     width;                                // [in] : buffer wide
-    UINT16_T     height;                               // [in] : buffer height
+    uint16_t     width;                                // [in] : buffer wide
+    uint16_t     height;                               // [in] : buffer height
     TKL_DMA2D_POINT_T  axis;                         // [in] : coordinates
-    UINT16_T     width_cp;                             // [in] : buffer wide
-    UINT16_T     height_cp;                            // [in] : buffer height
+    uint16_t     width_cp;                             // [in] : buffer wide
+    uint16_t     height_cp;                            // [in] : buffer height
 }TKL_DMA2D_FRAME_INFO_T;
 
-typedef VOID_T (*TUYA_DMA2D_IRQ_CB)(TUYA_DMA2D_IRQ_E type, VOID_T *args);
+typedef void (*TUYA_DMA2D_IRQ_CB)(TUYA_DMA2D_IRQ_E type, void *args);
 
 /**
  * @brief dma2d interrupt config
  */
 typedef struct {
     TUYA_DMA2D_IRQ_CB     cb;
-    VOID_T              *arg;
+    void              *arg;
 } TUYA_DMA2D_BASE_CFG_T;
 
 /**
@@ -59,7 +59,7 @@ typedef struct {
  * 
  * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
  */
-OPERATE_RET tkl_dma2d_init(CONST TUYA_DMA2D_BASE_CFG_T *cfg);
+OPERATE_RET tkl_dma2d_init(const TUYA_DMA2D_BASE_CFG_T *cfg);
 
 /**
  * @brief dma2d deinit

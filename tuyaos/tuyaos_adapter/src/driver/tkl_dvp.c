@@ -31,39 +31,39 @@ static DVP_FRAME_POST_CB dvp_frame_post_cb = NULL;
 
 typedef struct
 {
-    UINT32_T in_addr;
-    UINT32_T in_channel;
-    UINT32_T in_line_size;
-    UINT32_T in_offset;
-    UINT32_T out_addr;
-    UINT32_T out_channel;
-    UINT32_T out_offset;
+    uint32_t in_addr;
+    uint32_t in_channel;
+    uint32_t in_line_size;
+    uint32_t in_offset;
+    uint32_t out_addr;
+    uint32_t out_channel;
+    uint32_t out_offset;
 #if 0
-    UINT8_T sei[H264_SELF_DEFINE_SEI_SIZE]; // save frame infomation
+    uint8_t sei[H264_SELF_DEFINE_SEI_SIZE]; // save frame infomation
 #endif
-    UINT8_T sequence;
-    UINT8_T is_i_frame_flag;
+    uint8_t sequence;
+    uint8_t is_i_frame_flag;
 } ENCODER_MANAGE_T;
 
 typedef struct
 {
     TUYA_DVP_CFG_T dvp_cfg;
     yuv_mode_t cur_work_mode;
-    UINT8_T is_mix_mode;
-    UINT8_T *pingpong_buf;
-    UINT32_T pingpong_len;
+    uint8_t is_mix_mode;
+    uint8_t *pingpong_buf;
+    uint32_t pingpong_len;
     TUYA_DVP_FRAME_MANAGE_T *base_frame;
     TUYA_FRAME_FMT_E base_frame_fmt;
-    UINT32_T base_frame_len;
+    uint32_t base_frame_len;
     TUYA_DVP_FRAME_MANAGE_T *encoded_frame;
     TUYA_FRAME_FMT_E encoded_frame_fmt;
-    UINT32_T encoded_frame_len;
+    uint32_t encoded_frame_len;
     ENCODER_MANAGE_T encoder_manage;
     yuv_buf_config_t yuv_buf_module_config;
     jpeg_config_t jpeg_module_config;
-    UINT8_T module_stat;
-    UINT32_T frame_id;
-    UINT8_T error_flag;
+    uint8_t module_stat;
+    uint32_t frame_id;
+    uint8_t error_flag;
     mclk_freq_t bk_clk;
 } DVP_MODULE_MANAGE_T;
 
@@ -185,7 +185,7 @@ static OPERATE_RET __dvp_config_param_check(TUYA_DVP_CFG_T *dvp_cfg)
     return OPRT_OK;
 }
 
-static OPERATE_RET __ty_clk_to_bk_clk(UINT32_T clk, mclk_freq_t *outclk)
+static OPERATE_RET __ty_clk_to_bk_clk(uint32_t clk, mclk_freq_t *outclk)
 {
     switch (clk)
     {
@@ -266,7 +266,7 @@ static OPERATE_RET __dvp_yuv_buf_module_init(TUYA_DVP_CFG_T *dvp_cfg)
 init_yuv_buf:
     yuv_buf_config_cur.base_addr = (g_dvp_module_manage.pingpong_buf == NULL) ? NULL : g_dvp_module_manage.pingpong_buf;
 
-    UINT8_T ret = bk_yuv_buf_init(&yuv_buf_config_cur);
+    uint8_t ret = bk_yuv_buf_init(&yuv_buf_config_cur);
 	if (ret != BK_OK)
 	{
 		bk_printf("yuv_buf yuv mode init error\n");
@@ -287,7 +287,7 @@ static OPERATE_RET __dvp_jpeg_module_init(TUYA_DVP_CFG_T *dvp_cfg)
     jpeg_config_cur.clk = g_dvp_module_manage.bk_clk;
     jpeg_config_cur.mode = JPEG_MODE;
 
-    UINT8_T ret = bk_jpeg_enc_init(&jpeg_config_cur);
+    uint8_t ret = bk_jpeg_enc_init(&jpeg_config_cur);
     if (ret != BK_OK)
     {
         bk_printf("jpeg init error\n");
@@ -557,7 +557,7 @@ static void __dvp_yuv_eof_handler(yuv_buf_unit_t id, void *param)
 		g_dvp_module_manage.base_frame = new_frame;
     }
 
-    bk_yuv_buf_set_em_base_addr((UINT32_T)g_dvp_module_manage.base_frame->data);
+    bk_yuv_buf_set_em_base_addr((uint32_t)g_dvp_module_manage.base_frame->data);
 }
 
 static void __dvp_yuv_line_done(yuv_buf_unit_t id, void *param)
@@ -565,7 +565,7 @@ static void __dvp_yuv_line_done(yuv_buf_unit_t id, void *param)
     if (!g_dvp_module_manage.module_stat || !param)
 		return;
 
-    UINT8_T *line_idx = (UINT8_T *)param;
+    uint8_t *line_idx = (uint8_t *)param;
     ENCODER_MANAGE_T *coder_manage = &(g_dvp_module_manage.encoder_manage);
 
     if ((coder_manage->in_offset + coder_manage->in_line_size) > g_dvp_module_manage.base_frame_len)
@@ -597,8 +597,8 @@ static void __dvp_h264_eof_handler(h264_unit_t id, void *param)
         return;
     }
 
-    UINT32_T real_length = bk_h264_get_encode_count() * 4;
-    UINT32_T remain_length = 0;
+    uint32_t real_length = bk_h264_get_encode_count() * 4;
+    uint32_t remain_length = 0;
     ENCODER_MANAGE_T *coder_manage = &(g_dvp_module_manage.encoder_manage);
 
     coder_manage->sequence++;
@@ -634,7 +634,7 @@ static void __dvp_h264_eof_handler(h264_unit_t id, void *param)
 
     if (coder_manage->out_offset != real_length)
     {
-        UINT32_T left_length = real_length - coder_manage->out_offset;
+        uint32_t left_length = real_length - coder_manage->out_offset;
         bk_printf("%s size no match:%d-%d=%d\r\n", __func__, real_length, coder_manage->out_offset, left_length);
         if (left_length != DVP_DMA_CACHE)
         {
@@ -742,14 +742,14 @@ static void __dvp_jpeg_eof_handler(h264_unit_t id, void *param)
 
     bk_dma_flush_src_buffer(coder_manage->out_channel);
 
-    UINT32_T real_length = bk_jpeg_enc_get_frame_size();
-    UINT32_T remain_length = 0;
+    uint32_t real_length = bk_jpeg_enc_get_frame_size();
+    uint32_t remain_length = 0;
 
     remain_length = DVP_DMA_CACHE - bk_dma_get_remain_len(coder_manage->out_channel);
 
     bk_dma_stop(coder_manage->out_channel);
 
-    UINT32_T tmp_flag = false;
+    uint32_t tmp_flag = false;
     coder_manage->out_offset = coder_manage->out_offset + remain_length - JPEG_CRC_SIZE;
 
     if (coder_manage->out_offset != real_length)
@@ -759,9 +759,9 @@ static void __dvp_jpeg_eof_handler(h264_unit_t id, void *param)
 
     coder_manage->out_offset = 0;
 
-    UINT8_T *jpeg_buf = g_dvp_module_manage.encoded_frame->data;
-    UINT8_T eof_flag = false;
-    for (UINT32_T i = real_length; i > real_length - 10; i--)
+    uint8_t *jpeg_buf = g_dvp_module_manage.encoded_frame->data;
+    uint8_t eof_flag = false;
+    for (uint32_t i = real_length; i > real_length - 10; i--)
     {
         if (jpeg_buf[i - 1] == 0xD9 && jpeg_buf[i - 2] == 0xFF)
         {
@@ -901,9 +901,9 @@ static void __dvp_isr_register(TUYA_DVP_CFG_T *dvp_cfg)
     if (dvp_cfg->output_mode == TUYA_CAMERA_OUTPUT_H264_YUV422_BOTH
         || dvp_cfg->output_mode == TUYA_CAMERA_OUTPUT_JPEG_YUV422_BOTH)
     {
-        static UINT8_T line_0 = 0;
+        static uint8_t line_0 = 0;
         bk_yuv_buf_register_isr(YUV_BUF_SM0_WR, __dvp_yuv_line_done, (void *)(&line_0));
-        static UINT8_T line_1 = 1;
+        static uint8_t line_1 = 1;
         bk_yuv_buf_register_isr(YUV_BUF_SM1_WR, __dvp_yuv_line_done, (void *)(&line_1));
     }
 
@@ -914,7 +914,7 @@ static void __dvp_isr_register(TUYA_DVP_CFG_T *dvp_cfg)
     bk_yuv_buf_register_isr(YUV_BUF_ENC_SLOW, __dvp_error_handler, NULL);
 }
 
-OPERATE_RET tkl_dvp_init(TUYA_DVP_CFG_T *dvp_cfg, UINT32_T clk)
+OPERATE_RET tkl_dvp_init(TUYA_DVP_CFG_T *dvp_cfg, uint32_t clk)
 {
     OPERATE_RET ret = 0;
 
@@ -960,8 +960,8 @@ OPERATE_RET tkl_dvp_init(TUYA_DVP_CFG_T *dvp_cfg, UINT32_T clk)
     if (work_mode == JPEG_MODE && dvp_cfg->encoded_quality.jpeg_cfg.enable)
     {
         JPEG_CFG *jpeg_cfg = &cfg->encoded_quality.jpeg_cfg;
-        UINT16_T max_bytes = (jpeg_cfg->max_size << 10) & 0xFFFF;
-        UINT16_T min_bytes = (jpeg_cfg->min_size << 10) & 0xFFFF;
+        uint16_t max_bytes = (jpeg_cfg->max_size << 10) & 0xFFFF;
+        uint16_t min_bytes = (jpeg_cfg->min_size << 10) & 0xFFFF;
         bk_jpeg_enc_encode_config(1, max_bytes, min_bytes);
         bk_printf("JPEG ENCODE CFG SET: max size: %ld byte, min size: %ld byte\r\n", max_bytes, min_bytes);
     }

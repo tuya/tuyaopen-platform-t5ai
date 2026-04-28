@@ -13,9 +13,9 @@
 #define DELAY_TIME    500    //us
 static uint32_t timer_id = 1;
 
-STATIC CHAR_T sg_count = 0;
+static char sg_count = 0;
 
-STATIC VOID_T __timer_callback(VOID *args)
+static void __timer_callback(void *args)
 {
     /* TAL_PR_ , PR_ ，这两种打印里面有锁，不要在中断里使用 */
     bk_printf("\r\n------------- Timer Callback --------------\r\n");

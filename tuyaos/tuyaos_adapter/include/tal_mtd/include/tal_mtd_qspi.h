@@ -19,17 +19,17 @@ typedef struct MTD_QSPI_CFG_T {
     TUYA_QSPI_NUM_E port; // QSPI端口号
 } MTD_QSPI_CFG_T;
 
-typedef INT32_T (*QSPI_MTD_INIT_T)(MTD_QSPI_CFG_T *cfg);
-typedef VOID_T (*QSPI_MTD_WAIT_DONE_T)(MTD_QSPI_CFG_T *cfg);
-typedef INT32_T (*QSPI_MTD_DEINIT_T)(MTD_QSPI_CFG_T *cfg);
-typedef INT32_T (*QSPI_MTD_WRITE_UNLOCK_T)(MTD_QSPI_CFG_T *cfg);
+typedef int32_t (*QSPI_MTD_INIT_T)(MTD_QSPI_CFG_T *cfg);
+typedef void (*QSPI_MTD_WAIT_DONE_T)(MTD_QSPI_CFG_T *cfg);
+typedef int32_t (*QSPI_MTD_DEINIT_T)(MTD_QSPI_CFG_T *cfg);
+typedef int32_t (*QSPI_MTD_WRITE_UNLOCK_T)(MTD_QSPI_CFG_T *cfg);
 
 typedef struct {
-    UINT8_T command;
-    UINT8_T addr_size;
-    UINT8_T addr_lines;
-    UINT8_T wire_lines;
-    UINT8_T dummy;
+    uint8_t command;
+    uint8_t addr_size;
+    uint8_t addr_lines;
+    uint8_t wire_lines;
+    uint8_t dummy;
 } CMD_DSC_T;
 
 typedef struct {
@@ -81,8 +81,8 @@ MTD_QSPI_HANDLE tal_mtd_qspi_init(MTD_QSPI_DEV_T *dev, MTD_QSPI_CFG_T *cfg);
  *
  * @return Bytes on success. Others on error, please refer to tal_error_code.h
  */
-OPERATE_RET tal_mtd_qspi_page_read(MTD_QSPI_HANDLE handle, UINT_T addr,
-                                   VOID_T *buf, UINT_T len, BOOL_T is_nand);
+OPERATE_RET tal_mtd_qspi_page_read(MTD_QSPI_HANDLE handle, uint32_t addr,
+                                   void *buf, uint32_t len, BOOL_T is_nand);
 
 /**
  * @brief mtd qspi write
@@ -94,8 +94,8 @@ OPERATE_RET tal_mtd_qspi_page_read(MTD_QSPI_HANDLE handle, UINT_T addr,
  *
  * @return OPRT_OK on success. Others on error, please refer to tal_error_code.h
  */
-OPERATE_RET tal_mtd_qspi_page_program(MTD_QSPI_HANDLE handle, UINT_T addr,
-                                      const VOID_T *buf, UINT_T len,
+OPERATE_RET tal_mtd_qspi_page_program(MTD_QSPI_HANDLE handle, uint32_t addr,
+                                      const void *buf, uint32_t len,
                                       BOOL_T is_nand);
 
 /**
@@ -107,8 +107,8 @@ OPERATE_RET tal_mtd_qspi_page_program(MTD_QSPI_HANDLE handle, UINT_T addr,
  *
  * @return OPRT_OK on success. Others on error, please refer to tal_error_code.h
  */
-OPERATE_RET tal_mtd_qspi_erase(MTD_QSPI_HANDLE handle, UINT_T addr,
-                               UINT_T erase_type);
+OPERATE_RET tal_mtd_qspi_erase(MTD_QSPI_HANDLE handle, uint32_t addr,
+                               uint32_t erase_type);
 
 /**
  * @brief mtd qspi write
@@ -118,7 +118,7 @@ OPERATE_RET tal_mtd_qspi_erase(MTD_QSPI_HANDLE handle, UINT_T addr,
  *
  * @return OPRT_OK on success. Others on error, please refer to tal_error_code.h
  */
-OPERATE_RET tal_mtd_qspi_read_id(MTD_QSPI_HANDLE handle, UINT_T *id);
+OPERATE_RET tal_mtd_qspi_read_id(MTD_QSPI_HANDLE handle, uint32_t *id);
 
 /**
  * @brief mtd qspi deinit

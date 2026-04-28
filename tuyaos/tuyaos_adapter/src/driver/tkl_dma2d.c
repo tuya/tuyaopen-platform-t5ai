@@ -31,7 +31,7 @@ static void tkl_dma2d_transfer_complete(void)
         g_dma2d_manage.dma2d_isr_cb(TUYA_DMA2D_TRANS_COMPLETE_ISR, g_dma2d_manage.arg);
 }
 
-OPERATE_RET tkl_dma2d_init(CONST TUYA_DMA2D_BASE_CFG_T *cfg)
+OPERATE_RET tkl_dma2d_init(const TUYA_DMA2D_BASE_CFG_T *cfg)
 {
     OPERATE_RET ret = OPRT_OK;
 
@@ -127,8 +127,8 @@ static OPERATE_RET __dma2d_cfg_init(TKL_DMA2D_FRAME_INFO_T *in_frame, TKL_DMA2D_
     dma2d_cfg->dst_frame_xpos = out_frame->axis.x_axis;
 	dma2d_cfg->dst_frame_ypos = out_frame->axis.y_axis;
 
-    dma2d_cfg->input_addr = (UINT8_T *)in_frame->pbuf;
-    dma2d_cfg->output_addr = (UINT8_T *)out_frame->pbuf;
+    dma2d_cfg->input_addr = (uint8_t *)in_frame->pbuf;
+    dma2d_cfg->output_addr = (uint8_t *)out_frame->pbuf;
 
 
     if (in_frame->width_cp == 0 || in_frame->height_cp == 0)
@@ -138,13 +138,13 @@ static OPERATE_RET __dma2d_cfg_init(TKL_DMA2D_FRAME_INFO_T *in_frame, TKL_DMA2D_
         goto out;
     }
 
-    UINT16_T dst_frame_xpos_eof = dma2d_cfg->dst_frame_xpos + in_frame->width_cp;
+    uint16_t dst_frame_xpos_eof = dma2d_cfg->dst_frame_xpos + in_frame->width_cp;
     if (dst_frame_xpos_eof > out_frame->width)
         dma2d_cfg->dma2d_width = out_frame->width - dma2d_cfg->dst_frame_xpos;
     else
         dma2d_cfg->dma2d_width = in_frame->width_cp;
 
-    UINT16_T dst_frame_ypos_eof = dma2d_cfg->dst_frame_ypos + in_frame->height_cp;
+    uint16_t dst_frame_ypos_eof = dma2d_cfg->dst_frame_ypos + in_frame->height_cp;
     if (dst_frame_ypos_eof > out_frame->height)
         dma2d_cfg->dma2d_height = out_frame->height - dma2d_cfg->dst_frame_xpos;
     else

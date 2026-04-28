@@ -32,7 +32,7 @@ static void __get_info_func(void *arg)
     struct ipc_msg_s *msg = (struct ipc_msg_s *)arg;
     struct ipc_msg_param_s *p = (struct ipc_msg_param_s *)msg->req_param;
     if (p != NULL)
-        tkl_system_get_cpu_info((TUYA_CPU_INFO_T **)p->p1, (INT_T *)p->p2);
+        tkl_system_get_cpu_info((TUYA_CPU_INFO_T **)p->p1, (int32_t *)p->p2);
 
     __gi_thread_handle = NULL;
     vTaskDelete(__gi_thread_handle);
@@ -80,13 +80,13 @@ void tkl_sys_ipc_func(struct ipc_msg_s *msg)
 /**
 * @brief Get system ticket count
 *
-* @param VOID
+* @param void
 *
 * @note This API is used to get system ticket count.
 *
 * @return system ticket count
 */
-SYS_TICK_T tkl_system_get_tick_count(VOID_T)
+SYS_TICK_T tkl_system_get_tick_count(void)
 {
     return (SYS_TICK_T)xTaskGetTickCount();
 }
@@ -98,7 +98,7 @@ SYS_TICK_T tkl_system_get_tick_count(VOID_T)
 *
 * @return system millisecond
 */
-SYS_TIME_T tkl_system_get_millisecond(VOID_T)
+SYS_TIME_T tkl_system_get_millisecond(void)
 {
     return (SYS_TIME_T)(tkl_system_get_tick_count() * portTICK_RATE_MS);
 }
@@ -110,11 +110,11 @@ SYS_TIME_T tkl_system_get_millisecond(VOID_T)
 *
 * @note This API is used for system sleep.
 *
-* @return VOID
+* @return void
 */
-VOID_T tkl_system_sleep(CONST UINT_T num_ms)
+void tkl_system_sleep(const uint32_t num_ms)
 {
-    UINT_T ticks = num_ms / portTICK_RATE_MS;
+    uint32_t ticks = num_ms / portTICK_RATE_MS;
 
     if (ticks == 0) {
         ticks = 1;
@@ -124,7 +124,7 @@ VOID_T tkl_system_sleep(CONST UINT_T num_ms)
 }
 
 
-VOID_T tkl_system_sleep_us(UINT_T num_us)
+void tkl_system_sleep_us(uint32_t num_us)
 {
     // TODO
     // delay_us(num_us);
@@ -133,13 +133,13 @@ VOID_T tkl_system_sleep_us(UINT_T num_us)
 /**
 * @brief System reset
 *
-* @param VOID
+* @param void
 *
 * @note This API is used for system reset.
 *
-* @return VOID
+* @return void
 */
-VOID_T tkl_system_reset(VOID_T)
+void tkl_system_reset(void)
 {
 #if CONFIG_CPU_INDEX == 0
     bk_reboot();
@@ -160,33 +160,33 @@ VOID_T tkl_system_reset(VOID_T)
 /**
 * @brief Get free heap size
 *
-* @param VOID
+* @param void
 *
 * @note This API is used for getting free heap size.
 *
 * @return size of free heap
 */
-INT_T tkl_system_get_free_heap_size(VOID_T)
+int32_t tkl_system_get_free_heap_size(void)
 {
-    return (INT_T)xPortGetFreeHeapSize();
+    return (int32_t)xPortGetFreeHeapSize();
 }
 
-INT_T tkl_system_get_minimum_heap_size(VOID_T)
+int32_t tkl_system_get_minimum_heap_size(void)
 {
-    return (INT_T)xPortGetMinimumEverFreeHeapSize();
+    return (int32_t)xPortGetMinimumEverFreeHeapSize();
 }
 
 
 /**
 * @brief Get system reset reason
 *
-* @param VOID
+* @param void
 *
 * @note This API is used for getting system reset reason.
 *
 * @return reset reason of system
 */
-TUYA_RESET_REASON_E tkl_system_get_reset_reason(CHAR_T** describe)
+TUYA_RESET_REASON_E tkl_system_get_reset_reason(char** describe)
 {
     unsigned char value = bk_misc_get_reset_reason() & 0xFF;
     TUYA_RESET_REASON_E ty_value;
@@ -253,7 +253,7 @@ TUYA_RESET_REASON_E tkl_system_get_reset_reason(CHAR_T** describe)
 *
 * @return a random number in the specified range
 */
-INT_T tkl_system_get_random(CONST UINT_T range)
+int32_t tkl_system_get_random(const uint32_t range)
 {
     unsigned int trange = range;
 
@@ -273,7 +273,7 @@ INT_T tkl_system_get_random(CONST UINT_T range)
 #define EFUSE_DEVICE_ID_BYTE_NUM 5
 #define OTP_DEVICE_ID 29
 
-OPERATE_RET tkl_system_get_cpu_info(TUYA_CPU_INFO_T **cpu_ary, INT_T *cpu_cnt)
+OPERATE_RET tkl_system_get_cpu_info(TUYA_CPU_INFO_T **cpu_ary, int *cpu_cnt)
 {
     // TODO
     struct ipc_msg_s msg = {0};
@@ -349,7 +349,7 @@ OPERATE_RET tkl_system_get_cpu_info(TUYA_CPU_INFO_T **cpu_ary, INT_T *cpu_cnt)
  *
  * @return  irq status
  */
-UINT_T tkl_system_enter_critical(VOID_T)
+uint32_t tkl_system_enter_critical(void)
 {
 #if (CONFIG_FREERTOS_SMP)
     return rtos_enter_critical();
@@ -364,7 +364,7 @@ UINT_T tkl_system_enter_critical(VOID_T)
  * @param[in]   irq_mask: irq mask
  * @return  none
  */
-VOID_T tkl_system_exit_critical(UINT_T irq_mask)
+void tkl_system_exit_critical(uint32_t irq_mask)
 {
 #if (CONFIG_FREERTOS_SMP)
     rtos_exit_critical(irq_mask);
@@ -379,7 +379,7 @@ VOID_T tkl_system_exit_critical(UINT_T irq_mask)
  *
  * @return  core ID
  */
-UINT_T tkl_system_get_coreid(VOID_T)
+uint32_t tkl_system_get_coreid(void)
 {
     return rtos_get_core_id();
 }

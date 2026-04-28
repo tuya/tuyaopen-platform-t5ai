@@ -7,7 +7,7 @@ extern void cli_audio_test_cmd(char *pcWriteBuffer, int xWriteBufferLen, int arg
  * @brief 模组固件升级更新结束，0x11
  * @note 设备应用层只做状态的处理，不对数据做处理
  */
-STATIC OPERATE_RET __pt_start_audio_test(USHORT_T cmd, UCHAR_T *data, UINT_T len, UCHAR_T **ret_data, USHORT_T *ret_len)
+static OPERATE_RET __pt_start_audio_test(uint16_t cmd, uint8_t *data, uint32_t len, uint8_t **ret_data, uint16_t *ret_len)
 {
     uint8_t flag = 0;
     bk_printf("__pt_start_audio_record_cb\r\n");
@@ -39,7 +39,7 @@ STATIC OPERATE_RET __pt_start_audio_test(USHORT_T cmd, UCHAR_T *data, UINT_T len
     bk_printf("gpio: %x\r\n", level);
     bk_printf("=============================\r\n");
 
-    CHAR_T *out = tkl_system_malloc(64);
+    char *out = tkl_system_malloc(64);
     if (NULL == out) {
         bk_printf("malloc failed...\r\n");
         return OPRT_MALLOC_FAILED;
@@ -52,7 +52,7 @@ STATIC OPERATE_RET __pt_start_audio_test(USHORT_T cmd, UCHAR_T *data, UINT_T len
     else
         strcpy(out, "{\"ret\":false}");
 
-    *ret_data = (UCHAR_T *)out;
+    *ret_data = (uint8_t *)out;
     *ret_len = strlen(out);
 
     bk_printf("start audio success\r\n");
@@ -63,14 +63,14 @@ STATIC OPERATE_RET __pt_start_audio_test(USHORT_T cmd, UCHAR_T *data, UINT_T len
  * @brief 模组固件升级更新结束，0x11
  * @note 设备应用层只做状态的处理，不对数据做处理
  */
-STATIC OPERATE_RET __pt_stop_audio_test(USHORT_T cmd, UCHAR_T *data, UINT_T len, UCHAR_T **ret_data, USHORT_T *ret_len)
+static OPERATE_RET __pt_stop_audio_test(uint16_t cmd, uint8_t *data, uint32_t len, uint8_t **ret_data, uint16_t *ret_len)
 {
     bk_printf("__pt_stop_audio_record_cb\r\n");
     char *argv[5] = {"audio_test", "0", "44100", "1", "xxx"};
     cli_audio_test_cmd(NULL, 0, 4, &argv);
     // __test_audio_deinit();
 
-    CHAR_T *out = tkl_system_malloc(64);
+    char *out = tkl_system_malloc(64);
     if (NULL == out) {
         bk_printf("malloc failed...\r\n");
         return OPRT_MALLOC_FAILED;
@@ -78,16 +78,16 @@ STATIC OPERATE_RET __pt_stop_audio_test(USHORT_T cmd, UCHAR_T *data, UINT_T len,
     memset(out, 0, 64);
 
     strcpy(out, "{\"ret\":true}");
-    *ret_data = (UCHAR_T *)out;
+    *ret_data = (uint8_t *)out;
     *ret_len = strlen(out);
 
     bk_printf("stop audio success\r\n");
     return OPRT_OK;
 }
 
-STATIC OPERATE_RET __pt_mcu_get_usb_info(USHORT_T cmd, UCHAR_T *data, UINT_T len, UCHAR_T **ret_data, USHORT_T *ret_len)
+static OPERATE_RET __pt_mcu_get_usb_info(uint16_t cmd, uint8_t *data, uint32_t len, uint8_t **ret_data, uint16_t *ret_len)
 {
-    CHAR_T *ret_buf = tkl_system_malloc(128);
+    char *ret_buf = tkl_system_malloc(128);
     if (ret_buf == NULL) {
         bk_printf("get usb info, malloc failed\r\n");
         return OPRT_MALLOC_FAILED;
@@ -107,13 +107,13 @@ STATIC OPERATE_RET __pt_mcu_get_usb_info(USHORT_T cmd, UCHAR_T *data, UINT_T len
         memcpy(ret_buf, failed_str, strlen(failed_str));
     }
 
-    *ret_data = (UCHAR_T *)ret_buf;
+    *ret_data = (uint8_t *)ret_buf;
     *ret_len = strlen(ret_buf);
 
     return OPRT_OK;
 }
 
-OPERATE_RET tkl_mftest_ctrl(USHORT_T cmd, UCHAR_T *in, UINT_T inlen, UCHAR_T **out, USHORT_T *outlen)
+OPERATE_RET tkl_mftest_ctrl(uint16_t cmd, uint8_t *in, uint32_t inlen, uint8_t **out, uint16_t *outlen)
 {
     switch (cmd) {
 

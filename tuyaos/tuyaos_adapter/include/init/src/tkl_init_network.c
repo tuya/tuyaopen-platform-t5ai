@@ -11,7 +11,7 @@
 #include "tkl_init_network.h"
 
 
-CONST TKL_NETWORK_DESC_T c_network_desc = {
+const TKL_NETWORK_DESC_T c_network_desc = {
     .tkl_get_errno          = tkl_net_get_errno,
     .tkl_fd_set1            = tkl_net_fd_set,
     .tkl_fd_clear           = tkl_net_fd_clear,

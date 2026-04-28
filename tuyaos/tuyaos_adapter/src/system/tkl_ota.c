@@ -49,13 +49,13 @@ typedef enum {
 
 
 typedef struct {
-    UINT_T start_addr;
-    UINT_T cur_addr;
-    UINT_T recv_data_cnt;
-    UINT_T bin_len;
-    UINT_T bin_type;
-    UINT_T offset;
-    UCHAR_T firmware_is_crc;  //0- 固件区不需要加crc校验， 1- 固件区需要加crc校验（bk平台）
+    uint32_t start_addr;
+    uint32_t cur_addr;
+    uint32_t recv_data_cnt;
+    uint32_t bin_len;
+    uint32_t bin_type;
+    uint32_t offset;
+    uint8_t firmware_is_crc;  //0- 固件区不需要加crc校验， 1- 固件区需要加crc校验（bk平台）
     UG_STAT_E stat;
     OTA_TYPE_E ota_type;//0-diff; 1-seg_A; 2-seg_B
 }UG_PROC_S;
@@ -69,10 +69,10 @@ extern OPERATE_RET bk_ota_write_manage_info(void);
 #define SEC_B_UNIT (1024)
 #define FLASH_BASE_ADDR (0x02000000)
 
-static UINT_T flash_area = INVALID_ARG;
+static uint32_t flash_area = INVALID_ARG;
 static UG_PROC_S *ug_proc = NULL;
-static UCHAR_T tkl_fist_flag = 0;
-static UINT_T flash_crc32 = 0;
+static uint8_t tkl_fist_flag = 0;
+static uint32_t flash_crc32 = 0;
 
 extern OPERATE_RET tkl_flash_set_protect(const BOOL_T enable);
 extern void bk_printf(const char *fmt, ...);
@@ -90,25 +90,25 @@ __attribute__((section(".iram")))void *mem_cpy(void *dest, const void *src, size
 extern unsigned int hash_crc32i_init(void);
 extern unsigned int hash_crc32i_update(unsigned int hash, const void *data, unsigned int size);
 extern unsigned int hash_crc32i_finish(unsigned int hash);
-UINT_T  _flash_crc32_cal(UINT_T addr, UINT_T size)
+uint32_t  _flash_crc32_cal(uint32_t addr, uint32_t size)
 {
-    UINT_T read_block = 4096;
+    uint32_t read_block = 4096;
 
-    UCHAR_T *read_buffer = tkl_system_malloc(read_block);
+    uint8_t *read_buffer = tkl_system_malloc(read_block);
     if(read_buffer == NULL) {
         bk_printf("malloc error\r\n");
         return 0;
     }
 
-    UINT_T read_len = 0;
-    UINT_T pos = 0;
+    uint32_t read_len = 0;
+    uint32_t pos = 0;
 
-    UINT_T crc32 = hash_crc32i_init();
+    uint32_t crc32 = hash_crc32i_init();
 
     while (1) {
         read_len = size - pos > read_block ? read_block : size - pos;
         tkl_flash_set_protect(FALSE);
-        mem_cpy(read_buffer, (UCHAR_T *)(addr + pos)+FLASH_BASE_ADDR, read_len);
+        mem_cpy(read_buffer, (uint8_t *)(addr + pos)+FLASH_BASE_ADDR, read_len);
         tkl_flash_set_protect(TRUE);
 
         crc32 = hash_crc32i_update(crc32, read_buffer, read_len);
@@ -279,7 +279,7 @@ OPERATE_RET tkl_ota_flash_write(uint32_t addr, uint8_t *buf, uint32_t len, void*
 *
 * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
 */
-OPERATE_RET tkl_ota_start_notify_with_data(UINT_T image_size, TUYA_OTA_TYPE_E type, TUYA_OTA_PATH_E path)
+OPERATE_RET tkl_ota_start_notify_with_data(uint32_t image_size, TUYA_OTA_TYPE_E type, TUYA_OTA_PATH_E path)
 {
     if(image_size == 0) {
         return OPRT_OS_ADAPTER_INVALID_PARM;
@@ -317,7 +317,7 @@ OPERATE_RET tkl_ota_start_notify_with_data(UINT_T image_size, TUYA_OTA_TYPE_E ty
 *
 * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
 */
-OPERATE_RET tkl_ota_start_notify(UINT_T image_size, TUYA_OTA_TYPE_E type, TUYA_OTA_PATH_E path)
+OPERATE_RET tkl_ota_start_notify(uint32_t image_size, TUYA_OTA_TYPE_E type, TUYA_OTA_PATH_E path)
 {
     if(image_size == 0) {
         return OPRT_OS_ADAPTER_INVALID_PARM;
@@ -362,7 +362,7 @@ OPERATE_RET tkl_ota_start_notify(UINT_T image_size, TUYA_OTA_TYPE_E type, TUYA_O
 *
 * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
 */
-OPERATE_RET tkl_ota_data_process(TUYA_OTA_DATA_T *pack, UINT_T* remain_len)
+OPERATE_RET tkl_ota_data_process(TUYA_OTA_DATA_T *pack, uint32_t* remain_len)
 {
     static uint32_t write_addr = 0;
 
@@ -380,12 +380,12 @@ OPERATE_RET tkl_ota_data_process(TUYA_OTA_DATA_T *pack, UINT_T* remain_len)
             tkl_fist_flag = 1;
             flash_crc32 = hash_crc32i_init();
 
-            UCHAR_T *temp_buf = NULL;
-            UINT_T off_size = BK_ADDR_CHANGE(pack->start_addr, TO_PHYSICS) % FLASH_SECTOR_SIZE;
-            UINT_T address = BK_ADDR_CHANGE(pack->start_addr, TO_PHYSICS) - off_size;
+            uint8_t *temp_buf = NULL;
+            uint32_t off_size = BK_ADDR_CHANGE(pack->start_addr, TO_PHYSICS) % FLASH_SECTOR_SIZE;
+            uint32_t address = BK_ADDR_CHANGE(pack->start_addr, TO_PHYSICS) - off_size;
             bk_printf("off_size:%x,%x,%x\r\n",off_size, address, pack->start_addr);
             if(off_size != 0) {
-                temp_buf = (UCHAR_T *) tkl_system_malloc(off_size);
+                temp_buf = (uint8_t *) tkl_system_malloc(off_size);
                 if(NULL == temp_buf) {
                     return OPRT_MALLOC_FAILED;
                 }
@@ -393,7 +393,7 @@ OPERATE_RET tkl_ota_data_process(TUYA_OTA_DATA_T *pack, UINT_T* remain_len)
             }
 
             flash_area = FIRMWARE_AREA;
-            tkl_ota_flash_erase(pack->start_addr, ug_proc->bin_len, (VOID *)&flash_area);
+            tkl_ota_flash_erase(pack->start_addr, ug_proc->bin_len, (void *)&flash_area);
 
             if(off_size != 0) {
                 tkl_flash_write(address, temp_buf, off_size);
@@ -414,14 +414,14 @@ OPERATE_RET tkl_ota_data_process(TUYA_OTA_DATA_T *pack, UINT_T* remain_len)
         }
 
         bk_printf("start_addr:%x\r\n",pack->start_addr);
-        tkl_ota_flash_write(pack->start_addr, pack->data, pack->len, (VOID *)&flash_area);
+        tkl_ota_flash_write(pack->start_addr, pack->data, pack->len, (void *)&flash_area);
         ug_proc->recv_data_cnt += pack->len;
         *remain_len = 0;
 
         if(flash_area == LAST_WRITE_FIRMWARE) {
             flash_crc32 = hash_crc32i_finish(flash_crc32);
             bk_printf("crc:%x, %x, %x, %x\r\n",pack->start_addr, pack->len, ug_proc->bin_len, pack->start_addr + pack->len - ug_proc->bin_len);
-            UINT_T result_crc32 = _flash_crc32_cal(pack->start_addr + pack->len - ug_proc->bin_len, ug_proc->bin_len);
+            uint32_t result_crc32 = _flash_crc32_cal(pack->start_addr + pack->len - ug_proc->bin_len, ug_proc->bin_len);
             if(result_crc32 != flash_crc32) {
                 bk_printf("Area B crc32 err: %x, %x\r\n", result_crc32, flash_crc32);
                 tkl_system_reset();  //下载B段校验失败直接重启，重新拉取B段
@@ -438,11 +438,11 @@ OPERATE_RET tkl_ota_data_process(TUYA_OTA_DATA_T *pack, UINT_T* remain_len)
                 return ret;
             }
 
-            tkl_ota_flash_erase(pack->start_addr, ug_proc->bin_len, (VOID *)&flash_area);
+            tkl_ota_flash_erase(pack->start_addr, ug_proc->bin_len, (void *)&flash_area);
             write_addr = pack->start_addr;
         }
         flash_area = PATCH_AREA;
-        tkl_ota_flash_write(write_addr, pack->data, pack->len, (VOID *)&flash_area);
+        tkl_ota_flash_write(write_addr, pack->data, pack->len, (void *)&flash_area);
         write_addr += pack->len;
         *remain_len = 0;
     }
@@ -485,7 +485,7 @@ OPERATE_RET tkl_ota_end_notify(BOOL_T reset)
 *
 * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
 */
-OPERATE_RET tkl_ota_get_ability(UINT_T *image_size, TUYA_OTA_TYPE_E *type)
+OPERATE_RET tkl_ota_get_ability(uint32_t *image_size, TUYA_OTA_TYPE_E *type)
 {
     *image_size = (2040 + 288 + 1700) * 1024;
 
@@ -496,17 +496,17 @@ OPERATE_RET tkl_ota_get_ability(UINT_T *image_size, TUYA_OTA_TYPE_E *type)
 
 #elif CONFIG_CPU_INDEX == 0
 
-OPERATE_RET tkl_ota_get_ability(UINT_T *image_size, TUYA_OTA_TYPE_E *type)
+OPERATE_RET tkl_ota_get_ability(uint32_t *image_size, TUYA_OTA_TYPE_E *type)
 {
     return OPRT_NOT_SUPPORTED;
 }
 
-OPERATE_RET tkl_ota_start_notify(UINT_T image_size, TUYA_OTA_TYPE_E type, TUYA_OTA_PATH_E path)
+OPERATE_RET tkl_ota_start_notify(uint32_t image_size, TUYA_OTA_TYPE_E type, TUYA_OTA_PATH_E path)
 {
     return OPRT_NOT_SUPPORTED;
 }
 
-OPERATE_RET tkl_ota_data_process(TUYA_OTA_DATA_T *pack, UINT_T* remain_len)
+OPERATE_RET tkl_ota_data_process(TUYA_OTA_DATA_T *pack, uint32_t* remain_len)
 {
     return OPRT_NOT_SUPPORTED;
 }

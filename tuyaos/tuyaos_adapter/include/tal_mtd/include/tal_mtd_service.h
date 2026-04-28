@@ -68,8 +68,8 @@ MTD_HANDLE tal_mtd_init(MTD_DEVICE_T *dev, MTD_CFG_T *cfg);
  *
  * @return Bytes on success. Others on error, please refer to tal_error_code.h
  */
-OPERATE_RET tal_mtd_read(MTD_HANDLE handle, UINT_T addr, UINT8_T *buf,
-                         UINT_T len);
+OPERATE_RET tal_mtd_read(MTD_HANDLE handle, uint32_t addr, uint8_t *buf,
+                         uint32_t len);
 
 /**
  * @brief mtd write
@@ -81,8 +81,8 @@ OPERATE_RET tal_mtd_read(MTD_HANDLE handle, UINT_T addr, UINT8_T *buf,
  *
  * @return OPRT_OK on success. Others on error, please refer to tal_error_code.h
  */
-OPERATE_RET tal_mtd_write(MTD_HANDLE handle, UINT_T addr, const UINT8_T *buf,
-                          UINT_T len);
+OPERATE_RET tal_mtd_write(MTD_HANDLE handle, uint32_t addr, const uint8_t *buf,
+                          uint32_t len);
 
 /**
  * @brief mtd erase
@@ -93,7 +93,7 @@ OPERATE_RET tal_mtd_write(MTD_HANDLE handle, UINT_T addr, const UINT8_T *buf,
  *
  * @return OPRT_OK on success. Others on error, please refer to tal_error_code.h
  */
-OPERATE_RET tal_mtd_erase(MTD_HANDLE handle, UINT_T addr, UINT_T size);
+OPERATE_RET tal_mtd_erase(MTD_HANDLE handle, uint32_t addr, uint32_t size);
 
 /**
  * @brief mtd write
@@ -103,7 +103,7 @@ OPERATE_RET tal_mtd_erase(MTD_HANDLE handle, UINT_T addr, UINT_T size);
  *
  * @return OPRT_OK on success. Others on error, please refer to tal_error_code.h
  */
-OPERATE_RET tal_mtd_get_id(MTD_HANDLE handle, UINT_T *id);
+OPERATE_RET tal_mtd_get_id(MTD_HANDLE handle, uint32_t *id);
 
 /**
  * @brief mtd deinit

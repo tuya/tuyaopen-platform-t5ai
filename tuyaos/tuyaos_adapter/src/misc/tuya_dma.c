@@ -11,21 +11,21 @@ static SPINLOCK_SECTION volatile  spinlock_t dma_spin_lock = SPIN_LOCK_INIT;
 
 #define DMA_TRANS_LEN_MAX (0x10000)
 
-void tkl_dma_isr_common(dma_unit_t dma_unit_id, UINT32_T id);
+void tkl_dma_isr_common(dma_unit_t dma_unit_id, uint32_t id);
 typedef struct {
     dma_hal_t hal;
-    UINT32_T id_init_bits;
+    uint32_t id_init_bits;
 } DMA_DRIVER_T;
 
 typedef struct
 {
-	UINT32_T		chnl_bitmap;
+	uint32_t		chnl_bitmap;
 } DMA_CHNL_POOL_T;
 
 static dma_config_t g_dma_config[SOC_DMA_UNIT_NUM][SOC_DMA_CHAN_NUM_PER_UNIT] = {0};
 static DMA_DRIVER_T g_dma[SOC_DMA_UNIT_NUM] = {0};
 static DMA_ISR_T g_dma_finish_isr[SOC_DMA_UNIT_NUM][SOC_DMA_CHAN_NUM_PER_UNIT] = {NULL};
-static UINT32_T g_dma_devid[DMA_ID_MAX] = {0};
+static uint32_t g_dma_devid[DMA_ID_MAX] = {0};
 
 static bool g_dma_driver_is_init = false;
 static DMA_CHNL_POOL_T g_dma_chnl_pool = {0};
@@ -59,9 +59,9 @@ static DMA_CHNL_POOL_T g_dma_chnl_pool = {0};
         }\
     } while(0)
 
-static inline UINT32_T tkl_dma_enter_critical()
+static inline uint32_t tkl_dma_enter_critical()
 {
-	UINT32_T flags = rtos_disable_int();
+	uint32_t flags = rtos_disable_int();
 
 #ifdef CONFIG_FREERTOS_SMP
 	spin_lock(&dma_spin_lock);
@@ -70,7 +70,7 @@ static inline UINT32_T tkl_dma_enter_critical()
 	return flags;
 }
 
-static inline void tkl_dma_exit_critical(UINT32_T flags)
+static inline void tkl_dma_exit_critical(uint32_t flags)
 {
 #ifdef CONFIG_FREERTOS_SMP
 	spin_unlock(&dma_spin_lock);
@@ -79,7 +79,7 @@ static inline void tkl_dma_exit_critical(UINT32_T flags)
 	rtos_enable_int(flags);
 }
 
-static void dma_id_to_id_ch(dma_id_t id,UINT8_T *dma_num,UINT8_T *channel)
+static void dma_id_to_id_ch(dma_id_t id,uint8_t *dma_num,uint8_t *channel)
 {
     if(dma_num){
         *dma_num = id / SOC_DMA_CHAN_NUM_PER_UNIT;
@@ -91,16 +91,16 @@ static void dma_id_to_id_ch(dma_id_t id,UINT8_T *dma_num,UINT8_T *channel)
 
 static void dma_id_init(dma_id_t id)
 {
-    UINT8_T dma_num;
-    UINT8_T channel;
+    uint8_t dma_num;
+    uint8_t channel;
     dma_id_to_id_ch(id, &dma_num, &channel);
     g_dma[dma_num].id_init_bits |= BIT(channel);
 }
 
 static void dma_id_deinit(dma_id_t id)
 {
-	UINT8_T dma_num;
-	UINT8_T dma_channel;
+	uint8_t dma_num;
+	uint8_t dma_channel;
 	dma_id_to_id_ch(id, &dma_num, &dma_channel);
     g_dma[dma_num].id_init_bits &= ~BIT(dma_channel);
 }
@@ -161,7 +161,7 @@ static OPERATE_RET tkl_dma_driver_deinit(void)
 OPERATE_RET tkl_dma_init(dma_id_t *channel, const TKL_DMA_CONFIG_T *config)
 {
     OPERATE_RET ret = 0;
-    UINT8_T dma_channel,dma_num;
+    uint8_t dma_channel,dma_num;
 	dma_config_t dma_config = {0};
     dma_id_t id = 0;
     if (config == NULL) {
@@ -230,7 +230,7 @@ OPERATE_RET tkl_dma_init(dma_id_t *channel, const TKL_DMA_CONFIG_T *config)
 
 OPERATE_RET tkl_dma_deinit(dma_id_t id)
 {
-	UINT8_T dma_channel,dma_num;
+	uint8_t dma_channel,dma_num;
 	dma_id_to_id_ch(id,&dma_num,&dma_channel);
     DMA_RETURN_INVALID_ID(id);
     bk_dma_stop(id);
@@ -243,7 +243,7 @@ OPERATE_RET tkl_dma_deinit(dma_id_t id)
 
 OPERATE_RET tkl_dma_start(dma_id_t id)
 {
-	UINT8_T dma_channel,dma_num;
+	uint8_t dma_channel,dma_num;
 	dma_id_to_id_ch(id,&dma_num,&dma_channel);
 
     DMA_RETURN_NOT_INIT();
@@ -254,7 +254,7 @@ OPERATE_RET tkl_dma_start(dma_id_t id)
 
 OPERATE_RET tkl_dma_stop(dma_id_t id)
 {
-	UINT8_T dma_channel,dma_num;
+	uint8_t dma_channel,dma_num;
 	dma_id_to_id_ch(id,&dma_num,&dma_channel);
 
     DMA_RETURN_NOT_INIT();
@@ -263,26 +263,26 @@ OPERATE_RET tkl_dma_stop(dma_id_t id)
     return OPRT_OK;
 }
 
-UINT32_T tkl_dma_get_enable_status(dma_id_t id)
+uint32_t tkl_dma_get_enable_status(dma_id_t id)
 {
-	UINT8_T dma_channel,dma_num;
+	uint8_t dma_channel,dma_num;
 	dma_id_to_id_ch(id,&dma_num,&dma_channel);
 
     DMA_RETURN_NOT_INIT();
     DMA_RETURN_ID_NOT_INIT(dma_num,dma_channel);
-    UINT32_T ret;
+    uint32_t ret;
     ret = dma_hal_get_enable_status(&g_dma[dma_num].hal, dma_channel);
     return ret;
 }
 
 #define DMA_MAX_BUSY_TIME (10000)  //us
-static UINT32_T tkl_dma_wait_to_idle(dma_id_t id)
+static uint32_t tkl_dma_wait_to_idle(dma_id_t id)
 {
-	UINT8_T dma_channel,dma_num;
+	uint8_t dma_channel,dma_num;
 	dma_id_to_id_ch(id,&dma_num,&dma_channel);
 
 	if(dma_hal_get_work_mode(&g_dma[dma_num].hal, dma_channel) == DMA_WORK_MODE_SINGLE) {
-		UINT32_T i = 0;
+		uint32_t i = 0;
 		while(dma_hal_get_enable_status(&g_dma[dma_num].hal, dma_channel)) {
 			bk_delay_us(1);
 
@@ -327,9 +327,9 @@ static OPERATE_RET get_dma_repeat_once_len(uint32_t frame_len, uint32_t* outlen)
 
 /* DTCM->peripheral
  */
-OPERATE_RET tkl_dma_write(dma_id_t id, const UINT8_T *data, UINT32_T size)
+OPERATE_RET tkl_dma_write(dma_id_t id, const uint8_t *data, uint32_t size)
 {
-	UINT8_T dma_channel,dma_num;
+	uint8_t dma_channel,dma_num;
 	uint32_t len = 0;
 	dma_id_to_id_ch(id,&dma_num,&dma_channel);
     DMA_RETURN_NOT_INIT();
@@ -351,10 +351,10 @@ OPERATE_RET tkl_dma_write(dma_id_t id, const UINT8_T *data, UINT32_T size)
             }
             dma_hal_set_src_pause_addr(&g_dma[dma_num].hal, dma_channel, (((uint32_t)data + size)));
             if ((g_dma_config[dma_num][dma_channel].src.dev == DMA_DEV_DTCM) && (g_dma_config[dma_num][dma_channel].src.addr_inc_en == DMA_ADDR_INC_ENABLE)) {
-                dma_hal_set_src_loop_addr(&g_dma[dma_num].hal, dma_channel, (UINT32_T)data, (UINT32_T)(data + size + remain_len + 4));
+                dma_hal_set_src_loop_addr(&g_dma[dma_num].hal, dma_channel, (uint32_t)data, (uint32_t)(data + size + remain_len + 4));
             }
             if ((g_dma_config[dma_num][dma_channel].dst.dev == DMA_DEV_DTCM) && (g_dma_config[dma_num][dma_channel].dst.addr_inc_en == DMA_ADDR_INC_ENABLE)) {
-                dma_hal_set_dest_loop_addr(&g_dma[dma_num].hal, dma_channel, (UINT32_T)g_dma_config[dma_num][dma_channel].dst.start_addr, (UINT32_T)(g_dma_config[dma_num][dma_channel].dst.start_addr + size + remain_len + 4));
+                dma_hal_set_dest_loop_addr(&g_dma[dma_num].hal, dma_channel, (uint32_t)g_dma_config[dma_num][dma_channel].dst.start_addr, (uint32_t)(g_dma_config[dma_num][dma_channel].dst.start_addr + size + remain_len + 4));
             }
         } else {
             return OPRT_INVALID_PARM;
@@ -365,13 +365,13 @@ OPERATE_RET tkl_dma_write(dma_id_t id, const UINT8_T *data, UINT32_T size)
             dma_ll_set_work_mode(g_dma[dma_num].hal.hw, dma_channel, DMA_WORK_MODE_SINGLE);
         }
         if ((g_dma_config[dma_num][dma_channel].src.dev == DMA_DEV_DTCM) && (g_dma_config[dma_num][dma_channel].src.addr_inc_en == DMA_ADDR_INC_ENABLE)) {
-            dma_hal_set_src_loop_addr(&g_dma[dma_num].hal, dma_channel, (UINT32_T)data, (UINT32_T)(data + size + 4));
+            dma_hal_set_src_loop_addr(&g_dma[dma_num].hal, dma_channel, (uint32_t)data, (uint32_t)(data + size + 4));
         }
         if ((g_dma_config[dma_num][dma_channel].dst.dev == DMA_DEV_DTCM) && (g_dma_config[dma_num][dma_channel].dst.addr_inc_en == DMA_ADDR_INC_ENABLE)) {
-            dma_hal_set_dest_loop_addr(&g_dma[dma_num].hal, dma_channel, (UINT32_T)g_dma_config[dma_num][dma_channel].dst.start_addr, (UINT32_T)(g_dma_config[dma_num][dma_channel].dst.start_addr + size + 4));
+            dma_hal_set_dest_loop_addr(&g_dma[dma_num].hal, dma_channel, (uint32_t)g_dma_config[dma_num][dma_channel].dst.start_addr, (uint32_t)(g_dma_config[dma_num][dma_channel].dst.start_addr + size + 4));
         }
 	}
-    dma_hal_set_src_start_addr(&g_dma[dma_num].hal, dma_channel, (UINT32_T)data);
+    dma_hal_set_src_start_addr(&g_dma[dma_num].hal, dma_channel, (uint32_t)data);
     dma_hal_set_transfer_len(&g_dma[dma_num].hal, dma_channel, len);
 
     dma_hal_start_common(&g_dma[dma_num].hal, dma_channel);
@@ -381,9 +381,9 @@ OPERATE_RET tkl_dma_write(dma_id_t id, const UINT8_T *data, UINT32_T size)
 
 /* peripheral->DTCM
  */
-OPERATE_RET tkl_dma_read(dma_id_t id, UINT8_T *data, UINT32_T size)
+OPERATE_RET tkl_dma_read(dma_id_t id, uint8_t *data, uint32_t size)
 {
-	UINT8_T dma_channel,dma_num;
+	uint8_t dma_channel,dma_num;
 	uint32_t len = 0;
 	dma_id_to_id_ch(id,&dma_num,&dma_channel);
 
@@ -406,10 +406,10 @@ OPERATE_RET tkl_dma_read(dma_id_t id, UINT8_T *data, UINT32_T size)
             }
             dma_hal_set_dest_pause_addr(&g_dma[dma_num].hal, dma_channel, (((uint32_t)data + size)));
             if ((g_dma_config[dma_num][dma_channel].dst.dev == DMA_DEV_DTCM) && (g_dma_config[dma_num][dma_channel].dst.addr_inc_en == DMA_ADDR_INC_ENABLE)) {
-                dma_hal_set_dest_loop_addr(&g_dma[dma_num].hal, dma_channel, (UINT32_T)data, (UINT32_T)(data + size + remain_len + 4));
+                dma_hal_set_dest_loop_addr(&g_dma[dma_num].hal, dma_channel, (uint32_t)data, (uint32_t)(data + size + remain_len + 4));
             }
             if ((g_dma_config[dma_num][dma_channel].dst.dev == DMA_DEV_DTCM) && (g_dma_config[dma_num][dma_channel].dst.addr_inc_en == DMA_ADDR_INC_ENABLE)) {
-                dma_hal_set_src_loop_addr(&g_dma[dma_num].hal, dma_channel, (UINT32_T)g_dma_config[dma_num][dma_channel].src.start_addr, (UINT32_T)(g_dma_config[dma_num][dma_channel].src.start_addr + size + remain_len + 4));
+                dma_hal_set_src_loop_addr(&g_dma[dma_num].hal, dma_channel, (uint32_t)g_dma_config[dma_num][dma_channel].src.start_addr, (uint32_t)(g_dma_config[dma_num][dma_channel].src.start_addr + size + remain_len + 4));
             }
         } else {
             return OPRT_INVALID_PARM;
@@ -421,13 +421,13 @@ OPERATE_RET tkl_dma_read(dma_id_t id, UINT8_T *data, UINT32_T size)
         }
         dma_hal_set_dest_pause_addr(&g_dma[dma_num].hal, dma_channel, (((uint32_t)data + size)));
         if ((g_dma_config[dma_num][dma_channel].dst.dev == DMA_DEV_DTCM) && (g_dma_config[dma_num][dma_channel].dst.addr_inc_en == DMA_ADDR_INC_ENABLE)) {
-            dma_hal_set_dest_loop_addr(&g_dma[dma_num].hal, dma_channel, (UINT32_T)data, (UINT32_T)(data + size));
+            dma_hal_set_dest_loop_addr(&g_dma[dma_num].hal, dma_channel, (uint32_t)data, (uint32_t)(data + size));
         }
         if ((g_dma_config[dma_num][dma_channel].dst.dev == DMA_DEV_DTCM) && (g_dma_config[dma_num][dma_channel].dst.addr_inc_en == DMA_ADDR_INC_ENABLE)) {
-            dma_hal_set_src_loop_addr(&g_dma[dma_num].hal, dma_channel, (UINT32_T)g_dma_config[dma_num][dma_channel].src.start_addr, (UINT32_T)(g_dma_config[dma_num][dma_channel].src.start_addr + size));
+            dma_hal_set_src_loop_addr(&g_dma[dma_num].hal, dma_channel, (uint32_t)g_dma_config[dma_num][dma_channel].src.start_addr, (uint32_t)(g_dma_config[dma_num][dma_channel].src.start_addr + size));
         }
 	}
-    dma_hal_set_dest_start_addr(&g_dma[dma_num].hal, dma_channel, (UINT32_T)data);
+    dma_hal_set_dest_start_addr(&g_dma[dma_num].hal, dma_channel, (uint32_t)data);
     dma_hal_set_transfer_len(&g_dma[dma_num].hal, dma_channel, len);
     dma_hal_start_common(&g_dma[dma_num].hal, dma_channel);
 
@@ -436,7 +436,7 @@ OPERATE_RET tkl_dma_read(dma_id_t id, UINT8_T *data, UINT32_T size)
 
 OPERATE_RET tkl_dma_register_isr(dma_id_t id, DMA_ISR_T finish_isr)
 {
-    UINT8_T dma_num,dma_channel;
+    uint8_t dma_num,dma_channel;
     DMA_RETURN_NOT_INIT();
 	dma_id_to_id_ch(id,&dma_num,&dma_channel);
     DMA_RETURN_INVALID_ID(id);
@@ -458,17 +458,17 @@ OPERATE_RET tkl_dma_register_isr(dma_id_t id, DMA_ISR_T finish_isr)
     return OPRT_OK;
 }
 
-UINT32_T tkl_dma_get_once_transfer_len_max(dma_id_t id)
+uint32_t tkl_dma_get_once_transfer_len_max(dma_id_t id)
 {
-    UINT8_T dma_channel,dma_num;
+    uint8_t dma_channel,dma_num;
     dma_id_to_id_ch(id,&dma_num,&dma_channel);
 
     return DMA_TRANS_LEN_MAX;
 }
 
-OPERATE_RET tkl_dma_set_transfer_len(dma_id_t id, UINT32_T tran_len)
+OPERATE_RET tkl_dma_set_transfer_len(dma_id_t id, uint32_t tran_len)
 {
-    UINT8_T dma_channel,dma_num;
+    uint8_t dma_channel,dma_num;
     dma_id_to_id_ch(id,&dma_num,&dma_channel);
 
     DMA_RETURN_NOT_INIT();
@@ -482,9 +482,9 @@ OPERATE_RET tkl_dma_set_transfer_len(dma_id_t id, UINT32_T tran_len)
     return OPRT_OK;
 }
 
-UINT32_T tkl_dma_get_transfer_len(dma_id_t id)
+uint32_t tkl_dma_get_transfer_len(dma_id_t id)
 {
-    UINT8_T dma_channel,dma_num;
+    uint8_t dma_channel,dma_num;
     dma_id_to_id_ch(id,&dma_num,&dma_channel);
 
     DMA_RETURN_NOT_INIT();
@@ -495,9 +495,9 @@ UINT32_T tkl_dma_get_transfer_len(dma_id_t id)
 }
 
 #ifdef DMA_REG_SUPPORT
-OPERATE_RET tkl_dma_set_src_loop_addr(dma_id_t id, UINT32_T start_addr, UINT32_T end_addr)
+OPERATE_RET tkl_dma_set_src_loop_addr(dma_id_t id, uint32_t start_addr, uint32_t end_addr)
 {
-    UINT8_T dma_channel,dma_num;
+    uint8_t dma_channel,dma_num;
     dma_id_to_id_ch(id,&dma_num,&dma_channel);
 
     DMA_RETURN_NOT_INIT();
@@ -506,9 +506,9 @@ OPERATE_RET tkl_dma_set_src_loop_addr(dma_id_t id, UINT32_T start_addr, UINT32_T
     return OPRT_OK;
 }
 
-OPERATE_RET tkl_dma_set_src_start_addr(dma_id_t id, UINT32_T start_addr)
+OPERATE_RET tkl_dma_set_src_start_addr(dma_id_t id, uint32_t start_addr)
 {
-    UINT8_T dma_channel,dma_num;
+    uint8_t dma_channel,dma_num;
     dma_id_to_id_ch(id,&dma_num,&dma_channel);
 
     DMA_RETURN_NOT_INIT();
@@ -517,9 +517,9 @@ OPERATE_RET tkl_dma_set_src_start_addr(dma_id_t id, UINT32_T start_addr)
     return OPRT_OK;
 }
 
-OPERATE_RET tkl_dma_set_dest_loop_addr(dma_id_t id, UINT32_T start_addr, UINT32_T end_addr)
+OPERATE_RET tkl_dma_set_dest_loop_addr(dma_id_t id, uint32_t start_addr, uint32_t end_addr)
 {
-    UINT8_T dma_channel,dma_num;
+    uint8_t dma_channel,dma_num;
     dma_id_to_id_ch(id,&dma_num,&dma_channel);
 
     DMA_RETURN_NOT_INIT();
@@ -529,9 +529,9 @@ OPERATE_RET tkl_dma_set_dest_loop_addr(dma_id_t id, UINT32_T start_addr, UINT32_
     return OPRT_OK;
 }
 
-OPERATE_RET tkl_dma_set_dest_start_addr(dma_id_t id, UINT32_T start_addr)
+OPERATE_RET tkl_dma_set_dest_start_addr(dma_id_t id, uint32_t start_addr)
 {
-    UINT8_T dma_channel,dma_num;
+    uint8_t dma_channel,dma_num;
     dma_id_to_id_ch(id,&dma_num,&dma_channel);
 
     DMA_RETURN_NOT_INIT();
@@ -543,7 +543,7 @@ OPERATE_RET tkl_dma_set_dest_start_addr(dma_id_t id, UINT32_T start_addr)
 
 OPERATE_RET tkl_dma_enable_src_addr_increase(dma_id_t id)
 {
-    UINT8_T dma_channel,dma_num;
+    uint8_t dma_channel,dma_num;
     dma_id_to_id_ch(id,&dma_num,&dma_channel);
 
     DMA_RETURN_NOT_INIT();
@@ -554,7 +554,7 @@ OPERATE_RET tkl_dma_enable_src_addr_increase(dma_id_t id)
 
 OPERATE_RET tkl_dma_disable_src_addr_increase(dma_id_t id)
 {
-    UINT8_T dma_channel,dma_num;
+    uint8_t dma_channel,dma_num;
     dma_id_to_id_ch(id,&dma_num,&dma_channel);
 
     DMA_RETURN_NOT_INIT();
@@ -565,7 +565,7 @@ OPERATE_RET tkl_dma_disable_src_addr_increase(dma_id_t id)
 
 OPERATE_RET tkl_dma_enable_src_addr_loop(dma_id_t id)
 {
-    UINT8_T dma_channel,dma_num;
+    uint8_t dma_channel,dma_num;
     dma_id_to_id_ch(id,&dma_num,&dma_channel);
 
     DMA_RETURN_NOT_INIT();
@@ -576,7 +576,7 @@ OPERATE_RET tkl_dma_enable_src_addr_loop(dma_id_t id)
 
 OPERATE_RET tkl_dma_disable_src_addr_loop(dma_id_t id)
 {
-    UINT8_T dma_channel,dma_num;
+    uint8_t dma_channel,dma_num;
     dma_id_to_id_ch(id,&dma_num,&dma_channel);
 
     DMA_RETURN_NOT_INIT();
@@ -587,7 +587,7 @@ OPERATE_RET tkl_dma_disable_src_addr_loop(dma_id_t id)
 
 OPERATE_RET tkl_dma_enable_dest_addr_increase(dma_id_t id)
 {
-    UINT8_T dma_channel,dma_num;
+    uint8_t dma_channel,dma_num;
     dma_id_to_id_ch(id,&dma_num,&dma_channel);
 
     DMA_RETURN_NOT_INIT();
@@ -598,7 +598,7 @@ OPERATE_RET tkl_dma_enable_dest_addr_increase(dma_id_t id)
 
 OPERATE_RET tkl_dma_disable_dest_addr_increase(dma_id_t id)
 {
-    UINT8_T dma_channel,dma_num;
+    uint8_t dma_channel,dma_num;
     dma_id_to_id_ch(id,&dma_num,&dma_channel);
 
     DMA_RETURN_NOT_INIT();
@@ -609,7 +609,7 @@ OPERATE_RET tkl_dma_disable_dest_addr_increase(dma_id_t id)
 
 OPERATE_RET tkl_dma_enable_dest_addr_loop(dma_id_t id)
 {
-    UINT8_T dma_channel,dma_num;
+    uint8_t dma_channel,dma_num;
     dma_id_to_id_ch(id,&dma_num,&dma_channel);
 
     DMA_RETURN_NOT_INIT();
@@ -620,7 +620,7 @@ OPERATE_RET tkl_dma_enable_dest_addr_loop(dma_id_t id)
 
 OPERATE_RET tkl_dma_disable_dest_addr_loop(dma_id_t id)
 {
-    UINT8_T dma_channel,dma_num;
+    uint8_t dma_channel,dma_num;
     dma_id_to_id_ch(id,&dma_num,&dma_channel);
 
     DMA_RETURN_NOT_INIT();
@@ -629,9 +629,9 @@ OPERATE_RET tkl_dma_disable_dest_addr_loop(dma_id_t id)
     return OPRT_OK;
 }
 
-UINT32_T tkl_dma_get_remain_len(dma_id_t id)
+uint32_t tkl_dma_get_remain_len(dma_id_t id)
 {
-    UINT8_T dma_channel,dma_num;
+    uint8_t dma_channel,dma_num;
     dma_id_to_id_ch(id,&dma_num,&dma_channel);
 
     DMA_RETURN_NOT_INIT();
@@ -639,9 +639,9 @@ UINT32_T tkl_dma_get_remain_len(dma_id_t id)
     return dma_hal_get_remain_len(&g_dma[dma_num].hal, dma_channel);
 }
 
-OPERATE_RET tkl_dma_set_src_pause_addr(dma_id_t id, UINT32_T addr)
+OPERATE_RET tkl_dma_set_src_pause_addr(dma_id_t id, uint32_t addr)
 {
-    UINT8_T dma_channel,dma_num;
+    uint8_t dma_channel,dma_num;
     dma_id_to_id_ch(id,&dma_num,&dma_channel);
 
     DMA_RETURN_NOT_INIT();
@@ -652,9 +652,9 @@ OPERATE_RET tkl_dma_set_src_pause_addr(dma_id_t id, UINT32_T addr)
     return OPRT_OK;
 }
 
-OPERATE_RET tkl_dma_set_dst_pause_addr(dma_id_t id, UINT32_T addr)
+OPERATE_RET tkl_dma_set_dst_pause_addr(dma_id_t id, uint32_t addr)
 {
-    UINT8_T dma_channel,dma_num;
+    uint8_t dma_channel,dma_num;
     dma_id_to_id_ch(id,&dma_num,&dma_channel);
 
     DMA_RETURN_NOT_INIT();
@@ -665,9 +665,9 @@ OPERATE_RET tkl_dma_set_dst_pause_addr(dma_id_t id, UINT32_T addr)
     return OPRT_OK;
 }
 
-UINT32_T tkl_dma_get_src_pause_addr(dma_id_t id)
+uint32_t tkl_dma_get_src_pause_addr(dma_id_t id)
 {
-    UINT8_T dma_channel,dma_num;
+    uint8_t dma_channel,dma_num;
     dma_id_to_id_ch(id,&dma_num,&dma_channel);
 
     DMA_RETURN_NOT_INIT();
@@ -676,9 +676,9 @@ UINT32_T tkl_dma_get_src_pause_addr(dma_id_t id)
     return dma_hal_get_src_pause_addr(&g_dma[dma_num].hal, dma_channel);
 }
 
-UINT32_T tkl_dma_get_dst_pause_addr(dma_id_t id)
+uint32_t tkl_dma_get_dst_pause_addr(dma_id_t id)
 {
-    UINT8_T dma_channel,dma_num;
+    uint8_t dma_channel,dma_num;
     dma_id_to_id_ch(id,&dma_num,&dma_channel);
 
     DMA_RETURN_NOT_INIT();
@@ -687,9 +687,9 @@ UINT32_T tkl_dma_get_dst_pause_addr(dma_id_t id)
     return dma_hal_get_dest_pause_addr(&g_dma[dma_num].hal, dma_channel);
 }
 
-UINT32_T tkl_dma_get_src_read_addr(dma_id_t id)
+uint32_t tkl_dma_get_src_read_addr(dma_id_t id)
 {
-    UINT8_T dma_channel,dma_num;
+    uint8_t dma_channel,dma_num;
     dma_id_to_id_ch(id,&dma_num,&dma_channel);
 
     DMA_RETURN_NOT_INIT();
@@ -698,9 +698,9 @@ UINT32_T tkl_dma_get_src_read_addr(dma_id_t id)
     return dma_hal_get_src_read_addr(&g_dma[dma_num].hal, dma_channel);
 }
 
-UINT32_T tkl_dma_get_src_end_addr(dma_id_t id)
+uint32_t tkl_dma_get_src_end_addr(dma_id_t id)
 {
-    UINT8_T dma_channel,dma_num;
+    uint8_t dma_channel,dma_num;
     dma_id_to_id_ch(id,&dma_num,&dma_channel);
 
     DMA_RETURN_NOT_INIT();
@@ -709,9 +709,9 @@ UINT32_T tkl_dma_get_src_end_addr(dma_id_t id)
     return dma_hal_get_src_end_addr(&g_dma[dma_num].hal, dma_channel);
 }
 
-UINT32_T tkl_dma_get_dst_end_addr(dma_id_t id)
+uint32_t tkl_dma_get_dst_end_addr(dma_id_t id)
 {
-    UINT8_T dma_channel,dma_num;
+    uint8_t dma_channel,dma_num;
     dma_id_to_id_ch(id,&dma_num,&dma_channel);
 
     DMA_RETURN_NOT_INIT();
@@ -720,9 +720,9 @@ UINT32_T tkl_dma_get_dst_end_addr(dma_id_t id)
     return dma_hal_get_dest_end_addr(&g_dma[dma_num].hal, dma_channel);
 }
 
-UINT32_T tkl_dma_get_dest_write_addr(dma_id_t id)
+uint32_t tkl_dma_get_dest_write_addr(dma_id_t id)
 {
-    UINT8_T dma_channel,dma_num;
+    uint8_t dma_channel,dma_num;
     dma_id_to_id_ch(id,&dma_num,&dma_channel);
 
     DMA_RETURN_NOT_INIT();
@@ -731,9 +731,9 @@ UINT32_T tkl_dma_get_dest_write_addr(dma_id_t id)
     return dma_hal_get_dest_write_addr(&g_dma[dma_num].hal, dma_channel);
 }
 
-UINT32_T tkl_dma_get_work_mode(dma_id_t id)
+uint32_t tkl_dma_get_work_mode(dma_id_t id)
 {
-    UINT8_T dma_channel,dma_num;
+    uint8_t dma_channel,dma_num;
     dma_id_to_id_ch(id,&dma_num,&dma_channel);
 
     DMA_RETURN_NOT_INIT();
@@ -744,7 +744,7 @@ UINT32_T tkl_dma_get_work_mode(dma_id_t id)
 
 OPERATE_RET tkl_dma_set_src_data_width(dma_id_t id, dma_data_width_t data_width)
 {
-    UINT8_T dma_channel,dma_num;
+    uint8_t dma_channel,dma_num;
     dma_id_to_id_ch(id,&dma_num,&dma_channel);
 
     DMA_RETURN_NOT_INIT();
@@ -757,7 +757,7 @@ OPERATE_RET tkl_dma_set_src_data_width(dma_id_t id, dma_data_width_t data_width)
 
 OPERATE_RET tkl_dma_set_dest_data_width(dma_id_t id, dma_data_width_t data_width)
 {
-    UINT8_T dma_channel,dma_num;
+    uint8_t dma_channel,dma_num;
     dma_id_to_id_ch(id,&dma_num,&dma_channel);
 
     DMA_RETURN_NOT_INIT();
@@ -770,7 +770,7 @@ OPERATE_RET tkl_dma_set_dest_data_width(dma_id_t id, dma_data_width_t data_width
 
 OPERATE_RET tkl_dma_flush_src_buffer(dma_id_t id)
 {
-    UINT8_T dma_channel,dma_num;
+    uint8_t dma_channel,dma_num;
     dma_id_to_id_ch(id,&dma_num,&dma_channel);
 
     DMA_RETURN_NOT_INIT();
@@ -783,7 +783,7 @@ OPERATE_RET tkl_dma_flush_src_buffer(dma_id_t id)
 #ifdef CONFIG_SPE
 OPERATE_RET tkl_dma_set_pixel_trans_type(dma_id_t id, dma_pixel_trans_type_t type)
 {
-    UINT8_T dma_channel,dma_num;
+    uint8_t dma_channel,dma_num;
     dma_id_to_id_ch(id,&dma_num,&dma_channel);
 
     DMA_RETURN_NOT_INIT();
@@ -794,9 +794,9 @@ OPERATE_RET tkl_dma_set_pixel_trans_type(dma_id_t id, dma_pixel_trans_type_t typ
     return OPRT_OK;
 }
 
-UINT32_T tkl_dma_get_pixel_trans_type(dma_id_t id)
+uint32_t tkl_dma_get_pixel_trans_type(dma_id_t id)
 {
-    UINT8_T dma_channel,dma_num;
+    uint8_t dma_channel,dma_num;
     dma_id_to_id_ch(id,&dma_num,&dma_channel);
 
     DMA_RETURN_NOT_INIT();
@@ -808,7 +808,7 @@ UINT32_T tkl_dma_get_pixel_trans_type(dma_id_t id)
 
 OPERATE_RET tkl_dma_set_dest_burst_len(dma_id_t id, dma_burst_len_t len)
 {
-    UINT8_T dma_channel,dma_num;
+    uint8_t dma_channel,dma_num;
     dma_id_to_id_ch(id,&dma_num,&dma_channel);
 
     DMA_RETURN_NOT_INIT();
@@ -818,9 +818,9 @@ OPERATE_RET tkl_dma_set_dest_burst_len(dma_id_t id, dma_burst_len_t len)
     return OPRT_OK;
 }
 
-UINT32_T tkl_dma_get_dest_burst_len(dma_id_t id)
+uint32_t tkl_dma_get_dest_burst_len(dma_id_t id)
 {
-    UINT8_T dma_channel,dma_num;
+    uint8_t dma_channel,dma_num;
     dma_id_to_id_ch(id,&dma_num,&dma_channel);
 
     DMA_RETURN_NOT_INIT();
@@ -831,7 +831,7 @@ UINT32_T tkl_dma_get_dest_burst_len(dma_id_t id)
 
 OPERATE_RET tkl_dma_set_src_burst_len(dma_id_t id, dma_burst_len_t len)
 {
-    UINT8_T dma_channel,dma_num;
+    uint8_t dma_channel,dma_num;
     dma_id_to_id_ch(id,&dma_num,&dma_channel);
 
     DMA_RETURN_NOT_INIT();
@@ -841,9 +841,9 @@ OPERATE_RET tkl_dma_set_src_burst_len(dma_id_t id, dma_burst_len_t len)
     return OPRT_OK;
 }
 
-UINT32_T tkl_dma_get_src_burst_len(dma_id_t id)
+uint32_t tkl_dma_get_src_burst_len(dma_id_t id)
 {
-    UINT8_T dma_channel,dma_num;
+    uint8_t dma_channel,dma_num;
     dma_id_to_id_ch(id,&dma_num,&dma_channel);
 
     DMA_RETURN_NOT_INIT();
@@ -854,7 +854,7 @@ UINT32_T tkl_dma_get_src_burst_len(dma_id_t id)
 
 OPERATE_RET tkl_dma_bus_err_int_enable(dma_id_t id)
 {
-    UINT8_T dma_channel,dma_num;
+    uint8_t dma_channel,dma_num;
     dma_id_to_id_ch(id,&dma_num,&dma_channel);
 
     DMA_RETURN_NOT_INIT();
@@ -866,7 +866,7 @@ OPERATE_RET tkl_dma_bus_err_int_enable(dma_id_t id)
 
 OPERATE_RET tkl_dma_bus_err_int_diable(dma_id_t id)
 {
-    UINT8_T dma_channel,dma_num;
+    uint8_t dma_channel,dma_num;
     dma_id_to_id_ch(id,&dma_num,&dma_channel);
 
     DMA_RETURN_NOT_INIT();
@@ -878,7 +878,7 @@ OPERATE_RET tkl_dma_bus_err_int_diable(dma_id_t id)
 
 OPERATE_RET tkl_dma_set_dest_sec_attr(dma_id_t id, dma_sec_attr_t attr)
 {
-    UINT8_T dma_channel,dma_num;
+    uint8_t dma_channel,dma_num;
     dma_id_to_id_ch(id,&dma_num,&dma_channel);
 
     DMA_RETURN_NOT_INIT();
@@ -890,7 +890,7 @@ OPERATE_RET tkl_dma_set_dest_sec_attr(dma_id_t id, dma_sec_attr_t attr)
 
 OPERATE_RET tkl_dma_set_src_sec_attr(dma_id_t id, dma_sec_attr_t attr)
 {
-    UINT8_T dma_channel,dma_num;
+    uint8_t dma_channel,dma_num;
     dma_id_to_id_ch(id,&dma_num,&dma_channel);
 
     DMA_RETURN_NOT_INIT();
@@ -904,7 +904,7 @@ OPERATE_RET tkl_dma_set_src_sec_attr(dma_id_t id, dma_sec_attr_t attr)
 #if (CONFIG_SPE)
 OPERATE_RET tkl_dma_set_sec_attr(dma_id_t id, dma_sec_attr_t attr)
 {
-    UINT8_T dma_channel,dma_num;
+    uint8_t dma_channel,dma_num;
     dma_id_to_id_ch(id,&dma_num,&dma_channel);
 
     DMA_RETURN_NOT_INIT();
@@ -916,7 +916,7 @@ OPERATE_RET tkl_dma_set_sec_attr(dma_id_t id, dma_sec_attr_t attr)
 
 OPERATE_RET tkl_dma_set_privileged_attr(dma_id_t id, dma_sec_attr_t attr)
 {
-    UINT8_T dma_channel,dma_num;
+    uint8_t dma_channel,dma_num;
     dma_id_to_id_ch(id,&dma_num,&dma_channel);
 
     DMA_RETURN_NOT_INIT();
@@ -928,7 +928,7 @@ OPERATE_RET tkl_dma_set_privileged_attr(dma_id_t id, dma_sec_attr_t attr)
 
 OPERATE_RET tkl_dma_set_int_allocate(dma_id_t id,dma_int_id_t int_id)
 {
-    UINT8_T dma_channel,dma_num;
+    uint8_t dma_channel,dma_num;
     dma_id_to_id_ch(id,&dma_num,&dma_channel);
 
     DMA_RETURN_NOT_INIT();
@@ -939,40 +939,40 @@ OPERATE_RET tkl_dma_set_int_allocate(dma_id_t id,dma_int_id_t int_id)
 
 #endif
 
-UINT32_T tkl_dma_get_repeat_wr_pause(dma_id_t id)
+uint32_t tkl_dma_get_repeat_wr_pause(dma_id_t id)
 {
-	UINT8_T dma_channel,dma_num;
+	uint8_t dma_channel,dma_num;
 	dma_id_to_id_ch(id,&dma_num,&dma_channel);
 
 	return dma_hal_repeat_wr_pause(&g_dma[dma_num].hal, dma_channel);
 }
 
-UINT32_T tkl_dma_get_repeat_rd_pause(dma_id_t id)
+uint32_t tkl_dma_get_repeat_rd_pause(dma_id_t id)
 {
-	UINT8_T dma_channel,dma_num;
+	uint8_t dma_channel,dma_num;
 	dma_id_to_id_ch(id,&dma_num,&dma_channel);
 
 	return dma_hal_repeat_rd_pause(&g_dma[dma_num].hal, dma_channel);
 }
 
-UINT32_T tkl_dma_get_finish_interrupt_cnt(dma_id_t id)
+uint32_t tkl_dma_get_finish_interrupt_cnt(dma_id_t id)
 {
-	UINT8_T dma_channel,dma_num;
+	uint8_t dma_channel,dma_num;
 	dma_id_to_id_ch(id,&dma_num,&dma_channel);
 
 	return dma_hal_finish_interrupt_cnt(&g_dma[dma_num].hal, dma_channel);
 }
 
-UINT32_T tkl_dma_get_half_finish_interrupt_cnt(dma_id_t id)
+uint32_t tkl_dma_get_half_finish_interrupt_cnt(dma_id_t id)
 {
-	UINT8_T dma_channel,dma_num;
+	uint8_t dma_channel,dma_num;
 	dma_id_to_id_ch(id,&dma_num,&dma_channel);
 
 	return dma_hal_half_finish_interrupt_cnt(&g_dma[dma_num].hal, dma_channel);
 }
 #endif
 
-static OPERATE_RET tkl_dma_memcpy_by_chnl(void *out, const void *in, UINT32_T len)
+static OPERATE_RET tkl_dma_memcpy_by_chnl(void *out, const void *in, uint32_t len)
 {
     DMA_RETURN_NOT_INIT();
     dma_id_t cpy_chnl = 0;
@@ -985,21 +985,21 @@ static OPERATE_RET tkl_dma_memcpy_by_chnl(void *out, const void *in, UINT32_T le
     dma_config.src.dev = DMA_DEV_DTCM;
     dma_config.src.width = DMA_DATA_WIDTH_32BITS;
     dma_config.src.addr_inc_en = DMA_ADDR_INC_ENABLE;
-    dma_config.src.start_addr = (UINT32_T)in;
-    dma_config.src.end_addr = (UINT32_T)(in + len);
+    dma_config.src.start_addr = (uint32_t)in;
+    dma_config.src.end_addr = (uint32_t)(in + len);
 
     dma_config.dst.dev = DMA_DEV_DTCM;
     dma_config.dst.width = DMA_DATA_WIDTH_32BITS;
     dma_config.dst.addr_inc_en = DMA_ADDR_INC_ENABLE;
-    dma_config.dst.start_addr = (UINT32_T)out;
-    dma_config.dst.end_addr = (UINT32_T)(out + len);
+    dma_config.dst.start_addr = (uint32_t)out;
+    dma_config.dst.end_addr = (uint32_t)(out + len);
 
     GLOBAL_INT_DECLARATION();
     GLOBAL_INT_DISABLE();
 
     tkl_dma_init(&cpy_chnl, &dma_config);
     DMA_RETURN_INVALID_ID(cpy_chnl);
-    UINT8_T dma_channel,dma_num;
+    uint8_t dma_channel,dma_num;
     dma_id_to_id_ch(cpy_chnl,&dma_num,&dma_channel);
     tkl_dma_wait_to_idle(cpy_chnl);
     dma_hal_set_transfer_len(&g_dma[dma_num].hal, dma_channel, len);
@@ -1011,7 +1011,7 @@ static OPERATE_RET tkl_dma_memcpy_by_chnl(void *out, const void *in, UINT32_T le
     GLOBAL_INT_RESTORE();
 
 //TODO:I think no need to wait copy data finish,just confirm before copy start, the previous one is finish.
-    UINT32_T wait_dma_cpy_done_cnt = 0;
+    uint32_t wait_dma_cpy_done_cnt = 0;
     while(dma_hal_get_enable_status(&g_dma[dma_num].hal, dma_channel)) {
         if(wait_dma_cpy_done_cnt > 1) {
             dma_hal_stop_common(&g_dma[dma_num].hal, dma_channel);
@@ -1026,7 +1026,7 @@ static OPERATE_RET tkl_dma_memcpy_by_chnl(void *out, const void *in, UINT32_T le
     return OPRT_OK;
 }
 
-OPERATE_RET tkl_dma_memcpy(void *out, const void *in, UINT32_T len)
+OPERATE_RET tkl_dma_memcpy(void *out, const void *in, uint32_t len)
 {
     DMA_RETURN_NOT_INIT();
 
@@ -1037,7 +1037,7 @@ OPERATE_RET tkl_dma_memcpy(void *out, const void *in, UINT32_T len)
     return ret;
 }
 
-void tkl_dma_isr_common(dma_unit_t dma_unit_id, UINT32_T id)
+void tkl_dma_isr_common(dma_unit_t dma_unit_id, uint32_t id)
 {
     dma_hal_t *hal = &g_dma[dma_unit_id].hal;
     if (g_dma[dma_unit_id].id_init_bits == 0) {

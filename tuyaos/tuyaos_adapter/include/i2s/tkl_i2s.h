@@ -26,7 +26,7 @@ OPERATE_RET tkl_i2s_init(TUYA_I2S_NUM_E i2s_num, const TUYA_I2S_BASE_CFG_T *i2s_
  * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
  */
 
-OPERATE_RET tkl_i2s_send(TUYA_I2S_NUM_E i2s_num, VOID_T *buff, UINT32_T len);
+OPERATE_RET tkl_i2s_send(TUYA_I2S_NUM_E i2s_num, void *buff, uint32_t len);
 
 /**
  * @brief tuya i2s async recv
@@ -36,7 +36,7 @@ OPERATE_RET tkl_i2s_send(TUYA_I2S_NUM_E i2s_num, VOID_T *buff, UINT32_T len);
  * @return return >= 0: number of data read; return < 0: read errror
  */
 
-INT_T tkl_i2s_recv(TUYA_I2S_NUM_E i2s_num, VOID_T *buff, UINT32_T len);
+int32_t tkl_i2s_recv(TUYA_I2S_NUM_E i2s_num, void *buff, uint32_t len);
 
 /**
  * @brief tuya i2s send stop

@@ -73,7 +73,7 @@ OPERATE_RET tkl_mutex_create_init(TKL_MUTEX_HANDLE *handle)
 *
 * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
 */
-OPERATE_RET tkl_mutex_lock(CONST TKL_MUTEX_HANDLE handle)
+OPERATE_RET tkl_mutex_lock(const TKL_MUTEX_HANDLE handle)
 {
     if(!handle) {
         return OPRT_INVALID_PARM;
@@ -104,7 +104,7 @@ OPERATE_RET tkl_mutex_lock(CONST TKL_MUTEX_HANDLE handle)
 *
 * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
 */
-OPERATE_RET tkl_mutex_unlock(CONST TKL_MUTEX_HANDLE handle)
+OPERATE_RET tkl_mutex_unlock(const TKL_MUTEX_HANDLE handle)
 {
     BaseType_t ret;
 
@@ -146,7 +146,7 @@ OPERATE_RET tkl_mutex_unlock(CONST TKL_MUTEX_HANDLE handle)
 *
 * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
 */
-OPERATE_RET tkl_mutex_release(CONST TKL_MUTEX_HANDLE handle)
+OPERATE_RET tkl_mutex_release(const TKL_MUTEX_HANDLE handle)
 {
     if(!handle) {
         return OPRT_INVALID_PARM;
@@ -166,7 +166,7 @@ OPERATE_RET tkl_mutex_release(CONST TKL_MUTEX_HANDLE handle)
 *
 * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
 */
-OPERATE_RET tkl_mutex_trylock(CONST TKL_MUTEX_HANDLE mutexHandle)
+OPERATE_RET tkl_mutex_trylock(const TKL_MUTEX_HANDLE mutexHandle)
 {
     return OPRT_NOT_SUPPORTED;
 }

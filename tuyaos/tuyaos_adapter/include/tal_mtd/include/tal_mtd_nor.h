@@ -16,10 +16,10 @@
 #include "tuya_cloud_types.h"
 
 typedef struct {
-    UINT_T page_size;
-    UINT_T sector_size;
-    UINT_T block_size;
-    UINT_T total_size;
+    uint32_t page_size;
+    uint32_t sector_size;
+    uint32_t block_size;
+    uint32_t total_size;
     MTD_INTERFACE_E interface;
     union {
         MTD_QSPI_DEV_T qspi_dev; /**< qspi device config */
@@ -28,10 +28,10 @@ typedef struct {
 } MTD_NOR_DEV_T;
 
 typedef struct {
-    UINT_T page_size;
-    UINT_T sector_size;
-    UINT_T block_size;
-    UINT_T total_size;
+    uint32_t page_size;
+    uint32_t sector_size;
+    uint32_t block_size;
+    uint32_t total_size;
     MTD_INTERFACE_E interface;
     union {
         MTD_QSPI_HANDLE_T *qspi_handle; /**< qspi device config */
@@ -65,8 +65,8 @@ MTD_NOR_HANDLE tal_mtd_nor_init(MTD_NOR_DEV_T *dev, MTD_NOR_CFG_T *cfg);
  *
  * @return Bytes on success. Others on error, please refer to tal_error_code.h
  */
-OPERATE_RET tal_mtd_nor_read(MTD_NOR_HANDLE handle, UINT_T addr, UINT8_T *data,
-                             UINT_T size);
+OPERATE_RET tal_mtd_nor_read(MTD_NOR_HANDLE handle, uint32_t addr, uint8_t *data,
+                             uint32_t size);
 
 /**
  * @brief nor mtd write
@@ -78,8 +78,8 @@ OPERATE_RET tal_mtd_nor_read(MTD_NOR_HANDLE handle, UINT_T addr, UINT8_T *data,
  *
  * @return OPRT_OK on success. Others on error, please refer to tal_error_code.h
  */
-OPERATE_RET tal_mtd_nor_write(MTD_NOR_HANDLE handle, UINT_T addr,
-                              const UINT8_T *data, UINT_T size);
+OPERATE_RET tal_mtd_nor_write(MTD_NOR_HANDLE handle, uint32_t addr,
+                              const uint8_t *data, uint32_t size);
 
 /**
  * @brief nor mtd erase
@@ -90,7 +90,7 @@ OPERATE_RET tal_mtd_nor_write(MTD_NOR_HANDLE handle, UINT_T addr,
  *
  * @return OPRT_OK on success. Others on error, please refer to tal_error_code.h
  */
-OPERATE_RET tal_mtd_nor_erase(MTD_NOR_HANDLE handle, UINT_T addr, UINT_T size);
+OPERATE_RET tal_mtd_nor_erase(MTD_NOR_HANDLE handle, uint32_t addr, uint32_t size);
 
 /**
  * @brief nor mtd write
@@ -100,7 +100,7 @@ OPERATE_RET tal_mtd_nor_erase(MTD_NOR_HANDLE handle, UINT_T addr, UINT_T size);
  *
  * @return OPRT_OK on success. Others on error, please refer to tal_error_code.h
  */
-OPERATE_RET tal_mtd_nor_get_id(MTD_NOR_HANDLE handle, UINT_T *id);
+OPERATE_RET tal_mtd_nor_get_id(MTD_NOR_HANDLE handle, uint32_t *id);
 
 /**
  * @brief nor mtd deinit

@@ -53,7 +53,7 @@ typedef struct tkl_ability {
  * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
  *
  */
-OPERATE_RET tkl_init(VOID_T);
+OPERATE_RET tkl_init(void);
 
 
 /**
@@ -62,7 +62,7 @@ OPERATE_RET tkl_init(VOID_T);
  * @return the version of the tuya kernel adapter layer
  *
  */
-CHAR_T * tkl_get_version(VOID_T);
+char * tkl_get_version(void);
 
 
 /**
@@ -71,7 +71,7 @@ CHAR_T * tkl_get_version(VOID_T);
  * @return the tuyaos kernel ability object
  *
  */
-TKL_ABILITY_T * tkl_get_ability(VOID_T);
+TKL_ABILITY_T * tkl_get_ability(void);
 
 #ifdef __cplusplus
 } // extern "C"

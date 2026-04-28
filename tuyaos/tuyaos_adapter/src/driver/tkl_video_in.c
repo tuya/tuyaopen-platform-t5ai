@@ -109,7 +109,7 @@ int tkl_vi_get_dvp_i2c_idx(uint8_t *clk, uint8_t *sda)
 *
 * @return OPRT_OK on success. Others on error, please refer to tkl_error_code.h
 */
-OPERATE_RET tkl_vi_init(TKL_VI_CONFIG_T *pconfig, INT32_T count)
+OPERATE_RET tkl_vi_init(TKL_VI_CONFIG_T *pconfig, int32_t count)
 {
     OPERATE_RET ret;
 

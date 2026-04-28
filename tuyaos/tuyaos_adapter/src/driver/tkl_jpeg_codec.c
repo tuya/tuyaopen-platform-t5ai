@@ -32,7 +32,7 @@ OPERATE_RET tkl_jpeg_codec_deinit()
     return ret;
 }
 
-OPERATE_RET tkl_jpeg_codec_img_info_get(UINT8_T *jpeg_buf, UINT32_T jpeg_size, TKL_JPEG_CODEC_INFO_T *jpeg_info)
+OPERATE_RET tkl_jpeg_codec_img_info_get(uint8_t *jpeg_buf, uint32_t jpeg_size, TKL_JPEG_CODEC_INFO_T *jpeg_info)
 {
     if (!jpeg_buf || !jpeg_info)
         return OPRT_INVALID_PARM;
@@ -53,14 +53,14 @@ OPERATE_RET tkl_jpeg_codec_img_info_get(UINT8_T *jpeg_buf, UINT32_T jpeg_size, T
     return OPRT_OK;
 }
 
-OPERATE_RET __jpeg_dec_sw_convert(UINT8_T *src_buf, UINT8_T *dst_buf, TKL_JPEG_CODEC_INFO_T *jpeg_codec_info, JPEG_DEC_OUT_FMT fmt)
+OPERATE_RET __jpeg_dec_sw_convert(uint8_t *src_buf, uint8_t *dst_buf, TKL_JPEG_CODEC_INFO_T *jpeg_codec_info, JPEG_DEC_OUT_FMT fmt)
 {
     OPERATE_RET ret = OPRT_OK;
     sw_jpeg_dec_res_t result;
-    UINT32_T out_size = 0;
+    uint32_t out_size = 0;
     JD_FORMAT_OUTPUT output_fmt;
-    UINT8_T width_must_be_multiple_of_2 = false;
-    UINT8_T width_must_be_multiple_of_4 = false;
+    uint8_t width_must_be_multiple_of_2 = false;
+    uint8_t width_must_be_multiple_of_4 = false;
 
     switch (fmt)
     {
@@ -106,7 +106,7 @@ OPERATE_RET __jpeg_dec_sw_convert(UINT8_T *src_buf, UINT8_T *dst_buf, TKL_JPEG_C
     return ret;
 }
 
-OPERATE_RET tkl_jpeg_codec_convert(UINT8_T *src_buf, UINT8_T *dst_buf, TKL_JPEG_CODEC_INFO_T *jpeg_codec_info, JPEG_DEC_OUT_FMT out_fmt)
+OPERATE_RET tkl_jpeg_codec_convert(uint8_t *src_buf, uint8_t *dst_buf, TKL_JPEG_CODEC_INFO_T *jpeg_codec_info, JPEG_DEC_OUT_FMT out_fmt)
 {
     OPERATE_RET ret = OPRT_OK;
 

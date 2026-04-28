@@ -1316,7 +1316,7 @@ OPERATE_RET tkl_spi_deinit(TUYA_SPI_NUM_E port)
     return OPRT_OK;
 }
 
-OPERATE_RET tkl_spi_send(TUYA_SPI_NUM_E port, VOID_T *data, UINT32_T size)
+OPERATE_RET tkl_spi_send(TUYA_SPI_NUM_E port, void *data, uint32_t size)
 {
     OPERATE_RET ret = OPRT_OK;
 
@@ -1357,7 +1357,7 @@ OPERATE_RET tkl_spi_send(TUYA_SPI_NUM_E port, VOID_T *data, UINT32_T size)
     return OPRT_OK;
 }
 
-OPERATE_RET tkl_spi_recv(TUYA_SPI_NUM_E port, VOID *data, UINT32_T size)
+OPERATE_RET tkl_spi_recv(TUYA_SPI_NUM_E port, void *data, uint32_t size)
 {
     OPERATE_RET ret = OPRT_OK;
     if (data == NULL || port > TUYA_SPI_NUM_1) {
@@ -1370,7 +1370,7 @@ OPERATE_RET tkl_spi_recv(TUYA_SPI_NUM_E port, VOID *data, UINT32_T size)
             sd_command.addr_size = 0;
             sd_command.cmd_size = 0;
             sd_command.data_size = size;
-            sd_command.data = (UINT8_T *)data;
+            sd_command.data = (uint8_t *)data;
             sd_command.cmd_lines = TUYA_QSPI_1WIRE;
             sd_command.addr_lines = TUYA_QSPI_1WIRE;
             sd_command.data_lines = TUYA_QSPI_1WIRE;
@@ -1408,7 +1408,7 @@ OPERATE_RET tkl_spi_recv(TUYA_SPI_NUM_E port, VOID *data, UINT32_T size)
     return OPRT_OK;
 }
 
-OPERATE_RET tkl_spi_transfer(TUYA_SPI_NUM_E port, VOID_T* send_buf, VOID_T* receive_buf, UINT32_T length)
+OPERATE_RET tkl_spi_transfer(TUYA_SPI_NUM_E port, void* send_buf, void* receive_buf, uint32_t length)
 {
     if (port > TUYA_SPI_NUM_1) {
         return OPRT_INVALID_PARM;
@@ -1483,7 +1483,7 @@ OPERATE_RET tkl_spi_abort_transfer(TUYA_SPI_NUM_E port)
  *
  * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
  */
-STATIC VOID_T qspi_tx_done_cb(TUYA_QSPI_NUM_E port, TUYA_QSPI_IRQ_EVT_E event)
+static void qspi_tx_done_cb(TUYA_QSPI_NUM_E port, TUYA_QSPI_IRQ_EVT_E event)
 {
     if (event == TUYA_QSPI_EVENT_TX) {
         if (spi_irq[port + TUYA_SPI_NUM_2].cb) {
@@ -1564,7 +1564,7 @@ OPERATE_RET tkl_spi_irq_disable(TUYA_SPI_NUM_E port)
  * @return >=0,number of supported dma data length. <0,err.
  * during  tkl_spi_send, tkl_spi_recv and tkl_spi_transfer operation.
  */
-UINT32_T  tkl_spi_get_max_dma_data_length(VOID_T)
+uint32_t  tkl_spi_get_max_dma_data_length(void)
 {
     return SPI_DMA_MAX_LEN - 1;
 }

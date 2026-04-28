@@ -595,7 +595,7 @@ bk_err_t bk_lcd_qspi_quad_write_stops(qspi_id_t qspi_id)
     return BK_OK;
 }
 
- OPERATE_RET tkl_qspi_send(TUYA_QSPI_NUM_E port, VOID_T *data, UINT32_T size)
+ OPERATE_RET tkl_qspi_send(TUYA_QSPI_NUM_E port, void *data, uint32_t size)
  {
     bk_err_t ret = BK_OK;
     TUYA_QSPI_CMD_T sd_command;
@@ -619,7 +619,7 @@ bk_err_t bk_lcd_qspi_quad_write_stops(qspi_id_t qspi_id)
         sd_command.cmd_size = 1;
         sd_command.addr_lines = qspi_infos[port].dma_data_lines;
         sd_command.data_size = size - 1;
-        sd_command.data = (UINT8_T *)(data + 1);
+        sd_command.data = (uint8_t *)(data + 1);
         sd_command.data_lines = qspi_infos[port].dma_data_lines;
         ret = tkl_qspi_comand(port,  &sd_command);
         if ((qspi_infos[port].cb) && (ret == OPRT_OK)) {
@@ -651,7 +651,7 @@ bk_err_t bk_lcd_qspi_quad_write_stops(qspi_id_t qspi_id)
   *
   * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
   */
- OPERATE_RET tkl_qspi_recv(TUYA_QSPI_NUM_E port, VOID_T *data, UINT32_T size)
+ OPERATE_RET tkl_qspi_recv(TUYA_QSPI_NUM_E port, void *data, uint32_t size)
  {
      bk_err_t ret = BK_OK;
 
@@ -684,8 +684,8 @@ bk_err_t bk_lcd_qspi_quad_write_stops(qspi_id_t qspi_id)
   * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
   */
 typedef union {
-    UINT32_T data;
-    CHAR_T ponit[4];
+    uint32_t data;
+    char ponit[4];
 }data_union_s;
 
 static uint32_t line_data_get(TUYA_QSPI_WIRE_MODE_E cmdlines, uint8_t cmd_len, TUYA_QSPI_WIRE_MODE_E addrlines, uint8_t addr_len)
@@ -724,8 +724,8 @@ static uint32_t line_data_get(TUYA_QSPI_WIRE_MODE_E cmdlines, uint8_t cmd_len, T
  {
     bk_err_t ret = BK_OK;
     data_union_s union_data;
-    UINT32_T c_l = 0;
-    UINT32_T c_h = 0;
+    uint32_t c_l = 0;
+    uint32_t c_h = 0;
 
     qspi_cmd_t cmd = {0};
     if ((command == NULL) || (port >= TUYA_QSPI_NUM_MAX)) {
@@ -755,13 +755,13 @@ static uint32_t line_data_get(TUYA_QSPI_WIRE_MODE_E cmdlines, uint8_t cmd_len, T
          return OPRT_COM_ERROR;
      return OPRT_OK;
 #endif
-    UINT32_T  ucmd = 0;
-    UINT32_T  uaddr = 0;
+    uint32_t  ucmd = 0;
+    uint32_t  uaddr = 0;
     // get cmd
     union_data.data = 0;
     if (command->cmd_size != 0) {
         memcpy(union_data.ponit, command->cmd, command->cmd_size);
-        ucmd = (UINT32_T)union_data.data;
+        ucmd = (uint32_t)union_data.data;
     }else {
         bk_printf("cmd size is 0\r\n");
         // return -1;
@@ -770,7 +770,7 @@ static uint32_t line_data_get(TUYA_QSPI_WIRE_MODE_E cmdlines, uint8_t cmd_len, T
     union_data.data = 0;
     if (command->addr_size != 0) {
         memcpy(union_data.ponit, command->addr, command->addr_size);
-        uaddr = (UINT32_T)union_data.data;
+        uaddr = (uint32_t)union_data.data;
     }
 
     if (command->op == TUYA_QSPI_WRITE) {
@@ -781,9 +781,9 @@ static uint32_t line_data_get(TUYA_QSPI_WIRE_MODE_E cmdlines, uint8_t cmd_len, T
         // bk_printf("write addr:%x, ucmd:%x, addr_size:%d, cmd_size:%d, data_size:%d \r\n", uaddr, ucmd, command->addr_size, command->cmd_size, command->data_size);
 
         c_h = ucmd;
-        INT8_T off = 4 - command->cmd_size;  //cmd : 0 1 2
+        int8_t off = 4 - command->cmd_size;  //cmd : 0 1 2
         if(off > 0) {
-            c_h = (UINT32_T) (ucmd | (uaddr << command->cmd_size * 8));
+            c_h = (uint32_t) (ucmd | (uaddr << command->cmd_size * 8));
         }else {//command->cmd_size >= 4
             bk_printf("cmd size is out of 4 \r\n");
             return OPRT_INVALID_PARM;
@@ -829,9 +829,9 @@ static uint32_t line_data_get(TUYA_QSPI_WIRE_MODE_E cmdlines, uint8_t cmd_len, T
 
         // bk_printf("read addr:%x, ucmd:%x, addr_size:%d, cmd_size:%d, data_size:%d \r\n", uaddr, ucmd, command->addr_size, command->cmd_size, command->data_size);
         c_h = ucmd;
-        INT8_T off = 4 - command->cmd_size;  //cmd : 0 1 2
+        int8_t off = 4 - command->cmd_size;  //cmd : 0 1 2
         if(off > 0) {
-            c_h = (UINT32_T) (ucmd | (uaddr << command->cmd_size * 8));
+            c_h = (uint32_t) (ucmd | (uaddr << command->cmd_size * 8));
         }else {//command->cmd_size >= 4
             bk_printf("cmd size is out of 4 \r\n");
             return OPRT_INVALID_PARM;

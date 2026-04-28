@@ -25,9 +25,9 @@ extern "C" {
 typedef struct {
     TKL_MUTEX_HANDLE mutex;
     BOOL_T malk;
-    UINT_T rfc;
-    UINT_T data_len;
-    VOID_T *data;
+    uint32_t rfc;
+    uint32_t data_len;
+    void *data;
 }SMARTPOINTER_T;
 
 /**
@@ -39,33 +39,33 @@ typedef struct {
  * @param[in] cnt the Initial value of the reference
  * @return the reference data address
  */
-SMARTPOINTER_T *tuya_smartpointer_create(VOID *data, CONST UINT_T data_len, CONST BOOL_T malk, CONST UINT_T cnt);
+SMARTPOINTER_T *tuya_smartpointer_create(void *data, const uint32_t data_len, const BOOL_T malk, const uint32_t cnt);
 
 /**
  * @brief get the reference data, increase the reference
  * 
  * @param[inout] sp_data the reference data
- * @return VOID 
+ * @return void 
  */
-VOID_T tuya_smartpointer_get(SMARTPOINTER_T *sp_data);
+void tuya_smartpointer_get(SMARTPOINTER_T *sp_data);
 
 /**
  * @brief put the reference data, decrease the reference
  * 
  * @param[inout] sp_data the reference data 
- * @return VOID 
+ * @return void 
  * 
  * @note the reference data will be released when reference is 0
  */
-VOID_T tuya_smartpointer_put(SMARTPOINTER_T *sp_data);
+void tuya_smartpointer_put(SMARTPOINTER_T *sp_data);
 
 /**
  * @brief delete the reference data, ignore the reference
  * 
  * @param[inout] sp_data the reference data 
- * @return VOID 
+ * @return void 
  */
-VOID_T tuya_smartpointer_del(SMARTPOINTER_T *sp_data);
+void tuya_smartpointer_del(SMARTPOINTER_T *sp_data);
 
 #ifdef __cplusplus
 }

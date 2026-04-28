@@ -23,7 +23,7 @@
 *
 * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
 */
-OPERATE_RET tkl_task_notify(CONST TKL_THREAD_HANDLE thread, UINT32_T ulValue, TUYA_TASK_NOTIFY_ACTION_E action)
+OPERATE_RET tkl_task_notify(const TKL_THREAD_HANDLE thread, uint32_t ulValue, TUYA_TASK_NOTIFY_ACTION_E action)
 {
     int ret = OPRT_OK;
     BaseType_t res = pdPASS;
@@ -56,10 +56,10 @@ OPERATE_RET tkl_task_notify(CONST TKL_THREAD_HANDLE thread, UINT32_T ulValue, TU
 *
 * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
 */
-UINT32_T tkl_task_notify_take(BOOL_T clearcount,
-                                   UINT_T timeout)
+uint32_t tkl_task_notify_take(BOOL_T clearcount,
+                                   uint32_t timeout)
 {
-    UINT32_T ret = 0;
+    uint32_t ret = 0;
     TKL_THREAD_HANDLE thread = xTaskGetCurrentTaskHandle();
     if (!thread) {
         return OPRT_INVALID_PARM;
@@ -67,7 +67,7 @@ UINT32_T tkl_task_notify_take(BOOL_T clearcount,
     if (timeout == TKL_NOTIFY_WAIT_FROEVER) {
         ret = ulTaskNotifyTake(clearcount, portMAX_DELAY);
     } else {
-        UINT_T ticks = timeout / portTICK_RATE_MS;
+        uint32_t ticks = timeout / portTICK_RATE_MS;
 
         if (ticks == 0) {
             ticks = 1;
@@ -86,7 +86,7 @@ UINT32_T tkl_task_notify_take(BOOL_T clearcount,
 *
 * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
 */
-OPERATE_RET tkl_task_notify_give(CONST TKL_THREAD_HANDLE thread)
+OPERATE_RET tkl_task_notify_give(const TKL_THREAD_HANDLE thread)
 {
     OPERATE_RET ret = OPRT_OK;
     if (!thread) {
@@ -110,7 +110,7 @@ OPERATE_RET tkl_task_notify_give(CONST TKL_THREAD_HANDLE thread)
 *
 * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
 */
-OPERATE_RET tkl_task_notify_state_clear(CONST TKL_THREAD_HANDLE thread)
+OPERATE_RET tkl_task_notify_state_clear(const TKL_THREAD_HANDLE thread)
 {
     int ret = pdPASS;
     if (!thread) {

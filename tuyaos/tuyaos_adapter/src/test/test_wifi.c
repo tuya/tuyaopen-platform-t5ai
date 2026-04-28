@@ -18,14 +18,14 @@ static void __cmd_usage(void)
 static TaskHandle_t __test_wifi_scan_thread = NULL;
 static void __test_wifi_scan(void *args)
 {
-    SCHAR_T *ssid = NULL;
+    int8_t *ssid = NULL;
     AP_IF_S *ap_ary = NULL;
-    UINT_T num = 0;
+    uint32_t num = 0;
 
     if (args == NULL) {
         bk_printf("--- trace %s %d, all ap scan\r\n", __func__, __LINE__);
     } else {
-        ssid = (SCHAR_T *)args;
+        ssid = (int8_t *)args;
         bk_printf("--- trace %s %d, scan %s\r\n", __func__, __LINE__, ssid);
     }
 

@@ -62,17 +62,17 @@
 
 
 
-static OPERATE_RET flash_w25q32_read_status(MTD_QSPI_CFG_T *cfg, UINT_T cmd)
+static OPERATE_RET flash_w25q32_read_status(MTD_QSPI_CFG_T *cfg, uint32_t cmd)
 {
     OPERATE_RET ret = OPRT_OK;
-    UINT8_T status;
+    uint8_t status;
     TUYA_QSPI_CMD_T reg_cmd = {0};
 
     reg_cmd.op = TUYA_QSPI_READ;
     reg_cmd.cmd = cmd;
     reg_cmd.addr = 0;
     reg_cmd.addr_valid_bit = 0;
-    reg_cmd.data_len = sizeof(UINT8_T);
+    reg_cmd.data_len = sizeof(uint8_t);
     reg_cmd.addr_lines = TUYA_QSPI_1WIRE;
     reg_cmd.data_lines = TUYA_QSPI_1WIRE;
     reg_cmd.dummy_cycle = 0;
@@ -83,7 +83,7 @@ static OPERATE_RET flash_w25q32_read_status(MTD_QSPI_CFG_T *cfg, UINT_T cmd)
     {
         return OPRT_COM_ERROR;
     }
-    ret = tkl_qspi_recv(cfg->port, &status, sizeof(UINT8_T));
+    ret = tkl_qspi_recv(cfg->port, &status, sizeof(uint8_t));
     if (ret != 0)
     {
         return OPRT_COM_ERROR;
@@ -92,9 +92,9 @@ static OPERATE_RET flash_w25q32_read_status(MTD_QSPI_CFG_T *cfg, UINT_T cmd)
     return status;
 }
 
-static VOID_T flash_w25q32_wait_done(MTD_QSPI_CFG_T *cfg)
+static void flash_w25q32_wait_done(MTD_QSPI_CFG_T *cfg)
 {
-    UINT_T status_reg_data = 0;
+    uint32_t status_reg_data = 0;
 
     for(int i = 0; i <= (2000 / DELAY_CYCLE); i++) {
         status_reg_data = flash_w25q32_read_status(cfg, W25Q_READ_STATUS_1);
@@ -105,7 +105,7 @@ static VOID_T flash_w25q32_wait_done(MTD_QSPI_CFG_T *cfg)
     }
 }
 
-static OPERATE_RET flash_w25q32_write_status(MTD_QSPI_CFG_T *cfg, UINT_T reg, UINT8_T status_reg_data)
+static OPERATE_RET flash_w25q32_write_status(MTD_QSPI_CFG_T *cfg, uint32_t reg, uint8_t status_reg_data)
 {
 
     OPERATE_RET ret = OPRT_COM_ERROR;
@@ -117,7 +117,7 @@ static OPERATE_RET flash_w25q32_write_status(MTD_QSPI_CFG_T *cfg, UINT_T reg, UI
     reg_cmd.addr = 0;
     reg_cmd.addr_valid_bit = 3;
     reg_cmd.addr_lines = TUYA_QSPI_1WIRE;
-    reg_cmd.data_len = sizeof(UINT8_T);
+    reg_cmd.data_len = sizeof(uint8_t);
     reg_cmd.data_lines = TUYA_QSPI_1WIRE;
     ret = tkl_qspi_comand(cfg->port, &reg_cmd);
     if (ret != 0)
@@ -128,25 +128,25 @@ static OPERATE_RET flash_w25q32_write_status(MTD_QSPI_CFG_T *cfg, UINT_T reg, UI
     return OPRT_OK;
 }
 
-static INT32_T flash_w25q32_nor_set_protect_none(MTD_QSPI_CFG_T *cfg)
+static int32_t flash_w25q32_nor_set_protect_none(MTD_QSPI_CFG_T *cfg)
 {
-    UINT8_T status_reg_data = 0;
+    uint8_t status_reg_data = 0;
 
     status_reg_data = flash_w25q32_read_status(cfg, W25Q_READ_STATUS_1) & 0xff;
-    UINT8_T clean_bits = ~STATUS_BP_MASK;
+    uint8_t clean_bits = ~STATUS_BP_MASK;
     status_reg_data &= clean_bits;
     flash_w25q32_write_status(cfg, W25Q_WRITE_STATUS_1, status_reg_data);
     return OPRT_OK;
 }
 
 
-static INT32_T flash_w25q32_init(MTD_QSPI_CFG_T *cfg)
+static int32_t flash_w25q32_init(MTD_QSPI_CFG_T *cfg)
 {
     //接口初始化应当在具体的flash初始化实现
-    INT32_T ret = OPRT_OK;
-    UINT_T status_reg_data = 0;
+    int32_t ret = OPRT_OK;
+    uint32_t status_reg_data = 0;
 
-    status_reg_data = (UINT8_T)flash_w25q32_read_status(cfg, W25Q_READ_STATUS_2);
+    status_reg_data = (uint8_t)flash_w25q32_read_status(cfg, W25Q_READ_STATUS_2);
     if ((status_reg_data & STATUS2_QE_MASK) == STATUS2_QE_DISABLED) {
         status_reg_data |= STATUS2_QE_ENABLED;
         return flash_w25q32_write_status(cfg, W25Q_WRITE_STATUS_2, status_reg_data);
@@ -154,13 +154,13 @@ static INT32_T flash_w25q32_init(MTD_QSPI_CFG_T *cfg)
 
     return ret;
 }
-static INT32_T flash_w25q32_deinit(MTD_QSPI_CFG_T *cfg)
+static int32_t flash_w25q32_deinit(MTD_QSPI_CFG_T *cfg)
 {
     //接口初始化应当在具体的flash初始化实现
-    INT32_T ret = OPRT_OK;
-    UINT_T status_reg_data = 0;
+    int32_t ret = OPRT_OK;
+    uint32_t status_reg_data = 0;
 
-    status_reg_data = (UINT8_T)flash_w25q32_read_status(cfg, W25Q_READ_STATUS_2);
+    status_reg_data = (uint8_t)flash_w25q32_read_status(cfg, W25Q_READ_STATUS_2);
     if ((status_reg_data & STATUS2_QE_MASK) != STATUS2_QE_DISABLED) {
         status_reg_data &= ~STATUS2_QE_ENABLED;
         return flash_w25q32_write_status(cfg, W25Q_WRITE_STATUS_2, status_reg_data);

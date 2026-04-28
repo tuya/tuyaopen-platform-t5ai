@@ -15,16 +15,16 @@
 extern "C" {
 #endif
 
-#ifndef IN
-#define IN
+#ifndef 
+#define 
 #endif
 
-#ifndef OUT
-#define OUT
+#ifndef 
+#define 
 #endif
 
-#ifndef INOUT
-#define INOUT
+#ifndef 
+#define 
 #endif
 
 /**

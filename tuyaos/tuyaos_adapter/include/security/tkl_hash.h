@@ -18,7 +18,7 @@ extern "C" {
 #endif
 
 
-typedef VOID_T* TKL_HASH_HANDLE;
+typedef void* TKL_HASH_HANDLE;
                 
 
 /**
@@ -55,7 +55,7 @@ OPERATE_RET tkl_sha256_free( TKL_HASH_HANDLE ctx );
 *
 * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
 */
-OPERATE_RET tkl_sha256_starts_ret( TKL_HASH_HANDLE ctx, INT32_T is224 );
+OPERATE_RET tkl_sha256_starts_ret( TKL_HASH_HANDLE ctx, int32_t is224 );
 
 /**
 * @brief This function feeds an input buffer into an ongoing
@@ -71,7 +71,7 @@ OPERATE_RET tkl_sha256_starts_ret( TKL_HASH_HANDLE ctx, INT32_T is224 );
 * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
 */
 OPERATE_RET  tkl_sha256_update_ret( TKL_HASH_HANDLE ctx,
-                               const UINT8_T *input,
+                               const uint8_t *input,
                                size_t ilen );
 
 /**
@@ -87,7 +87,7 @@ OPERATE_RET  tkl_sha256_update_ret( TKL_HASH_HANDLE ctx,
 * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
 */
 OPERATE_RET  tkl_sha256_finish_ret( TKL_HASH_HANDLE ctx,
-                               UINT8_T output[32] );
+                               uint8_t output[32] );
 
 
 /**
@@ -138,7 +138,7 @@ OPERATE_RET tkl_md5_starts_ret( TKL_HASH_HANDLE ctx);
 * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
 */
 OPERATE_RET  tkl_md5_update_ret( TKL_HASH_HANDLE ctx,
-                               const UINT8_T *input,
+                               const uint8_t *input,
                                size_t ilen );
 
 /**
@@ -154,7 +154,7 @@ OPERATE_RET  tkl_md5_update_ret( TKL_HASH_HANDLE ctx,
 * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
 */
 OPERATE_RET  tkl_md5_finish_ret( TKL_HASH_HANDLE ctx,
-                               UINT8_T output[16] );
+                               uint8_t output[16] );
 
 /**
 * @brief This function Create&initializes a sha1 context.
@@ -204,7 +204,7 @@ OPERATE_RET tkl_sha1_starts_ret( TKL_HASH_HANDLE ctx);
 * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
 */
 OPERATE_RET  tkl_sha1_update_ret( TKL_HASH_HANDLE ctx,
-                               const UINT8_T *input,
+                               const uint8_t *input,
                                size_t ilen );
 
 /**
@@ -220,7 +220,7 @@ OPERATE_RET  tkl_sha1_update_ret( TKL_HASH_HANDLE ctx,
 * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
 */
 OPERATE_RET  tkl_sha1_finish_ret( TKL_HASH_HANDLE ctx,
-                               UINT8_T output[20] );
+                               uint8_t output[20] );
 #ifdef __cplusplus
 }
 #endif /* __cplusplus */

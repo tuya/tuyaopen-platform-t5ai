@@ -28,7 +28,7 @@ static void __lcd_isr_cb(void)
     }
 }
 
-static OPERATE_RET __rgb_ty_clk_to_bk_clk(UINT32_T clk, lcd_clk_t *outclk)
+static OPERATE_RET __rgb_ty_clk_to_bk_clk(uint32_t clk, lcd_clk_t *outclk)
 {
     lcd_clk_t bk_clk = LCD_30M;
     switch(clk) {
@@ -221,7 +221,7 @@ OPERATE_RET tkl_rgb_irq_cb_register(TUYA_RGB_IRQ_CB cb)
  *
  * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
  */
-OPERATE_RET tkl_rgb_ppi_set(UINT16_T width, UINT16_T height)
+OPERATE_RET tkl_rgb_ppi_set(uint16_t width, uint16_t height)
 {
     lcd_driver_ppi_set(width, height);
     bk_printf("%s : width %d, height  %d\r\n",__func__, width, height);
@@ -260,7 +260,7 @@ OPERATE_RET tkl_rgb_pixel_mode_set(TUYA_DISPLAY_PIXEL_FMT_E mode)
  *
  * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
  */
-OPERATE_RET tkl_rgb_base_addr_set(UINT32_T addr)
+OPERATE_RET tkl_rgb_base_addr_set(uint32_t addr)
 {
     bk_err_t ret = lcd_driver_set_display_base_addr(addr);
 

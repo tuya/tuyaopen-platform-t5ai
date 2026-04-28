@@ -56,7 +56,7 @@ OPERATE_RET tkl_ipc_init(TKL_IPC_CONF_T *config)
     return OPRT_OK;
 }
 
-OPERATE_RET tkl_ipc_send(CONST UINT8_T *buf, UINT32_T buf_len)
+OPERATE_RET tkl_ipc_send(const uint8_t *buf, uint32_t buf_len)
 {
     tkl_mutex_lock(tkl_ipc_sync_mutex);
     int ret = bk_ipc_send(&__tkl_ipc_handle, (void *)buf, buf_len, MIPC_CHAN_SEND_FLAG_SYNC, 0);
@@ -68,7 +68,7 @@ OPERATE_RET tkl_ipc_send(CONST UINT8_T *buf, UINT32_T buf_len)
     return OPRT_OK;
 }
 
-OPERATE_RET tkl_ipc_send_no_sync( CONST UINT8_T *buf, UINT32_T buf_len)
+OPERATE_RET tkl_ipc_send_no_sync( const uint8_t *buf, uint32_t buf_len)
 {
     tkl_mutex_lock(tkl_ipc_async_mutex);
     int ret = bk_ipc_send(&__tkl_ipc_handle, (void *)buf, buf_len, 0, 0);

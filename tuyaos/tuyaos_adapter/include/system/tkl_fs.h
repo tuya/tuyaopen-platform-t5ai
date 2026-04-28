@@ -37,7 +37,7 @@ typedef enum {
 *
 * @return 0 on success. Others on failed
 */
-INT_T tkl_fs_mkdir(CONST CHAR_T* path);
+int32_t tkl_fs_mkdir(const char* path);
 
 /**
 * @brief Make directory recursively
@@ -48,7 +48,7 @@ INT_T tkl_fs_mkdir(CONST CHAR_T* path);
 *
 * @return 0 on success. Others on failed
 */
-INT_T tkl_fs_mkdir_r(CONST CHAR_T* path);
+int32_t tkl_fs_mkdir_r(const char* path);
 
 /**
 * @brief Remove directory
@@ -59,7 +59,7 @@ INT_T tkl_fs_mkdir_r(CONST CHAR_T* path);
 *
 * @return 0 on success. Others on failed
 */
-INT_T tkl_fs_remove(CONST CHAR_T* path);
+int32_t tkl_fs_remove(const char* path);
 
 /**
 * @brief Remove directory recursively
@@ -70,7 +70,7 @@ INT_T tkl_fs_remove(CONST CHAR_T* path);
 *
 * @return 0 on success. Others on failed
 */
-INT_T tkl_fs_remove_r(CONST CHAR_T* path);
+int32_t tkl_fs_remove_r(const char* path);
 
 
 /**
@@ -83,7 +83,7 @@ INT_T tkl_fs_remove_r(CONST CHAR_T* path);
 *
 * @return 0 on success. Others on failed
 */
-INT_T tkl_fs_mode(CONST CHAR_T* path, UINT_T* mode);
+int32_t tkl_fs_mode(const char* path, uint32_t* mode);
 
 /**
 * @brief Check whether the file or directory exists
@@ -95,7 +95,7 @@ INT_T tkl_fs_mode(CONST CHAR_T* path, UINT_T* mode);
 *
 * @return 0 on success. Others on failed
 */
-INT_T tkl_fs_is_exist(CONST CHAR_T* path, BOOL_T* is_exist);
+int32_t tkl_fs_is_exist(const char* path, BOOL_T* is_exist);
 
 /**
 * @brief File rename
@@ -107,7 +107,7 @@ INT_T tkl_fs_is_exist(CONST CHAR_T* path, BOOL_T* is_exist);
 *
 * @return 0 on success. Others on failed
 */
-INT_T tkl_fs_rename(CONST CHAR_T* path_old, CONST CHAR_T* path_new);
+int32_t tkl_fs_rename(const char* path_old, const char* path_new);
 
 /**
 * @brief Open directory
@@ -119,7 +119,7 @@ INT_T tkl_fs_rename(CONST CHAR_T* path_old, CONST CHAR_T* path_new);
 *
 * @return 0 on success. Others on failed
 */
-INT_T tkl_dir_open(CONST CHAR_T* path, TUYA_DIR* dir);
+int32_t tkl_dir_open(const char* path, TUYA_DIR* dir);
 
 /**
 * @brief Close directory
@@ -130,7 +130,7 @@ INT_T tkl_dir_open(CONST CHAR_T* path, TUYA_DIR* dir);
 *
 * @return 0 on success. Others on failed
 */
-INT_T tkl_dir_close(TUYA_DIR dir);
+int32_t tkl_dir_close(TUYA_DIR dir);
 
 
 /**
@@ -144,7 +144,7 @@ INT_T tkl_dir_close(TUYA_DIR dir);
 *
 * @return 0 on success. Others on failed
 */
-INT_T tkl_dir_read(TUYA_DIR dir, TUYA_FILEINFO* info);
+int32_t tkl_dir_read(TUYA_DIR dir, TUYA_FILEINFO* info);
 
 /**
 * @brief Get the name of the file node
@@ -156,7 +156,7 @@ INT_T tkl_dir_read(TUYA_DIR dir, TUYA_FILEINFO* info);
 *
 * @return 0 on success. Others on failed
 */
-INT_T tkl_dir_name(TUYA_FILEINFO info, CONST CHAR_T** name);
+int32_t tkl_dir_name(TUYA_FILEINFO info, const char** name);
 
 /**
 * @brief Check whether the node is a directory
@@ -168,7 +168,7 @@ INT_T tkl_dir_name(TUYA_FILEINFO info, CONST CHAR_T** name);
 *
 * @return 0 on success. Others on failed
 */
-INT_T tkl_dir_is_directory(TUYA_FILEINFO info, BOOL_T* is_dir);
+int32_t tkl_dir_is_directory(TUYA_FILEINFO info, BOOL_T* is_dir);
 
 /**
 * @brief Check whether the node is a normal file
@@ -180,7 +180,7 @@ INT_T tkl_dir_is_directory(TUYA_FILEINFO info, BOOL_T* is_dir);
 *
 * @return 0 on success. Others on failed
 */
-INT_T tkl_dir_is_regular(TUYA_FILEINFO info, BOOL_T* is_regular);
+int32_t tkl_dir_is_regular(TUYA_FILEINFO info, BOOL_T* is_regular);
 
 /**
 * @brief Open file
@@ -192,7 +192,7 @@ INT_T tkl_dir_is_regular(TUYA_FILEINFO info, BOOL_T* is_regular);
 *
 * @return the file handle, NULL means failed
 */
-TUYA_FILE tkl_fopen(CONST CHAR_T* path, CONST CHAR_T* mode);
+TUYA_FILE tkl_fopen(const char* path, const char* mode);
 
 /**
 * @brief Close file
@@ -203,7 +203,7 @@ TUYA_FILE tkl_fopen(CONST CHAR_T* path, CONST CHAR_T* mode);
 *
 * @return 0 on success. EOF on failed
 */
-INT_T tkl_fclose(TUYA_FILE file);
+int32_t tkl_fclose(TUYA_FILE file);
 
 /**
 * @brief Read file
@@ -216,7 +216,7 @@ INT_T tkl_fclose(TUYA_FILE file);
 *
 * @return the bytes read from file
 */
-INT_T tkl_fread(VOID_T* buf, INT_T bytes, TUYA_FILE file);
+int32_t tkl_fread(void* buf, int32_t bytes, TUYA_FILE file);
 
 /**
 * @brief write file
@@ -229,7 +229,7 @@ INT_T tkl_fread(VOID_T* buf, INT_T bytes, TUYA_FILE file);
 *
 * @return the bytes write to file
 */
-INT_T tkl_fwrite(VOID_T* buf, INT_T bytes, TUYA_FILE file);
+int32_t tkl_fwrite(void* buf, int32_t bytes, TUYA_FILE file);
 
 /**
 * @brief write buffer to flash
@@ -240,7 +240,7 @@ INT_T tkl_fwrite(VOID_T* buf, INT_T bytes, TUYA_FILE file);
 *
 * @return 0 on success. others on failed
 */
-INT_T tkl_fsync(INT_T fd);
+int32_t tkl_fsync(int32_t fd);
 
 /**
 * @brief Read string from file
@@ -253,7 +253,7 @@ INT_T tkl_fsync(INT_T fd);
 *
 * @return the content get from file, NULL means failed
 */
-CHAR_T* tkl_fgets(CHAR_T* buf, INT_T len, TUYA_FILE file);
+char* tkl_fgets(char* buf, int32_t len, TUYA_FILE file);
 
 /**
 * @brief Check wheather to reach the end fo the file
@@ -264,7 +264,7 @@ CHAR_T* tkl_fgets(CHAR_T* buf, INT_T len, TUYA_FILE file);
 *
 * @return 0 on not eof, others on eof
 */
-INT_T tkl_feof(TUYA_FILE file);
+int32_t tkl_feof(TUYA_FILE file);
 
 /**
 * @brief Seek to the offset position of the file
@@ -277,7 +277,7 @@ INT_T tkl_feof(TUYA_FILE file);
 *
 * @return 0 on success, others on failed
 */
-INT_T tkl_fseek(TUYA_FILE file, INT64_T offs, INT_T whence);
+int32_t tkl_fseek(TUYA_FILE file, int64_t offs, int32_t whence);
 
 /**
 * @brief Get current position of file
@@ -288,7 +288,7 @@ INT_T tkl_fseek(TUYA_FILE file, INT64_T offs, INT_T whence);
 *
 * @return the current offset of the file
 */
-INT64_T tkl_ftell(TUYA_FILE file);
+int64_t tkl_ftell(TUYA_FILE file);
 
 /**
 * @brief Get file size
@@ -299,7 +299,7 @@ INT64_T tkl_ftell(TUYA_FILE file);
 *
 * @return the sizeof of file
 */
-INT_T tkl_fgetsize(CONST CHAR_T *filepath);
+int32_t tkl_fgetsize(const char *filepath);
 
 /**
 * @brief Judge if the file can be access
@@ -312,7 +312,7 @@ INT_T tkl_fgetsize(CONST CHAR_T *filepath);
 *
 * @return 0 success,-1 failed
 */
-INT_T tkl_faccess(CONST CHAR_T *filepath, INT_T mode);
+int32_t tkl_faccess(const char *filepath, int32_t mode);
 
 /**
 * @brief read the next character from stream
@@ -323,7 +323,7 @@ INT_T tkl_faccess(CONST CHAR_T *filepath, INT_T mode);
 *
 * @return as an unsigned char cast to a int ,or EOF on end of file or error
 */
-INT_T tkl_fgetc(TUYA_FILE file);
+int32_t tkl_fgetc(TUYA_FILE file);
 
 /**
 * @brief flush the IO read/write stream
@@ -334,7 +334,7 @@ INT_T tkl_fgetc(TUYA_FILE file);
 *
 * @return 0 success,-1 failed
 */
-INT_T tkl_fflush(TUYA_FILE file);
+int32_t tkl_fflush(TUYA_FILE file);
 
 /**
 * @brief get the file fd
@@ -345,7 +345,7 @@ INT_T tkl_fflush(TUYA_FILE file);
 *
 * @return the file fd
 */
-INT_T tkl_fileno(TUYA_FILE file);
+int32_t tkl_fileno(TUYA_FILE file);
 
 
 /**
@@ -359,7 +359,7 @@ INT_T tkl_fileno(TUYA_FILE file);
 *
 * @return 0 success,-1 failed
 */
-INT_T tkl_ftruncate(INT_T fd, UINT64_T length);
+int32_t tkl_ftruncate(int32_t fd, uint64_t length);
 
 /**
 * @brief mount file system
@@ -372,7 +372,7 @@ INT_T tkl_ftruncate(INT_T fd, UINT64_T length);
 *
 * @return 0 success,-1 failed
 */
-INT_T tkl_fs_mount(CONST CHAR_T *path, FS_DEV_TYPE_T dev_type);
+int32_t tkl_fs_mount(const char *path, FS_DEV_TYPE_T dev_type);
 
 /**
 * @brief unmount file system
@@ -383,7 +383,7 @@ INT_T tkl_fs_mount(CONST CHAR_T *path, FS_DEV_TYPE_T dev_type);
 *
 * @return 0 success,-1 failed
 */
-INT_T tkl_fs_unmount(CONST CHAR_T *path);
+int32_t tkl_fs_unmount(const char *path);
 
 #ifdef __cplusplus
 } // extern "C"

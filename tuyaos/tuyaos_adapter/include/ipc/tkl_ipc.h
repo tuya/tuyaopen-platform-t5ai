@@ -120,15 +120,15 @@ struct ipc_msg_s {
 };
 
 struct ipc_msg_param_s {
-    VOID_T  *p1;
-    VOID_T  *p2;
-    VOID_T  *p3;
-    VOID_T  *p4;
+    void  *p1;
+    void  *p2;
+    void  *p3;
+    void  *p4;
 };
 
-typedef VOID_T* TKL_IPC_HANDLE;
+typedef void* TKL_IPC_HANDLE;
 
-typedef OPERATE_RET (*TKL_IPC_FUNC_CB)(UINT8_T *buf, UINT32_T buf_len);
+typedef OPERATE_RET (*TKL_IPC_FUNC_CB)(uint8_t *buf, uint32_t buf_len);
 
 typedef struct {
     TKL_IPC_FUNC_CB  cb;
@@ -150,7 +150,7 @@ OPERATE_RET tkl_ipc_init(TKL_IPC_CONF_T *config);
  *
  * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
  */
-OPERATE_RET tkl_ipc_send(CONST UINT8_T *buf, UINT32_T buf_len);
+OPERATE_RET tkl_ipc_send(const uint8_t *buf, uint32_t buf_len);
 
 OPERATE_RET tuya_ipc_send_sync(struct ipc_msg_s *msg);
 OPERATE_RET tuya_ipc_send_no_sync(struct ipc_msg_s *msg);

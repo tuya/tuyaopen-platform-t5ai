@@ -16,7 +16,7 @@
 extern "C" {
 #endif
 
-typedef VOID_T* TKL_SEM_HANDLE;
+typedef void* TKL_SEM_HANDLE;
 #define TKL_SEM_WAIT_FOREVER 0xFFFFffff
 
 /**
@@ -30,7 +30,7 @@ typedef VOID_T* TKL_SEM_HANDLE;
 *
 * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
 */
-OPERATE_RET tkl_semaphore_create_init(TKL_SEM_HANDLE *handle, UINT_T sem_cnt, UINT_T sem_max);
+OPERATE_RET tkl_semaphore_create_init(TKL_SEM_HANDLE *handle, uint32_t sem_cnt, uint32_t sem_max);
 
 /**
 * @brief Wait semaphore
@@ -42,7 +42,7 @@ OPERATE_RET tkl_semaphore_create_init(TKL_SEM_HANDLE *handle, UINT_T sem_cnt, UI
 *
 * @return OPRT_OK on success.OPRT_OS_ADAPTER_SEM_WAIT_TIMEOUT means timeout. Others on error, please refer to tuya_error_code.h
 */
-OPERATE_RET tkl_semaphore_wait(CONST TKL_SEM_HANDLE handle, UINT_T timeout);
+OPERATE_RET tkl_semaphore_wait(const TKL_SEM_HANDLE handle, uint32_t timeout);
 
 /**
 * @brief Post semaphore
@@ -53,7 +53,7 @@ OPERATE_RET tkl_semaphore_wait(CONST TKL_SEM_HANDLE handle, UINT_T timeout);
 *
 * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
 */
-OPERATE_RET tkl_semaphore_post(CONST TKL_SEM_HANDLE handle);
+OPERATE_RET tkl_semaphore_post(const TKL_SEM_HANDLE handle);
 
 /**
 * @brief Release semaphore
@@ -64,7 +64,7 @@ OPERATE_RET tkl_semaphore_post(CONST TKL_SEM_HANDLE handle);
 *
 * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
 */
-OPERATE_RET tkl_semaphore_release(CONST TKL_SEM_HANDLE handle);
+OPERATE_RET tkl_semaphore_release(const TKL_SEM_HANDLE handle);
 
 #ifdef __cplusplus
 }

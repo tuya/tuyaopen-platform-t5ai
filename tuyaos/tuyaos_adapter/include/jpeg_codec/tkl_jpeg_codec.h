@@ -27,9 +27,9 @@ typedef enum
 typedef struct
 {
     TUYA_FRAME_FMT_E    out_fmt;
-    UINT16_T            out_width;
-    UINT16_T            out_height;
-    UINT32_T            in_size;
+    uint16_t            out_width;
+    uint16_t            out_height;
+    uint32_t            in_size;
 } TKL_JPEG_CODEC_INFO_T;
 
 /**
@@ -54,7 +54,7 @@ OPERATE_RET tkl_jpeg_codec_deinit();
 *
 * @return OPRT_OK on success. Others on error, please refer to tkl_error_code.h
 */
-OPERATE_RET tkl_jpeg_codec_img_info_get(UINT8_T *jpeg_buf, UINT32_T jpeg_size, TKL_JPEG_CODEC_INFO_T *jpeg_info);
+OPERATE_RET tkl_jpeg_codec_img_info_get(uint8_t *jpeg_buf, uint32_t jpeg_size, TKL_JPEG_CODEC_INFO_T *jpeg_info);
 
 /**
 * @brief codec convert
@@ -64,7 +64,7 @@ OPERATE_RET tkl_jpeg_codec_img_info_get(UINT8_T *jpeg_buf, UINT32_T jpeg_size, T
 *
 * @return OPRT_OK on success. Others on error, please refer to tkl_error_code.h
 */
-OPERATE_RET tkl_jpeg_codec_convert(UINT8_T *src_buf, UINT8_T *dst_buf, TKL_JPEG_CODEC_INFO_T *jpeg_codec_info, JPEG_DEC_OUT_FMT out_fmt);
+OPERATE_RET tkl_jpeg_codec_convert(uint8_t *src_buf, uint8_t *dst_buf, TKL_JPEG_CODEC_INFO_T *jpeg_codec_info, JPEG_DEC_OUT_FMT out_fmt);
 
 #ifdef __cplusplus
 } // extern "C"

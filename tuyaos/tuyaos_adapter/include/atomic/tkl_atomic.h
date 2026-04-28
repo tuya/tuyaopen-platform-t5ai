@@ -23,7 +23,7 @@ extern "C" {
  *                         loaded and written back to
  * @return  value before increment
  */
-UINT_T tkl_system_atomic_inc(UINT_T volatile *val);
+uint32_t tkl_system_atomic_inc(uint32_t volatile *val);
 
 /**
  * @brief decrement one from value
@@ -32,7 +32,7 @@ UINT_T tkl_system_atomic_inc(UINT_T volatile *val);
  *                         loaded and written back to
  * @return  value before decrement
  */
-UINT_T tkl_system_atomic_dec(UINT_T volatile *val);
+uint32_t tkl_system_atomic_dec(uint32_t volatile *val);
 
 /**
  * @brief add count to value
@@ -42,7 +42,7 @@ UINT_T tkl_system_atomic_dec(UINT_T volatile *val);
  * @param[in]   count: Value to be add to val
  * @return  previous *val value.
  */
-UINT_T tkl_system_atomic_add(UINT_T volatile *val, UINT_T count);
+uint32_t tkl_system_atomic_add(uint32_t volatile *val, uint32_t count);
 
 /**
  * @brief subtract count from value
@@ -52,7 +52,7 @@ UINT_T tkl_system_atomic_add(UINT_T volatile *val, UINT_T count);
  * @param[in]   count: Value to be subtract from val
  * @return  previous *val value.
  */
-UINT_T tkl_system_atomic_sub(UINT_T volatile *val, UINT_T count);
+uint32_t tkl_system_atomic_sub(uint32_t volatile *val, uint32_t count);
 
 /**
  * @brief atomic exchange
@@ -61,7 +61,7 @@ UINT_T tkl_system_atomic_sub(UINT_T volatile *val, UINT_T count);
  * @param[in]   psrc: source memory
  * @return  dest original value
  */
-VOID_T *tkl_system_atomic_swap(VOID_T * volatile *pdst, VOID_T * psrc);
+void *tkl_system_atomic_swap(void * volatile *pdst, void * psrc);
 
 
 /**
@@ -72,7 +72,7 @@ VOID_T *tkl_system_atomic_swap(VOID_T * volatile *pdst, VOID_T * psrc);
  * @param[in]   compare: value of be compared
  * @return  Unsigned integer of value 1 or 0. 1 for swapped, 0 for not swapped.
  */
-BOOL_T tkl_system_atomic_cmp_and_set(UINT_T volatile *pdst, UINT_T val, UINT_T compare);
+BOOL_T tkl_system_atomic_cmp_and_set(uint32_t volatile *pdst, uint32_t val, uint32_t compare);
 
 /**
  * @brief atomic compare and exchange
@@ -82,7 +82,7 @@ BOOL_T tkl_system_atomic_cmp_and_set(UINT_T volatile *pdst, UINT_T val, UINT_T c
  * @param[in]   compare: value of be compared
  * @return  Unsigned integer of value 1 or 0. 1 for swapped, 0 for not swapped.
  */
-BOOL_T tkl_system_atomic_cmp_and_swap(VOID_T * volatile *pdst, VOID_T * psrc, VOID_T * pcmp);
+BOOL_T tkl_system_atomic_cmp_and_swap(void * volatile *pdst, void * psrc, void * pcmp);
 
 /**
  * @brief atomic AND
@@ -91,7 +91,7 @@ BOOL_T tkl_system_atomic_cmp_and_swap(VOID_T * volatile *pdst, VOID_T * psrc, VO
  * @param[in]   val: set value
  * @return  dest original value.
  */
-UINT_T tkl_system_atomic_and(UINT_T volatile *pdst, UINT_T val);
+uint32_t tkl_system_atomic_and(uint32_t volatile *pdst, uint32_t val);
 
 /**
  * @brief atomic OR
@@ -100,7 +100,7 @@ UINT_T tkl_system_atomic_and(UINT_T volatile *pdst, UINT_T val);
  * @param[in]   val: set value
  * @return  dest original value.
  */
-UINT_T tkl_system_atomic_or(UINT_T volatile *pdst, UINT_T val);
+uint32_t tkl_system_atomic_or(uint32_t volatile *pdst, uint32_t val);
 
 /**
  * @brief atomic NAND
@@ -109,7 +109,7 @@ UINT_T tkl_system_atomic_or(UINT_T volatile *pdst, UINT_T val);
  * @param[in]   val: set value
  * @return  dest original value.
  */
-UINT_T tkl_system_atomic_nand(UINT_T volatile *pdst, UINT_T val);
+uint32_t tkl_system_atomic_nand(uint32_t volatile *pdst, uint32_t val);
 
 /**
  * @brief atomic XOR
@@ -118,7 +118,7 @@ UINT_T tkl_system_atomic_nand(UINT_T volatile *pdst, UINT_T val);
  * @param[in]   val: set value
  * @return  dest original value.
  */
-UINT_T tkl_system_atomic_xor(UINT_T volatile *pdst, UINT_T val);
+uint32_t tkl_system_atomic_xor(uint32_t volatile *pdst, uint32_t val);
 
 #ifdef __cplusplus
 }

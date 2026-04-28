@@ -5,29 +5,29 @@
 #define __TOLOWER(c) ((('A' <= (c))&&((c) <= 'Z')) ? ((c) - 'A' + 'a') : (c))
 
 
-SIZE_T tuya_strlen(const CHAR_T *str)
+size_t tuya_strlen(const char *str)
 {
     return strlen(str);
 }
 
-CHAR_T *tuya_strcpy(CHAR_T *dst, const CHAR_T *src)
+char *tuya_strcpy(char *dst, const char *src)
 {
     return strcpy(dst, src);
 }
 
-CHAR_T *tuya_strcat(CHAR_T* dst, const CHAR_T* src)
+char *tuya_strcat(char* dst, const char* src)
 {
     return strcat(dst, src);
 }
 
 
 
-INT_T tuya_strncasecmp(const CHAR_T *s1, const CHAR_T *s2, size_t n)
+int tuya_strncasecmp(const char *s1, const char *s2, size_t n)
 {
-    const UCHAR_T *p1 = (const UCHAR_T *) s1;
-    const UCHAR_T *p2 = (const UCHAR_T *) s2;
-    INT_T result = 0;
-    INT_T cnt = 0;
+    const uint8_t *p1 = (const uint8_t *) s1;
+    const uint8_t *p2 = (const uint8_t *) s2;
+    int32_t result = 0;
+    int32_t cnt = 0;
 
     if (p1 == p2) {
         return 0;
@@ -52,11 +52,11 @@ INT_T tuya_strncasecmp(const CHAR_T *s1, const CHAR_T *s2, size_t n)
     return result;
 }
 
-INT_T tuya_strcmp(const CHAR_T *src,const CHAR_T *dst)
+int tuya_strcmp(const char *src,const char *dst)
 {
-    INT_T ret = 0;
+    int32_t ret = 0;
 
-    while(!(ret  =  *(UCHAR_T *)src - *(UCHAR_T *)dst) && *dst) {
+    while(!(ret  =  *(uint8_t *)src - *(uint8_t *)dst) && *dst) {
         ++src,++dst;
     }
 
@@ -70,9 +70,9 @@ INT_T tuya_strcmp(const CHAR_T *src,const CHAR_T *dst)
 }
 
 
-UCHAR_T tuya_asc2hex(CHAR_T asccode)
+uint8_t tuya_asc2hex(char asccode)
 {
-    UCHAR_T ret;
+    uint8_t ret;
 
     if('0'<=asccode && asccode<='9')
         ret=asccode-'0';
@@ -86,10 +86,10 @@ UCHAR_T tuya_asc2hex(CHAR_T asccode)
     return ret;
 }
 
-VOID_T tuya_ascs2hex(UCHAR_T *hex, UCHAR_T *ascs, INT_T srclen)
+void tuya_ascs2hex(uint8_t *hex, uint8_t *ascs, int32_t srclen)
 {
-    UCHAR_T l4,h4;
-    INT_T i,lenstr;
+    uint8_t l4,h4;
+    int32_t i,lenstr;
     lenstr = srclen;
 
     if(lenstr%2) {
@@ -107,10 +107,10 @@ VOID_T tuya_ascs2hex(UCHAR_T *hex, UCHAR_T *ascs, INT_T srclen)
     }
 }
 
-VOID_T tuya_hex2str(UCHAR_T *str, UCHAR_T *hex, INT_T hexlen)
+void tuya_hex2str(uint8_t *str, uint8_t *hex, int32_t hexlen)
 {
-    CHAR_T ddl,ddh;
-    INT_T i;
+    char ddl,ddh;
+    int32_t i;
 
     for (i=0; i<hexlen; i++) {
         ddh = 48 + hex[i] / 16;
@@ -124,10 +124,10 @@ VOID_T tuya_hex2str(UCHAR_T *str, UCHAR_T *hex, INT_T hexlen)
     str[hexlen*2] = '\0';
 }
 
-BOOL_T tuya_str2num(UINT_T *number, const CHAR_T *str, UINT8_T strlen)
+BOOL_T tuya_str2num(uint32_t *number, const char *str, uint8_t strlen)
 {
-    UINT_T value = 0;
-    UINT8_T i;
+    uint32_t value = 0;
+    uint8_t i;
 
     for (i=0; i<strlen; i++) {
         if(str[i]>='0' && str[i]<='9') {
@@ -141,14 +141,14 @@ BOOL_T tuya_str2num(UINT_T *number, const CHAR_T *str, UINT8_T strlen)
     return TRUE;
 }
 
-UINT_T tuya_intArray2int(UINT8_T *intArray, UINT_T index, UINT8_T len)
+uint32_t tuya_intArray2int(uint8_t *intArray, uint32_t index, uint8_t len)
 {
     if(index >= len) {
-        return (UINT_T)-1;
+        return (uint32_t)-1;
     }
     
-	UINT_T num = 0;
-    UINT8_T i = 0;
+	uint32_t num = 0;
+    uint8_t i = 0;
 	for (i = index; i < index+len; i++) {
 		num = (num*10) + intArray[i];
 	}
@@ -156,10 +156,10 @@ UINT_T tuya_intArray2int(UINT8_T *intArray, UINT_T index, UINT8_T len)
 	return num;
 }
 
-UINT_T tuya_int2intArray(UINT_T num, UINT8_T *intArray, UINT8_T len)
+uint32_t tuya_int2intArray(uint32_t num, uint8_t *intArray, uint8_t len)
 {
-    UINT8_T i = 0;
-    UINT_T tmp = 0;
+    uint8_t i = 0;
+    uint32_t tmp = 0;
     
     tmp = num;
     do {
@@ -182,11 +182,11 @@ UINT_T tuya_int2intArray(UINT_T num, UINT8_T *intArray, UINT8_T len)
     return i;
 }
 
-VOID_T tuya_buff_reverse(UINT8_T *buf, UINT16_T len)
+void tuya_buff_reverse(uint8_t *buf, uint16_t len)
 {
-    UINT8_T* p_tmp = buf;
-    UINT8_T  tmp;
-    UINT16_T i;
+    uint8_t* p_tmp = buf;
+    uint8_t  tmp;
+    uint16_t i;
 
     for(i=0; i<len/2; i++) {
         tmp = *(p_tmp+i);
@@ -195,10 +195,10 @@ VOID_T tuya_buff_reverse(UINT8_T *buf, UINT16_T len)
     }
 }
 
-VOID_T tuya_data_reverse(UINT8_T *dst, UINT8_T *src, UINT16_T srclen)
+void tuya_data_reverse(uint8_t *dst, uint8_t *src, uint16_t srclen)
 {
-    UINT16_T i;
-    UINT16_T max_len = srclen;
+    uint16_t i;
+    uint16_t max_len = srclen;
 
     for(i=0; i<srclen; i++) {
         dst[i] = src[--max_len];
@@ -207,20 +207,20 @@ VOID_T tuya_data_reverse(UINT8_T *dst, UINT8_T *src, UINT16_T srclen)
 
 // input: str->string
 //        index->reverse index,start from 0
-//        ch->find CHAR_T
+//        ch->find char
 // return: find position
-INT_T tuya_find_char_with_reverse_idx(const CHAR_T *str, const INT_T index, const CHAR_T ch)
+int32_t tuya_find_char_with_reverse_idx(const char *str, const int32_t index, const char ch)
 {
     if(NULL == str) {
         return -1;
     }
 
-    INT_T len = strlen(str);
+    int32_t len = strlen(str);
     if(index >= len) {
         return -1;
     }
 
-    INT_T i = 0;
+    int32_t i = 0;
     for(i = (len-1-index);i >= 0;i--) {
         if(str[i] == ch) {
             return i;
@@ -230,10 +230,10 @@ INT_T tuya_find_char_with_reverse_idx(const CHAR_T *str, const INT_T index, cons
     return -2;
 }
 
-VOID_T tuya_byte_sort(UCHAR_T is_ascend, UCHAR_T *buf, INT_T len)
+void tuya_byte_sort(uint8_t is_ascend, uint8_t *buf, int32_t len)
 {
-    INT_T i,j;
-    UCHAR_T tmp = 0;
+    int32_t i,j;
+    uint8_t tmp = 0;
 
     for(j = 1;j < len;j++) {
         for(i = 0;i < len-j;i++) {
@@ -255,9 +255,9 @@ VOID_T tuya_byte_sort(UCHAR_T is_ascend, UCHAR_T *buf, INT_T len)
     }
 }
 
-UINT_T tuya_bit1_count(UINT_T num)
+uint32_t tuya_bit1_count(uint32_t num)
 {
-    UINT_T count = 0;
+    uint32_t count = 0;
 
     for (count = 0; num; ++count) {
         num &= (num -1); // clear lower bit
@@ -266,10 +266,10 @@ UINT_T tuya_bit1_count(UINT_T num)
     return count;
 }
 
-UINT_T tuya_leading_zeros_count(UINT_T num)
+uint32_t tuya_leading_zeros_count(uint32_t num)
 {
-    UINT_T count = 0;
-    UINT_T temp = ~num;
+    uint32_t count = 0;
+    uint32_t temp = ~num;
 
     while(temp & 0x80000000) {
         temp <<= 1;
@@ -279,20 +279,20 @@ UINT_T tuya_leading_zeros_count(UINT_T num)
     return count;
 }
 
-UINT8_T tuya_check_sum8(UINT8_T *buf, UINT_T len)
+uint8_t tuya_check_sum8(uint8_t *buf, uint32_t len)
 {
-    UINT8_T sum = 0;
-    UINT_T idx=0;
+    uint8_t sum = 0;
+    uint32_t idx=0;
     for(idx=0; idx<len; idx++) {
         sum += buf[idx];
     }
     return sum;
 }
 
-UINT16_T tuya_check_sum16(UINT8_T *buf, UINT_T len)
+uint16_t tuya_check_sum16(uint8_t *buf, uint32_t len)
 {
-    UINT16_T sum = 0;
-    UINT_T idx=0;
+    uint16_t sum = 0;
+    uint32_t idx=0;
     for(idx=0; idx<len; idx++) {
         sum += buf[idx];
     }
