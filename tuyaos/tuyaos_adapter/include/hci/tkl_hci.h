@@ -35,34 +35,34 @@ extern "C" {
 /*************************    TKL Bluetooth HCI Transport Interface  *********************************/
 
 /**< HCI Callback Register function definition */
-typedef OPERATE_RET (*TKL_HCI_FUNC_CB)(UCHAR_T *p_buf, USHORT_T buf_len);
+typedef OPERATE_RET (*TKL_HCI_FUNC_CB)(uint8_t *p_buf, uint16_t buf_len);
 
 /**
  * @brief   Function for initializing the bluetooth host-controller interface
- * @param   VOID
+ * @param   void
  * @return  SUCCESS             Initialized successfully.
  *          ERROR
  * */
-OPERATE_RET tkl_hci_init(VOID);
+OPERATE_RET tkl_hci_init(void);
 
 /**
  * @brief   Function for de-initializing the bluetooth host-controller interface
- * @param   VOID
+ * @param   void
  * @return  SUCCESS             De-initialized successfully.
  *          ERROR
  * */
-OPERATE_RET tkl_hci_deinit(VOID);
+OPERATE_RET tkl_hci_deinit(void);
 
 /**
  * @brief   [Linux/Android] Function for reseting the bluetooth host-controller interface
  *          Try to recover socket or reopen uart/usb interface.
- * @param   VOID
+ * @param   void
  * @return  SUCCESS             Reset successfully.
  *          ERROR
  * @note    [Special Interface] If running in RTOS, we may not support this feature. 
  *          And you can report OPRT_NOT_SUPPORT if you dont need it.
  * */
-OPERATE_RET tkl_hci_reset(VOID);
+OPERATE_RET tkl_hci_reset(void);
 
 /**
  * @brief   Send HCI-Command Packet to controller from host.
@@ -82,7 +82,7 @@ OPERATE_RET tkl_hci_reset(VOID);
  *          OpCode(OCF+OGF) + Parameter Total Length + Parameter 0 ... + Parameter N
  * @Note    The OpCode Group Field (OGF), OpCode Command Field (OCF). 
  * */
-OPERATE_RET tkl_hci_cmd_packet_send(CONST UCHAR_T *p_buf, USHORT_T buf_len);
+OPERATE_RET tkl_hci_cmd_packet_send(const uint8_t *p_buf, uint16_t buf_len);
 
 /**
  * @brief   Send HCI-Command Packet to controller from host.
@@ -103,7 +103,7 @@ OPERATE_RET tkl_hci_cmd_packet_send(CONST UCHAR_T *p_buf, USHORT_T buf_len);
  *          (Connection Handle + PB Flag(12-14bit) + PC Flag(14-16bit)) + Data Total Length + Data
  * @Note    PB Flag: Packet_Boundary_Flag; PB Flag: Broadcast_Flag;
  * */
-OPERATE_RET tkl_hci_acl_packet_send(CONST UCHAR_T *p_buf, USHORT_T buf_len);
+OPERATE_RET tkl_hci_acl_packet_send(const uint8_t *p_buf, uint16_t buf_len);
 
 /**
  * @brief   Register the hci callback, while receiving "hci-event" or "acl-packet" data from controller,
@@ -125,7 +125,7 @@ OPERATE_RET tkl_hci_acl_packet_send(CONST UCHAR_T *p_buf, USHORT_T buf_len);
                1 byte        1 byte                1 byte                       N bytes
  *          Event Code + Parameter Total Length+ Event Parameter 0 + ... + Event Parameter N
  * */
-OPERATE_RET tkl_hci_callback_register(CONST TKL_HCI_FUNC_CB hci_evt_cb, CONST TKL_HCI_FUNC_CB acl_pkt_cb);
+OPERATE_RET tkl_hci_callback_register(const TKL_HCI_FUNC_CB hci_evt_cb, const TKL_HCI_FUNC_CB acl_pkt_cb);
 
 
 #ifdef __cplusplus

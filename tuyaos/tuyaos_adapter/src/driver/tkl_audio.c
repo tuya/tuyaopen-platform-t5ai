@@ -36,16 +36,16 @@ static voice_read_handle_t g_voice_read_handle = NULL;
 static voice_write_handle_t g_voice_write_handle = NULL;
 typedef struct
 {
-    UINT32_T mic_gain;
-    UINT32_T spk_gain;
+    uint32_t mic_gain;
+    uint32_t spk_gain;
 }TKL_AUDIO_GAIN_T;
 
 static TKL_AUDIO_GAIN_T g_audio_gain = {0};
 static TKL_FRAME_PUT_CB user_mic_cb = NULL;
 static TKL_FRAME_SPK_CB user_spk_cb = NULL;
-static INT32_T board_spk_gpio = 56;
-static INT32_T board_spk_gpio_polarity = 0;     // 喇叭静音时候电平
-static INT32_T tkl_bk_vad_enable = 1;
+static int32_t board_spk_gpio = 56;
+static int32_t board_spk_gpio_polarity = 0;     // 喇叭静音时候电平
+static int32_t tkl_bk_vad_enable = 1;
 
 extern void *tkl_system_psram_malloc(size_t size);
 extern void tkl_system_psram_free(void *ptr);
@@ -58,8 +58,8 @@ typedef struct {
 
 typedef struct {
     TKL_AUDIO_TYPE_E card;
-    UINT32_T samp_rate;
-    UINT_T aec_enable;
+    uint32_t samp_rate;
+    uint32_t aec_enable;
 } AUIDO_MIC_T;
 
 static AUIDO_MIC_T s_audio_mic = {0};
@@ -148,10 +148,10 @@ void tkl_ai_disable_vendor_vad(void)
  *
  * @return OPRT_OK on success. Others on error, please refer to tkl_error_code.h
  */
-OPERATE_RET tkl_ai_init(TKL_AUDIO_CONFIG_T *pconfig, INT32_T count)
+OPERATE_RET tkl_ai_init(TKL_AUDIO_CONFIG_T *pconfig, int32_t count)
 {
-    UINT_T level = 0;
-    UINT32_T sample_rate = TKL_AUDIO_SAMPLE_8K;
+    uint32_t level = 0;
+    uint32_t sample_rate = TKL_AUDIO_SAMPLE_8K;
     uint32_t frame_size = 320;
     uac_mic_stream_cfg_t uac_mic_cfg = UAC_MIC_STREAM_CFG_DEFAULT();
     onboard_mic_stream_cfg_t onboard_mic_cfg = ONBOARD_MIC_ADC_STREAM_CFG_DEFAULT();
@@ -547,9 +547,9 @@ error:
  *
  * @return OPRT_OK on success. Others on error, please refer to tkl_error_code.h
  */
-OPERATE_RET tkl_ai_start(INT32_T card, TKL_AI_CHN_E chn)
+OPERATE_RET tkl_ai_start(int32_t card, TKL_AI_CHN_E chn)
 {
-    UINT32_T level = 0;
+    uint32_t level = 0;
     if (tkl_ai_status() == VOICE_STA_NONE) {
         bk_printf("tkl_ai_start fail, not init\n");
         return OPRT_COM_ERROR;
@@ -596,7 +596,7 @@ __start_err:
  *
  * @return OPRT_OK on success. Others on error, please refer to tkl_error_code.h
  */
-OPERATE_RET tkl_ai_set_vol(INT32_T card, TKL_AI_CHN_E chn, INT32_T vol)
+OPERATE_RET tkl_ai_set_vol(int32_t card, TKL_AI_CHN_E chn, int32_t vol)
 {
     if (!s_audio_init.audio_init || !s_audio_init.audio_start) {
         return OPRT_RESOURCE_NOT_READY;
@@ -628,7 +628,7 @@ OPERATE_RET tkl_ai_set_vol(INT32_T card, TKL_AI_CHN_E chn, INT32_T vol)
  *
  * @return OPRT_OK on success. Others on error, please refer to tkl_error_code.h
  */
-OPERATE_RET tkl_ai_get_frame(INT32_T card, TKL_AI_CHN_E chn,
+OPERATE_RET tkl_ai_get_frame(int32_t card, TKL_AI_CHN_E chn,
                              TKL_AUDIO_FRAME_INFO_T *pframe)
 {
     return OPRT_NOT_SUPPORTED;
@@ -644,7 +644,7 @@ OPERATE_RET tkl_ai_get_frame(INT32_T card, TKL_AI_CHN_E chn,
  *
  * @return OPRT_OK on success. Others on error, please refer to tkl_error_code.h
  */
-OPERATE_RET tkl_ai_set_vqe(INT32_T card, TKL_AI_CHN_E chn,
+OPERATE_RET tkl_ai_set_vqe(int32_t card, TKL_AI_CHN_E chn,
                            TKL_AUDIO_VQE_TYPE_E type,
                            TKL_AUDIO_VQE_PARAM_T *pparam)
 {
@@ -663,7 +663,7 @@ OPERATE_RET tkl_ai_set_vqe(INT32_T card, TKL_AI_CHN_E chn,
  *
  * @return OPRT_OK on success. Others on error, please refer to tkl_error_code.h
  */
-OPERATE_RET tkl_ai_get_vqe(INT32_T card, TKL_AI_CHN_E chn,
+OPERATE_RET tkl_ai_get_vqe(int32_t card, TKL_AI_CHN_E chn,
                            TKL_AUDIO_VQE_TYPE_E type,
                            TKL_AUDIO_VQE_PARAM_T *pparam)
 {
@@ -678,9 +678,9 @@ OPERATE_RET tkl_ai_get_vqe(INT32_T card, TKL_AI_CHN_E chn,
  *
  * @return OPRT_OK on success. Others on error, please refer to tkl_error_code.h
  */
-OPERATE_RET tkl_ai_stop(INT32_T card, TKL_AI_CHN_E chn)
+OPERATE_RET tkl_ai_stop(int32_t card, TKL_AI_CHN_E chn)
 {
-    UINT32_T level = 0;
+    uint32_t level = 0;
     if (!s_audio_init.audio_init || !s_audio_init.audio_start) {
         return OPRT_OK;
     }
@@ -709,10 +709,10 @@ OPERATE_RET tkl_ai_stop(INT32_T card, TKL_AI_CHN_E chn)
  *
  * @return OPRT_OK on success. Others on error, please refer to tkl_error_code.h
  */
-OPERATE_RET tkl_ai_uninit(VOID)
+OPERATE_RET tkl_ai_uninit(void)
 {
     int ret = OPRT_OK;
-    UINT_T level = 0;
+    uint32_t level = 0;
 
     if (!s_audio_init.audio_init) {
         return OPRT_OK;
@@ -728,8 +728,8 @@ OPERATE_RET tkl_ai_uninit(VOID)
  *
  * @return OPRT_OK on success. Others on error, please refer to tkl_error_code.h
  */
-OPERATE_RET tkl_ao_init(TKL_AUDIO_CONFIG_T *pconfig, INT32_T count,
-                        VOID **handle)
+OPERATE_RET tkl_ao_init(TKL_AUDIO_CONFIG_T *pconfig, int32_t count,
+                        void **handle)
 {
     int ret = OPRT_NOT_SUPPORTED;
     if (s_audio_init.audio_init) {
@@ -749,7 +749,7 @@ OPERATE_RET tkl_ao_init(TKL_AUDIO_CONFIG_T *pconfig, INT32_T count,
  *
  * @return OPRT_OK on success. Others on error, please refer to tkl_error_code.h
  */
-OPERATE_RET tkl_ao_start(INT32_T card, TKL_AO_CHN_E chn, VOID *handle)
+OPERATE_RET tkl_ao_start(int32_t card, TKL_AO_CHN_E chn, void *handle)
 {
 
     if (g_voice_write_handle) {
@@ -770,8 +770,8 @@ OPERATE_RET tkl_ao_start(INT32_T card, TKL_AO_CHN_E chn, VOID *handle)
  *
  * @return OPRT_OK on success. Others on error, please refer to tkl_error_code.h
  */
-OPERATE_RET tkl_ao_set_vol(INT32_T card, TKL_AO_CHN_E chn, VOID *handle,
-                           INT32_T vol)
+OPERATE_RET tkl_ao_set_vol(int32_t card, TKL_AO_CHN_E chn, void *handle,
+                           int32_t vol)
 {
     if (!s_audio_init.audio_init || !s_audio_init.audio_start) {
         return OPRT_RESOURCE_NOT_READY;
@@ -809,8 +809,8 @@ OPERATE_RET tkl_ao_set_vol(INT32_T card, TKL_AO_CHN_E chn, VOID *handle,
  *
  * @return OPRT_OK on success. Others on error, please refer to tkl_error_code.h
  */
-OPERATE_RET tkl_ao_get_vol(INT32_T card, TKL_AO_CHN_E chn, VOID *handle,
-                           INT32_T *vol)
+OPERATE_RET tkl_ao_get_vol(int32_t card, TKL_AO_CHN_E chn, void *handle,
+                           int32_t *vol)
 {
     if (!s_audio_init.audio_init || !s_audio_init.audio_start) {
         return OPRT_RESOURCE_NOT_READY;
@@ -829,7 +829,7 @@ OPERATE_RET tkl_ao_get_vol(INT32_T card, TKL_AO_CHN_E chn, VOID *handle,
  *
  * @return OPRT_OK on success. Others on error, please refer to tkl_error_code.h
  */
-OPERATE_RET tkl_ao_put_frame(INT32_T card, TKL_AO_CHN_E chn, VOID *handle,
+OPERATE_RET tkl_ao_put_frame(int32_t card, TKL_AO_CHN_E chn, void *handle,
                              TKL_AUDIO_FRAME_INFO_T *pframe)
 {
     OPERATE_RET ret;
@@ -885,7 +885,7 @@ write_spk_retry:
  *
  * @return OPRT_OK on success. Others on error, please refer to tkl_error_code.h
  */
-OPERATE_RET tkl_ao_clear_buffer(INT32_T card, TKL_AO_CHN_E chn)
+OPERATE_RET tkl_ao_clear_buffer(int32_t card, TKL_AO_CHN_E chn)
 {
     return OPRT_OK;
 }
@@ -899,9 +899,9 @@ OPERATE_RET tkl_ao_clear_buffer(INT32_T card, TKL_AO_CHN_E chn)
  *
  * @return OPRT_OK on success. Others on error, please refer to tkl_error_code.h
  */
-OPERATE_RET tkl_ao_stop(INT32_T card, TKL_AO_CHN_E chn, VOID *handle)
+OPERATE_RET tkl_ao_stop(int32_t card, TKL_AO_CHN_E chn, void *handle)
 {
-    UINT32_T level = 0;
+    uint32_t level = 0;
     int ret = OPRT_NOT_SUPPORTED;
     if (!s_audio_init.audio_start) {
         return OPRT_OK;
@@ -935,9 +935,9 @@ OPERATE_RET tkl_ao_stop(INT32_T card, TKL_AO_CHN_E chn, VOID *handle)
  *
  * @return OPRT_OK on success. Others on error, please refer to tkl_error_code.h
  */
-OPERATE_RET tkl_ao_uninit(VOID *handle)
+OPERATE_RET tkl_ao_uninit(void *handle)
 {
-    UINT32_T level = 0;
+    uint32_t level = 0;
     if (!s_audio_init.audio_init) {
         return OPRT_COM_ERROR;
     }
@@ -965,7 +965,7 @@ OPERATE_RET tkl_ao_uninit(VOID *handle)
  *
  * @return OPRT_OK on success. Others on error, please refer to tkl_error_code.h
  */
-OPERATE_RET tkl_ai_detect_start(INT32_T card, TKL_MEDIA_DETECT_TYPE_E type)
+OPERATE_RET tkl_ai_detect_start(int32_t card, TKL_MEDIA_DETECT_TYPE_E type)
 {
     return OPRT_NOT_SUPPORTED;
 }
@@ -978,7 +978,7 @@ OPERATE_RET tkl_ai_detect_start(INT32_T card, TKL_MEDIA_DETECT_TYPE_E type)
  *
  * @return OPRT_OK on success. Others on error, please refer to tkl_error_code.h
  */
-OPERATE_RET tkl_ai_detect_stop(INT32_T card, TKL_MEDIA_DETECT_TYPE_E type)
+OPERATE_RET tkl_ai_detect_stop(int32_t card, TKL_MEDIA_DETECT_TYPE_E type)
 {
     return OPRT_NOT_SUPPORTED;
 }
@@ -992,7 +992,7 @@ OPERATE_RET tkl_ai_detect_stop(INT32_T card, TKL_MEDIA_DETECT_TYPE_E type)
  *
  * @return OPRT_OK on success. Others on error, please refer to tkl_error_code.h
  */
-OPERATE_RET tkl_ai_detect_get_result(INT32_T card, TKL_MEDIA_DETECT_TYPE_E type,
+OPERATE_RET tkl_ai_detect_get_result(int32_t card, TKL_MEDIA_DETECT_TYPE_E type,
                                      TKL_AUDIO_DETECT_RESULT_T *presult)
 {
     return OPRT_NOT_SUPPORTED;

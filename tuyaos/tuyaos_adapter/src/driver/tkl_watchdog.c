@@ -28,7 +28,7 @@ static void bk_wdt_rst_enable(void) {
     rtos_enable_int(level);
 }
 
-UINT_T tkl_watchdog_init(TUYA_WDOG_BASE_CFG_T *cfg)
+uint32_t tkl_watchdog_init(TUYA_WDOG_BASE_CFG_T *cfg)
 {
     if (cfg->interval_ms > 30000) {
         cfg->interval_ms = 30000;
@@ -45,7 +45,7 @@ UINT_T tkl_watchdog_init(TUYA_WDOG_BASE_CFG_T *cfg)
     return cfg->interval_ms;
 }
 
-OPERATE_RET tkl_watchdog_deinit(VOID_T)
+OPERATE_RET tkl_watchdog_deinit(void)
 {
 #if 0
     bk_wdt_stop();
@@ -55,7 +55,7 @@ OPERATE_RET tkl_watchdog_deinit(VOID_T)
 
 extern __IRAM_SEC uint64_t bk_aon_rtc_get_ms(void);
 extern beken_time_t rtos_get_time( void );
-OPERATE_RET tkl_watchdog_refresh(VOID_T)
+OPERATE_RET tkl_watchdog_refresh(void)
 {
     // bk_printf("---trace %s %lld %d\r\n", __func__, bk_aon_rtc_get_ms(), rtos_get_time());
 #if 0

@@ -6,7 +6,7 @@
  */
 #include "tuya_cloud_types.h"
 
-void app_recv_lv_event(VOID *buf, UINT_T len, VOID *args)
+void app_recv_lv_event(void *buf, uint32_t len, void *args)
 {
     uint32_t *tmp = (uint32_t *)buf;
 

@@ -126,7 +126,7 @@ OPERATE_RET tkl_flash_set_protect(const BOOL_T enable)
 *
 * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
 */
-OPERATE_RET tkl_flash_read(UINT_T addr, UCHAR_T *dst, UINT_T size)
+OPERATE_RET tkl_flash_read(uint32_t addr, uint8_t *dst, uint32_t size)
 {
     if (NULL == dst) {
         return OPRT_INVALID_PARM;
@@ -161,7 +161,7 @@ static unsigned int __uni_flash_is_protect_all(void)
 *
 * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
 */
-OPERATE_RET tkl_flash_write(UINT_T addr, CONST UCHAR_T *src, UINT_T size)
+OPERATE_RET tkl_flash_write(uint32_t addr, const uint8_t *src, uint32_t size)
 {
     if (NULL == src) {
         return OPRT_INVALID_PARM;
@@ -190,7 +190,7 @@ OPERATE_RET tkl_flash_write(UINT_T addr, CONST UCHAR_T *src, UINT_T size)
 *
 * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
 */
-OPERATE_RET tkl_flash_erase(UINT_T addr, UINT_T size)
+OPERATE_RET tkl_flash_erase(uint32_t addr, uint32_t size)
 {
     unsigned short start_sec = (addr / PARTITION_SIZE);
     unsigned short end_sec = ((addr + size - 1) / PARTITION_SIZE);
@@ -223,7 +223,7 @@ OPERATE_RET tkl_flash_erase(UINT_T addr, UINT_T size)
 *
 * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
 */
-OPERATE_RET tkl_flash_lock(UINT_T addr, UINT_T size)
+OPERATE_RET tkl_flash_lock(uint32_t addr, uint32_t size)
 {
     return OPRT_NOT_SUPPORTED;
 }
@@ -238,7 +238,7 @@ OPERATE_RET tkl_flash_lock(UINT_T addr, UINT_T size)
 *
 * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
 */
-OPERATE_RET tkl_flash_unlock(UINT_T addr, UINT_T size)
+OPERATE_RET tkl_flash_unlock(uint32_t addr, uint32_t size)
 {
     return OPRT_NOT_SUPPORTED;
 }

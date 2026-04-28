@@ -36,7 +36,7 @@ typedef struct
 *
 * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
 */
-OPERATE_RET tkl_semaphore_create_init(TKL_SEM_HANDLE *handle, CONST UINT_T sem_cnt, CONST UINT_T sem_max)
+OPERATE_RET tkl_semaphore_create_init(TKL_SEM_HANDLE *handle, const uint32_t sem_cnt, const uint32_t sem_max)
 {
     if(!handle) {
         return OPRT_INVALID_PARM;
@@ -60,7 +60,7 @@ OPERATE_RET tkl_semaphore_create_init(TKL_SEM_HANDLE *handle, CONST UINT_T sem_c
 *
 * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
 */
-OPERATE_RET tkl_semaphore_wait(CONST TKL_SEM_HANDLE handle, CONST UINT_T timeout)
+OPERATE_RET tkl_semaphore_wait(const TKL_SEM_HANDLE handle, const uint32_t timeout)
 {
     if(!handle) {
         return OPRT_INVALID_PARM;
@@ -70,7 +70,7 @@ OPERATE_RET tkl_semaphore_wait(CONST TKL_SEM_HANDLE handle, CONST UINT_T timeout
     if (timeout == TKL_SEM_WAIT_FOREVER) {
         ret = xSemaphoreTake(handle, portMAX_DELAY);
     } else {
-        UINT_T ticks = timeout / portTICK_RATE_MS;
+        uint32_t ticks = timeout / portTICK_RATE_MS;
 
         if (ticks == 0) {
             ticks = 1;
@@ -93,7 +93,7 @@ extern uint32_t platform_is_in_interrupt_context( void );
 *
 * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
 */
-OPERATE_RET tkl_semaphore_post(CONST TKL_SEM_HANDLE handle)
+OPERATE_RET tkl_semaphore_post(const TKL_SEM_HANDLE handle)
 {
     if(!handle) {
         return OPRT_INVALID_PARM;
@@ -128,7 +128,7 @@ OPERATE_RET tkl_semaphore_post(CONST TKL_SEM_HANDLE handle)
 *
 * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
 */
-OPERATE_RET tkl_semaphore_release(CONST TKL_SEM_HANDLE handle)
+OPERATE_RET tkl_semaphore_release(const TKL_SEM_HANDLE handle)
 {
     if(!handle) {
         return OPRT_INVALID_PARM;

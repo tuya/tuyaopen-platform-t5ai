@@ -13,20 +13,20 @@
 #include <os/mem.h>
 
 #define CONFIG_HAVE_PSRAM 1
-extern VOID_T *tkl_system_calloc(size_t nitems, size_t size);
-extern VOID_T *tkl_system_realloc(VOID_T* ptr, size_t size);
-extern VOID_T *tkl_system_psram_malloc(CONST SIZE_T size);
-extern VOID_T tkl_system_psram_free(VOID_T* ptr);
+extern void *tkl_system_calloc(size_t nitems, size_t size);
+extern void *tkl_system_realloc(void* ptr, size_t size);
+extern void *tkl_system_psram_malloc(const size_t size);
+extern void tkl_system_psram_free(void* ptr);
 
 extern void bk_printf(const char *fmt, ...);
 
-STATIC BOOL_T s_psram_malloc_force = FALSE;
-VOID_T tkl_system_psram_malloc_force_set(BOOL_T enable)
+static BOOL_T s_psram_malloc_force = FALSE;
+void tkl_system_psram_malloc_force_set(BOOL_T enable)
 {
     s_psram_malloc_force = enable;
 }
 
-BOOL_T tkl_system_psram_malloc_force_get(VOID_T)
+BOOL_T tkl_system_psram_malloc_force_get(void)
 {
     return s_psram_malloc_force;
 }
@@ -40,7 +40,7 @@ BOOL_T tkl_system_psram_malloc_force_get(VOID_T)
 *
 * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
 */
-VOID_T* tkl_system_malloc(CONST SIZE_T size)
+void* tkl_system_malloc(const size_t size)
 {
     if (size > 4096) {
         //bk_printf("tkl_system_malloc big memory, size(%d), caller %p\r\n", size, __builtin_return_address(0));
@@ -49,7 +49,7 @@ VOID_T* tkl_system_malloc(CONST SIZE_T size)
     if (s_psram_malloc_force) {
         return tkl_system_psram_malloc(size);
     } else {
-        VOID_T* ptr = os_malloc(size);
+        void* ptr = os_malloc(size);
         if(NULL == ptr) {
             bk_printf("tkl_system_malloc failed, size(%d)!\r\n", size);
         }
@@ -66,7 +66,7 @@ VOID_T* tkl_system_malloc(CONST SIZE_T size)
 *
 * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
 */
-VOID_T tkl_system_free(VOID_T* ptr)
+void tkl_system_free(void* ptr)
 {
     if (s_psram_malloc_force) {
         tkl_system_psram_free(ptr);
@@ -84,7 +84,7 @@ VOID_T tkl_system_free(VOID_T* ptr)
 *
 * @return the memory address malloced
 */
-VOID_T *tkl_system_memset(VOID_T* src, INT_T ch, CONST SIZE_T n)
+void *tkl_system_memset(void* src, int32_t ch, const size_t n)
 {
     return os_memset(src, ch, n);
 }
@@ -98,7 +98,7 @@ VOID_T *tkl_system_memset(VOID_T* src, INT_T ch, CONST SIZE_T n)
 *
 * @return the memory address malloced
 */
-VOID_T *tkl_system_memcpy(VOID_T* src, CONST VOID_T* dst, CONST SIZE_T n)
+void *tkl_system_memcpy(void* src, const void* dst, const size_t n)
 {
     return os_memcpy(src, dst, n);
 }
@@ -109,7 +109,7 @@ VOID_T *tkl_system_memcpy(VOID_T* src, CONST VOID_T* dst, CONST SIZE_T n)
  * @param[in]       nitems      the numbers of memory block
  * @param[in]       size        the size of the memory block
  */
-VOID_T *tkl_system_calloc(size_t nitems, size_t size)
+void *tkl_system_calloc(size_t nitems, size_t size)
 {
     if (s_psram_malloc_force) {
         if (size && nitems > (~(size_t) 0) / size)
@@ -138,7 +138,7 @@ VOID_T *tkl_system_calloc(size_t nitems, size_t size)
  * @param[in]       nitems      source memory address
  * @param[in]       size        the size after re-allocate
  */
-VOID_T *tkl_system_realloc(VOID_T* ptr, size_t size)
+void *tkl_system_realloc(void* ptr, size_t size)
 {
     if (s_psram_malloc_force) {
         return bk_psram_realloc(ptr, size);
@@ -156,10 +156,10 @@ VOID_T *tkl_system_realloc(VOID_T* ptr, size_t size)
 *
 * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
 */
-VOID_T* tkl_system_psram_malloc(CONST SIZE_T size)
+void* tkl_system_psram_malloc(const size_t size)
 {
 #if CONFIG_HAVE_PSRAM
-    VOID_T* ptr = psram_malloc(size);
+    void* ptr = psram_malloc(size);
     if(NULL == ptr) {
         bk_printf("tkl_psram_malloc failed, size(%d)!\r\n", size);
     }
@@ -179,7 +179,7 @@ VOID_T* tkl_system_psram_malloc(CONST SIZE_T size)
 *
 * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
 */
-VOID_T tkl_system_psram_free(VOID_T* ptr)
+void tkl_system_psram_free(void* ptr)
 {
 #if CONFIG_HAVE_PSRAM
     psram_free(ptr);
@@ -194,7 +194,7 @@ VOID_T tkl_system_psram_free(VOID_T* ptr)
  * @param[in]       nitems      the numbers of memory block
  * @param[in]       size        the size of the memory block
  */
-VOID_T *tkl_system_psram_calloc(size_t nitems, size_t size)
+void *tkl_system_psram_calloc(size_t nitems, size_t size)
 {
 #if CONFIG_HAVE_PSRAM
     if (size && nitems > (~(size_t) 0) / size)
@@ -217,7 +217,7 @@ VOID_T *tkl_system_psram_calloc(size_t nitems, size_t size)
  * @param[in]       nitems      source memory address
  * @param[in]       size        the size after re-allocate
  */
-VOID_T *tkl_system_psram_realloc(VOID_T* ptr, size_t size)
+void *tkl_system_psram_realloc(void* ptr, size_t size)
 {
 #if CONFIG_HAVE_PSRAM
     return bk_psram_realloc(ptr, size);
@@ -230,16 +230,16 @@ VOID_T *tkl_system_psram_realloc(VOID_T* ptr, size_t size)
 /**
 * @brief Get free heap size in psram
 *
-* @param VOID
+* @param void
 *
 * @note This API is used for getting free heap size.
 *
 * @return size of free heap
 */
-INT_T tkl_system_psram_get_free_heap_size(VOID_T)
+int32_t tkl_system_psram_get_free_heap_size(void)
 {
 #if CONFIG_HAVE_PSRAM
-    return (INT_T)xPortGetPsramFreeHeapSize();
+    return (int32_t)xPortGetPsramFreeHeapSize();
 #else
     bk_printf("not support %s\r\n", __func__);
     return 0;

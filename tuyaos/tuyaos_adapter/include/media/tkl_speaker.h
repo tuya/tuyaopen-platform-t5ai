@@ -46,11 +46,11 @@ typedef enum
 }TKL_SPK_CODEC_TYPE_E;
 
 typedef struct {
-    UINT8_T chl_num;        //dac通道
-    UINT8_T volume;        //音量
-    UINT8_T spk_gpio;        //功放
-    UINT8_T spk_gpio_polarity;        //功放
-    UINT32_T sample_rate;   // 采样率
+    uint8_t chl_num;        //dac通道
+    uint8_t volume;        //音量
+    uint8_t spk_gpio;        //功放
+    uint8_t spk_gpio_polarity;        //功放
+    uint32_t sample_rate;   // 采样率
     TKL_SPK_DATABITS_E    datebits;                    // datebit
     TKL_SPK_TYPE_E  card;                   // codec type
     TKL_SPK_CODEC_TYPE_E  codectype;                   // codec type
@@ -68,21 +68,21 @@ OPERATE_RET tkl_speaker_init(TKL_SPK_CFG_T *config);
 *
 * @return OPRT_OK on success. Others on error, please refer to tkl_error_code.h
 */
-INT32_T tkl_speaker_start(VOID_T);
+int32_t tkl_speaker_start(void);
 
 /**
 * @brief speaker stop
 *
 * @return OPRT_OK on success. Others on error, please refer to tkl_error_code.h
 */
-INT32_T tkl_speaker_stop(VOID_T);
+int32_t tkl_speaker_stop(void);
 
 /**
 * @brief speaker pause
 *
 * @return OPRT_OK on success. Others on error, please refer to tkl_error_code.h
 */
-INT32_T tkl_speaker_pause(VOID_T);
+int32_t tkl_speaker_pause(void);
 
 /**
 * @brief speaker set vqe param
@@ -94,7 +94,7 @@ INT32_T tkl_speaker_pause(VOID_T);
 *
 * @return OPRT_OK on success. Others on error, please refer to tkl_error_code.h
 */
-INT32_T tkl_speaker_resume(VOID_T);
+int32_t tkl_speaker_resume(void);
 
 /**
 * @brief speaker set gain
@@ -103,7 +103,7 @@ INT32_T tkl_speaker_resume(VOID_T);
 *
 * @return OPRT_OK on success. Others on error, please refer to tkl_error_code.h
 */
-INT32_T tkl_speaker_set_gain(INT32_T gain);
+int32_t tkl_speaker_set_gain(int32_t gain);
 
 /**
 * @brief speaker stop
@@ -113,21 +113,21 @@ INT32_T tkl_speaker_set_gain(INT32_T gain);
 *
 * @return OPRT_OK on success. Others on error, please refer to tkl_error_code.h
 */
-INT32_T tkl_speaker_write(UINT8_T *data, UINT32_T len);
+int32_t tkl_speaker_write(uint8_t *data, uint32_t len);
 
 /**
 * @brief speaker uninit
 *
 * @return OPRT_OK on success. Others on error, please refer to tkl_error_code.h
 */
-INT32_T tkl_speaker_stop(VOID_T);
+int32_t tkl_speaker_stop(void);
 
 /**
 * @brief speaker deinit
 *
 * @return OPRT_OK on success. Others on error, please refer to tkl_error_code.h
 */
-VOID_T tkl_speaker_deinit(VOID_T);
+void tkl_speaker_deinit(void);
 
 #ifdef __cplusplus
 }

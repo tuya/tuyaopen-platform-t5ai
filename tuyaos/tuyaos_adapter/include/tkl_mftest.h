@@ -20,7 +20,7 @@ typedef enum {
     TKL_USB_INFO_TEST_CMD    = 0x0003
 } TKL_MFTEST_CMD_E;
 
-OPERATE_RET tkl_mftest_ctrl(USHORT_T cmd, UCHAR_T *in, UINT_T inlen, UCHAR_T **out, USHORT_T *outlen);
+OPERATE_RET tkl_mftest_ctrl(uint16_t cmd, uint8_t *in, uint32_t inlen, uint8_t **out, uint16_t *outlen);
 
 
 #ifdef __cplusplus

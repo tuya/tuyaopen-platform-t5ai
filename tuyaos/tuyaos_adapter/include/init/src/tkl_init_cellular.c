@@ -9,7 +9,7 @@
 */
 #include "tkl_init_cellular.h"
 
-CONST TKL_CELLULAR_DESC_T c_cellular_desc = {
+const TKL_CELLULAR_DESC_T c_cellular_desc = {
     .init               = tkl_cellular_init,
     .get_status         = tkl_cellular_get_status,
     .set_status_cb      = tkl_cellular_set_status_cb,

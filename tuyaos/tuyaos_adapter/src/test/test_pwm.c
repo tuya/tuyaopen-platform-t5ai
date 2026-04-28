@@ -270,8 +270,8 @@ void cli_pwm_cmd(char *pcWriteBuffer, int xWriteBufferLen, int argc, char **argv
 static void pwm_simple_demo(void *param)
 {
     OPERATE_RET rt = OPRT_OK;
-    UINT32_T frequency = PWM_FREQUENCY;
-    UINT32_T count = 0;
+    uint32_t frequency = PWM_FREQUENCY;
+    uint32_t count = 0;
 
     uint32_t pwm_chan = tkl_io_pin_to_func(36, TUYA_IO_TYPE_PWM);
 

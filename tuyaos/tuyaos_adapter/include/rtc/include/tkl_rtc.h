@@ -23,14 +23,14 @@ extern "C" {
  *
 * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
  */
-OPERATE_RET tkl_rtc_init(VOID_T);
+OPERATE_RET tkl_rtc_init(void);
 
 /**
  * @brief rtc deinit
  * @param[in] none
 * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
  */
-OPERATE_RET tkl_rtc_deinit(VOID_T);
+OPERATE_RET tkl_rtc_deinit(void);
 
 /**
  * @brief rtc time set

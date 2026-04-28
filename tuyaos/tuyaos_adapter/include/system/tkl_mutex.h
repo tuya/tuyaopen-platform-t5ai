@@ -16,7 +16,7 @@
 extern "C" {
 #endif
 
-typedef VOID_T* TKL_MUTEX_HANDLE;
+typedef void* TKL_MUTEX_HANDLE;
 
 /**
 * @brief Create mutex
@@ -38,7 +38,7 @@ OPERATE_RET tkl_mutex_create_init(TKL_MUTEX_HANDLE *pMutexHandle);
 *
 * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
 */
-OPERATE_RET tkl_mutex_lock(CONST TKL_MUTEX_HANDLE mutexHandle);
+OPERATE_RET tkl_mutex_lock(const TKL_MUTEX_HANDLE mutexHandle);
 
 /**
 * @brief Try Lock mutex
@@ -49,7 +49,7 @@ OPERATE_RET tkl_mutex_lock(CONST TKL_MUTEX_HANDLE mutexHandle);
 *
 * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
 */
-OPERATE_RET tkl_mutex_trylock(CONST TKL_MUTEX_HANDLE mutexHandle);
+OPERATE_RET tkl_mutex_trylock(const TKL_MUTEX_HANDLE mutexHandle);
 
 /**
 * @brief Unlock mutex
@@ -60,7 +60,7 @@ OPERATE_RET tkl_mutex_trylock(CONST TKL_MUTEX_HANDLE mutexHandle);
 *
 * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
 */
-OPERATE_RET tkl_mutex_unlock(CONST TKL_MUTEX_HANDLE mutexHandle);
+OPERATE_RET tkl_mutex_unlock(const TKL_MUTEX_HANDLE mutexHandle);
 
 /**
 * @brief Release mutex
@@ -71,7 +71,7 @@ OPERATE_RET tkl_mutex_unlock(CONST TKL_MUTEX_HANDLE mutexHandle);
 *
 * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
 */
-OPERATE_RET tkl_mutex_release(CONST TKL_MUTEX_HANDLE mutexHandle);
+OPERATE_RET tkl_mutex_release(const TKL_MUTEX_HANDLE mutexHandle);
 
 
 #ifdef __cplusplus

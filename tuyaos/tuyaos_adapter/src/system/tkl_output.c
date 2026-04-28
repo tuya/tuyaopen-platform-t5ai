@@ -25,7 +25,7 @@ extern void bk_printf_port(int level, char *tag, const char *fmt, va_list args);
 * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
 */
 extern void bk_printf(const char *fmt, ...);
-VOID_T tkl_log_output(IN CONST CHAR_T *str, ...)
+void tkl_log_output( const char *str, ...)
 {
     if (str == NULL) {
         return;
@@ -44,13 +44,13 @@ VOID_T tkl_log_output(IN CONST CHAR_T *str, ...)
 /**
 * @brief Close log port
 *
-* @param VOID_T
+* @param void
 *
 * @note This API is used for closing log port.
 *
 * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
 */
-OPERATE_RET tkl_log_close(VOID_T)
+OPERATE_RET tkl_log_close(void)
 {
     return OPRT_OK;
 }
@@ -58,13 +58,13 @@ OPERATE_RET tkl_log_close(VOID_T)
 /**
 * @brief Open log port
 *
-* @param VOID_T
+* @param void
 *
 * @note This API is used for openning log port.
 *
 * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
 */
-OPERATE_RET tkl_log_open(VOID_T)
+OPERATE_RET tkl_log_open(void)
 {
     return OPRT_OK;
 }

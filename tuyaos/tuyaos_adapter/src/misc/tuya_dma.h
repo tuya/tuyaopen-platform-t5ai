@@ -29,13 +29,13 @@ typedef enum {
 } TKL_DATA_WIDTH_T;
 
 typedef struct {
-    UINT8_T dev;                /**< DMA device */
+    uint8_t dev;                /**< DMA device */
     TKL_DATA_WIDTH_T width;       /**< DMA data width */
     TKL_DMA_INC_EN_T addr_inc_en;   /**< enable/disable DMA address increase */
     TKL_DMA_LOOP_EN_T addr_loop_en; /**< enable/disable DMA address loop */
-    UINT32_T start_addr;          /**< DMA start address */
-    UINT32_T end_addr;            /**< DMA end address */
-    UINT32_T brust_len; 
+    uint32_t start_addr;          /**< DMA start address */
+    uint32_t end_addr;            /**< DMA end address */
+    uint32_t brust_len; 
 } TKL_DMA_PORT_T;
 
 typedef enum {
@@ -47,9 +47,9 @@ typedef struct {
     TKL_WORK_MODE_E mode;          /**< DMA work mode */
     TKL_DMA_PORT_T src;         /**< DMA source configuration */
     TKL_DMA_PORT_T dst;         /**< DMA dest configuration */
-    UINT32_T dest_wr_intlv; /**< DMA Destination Write operate interval.unit is cycle */
-    UINT32_T src_rd_intlv; /**< DMA Source Read operate interval.unit is cycle */
-    UINT32_T dev_id; /**< DMA Source Read operate interval.unit is cycle */
+    uint32_t dest_wr_intlv; /**< DMA Destination Write operate interval.unit is cycle */
+    uint32_t src_rd_intlv; /**< DMA Source Read operate interval.unit is cycle */
+    uint32_t dev_id; /**< DMA Source Read operate interval.unit is cycle */
 } TKL_DMA_CONFIG_T;
 
 typedef void (*DMA_ISR_T)(dma_id_t dma_id, DMA_ISR_TYPE_E type);
@@ -118,7 +118,7 @@ OPERATE_RET tkl_dma_stop(dma_id_t id);
  *    - OPRT_OK: succeed
  *    - others: other errors.
  */
-OPERATE_RET tkl_dma_write(dma_id_t id, const uint8_t *data, UINT32_T size);
+OPERATE_RET tkl_dma_write(dma_id_t id, const uint8_t *data, uint32_t size);
 
 /**
  * @brief     Transfer data from peripheral to memory
@@ -131,7 +131,7 @@ OPERATE_RET tkl_dma_write(dma_id_t id, const uint8_t *data, UINT32_T size);
  *    - OPRT_OK: succeed
  *    - others: other errors.
  */
-OPERATE_RET tkl_dma_read(dma_id_t id, uint8_t *data, UINT32_T size);
+OPERATE_RET tkl_dma_read(dma_id_t id, uint8_t *data, uint32_t size);
 
 /**
  * @brief     Register the interrupt service routine for DMA channel
@@ -155,7 +155,7 @@ OPERATE_RET tkl_dma_register_isr(dma_id_t id, DMA_ISR_T finish_isr);
  * @return
  *    - max len: how many bytes can be copy by DMA in one round.
  */
-UINT32_T tkl_dma_get_once_transfer_len_max(dma_id_t id);
+uint32_t tkl_dma_get_once_transfer_len_max(dma_id_t id);
 
 /**
  * @brief     Set DMA transfer length
@@ -167,7 +167,7 @@ UINT32_T tkl_dma_get_once_transfer_len_max(dma_id_t id);
  *    - OPRT_OK: succeed
  *    - others: other errors.
  */
-OPERATE_RET tkl_dma_set_transfer_len(dma_id_t id, UINT32_T tran_len);
+OPERATE_RET tkl_dma_set_transfer_len(dma_id_t id, uint32_t tran_len);
 
 #ifdef DMA_REG_SUPPORT
 /**
@@ -183,7 +183,7 @@ OPERATE_RET tkl_dma_set_transfer_len(dma_id_t id, UINT32_T tran_len);
  *    - OPRT_OK: succeed
  *    - others: other errors.
  */
-OPERATE_RET tkl_dma_set_src_loop_addr(dma_id_t id, UINT32_T start_addr, UINT32_T end_addr);
+OPERATE_RET tkl_dma_set_src_loop_addr(dma_id_t id, uint32_t start_addr, uint32_t end_addr);
 
 /**
  * @brief     Set DMA source start address
@@ -195,7 +195,7 @@ OPERATE_RET tkl_dma_set_src_loop_addr(dma_id_t id, UINT32_T start_addr, UINT32_T
  *    - OPRT_OK: succeed
  *    - others: other errors.
  */
-OPERATE_RET tkl_dma_set_src_start_addr(dma_id_t id, UINT32_T start_addr);
+OPERATE_RET tkl_dma_set_src_start_addr(dma_id_t id, uint32_t start_addr);
 
 /**
  * @brief     Set DMA dest address
@@ -210,7 +210,7 @@ OPERATE_RET tkl_dma_set_src_start_addr(dma_id_t id, UINT32_T start_addr);
  *    - OPRT_OK: succeed
  *    - others: other errors.
  */
-OPERATE_RET tkl_dma_set_dest_loop_addr(dma_id_t id, UINT32_T start_addr, UINT32_T end_addr);
+OPERATE_RET tkl_dma_set_dest_loop_addr(dma_id_t id, uint32_t start_addr, uint32_t end_addr);
 
 /**
  * @brief     Set DMA dest start address
@@ -222,7 +222,7 @@ OPERATE_RET tkl_dma_set_dest_loop_addr(dma_id_t id, UINT32_T start_addr, UINT32_
  *    - OPRT_OK: succeed
  *    - others: other errors.
  */
-OPERATE_RET tkl_dma_set_dest_start_addr(dma_id_t id, UINT32_T start_addr);
+OPERATE_RET tkl_dma_set_dest_start_addr(dma_id_t id, uint32_t start_addr);
 
 /**
  * @brief     Enable DMA source address increase
@@ -319,7 +319,7 @@ OPERATE_RET tkl_dma_disable_dest_addr_loop(dma_id_t id);
  *
  * @return DMA transfer remain length
  */
-UINT32_T tkl_dma_get_remain_len(dma_id_t id);
+uint32_t tkl_dma_get_remain_len(dma_id_t id);
 
 /**
  * @brief     Gets the current DMA channel working status
@@ -330,7 +330,7 @@ UINT32_T tkl_dma_get_remain_len(dma_id_t id);
  *    - 0: Channel idle state
  *    - others: Channel busy state.
  */
-UINT32_T tkl_dma_get_enable_status(dma_id_t id);
+uint32_t tkl_dma_get_enable_status(dma_id_t id);
 
 /**
  * @brief    flush reserved data in dma internal buffer
@@ -357,7 +357,7 @@ OPERATE_RET tkl_dma_flush_src_buffer(dma_id_t id);
  *    - OPRT_OK: succeed
  *    - others: other errors.
  */
-OPERATE_RET tkl_dma_set_src_pause_addr(dma_id_t id, UINT32_T addr);
+OPERATE_RET tkl_dma_set_src_pause_addr(dma_id_t id, uint32_t addr);
 
 /**
  * @brief     Set DMA destination pause address
@@ -369,7 +369,7 @@ OPERATE_RET tkl_dma_set_src_pause_addr(dma_id_t id, UINT32_T addr);
  *    - OPRT_OK: succeed
  *    - others: other errors.
  */
-OPERATE_RET tkl_dma_set_dst_pause_addr(dma_id_t id, UINT32_T addr);
+OPERATE_RET tkl_dma_set_dst_pause_addr(dma_id_t id, uint32_t addr);
 
 /**
  * @brief     Get DMA source pause address
@@ -378,7 +378,7 @@ OPERATE_RET tkl_dma_set_dst_pause_addr(dma_id_t id, UINT32_T addr);
  *
  * @return DMA source pause address
  */
-UINT32_T tkl_dma_get_src_pause_addr(dma_id_t id);
+uint32_t tkl_dma_get_src_pause_addr(dma_id_t id);
 
 /**
  * @brief     Get DMA destination pause address
@@ -387,7 +387,7 @@ UINT32_T tkl_dma_get_src_pause_addr(dma_id_t id);
  *
  * @return DMA destination pause address
  */
-UINT32_T tkl_dma_get_dst_pause_addr(dma_id_t id);
+uint32_t tkl_dma_get_dst_pause_addr(dma_id_t id);
 
 /**
  * @brief     Get DMA destination write address
@@ -396,7 +396,7 @@ UINT32_T tkl_dma_get_dst_pause_addr(dma_id_t id);
  *
  * @return DMA destination write address
  */
-UINT32_T tkl_dma_get_dest_write_addr(dma_id_t id);
+uint32_t tkl_dma_get_dest_write_addr(dma_id_t id);
 
 /**
  * @brief     Get DMA destination end address
@@ -405,7 +405,7 @@ UINT32_T tkl_dma_get_dest_write_addr(dma_id_t id);
  *
  * @return DMA destination end address
  */
-UINT32_T tkl_dma_get_dst_end_addr(dma_id_t id);
+uint32_t tkl_dma_get_dst_end_addr(dma_id_t id);
 
 /**
  * @brief     Get DMA repeat read pause value
@@ -414,7 +414,7 @@ UINT32_T tkl_dma_get_dst_end_addr(dma_id_t id);
  *
  * @return DMA repeat read pause value
  */
-UINT32_T tkl_dma_get_repeat_rd_pause(dma_id_t id);
+uint32_t tkl_dma_get_repeat_rd_pause(dma_id_t id);
 
 /**
  * @brief     Get DMA repeat write pause value
@@ -423,7 +423,7 @@ UINT32_T tkl_dma_get_repeat_rd_pause(dma_id_t id);
  *
  * @return DMA repeat write pause value
  */
-UINT32_T tkl_dma_get_repeat_wr_pause(dma_id_t id);
+uint32_t tkl_dma_get_repeat_wr_pause(dma_id_t id);
 #ifdef CONFIG_SPE
 /**
  * @brief    To configure the beat length,
@@ -448,7 +448,7 @@ OPERATE_RET tkl_dma_set_dest_burst_len(dma_id_t id, dma_burst_len_t len);
  *
  * @return DMA dest burst length
  */
-UINT32_T tkl_dma_get_dest_burst_len(dma_id_t id);
+uint32_t tkl_dma_get_dest_burst_len(dma_id_t id);
 
 /**
  * @brief    To configure the beat length,
@@ -473,7 +473,7 @@ OPERATE_RET tkl_dma_set_src_burst_len(dma_id_t id, dma_burst_len_t len);
  *
  * @return DMA dest burst length
  */
-UINT32_T tkl_dma_get_src_burst_len(dma_id_t id);
+uint32_t tkl_dma_get_src_burst_len(dma_id_t id);
 
 /**
  * @brief    Select the conversion mode that needs to be configured for DMA conversion of
@@ -495,7 +495,7 @@ OPERATE_RET tkl_dma_set_pixel_trans_type(dma_id_t id, dma_pixel_trans_type_t typ
  *
  * @return DMA conversion mode
  */
-UINT32_T tkl_dma_get_pixel_trans_type(dma_id_t id);
+uint32_t tkl_dma_get_pixel_trans_type(dma_id_t id);
 
 /**
  * @brief     Set the current DMA channel dest secure attr

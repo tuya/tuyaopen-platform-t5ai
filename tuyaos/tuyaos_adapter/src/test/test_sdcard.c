@@ -99,7 +99,7 @@ static void __cli_sdcard_write(const char *path, const uint8_t *buf, uint32_t si
 
 static void __cli_sdcard_list_file(const char* path)
 {
-    INT_T res = 0, is_dir = 0;
+    int32_t res = 0, is_dir = 0;
     TUYA_DIR dir;
     TUYA_FILEINFO info;
     char *f_name = NULL;

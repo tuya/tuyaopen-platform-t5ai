@@ -25,8 +25,8 @@ extern "C" {
 
 typedef struct {
     uint32_t magic;             // TYDS: 0x74796473
-    uint32_t entry_flag;        // Èç¹ûÊÇÄ¬ÈÏ0xffffffff£¬Ôò±£´æ²ÎÊý£¬Ð´Èë0x55aa55aa,È»ºóÖØÆô
-                                // Èç¹ûÊÇ0x55aa55aa£¬ÔòÉèÖÃ»½ÐÑÔ´£¬½øÈëÉî¶ÈÐÝÃß
+    uint32_t entry_flag;        // ï¿½ï¿½ï¿½ï¿½ï¿½Ä¬ï¿½ï¿½0xffffffffï¿½ï¿½ï¿½ò±£´ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ð´ï¿½ï¿½0x55aa55aa,È»ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+                                // ï¿½ï¿½ï¿½ï¿½ï¿½0x55aa55aaï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ã»ï¿½ï¿½ï¿½Ô´ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
     TUYA_WAKEUP_SOURCE_BASE_CFG_T cfg[DS_MAX_CFG_ITEM];
     uint32_t sum;
 }TKL_DS_PARAM_T;
@@ -48,7 +48,7 @@ OPERATE_RET tkl_cpu_sleep_callback_register(TUYA_SLEEP_CB_T *sleep_cb);
  *
  * @return none
  */
-VOID_T tkl_cpu_allow_sleep(VOID_T);
+void tkl_cpu_allow_sleep(void);
 
 /**
  * @brief force wakeup
@@ -57,7 +57,7 @@ VOID_T tkl_cpu_allow_sleep(VOID_T);
  *
  * @return none
  */
-VOID_T tkl_cpu_force_wakeup(VOID_T);
+void tkl_cpu_force_wakeup(void);
 
 /**
 * @brief Set the low power mode of CPU

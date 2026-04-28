@@ -15,7 +15,7 @@
 //#pragma message(PRINT_MACRO(AON_RTC_DEFAULT_CLOCK_FREQ))
 
 
-extern VOID_T tkl_system_sleep(CONST UINT_T num_ms);
+extern void tkl_system_sleep(const uint32_t num_ms);
 
 static void cli_rf_set_cali_cmd(char *pcWriteBuffer, int xWriteBufferLen, int argc, char **argv)
 {

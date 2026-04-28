@@ -55,8 +55,8 @@ static TUYA_PIN_FUNC_MAP_T pin_func_map[] = {
 /****************************************************************************
  * Public Function Prototypes
  ****************************************************************************/
-extern VOID_T __tkl_i2c_set_scl_pin(TUYA_I2C_NUM_E port, const TUYA_PIN_NAME_E scl_pin);
-extern VOID_T __tkl_i2c_set_sda_pin(TUYA_I2C_NUM_E port, const TUYA_PIN_NAME_E sda_pin);
+extern void __tkl_i2c_set_scl_pin(TUYA_I2C_NUM_E port, const TUYA_PIN_NAME_E scl_pin);
+extern void __tkl_i2c_set_sda_pin(TUYA_I2C_NUM_E port, const TUYA_PIN_NAME_E sda_pin);
 extern gpio_id_t tkl_gpio_get_bk_gpio_id(TUYA_GPIO_NUM_E pin_id);
 
 TUYA_PIN_FUNC_MAP_T *tkl_pinmux_get_func_map(TUYA_PIN_FUNC_E pin_func)
@@ -149,9 +149,9 @@ OPERATE_RET tkl_io_pinmux_config(TUYA_PIN_NAME_E pin, TUYA_PIN_FUNC_E pin_func)
     }
     return OPRT_OK;
 }
-INT32_T tkl_io_pin_to_func(UINT32_T pin, TUYA_PIN_TYPE_E pin_type)
+int32_t tkl_io_pin_to_func(uint32_t pin, TUYA_PIN_TYPE_E pin_type)
 {
-	INT32_T port_channel = OPRT_NOT_SUPPORTED;
+	int32_t port_channel = OPRT_NOT_SUPPORTED;
 
     switch (pin_type) {
         case TUYA_IO_TYPE_PWM:                  // all pwm channels belong to one port

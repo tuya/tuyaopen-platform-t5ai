@@ -17,7 +17,7 @@
     extern "C" {
 #endif
 
-typedef VOID_T* TKL_ASYMMETRICAY_HANDLE;
+typedef void* TKL_ASYMMETRICAY_HANDLE;
 
 /**
 * @brief This function Create&initializes a rsa context.
@@ -55,8 +55,8 @@ OPERATE_RET  tkl_rsa_free( TKL_ASYMMETRICAY_HANDLE ctx );
  * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h 
  */
 OPERATE_RET  tkl_rsa_gen_key(TKL_ASYMMETRICAY_HANDLE ctx,
-                                UINT32_T nbits,
-                                INT32_T exponent);
+                                uint32_t nbits,
+                                int32_t exponent);
 
 
 /**
@@ -71,7 +71,7 @@ OPERATE_RET  tkl_rsa_gen_key(TKL_ASYMMETRICAY_HANDLE ctx,
  *
  * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
  */
-OPERATE_RET tkl_rsa_write_key_der( TKL_ASYMMETRICAY_HANDLE ctx, UINT8_T *buf, size_t size );
+OPERATE_RET tkl_rsa_write_key_der( TKL_ASYMMETRICAY_HANDLE ctx, uint8_t *buf, size_t size );
 
 /**
  * @brief          This function performs an RSA public key operation.
@@ -92,8 +92,8 @@ OPERATE_RET tkl_rsa_write_key_der( TKL_ASYMMETRICAY_HANDLE ctx, UINT8_T *buf, si
  * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h 
  */
 OPERATE_RET tkl_rsa_public( TKL_ASYMMETRICAY_HANDLE ctx,
-                const UINT8_T *input,
-                UINT8_T *output );
+                const uint8_t *input,
+                uint8_t *output );
 
 /**
  * @brief          This function performs an RSA private key operation.
@@ -121,8 +121,8 @@ OPERATE_RET tkl_rsa_public( TKL_ASYMMETRICAY_HANDLE ctx,
  *
  */
 OPERATE_RET tkl_rsa_private( TKL_ASYMMETRICAY_HANDLE ctx,
-                 const UINT8_T *input,
-                 UINT8_T *output );
+                 const uint8_t *input,
+                 uint8_t *output );
 
 
 

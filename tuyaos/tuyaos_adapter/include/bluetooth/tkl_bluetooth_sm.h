@@ -45,60 +45,60 @@ typedef enum {
  ********************* struct ******************************************
  **********************************************************************/
 typedef struct {
-    UINT8_T                             bond      : 1;      /**< Perform bonding. */
-    UINT8_T                             mitm      : 1;      /**< Enable Man In The Middle protection. */
-    UINT8_T                             lesc      : 1;      /**< Enable LE Secure Connection pairing. */
-    UINT8_T                             keypress  : 1;      /**< Enable generation of keypress notifications. */
-    UINT8_T                             io_caps   : 3;      /**< IO capabilities, see @ref TUYA_BLE_SM_IO_CAPS. */
-    UINT8_T                             oob       : 1;      /**< The OOB data flag.*/
+    uint8_t                             bond      : 1;      /**< Perform bonding. */
+    uint8_t                             mitm      : 1;      /**< Enable Man In The Middle protection. */
+    uint8_t                             lesc      : 1;      /**< Enable LE Secure Connection pairing. */
+    uint8_t                             keypress  : 1;      /**< Enable generation of keypress notifications. */
+    uint8_t                             io_caps   : 3;      /**< IO capabilities, see @ref TUYA_BLE_SM_IO_CAPS. */
+    uint8_t                             oob       : 1;      /**< The OOB data flag.*/
 
-    UINT8_T                             key_size;           /**< Encryption key size in octets between @param key_size and 16. */
-    UINT8_T                             enable_paring;      /**< [Optional] Start the Paring After enable @param enbale_paring or not. */
-    USHORT_T                            bonding_num_max;    /**< The number of bonding */
+    uint8_t                             key_size;           /**< Encryption key size in octets between @param key_size and 16. */
+    uint8_t                             enable_paring;      /**< [Optional] Start the Paring After enable @param enbale_paring or not. */
+    uint16_t                            bonding_num_max;    /**< The number of bonding */
 } TUYA_BLE_SM_PARAMS_T;
 
 typedef struct {
-    UINT8_T                             bonding     :1;     /**< The procedure of bonding that has started. */
-    UINT8_T                             encryption  :1;     /**< The procedure of encryption that has started. */
-    UINT8_T                             reserved    :6;     /**< Reserved bit */
+    uint8_t                             bonding     :1;     /**< The procedure of bonding that has started. */
+    uint8_t                             encryption  :1;     /**< The procedure of encryption that has started. */
+    uint8_t                             reserved    :6;     /**< Reserved bit */
 } TUYA_BLE_SM_STATUS_PARAM_T;
 
 typedef struct {
     TUYA_BLE_SM_STATUS_PARAM_T          status;             /**< Current SM Status */
 
-    UINT8_T                             peer_irk[16];       /**< The irk of the peer */
-    UINT8_T                             peer_ltk[16];       /**< The ltk of the peer, not the local ltk. */
+    uint8_t                             peer_irk[16];       /**< The irk of the peer */
+    uint8_t                             peer_ltk[16];       /**< The ltk of the peer, not the local ltk. */
     TKL_BLE_GAP_ADDR_T                  peer_address;       /**< The resolved address of the peer, will be shown on "SMP Identity Address Information"*/
-    USHORT_T                            peer_index;         /**< Report the storage index if neccessary, indicate the peer id for one link. */
+    uint16_t                            peer_index;         /**< Report the storage index if neccessary, indicate the peer id for one link. */
 } TUYA_BLE_SM_INFO_PARAM_T;
 
 typedef struct {
-    UINT8_T                             index_flag :1;      /**< The Flag of peer index, and post @param peer_index*/
-    UINT8_T                             addr_flag  :1;      /**< The Flag of peer address, and post @param peer_address */
-    UINT8_T                             irk_flag   :1;      /**< The Flag of peer irk, and post @param peer_irk */
-    UINT8_T                             reserved_flag :5;   /**< Reserved bit */
+    uint8_t                             index_flag :1;      /**< The Flag of peer index, and post @param peer_index*/
+    uint8_t                             addr_flag  :1;      /**< The Flag of peer address, and post @param peer_address */
+    uint8_t                             irk_flag   :1;      /**< The Flag of peer irk, and post @param peer_irk */
+    uint8_t                             reserved_flag :5;   /**< Reserved bit */
 
     union {
-        USHORT_T                        peer_index;         /**< The index of the peer */     
+        uint16_t                        peer_index;         /**< The index of the peer */     
         TKL_BLE_GAP_ADDR_T              peer_address;       /**< The resolved address of the peer, will be shown on "SMP Identity Address Information"*/
-        UINT8_T                         peer_irk[16];       /**< The irk of the peer */
+        uint8_t                         peer_irk[16];       /**< The irk of the peer */
     }source;
 } TUYA_BLE_SM_SOURCE_ID_T;
 
 typedef struct {
     TUYA_BLE_SM_EVT_TYPE_E              type;               /**< Security Manager Protocol Event */
-    USHORT_T                            conn_handle;        /**< Connection Handle */
-    INT_T                               result;             /**< Will Refer to HOST STACK Error Code */
+    uint16_t                            conn_handle;        /**< Connection Handle */
+    int32_t                               result;             /**< Will Refer to HOST STACK Error Code */
 
     union {
         TUYA_BLE_SM_STATUS_PARAM_T      security_fail;      /**< Report fail event for this link, See @ref TUYA_BLE_SM_FAIL_EVT_T. */
         TUYA_BLE_SM_INFO_PARAM_T        security_success;   /**< Show successful info for this security link, See @ref TUYA_BLE_SM_SUCCESS_EVT_T. */
-        UINT8_T                         display_passkey[6]; /**< Display the passkey for user. */
-        UINT8_T                         request_key_type;   /**< Report the key type for requesting, See @ref TUYA_BLE_SM_AUTH_KEY. */
+        uint8_t                         display_passkey[6]; /**< Display the passkey for user. */
+        uint8_t                         request_key_type;   /**< Report the key type for requesting, See @ref TUYA_BLE_SM_AUTH_KEY. */
     }sm_event;
 } TUYA_BLE_SM_PARAMS_EVT_T;
 
-typedef VOID(*TUYA_BLE_SM_FUNC_CB)(TUYA_BLE_SM_PARAMS_EVT_T *p_event);
+typedef void(*TUYA_BLE_SM_FUNC_CB)(TUYA_BLE_SM_PARAMS_EVT_T *p_event);
 
 /***********************************************************************
  ********************* variable ****************************************
@@ -116,7 +116,7 @@ typedef VOID(*TUYA_BLE_SM_FUNC_CB)(TUYA_BLE_SM_PARAMS_EVT_T *p_event);
  *
  * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
  */
-OPERATE_RET tkl_ble_security_manager_init(TUYA_BLE_SM_PARAMS_T CONST *p_security_parameter);
+OPERATE_RET tkl_ble_security_manager_init(TUYA_BLE_SM_PARAMS_T const *p_security_parameter);
 
 /**
  * @brief [Optional][SM Required] Register the Callback While Using Security Manager.
@@ -125,7 +125,7 @@ OPERATE_RET tkl_ble_security_manager_init(TUYA_BLE_SM_PARAMS_T CONST *p_security
  *
  * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
  */
-OPERATE_RET tkl_ble_security_callback_register(CONST TUYA_BLE_SM_FUNC_CB security_callback);
+OPERATE_RET tkl_ble_security_callback_register(const TUYA_BLE_SM_FUNC_CB security_callback);
 
 /**
  * @brief [Optional][SM Required][Ble Peripheral/Central] Security Request, Function For Initiate the GAP Authentication procedure.
@@ -136,7 +136,7 @@ OPERATE_RET tkl_ble_security_callback_register(CONST TUYA_BLE_SM_FUNC_CB securit
  *
  * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
  */
-OPERATE_RET tkl_ble_security_request(USHORT_T conn_handle);
+OPERATE_RET tkl_ble_security_request(uint16_t conn_handle);
 
 /**
  * @brief [Optional][Ble Central] Encryption Request, Function For Initiate GAP Encryption procedure
@@ -146,7 +146,7 @@ OPERATE_RET tkl_ble_security_request(USHORT_T conn_handle);
  *
  * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
  */
-OPERATE_RET tkl_ble_encryption_request(USHORT_T conn_handle);
+OPERATE_RET tkl_ble_encryption_request(uint16_t conn_handle);
 
 /**
  * @brief [Optional][SM Required][Ble Peripheral] Reply with an authentication key. Function Using During Authentication Procedures
@@ -163,7 +163,7 @@ OPERATE_RET tkl_ble_encryption_request(USHORT_T conn_handle);
  *
  * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
  */
-OPERATE_RET tkl_ble_security_key_reply(USHORT_T conn_handle, UINT8_T key_type, UINT8_T CONST *p_key);
+OPERATE_RET tkl_ble_security_key_reply(uint16_t conn_handle, uint8_t key_type, uint8_t const *p_key);
 
 /**
  * @brief [Optional] Get the Bonding Information.

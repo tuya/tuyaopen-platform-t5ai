@@ -35,7 +35,7 @@ typedef enum {
  *
  * @param[out]       is_up         the wired link status is up or not
  */
-typedef VOID_T (*TKL_WIRED_STATUS_CHANGE_CB)(TKL_WIRED_STAT_E status);
+typedef void (*TKL_WIRED_STATUS_CHANGE_CB)(TKL_WIRED_STAT_E status);
 
 typedef struct wired_rmii_s {
     TUYA_GPIO_NUM_E  int_gpio;
@@ -142,7 +142,7 @@ OPERATE_RET tkl_wired_get_mac(NW_MAC_S *mac);
  *
  * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
  */
-OPERATE_RET tkl_wired_set_mac(CONST NW_MAC_S *mac);
+OPERATE_RET tkl_wired_set_mac(const NW_MAC_S *mac);
 
 /**
  * @brief wired ioctl
@@ -151,7 +151,7 @@ OPERATE_RET tkl_wired_set_mac(CONST NW_MAC_S *mac);
  * @param[in]       args    args associated with the command
  * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
  */
-OPERATE_RET tkl_wired_ioctl(WIRED_IOCTL_CMD_E cmd,  VOID *args);
+OPERATE_RET tkl_wired_ioctl(WIRED_IOCTL_CMD_E cmd,  void *args);
 
 
 #ifdef __cplusplus

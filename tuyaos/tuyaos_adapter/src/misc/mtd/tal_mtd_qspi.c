@@ -38,13 +38,13 @@ uint16_t swap_16(uint16_t value) {
  ** STRUCT                                                            **
  **********************************************************************/
 typedef struct {
-    UINT8_T *data;
-    UINT_T addr;
-    UINT_T addr_size;
-    UINT_T addr_lines;
-    UINT_T cmd;
-    UINT_T dummy;
-    UINT_T lines;
+    uint8_t *data;
+    uint32_t addr;
+    uint32_t addr_size;
+    uint32_t addr_lines;
+    uint32_t cmd;
+    uint32_t dummy;
+    uint32_t lines;
 } TUYA_QSPI_MTD_CMD_T;
 
 /***********************************************************************
@@ -55,8 +55,8 @@ typedef struct {
  ** FUNCTION                                                           **
  **********************************************************************/
 
-OPERATE_RET tal_mtd_qspi_write_reg(MTD_QSPI_HANDLE handle, UINT_T addr,
-                                   UINT_T size, TUYA_QSPI_MTD_CMD_T *temp_cmd)
+OPERATE_RET tal_mtd_qspi_write_reg(MTD_QSPI_HANDLE handle, uint32_t addr,
+                                   uint32_t size, TUYA_QSPI_MTD_CMD_T *temp_cmd)
 {
     OPERATE_RET ret = OPRT_COM_ERROR;
     TUYA_QSPI_CMD_T reg_cmd = {0};
@@ -74,7 +74,7 @@ OPERATE_RET tal_mtd_qspi_write_reg(MTD_QSPI_HANDLE handle, UINT_T addr,
     {
         addr = swap_24(addr);
     }
-    memcpy(reg_cmd.addr, &addr, sizeof(UINT_T));
+    memcpy(reg_cmd.addr, &addr, sizeof(uint32_t));
     reg_cmd.addr_size = temp_cmd->addr_size;
     reg_cmd.addr_lines = temp_cmd->addr_lines;
     reg_cmd.data = temp_cmd->data;
@@ -89,8 +89,8 @@ OPERATE_RET tal_mtd_qspi_write_reg(MTD_QSPI_HANDLE handle, UINT_T addr,
     return ret;
 }
 
-OPERATE_RET tal_mtd_qspi_read_reg(MTD_QSPI_HANDLE handle, UINT_T addr,
-                                  UINT8_T *buf, UINT_T size,
+OPERATE_RET tal_mtd_qspi_read_reg(MTD_QSPI_HANDLE handle, uint32_t addr,
+                                  uint8_t *buf, uint32_t size,
                                   TUYA_QSPI_MTD_CMD_T *temp_cmd)
 {
     OPERATE_RET ret = OPRT_COM_ERROR;
@@ -109,7 +109,7 @@ OPERATE_RET tal_mtd_qspi_read_reg(MTD_QSPI_HANDLE handle, UINT_T addr,
         addr = swap_24(addr);
     }
     
-    memcpy(reg_cmd.addr, &addr, sizeof(UINT_T));
+    memcpy(reg_cmd.addr, &addr, sizeof(uint32_t));
     reg_cmd.addr_size = temp_cmd->addr_size;
     reg_cmd.data_size = size;
     reg_cmd.addr_lines = temp_cmd->addr_lines;
@@ -130,7 +130,7 @@ OPERATE_RET tal_mtd_qspi_read_reg(MTD_QSPI_HANDLE handle, UINT_T addr,
     return ret;
 }
 
-static VOID_T tal_mtd_qspi_write_enable(MTD_QSPI_HANDLE handle)
+static void tal_mtd_qspi_write_enable(MTD_QSPI_HANDLE handle)
 {
     TUYA_QSPI_MTD_CMD_T temp_cmd;
     temp_cmd.addr_size = handle->dev.cmd_set.write_enable.addr_size;
@@ -141,7 +141,7 @@ static VOID_T tal_mtd_qspi_write_enable(MTD_QSPI_HANDLE handle)
     tal_mtd_qspi_write_reg(handle, 0, 0, &temp_cmd);
 }
 
-static VOID_T tal_mtd_qspi_write_disable(MTD_QSPI_HANDLE handle)
+static void tal_mtd_qspi_write_disable(MTD_QSPI_HANDLE handle)
 {
     TUYA_QSPI_MTD_CMD_T temp_cmd;
     temp_cmd.addr_size = handle->dev.cmd_set.write_disable.addr_size;
@@ -152,7 +152,7 @@ static VOID_T tal_mtd_qspi_write_disable(MTD_QSPI_HANDLE handle)
     tal_mtd_qspi_write_reg(handle, 0, 0, &temp_cmd);
 }
 
-OPERATE_RET tal_mtd_qspi_read_id(MTD_QSPI_HANDLE handle, UINT_T *reg_id)
+OPERATE_RET tal_mtd_qspi_read_id(MTD_QSPI_HANDLE handle, uint32_t *reg_id)
 {
     OPERATE_RET ret = OPRT_COM_ERROR;
     TUYA_QSPI_MTD_CMD_T temp_cmd;
@@ -161,7 +161,7 @@ OPERATE_RET tal_mtd_qspi_read_id(MTD_QSPI_HANDLE handle, UINT_T *reg_id)
     temp_cmd.dummy = handle->dev.cmd_set.read_id.dummy;
     temp_cmd.lines = handle->dev.cmd_set.read_id.wire_lines;
     temp_cmd.addr_lines = handle->dev.cmd_set.read_id.addr_lines;
-    ret = tal_mtd_qspi_read_reg(handle, 0, (UINT8_T *)reg_id, MTD_ID_LEN,
+    ret = tal_mtd_qspi_read_reg(handle, 0, (uint8_t *)reg_id, MTD_ID_LEN,
                                 &temp_cmd);
     if (ret != 0) {
         return OPRT_COM_ERROR;
@@ -169,16 +169,16 @@ OPERATE_RET tal_mtd_qspi_read_id(MTD_QSPI_HANDLE handle, UINT_T *reg_id)
     return ret;
 }
 
-OPERATE_RET tal_mtd_qspi_page_program(MTD_QSPI_HANDLE handle, UINT_T addr,
-                                      const VOID_T *data, UINT_T size,
+OPERATE_RET tal_mtd_qspi_page_program(MTD_QSPI_HANDLE handle, uint32_t addr,
+                                      const void *data, uint32_t size,
                                       BOOL_T is_nand)
 {
     OPERATE_RET ret = OPRT_COM_ERROR;
     TUYA_QSPI_MTD_CMD_T temp_cmd;
-    UINT_T data_left = size;
-    UINT_T transfer_len = 0;
-    UINT_T data_off = 0U;
-    UINT_T target_addr = addr;
+    uint32_t data_left = size;
+    uint32_t transfer_len = 0;
+    uint32_t data_off = 0U;
+    uint32_t target_addr = addr;
     // nand flash需要先发送到缓存，存满1页再发起烧录执行命令
 
     for (size_t i = 0; i < ((size + (QSPI_FIFO_SIZE - 1)) / QSPI_FIFO_SIZE);
@@ -238,15 +238,15 @@ OPERATE_RET tal_mtd_qspi_page_program(MTD_QSPI_HANDLE handle, UINT_T addr,
     return OPRT_OK;
 }
 
-OPERATE_RET tal_mtd_qspi_page_read(MTD_QSPI_HANDLE handle, UINT_T addr,
-                                   VOID_T *data, UINT_T size, BOOL_T is_nand)
+OPERATE_RET tal_mtd_qspi_page_read(MTD_QSPI_HANDLE handle, uint32_t addr,
+                                   void *data, uint32_t size, BOOL_T is_nand)
 {
     OPERATE_RET ret = OPRT_COM_ERROR;
     TUYA_QSPI_MTD_CMD_T temp_cmd;
-    UINT_T data_left = size;
-    UINT_T transfer_len = 0;
-    UINT_T data_off = 0U;
-    UINT_T target_addr;
+    uint32_t data_left = size;
+    uint32_t transfer_len = 0;
+    uint32_t data_off = 0U;
+    uint32_t target_addr;
     if (is_nand) {
         temp_cmd.addr_size = handle->dev.cmd_set.quad_read_cache.addr_size;
         temp_cmd.cmd = handle->dev.cmd_set.quad_read_cache.command;
@@ -288,8 +288,8 @@ OPERATE_RET tal_mtd_qspi_page_read(MTD_QSPI_HANDLE handle, UINT_T addr,
     return OPRT_OK;
 }
 
-OPERATE_RET tal_mtd_qspi_erase(MTD_QSPI_HANDLE handle, UINT_T addr,
-                               UINT_T erase_type)
+OPERATE_RET tal_mtd_qspi_erase(MTD_QSPI_HANDLE handle, uint32_t addr,
+                               uint32_t erase_type)
 {
     OPERATE_RET ret = OPRT_COM_ERROR;
     TUYA_QSPI_MTD_CMD_T temp_cmd;

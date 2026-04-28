@@ -62,7 +62,7 @@ typedef struct {
     TUYA_TOUCH_THRESHOLD_T         threshold;          // threshold parameters
 } TUYA_TOUCH_CONFIG_T;
 
-typedef VOID (*TUYA_TOUCH_CALLBACK)(UINT32_T channel, TUYA_TOUCH_EVENT_E event, VOID *arg);
+typedef void (*TUYA_TOUCH_CALLBACK)(uint32_t channel, TUYA_TOUCH_EVENT_E event, void *arg);
 
 /**
  * @brief Initialize touch functionality
@@ -71,7 +71,7 @@ typedef VOID (*TUYA_TOUCH_CALLBACK)(UINT32_T channel, TUYA_TOUCH_EVENT_E event, 
  * 
  * @return OPRT_OK: Success, others: Failure
  */
-OPERATE_RET tkl_touch_init(UINT32_T channel_mask, TUYA_TOUCH_CONFIG_T *cfg);
+OPERATE_RET tkl_touch_init(uint32_t channel_mask, TUYA_TOUCH_CONFIG_T *cfg);
 
 /**
  * @brief Deinitialize touch functionality
@@ -80,7 +80,7 @@ OPERATE_RET tkl_touch_init(UINT32_T channel_mask, TUYA_TOUCH_CONFIG_T *cfg);
  * 
  * @return OPRT_OK: Success, others: Failure
  */
-OPERATE_RET tkl_touch_deinit(UINT32_T channel_mask);
+OPERATE_RET tkl_touch_deinit(uint32_t channel_mask);
 
 /**
  * @brief Get channel detection range
@@ -90,16 +90,16 @@ OPERATE_RET tkl_touch_deinit(UINT32_T channel_mask);
  * 
  * @return OPRT_OK: Success, others: Failure
  */
-OPERATE_RET tkl_touch_get_channel_detect_range(UINT32_T channel, TUYA_TOUCH_DETECT_RANGE_E *detect_range);
+OPERATE_RET tkl_touch_get_channel_detect_range(uint32_t channel, TUYA_TOUCH_DETECT_RANGE_E *detect_range);
 
 /**
  * @brief Get single channel status
  * 
  * @param[in] touch_id Channel number
  * 
- * @return UINT8_T Channel status 0: Not touched, 1: Touched
+ * @return uint8_t Channel status 0: Not touched, 1: Touched
  */
-UINT8_T tkl_touch_get_single_channel_status(UINT8_T touch_id);
+uint8_t tkl_touch_get_single_channel_status(uint8_t touch_id);
 
 /**
  * @brief Register touch event callback function
@@ -110,7 +110,7 @@ UINT8_T tkl_touch_get_single_channel_status(UINT8_T touch_id);
  * 
  * @return OPRT_OK: Success, others: Failure
  */
-OPERATE_RET tkl_touch_register_callback(UINT32_T channel_mask, TUYA_TOUCH_CALLBACK callback, VOID *arg);
+OPERATE_RET tkl_touch_register_callback(uint32_t channel_mask, TUYA_TOUCH_CALLBACK callback, void *arg);
 
 /**
  * @brief Get calibration value
@@ -119,7 +119,7 @@ OPERATE_RET tkl_touch_register_callback(UINT32_T channel_mask, TUYA_TOUCH_CALLBA
  * 
  * @return OPRT_OK: Success, others: Failure
  */
-OPERATE_RET tkl_touch_get_single_calibration_value(UINT32_T touch_id, float *value);
+OPERATE_RET tkl_touch_get_single_calibration_value(uint32_t touch_id, float *value);
 
 /**
  * @brief Get single channel median filter value
@@ -129,7 +129,7 @@ OPERATE_RET tkl_touch_get_single_calibration_value(UINT32_T touch_id, float *val
  * 
  * @return OPRT_OK: Success, others: Failure
  */
-OPERATE_RET tkl_touch_get_single_median_filter_value(UINT8_T touch_id, float *value);
+OPERATE_RET tkl_touch_get_single_median_filter_value(uint8_t touch_id, float *value);
 
 /**
  * @brief Get single channel average filter value
@@ -139,7 +139,7 @@ OPERATE_RET tkl_touch_get_single_median_filter_value(UINT8_T touch_id, float *va
  * 
  * @return OPRT_OK: Success, others: Failure
  */
-OPERATE_RET tkl_touch_get_single_average_filter_value(UINT8_T touch_id, float *value);
+OPERATE_RET tkl_touch_get_single_average_filter_value(uint8_t touch_id, float *value);
 
 /**
  * @brief Get filter update threshold
@@ -155,7 +155,7 @@ float tkl_touch_get_filter_update_threshold();
  * 
  * @return OPRT_OK: Success, others: Failure
  */
-OPERATE_RET tkl_touch_enable(UINT32_T channel_mask);
+OPERATE_RET tkl_touch_enable(uint32_t channel_mask);
 
 /**
  * @brief Disable touch channels
@@ -164,7 +164,7 @@ OPERATE_RET tkl_touch_enable(UINT32_T channel_mask);
  * 
  * @return OPRT_OK: Success, others: Failure
  */
-OPERATE_RET tkl_touch_disable(UINT32_T channel_mask);
+OPERATE_RET tkl_touch_disable(uint32_t channel_mask);
 
 /**
  * @brief Clear interrupt status
@@ -173,7 +173,7 @@ OPERATE_RET tkl_touch_disable(UINT32_T channel_mask);
  * 
  * @return OPRT_OK: Success, others: Failure
  */
-OPERATE_RET tkl_touch_clear_interrupt(UINT32_T channel_mask);
+OPERATE_RET tkl_touch_clear_interrupt(uint32_t channel_mask);
 
 /**
  * @brief Enable interrupt
@@ -183,7 +183,7 @@ OPERATE_RET tkl_touch_clear_interrupt(UINT32_T channel_mask);
  * 
  * @return OPRT_OK: Success, others: Failure
  */
-OPERATE_RET tkl_touch_interrupt_enable(UINT32_T channel_mask, BOOL_T enable);
+OPERATE_RET tkl_touch_interrupt_enable(uint32_t channel_mask, BOOL_T enable);
 
 #ifdef __cplusplus
 }

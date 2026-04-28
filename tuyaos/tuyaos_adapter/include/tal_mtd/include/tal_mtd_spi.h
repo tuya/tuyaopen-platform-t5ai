@@ -18,21 +18,21 @@ typedef struct MTD_SPI_CFG_T {
     TUYA_SPI_NUM_E port; // SPI端口号
 } MTD_SPI_CFG_T;
 
-typedef INT32_T (*SPI_MTD_INIT_T)(MTD_SPI_CFG_T *cfg);
-typedef VOID_T (*SPI_MTD_WAIT_DONE_T)(MTD_SPI_CFG_T *cfg);
-typedef INT32_T (*SPI_MTD_DEINIT_T)(MTD_SPI_CFG_T *cfg);
-typedef INT32_T (*SPI_MTD_WRITE_UNLOCK_T)(MTD_SPI_CFG_T *cfg);
+typedef int32_t (*SPI_MTD_INIT_T)(MTD_SPI_CFG_T *cfg);
+typedef void (*SPI_MTD_WAIT_DONE_T)(MTD_SPI_CFG_T *cfg);
+typedef int32_t (*SPI_MTD_DEINIT_T)(MTD_SPI_CFG_T *cfg);
+typedef int32_t (*SPI_MTD_WRITE_UNLOCK_T)(MTD_SPI_CFG_T *cfg);
 
 typedef struct {
-    UINT8_T read_id;           // 读ID指令 (e.g., 0x9F)
-    UINT8_T spi_read_data;     // 读数据指令 (e.g., 0x03)
-    UINT8_T spi_read_cache;    // 读cache数据指令 (e.g., 0x03)
-    UINT8_T spi_page_program;  // 页编程指令 (e.g., 0x02)
-    UINT8_T spi_program_cache; // 页cache编程指令 (e.g., 0x02)
-    UINT8_T sector_erase;      // 扇区擦除指令 (e.g., 0xC7)
-    UINT8_T block_erase;       // 块擦除指令 (e.g., 0xC7)
-    UINT8_T write_enable;      // 写使能指令 (e.g., 0xC7)
-    UINT8_T write_disable;     // 写禁止指令 (e.g., 0xC7)
+    uint8_t read_id;           // 读ID指令 (e.g., 0x9F)
+    uint8_t spi_read_data;     // 读数据指令 (e.g., 0x03)
+    uint8_t spi_read_cache;    // 读cache数据指令 (e.g., 0x03)
+    uint8_t spi_page_program;  // 页编程指令 (e.g., 0x02)
+    uint8_t spi_program_cache; // 页cache编程指令 (e.g., 0x02)
+    uint8_t sector_erase;      // 扇区擦除指令 (e.g., 0xC7)
+    uint8_t block_erase;       // 块擦除指令 (e.g., 0xC7)
+    uint8_t write_enable;      // 写使能指令 (e.g., 0xC7)
+    uint8_t write_disable;     // 写禁止指令 (e.g., 0xC7)
 } MTD_SPI_CMD_SET_T;
 
 typedef struct {
@@ -71,8 +71,8 @@ MTD_SPI_HANDLE tal_mtd_spi_init(MTD_SPI_DEV_T *dev, MTD_SPI_CFG_T *cfg);
  *
  * @return Bytes on success. Others on error, please refer to tal_error_code.h
  */
-OPERATE_RET tal_mtd_spi_page_read(MTD_SPI_HANDLE handle, UINT_T addr,
-                                  VOID_T *buf, UINT_T len, BOOL_T is_nand);
+OPERATE_RET tal_mtd_spi_page_read(MTD_SPI_HANDLE handle, uint32_t addr,
+                                  void *buf, uint32_t len, BOOL_T is_nand);
 
 /**
  * @brief mtd spi write
@@ -84,8 +84,8 @@ OPERATE_RET tal_mtd_spi_page_read(MTD_SPI_HANDLE handle, UINT_T addr,
  *
  * @return OPRT_OK on success. Others on error, please refer to tal_error_code.h
  */
-OPERATE_RET tal_mtd_spi_page_program(MTD_SPI_HANDLE handle, UINT_T addr,
-                                     const VOID_T *buf, UINT_T len,
+OPERATE_RET tal_mtd_spi_page_program(MTD_SPI_HANDLE handle, uint32_t addr,
+                                     const void *buf, uint32_t len,
                                      BOOL_T is_nand);
 
 /**
@@ -97,8 +97,8 @@ OPERATE_RET tal_mtd_spi_page_program(MTD_SPI_HANDLE handle, UINT_T addr,
  *
  * @return OPRT_OK on success. Others on error, please refer to tal_error_code.h
  */
-OPERATE_RET tal_mtd_spi_erase(MTD_SPI_HANDLE handle, UINT_T addr,
-                              UINT_T erase_type);
+OPERATE_RET tal_mtd_spi_erase(MTD_SPI_HANDLE handle, uint32_t addr,
+                              uint32_t erase_type);
 
 /**
  * @brief mtd spi write
@@ -108,7 +108,7 @@ OPERATE_RET tal_mtd_spi_erase(MTD_SPI_HANDLE handle, UINT_T addr,
  *
  * @return OPRT_OK on success. Others on error, please refer to tal_error_code.h
  */
-OPERATE_RET tal_mtd_spi_read_id(MTD_SPI_HANDLE handle, UINT_T *id);
+OPERATE_RET tal_mtd_spi_read_id(MTD_SPI_HANDLE handle, uint32_t *id);
 
 /**
  * @brief mtd spi deinit

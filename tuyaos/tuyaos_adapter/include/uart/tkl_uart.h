@@ -59,7 +59,7 @@ OPERATE_RET tkl_uart_deinit(TUYA_UART_NUM_E port_id);
  *
  * @return return > 0: number of data written; return <= 0: write errror
  */
-INT_T tkl_uart_write(TUYA_UART_NUM_E port_id, VOID_T *buff, UINT16_T len);
+int32_t tkl_uart_write(TUYA_UART_NUM_E port_id, void *buff, uint16_t len);
 
 /**
  * @brief enable uart rx interrupt and regist interrupt callback
@@ -74,7 +74,7 @@ INT_T tkl_uart_write(TUYA_UART_NUM_E port_id, VOID_T *buff, UINT16_T len);
  *
  * @return none
  */
-VOID_T tkl_uart_rx_irq_cb_reg(TUYA_UART_NUM_E port_id, TUYA_UART_IRQ_CB rx_cb);
+void tkl_uart_rx_irq_cb_reg(TUYA_UART_NUM_E port_id, TUYA_UART_IRQ_CB rx_cb);
 
 /**
  * @brief regist uart tx interrupt callback
@@ -91,7 +91,7 @@ VOID_T tkl_uart_rx_irq_cb_reg(TUYA_UART_NUM_E port_id, TUYA_UART_IRQ_CB rx_cb);
  *
  * @return none
  */
-VOID_T tkl_uart_tx_irq_cb_reg(TUYA_UART_NUM_E port_id, TUYA_UART_IRQ_CB tx_cb);
+void tkl_uart_tx_irq_cb_reg(TUYA_UART_NUM_E port_id, TUYA_UART_IRQ_CB tx_cb);
 
 /**
  * @brief uart read data
@@ -107,7 +107,7 @@ VOID_T tkl_uart_tx_irq_cb_reg(TUYA_UART_NUM_E port_id, TUYA_UART_IRQ_CB tx_cb);
  * 
  * @return return >= 0: number of data read; return < 0: read errror
  */
-INT_T tkl_uart_read(TUYA_UART_NUM_E port_id, VOID_T *buff, UINT16_T len);
+int32_t tkl_uart_read(TUYA_UART_NUM_E port_id, void *buff, uint16_t len);
 
 /**
  * @brief set uart transmit interrupt status
@@ -154,7 +154,7 @@ OPERATE_RET tkl_uart_set_rx_flowctrl(TUYA_UART_NUM_E port_id, BOOL_T enable);
  *                        >0 : timeout in milliseconds
  * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
  */
-OPERATE_RET tkl_uart_wait_for_data(TUYA_UART_NUM_E port_id, INT_T timeout_ms);
+OPERATE_RET tkl_uart_wait_for_data(TUYA_UART_NUM_E port_id, int32_t timeout_ms);
 
 /**
  * @brief uart control
@@ -165,7 +165,7 @@ OPERATE_RET tkl_uart_wait_for_data(TUYA_UART_NUM_E port_id, INT_T timeout_ms);
  *
  * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
  */
-OPERATE_RET tkl_uart_ioctl(TUYA_UART_NUM_E port_id, UINT32_T cmd, VOID *arg);
+OPERATE_RET tkl_uart_ioctl(TUYA_UART_NUM_E port_id, uint32_t cmd, void *arg);
 
 #ifdef __cplusplus
 }

@@ -36,7 +36,7 @@
  ** FUNCTION                                                           **
  **********************************************************************/
 
-static inline bool tal_mtd_is_align(UINT_T n)
+static inline bool tal_mtd_is_align(uint32_t n)
 {
     if ((n & (n - 1)) == 0)
         return 1;
@@ -44,8 +44,8 @@ static inline bool tal_mtd_is_align(UINT_T n)
         return 0;
 }
 
-static OPERATE_RET tal_mtd_nor_page_read(MTD_NOR_HANDLE handle, UINT_T addr,
-                                         VOID_T *data, UINT_T size)
+static OPERATE_RET tal_mtd_nor_page_read(MTD_NOR_HANDLE handle, uint32_t addr,
+                                         void *data, uint32_t size)
 {
     OPERATE_RET ret = OPRT_COM_ERROR;
     if (handle->interface == MTD_IF_QSPI) {
@@ -58,8 +58,8 @@ static OPERATE_RET tal_mtd_nor_page_read(MTD_NOR_HANDLE handle, UINT_T addr,
     return ret;
 }
 
-static OPERATE_RET tal_mtd_nor_page_write(MTD_NOR_HANDLE handle, UINT_T addr,
-                                          const VOID_T *data, UINT_T size)
+static OPERATE_RET tal_mtd_nor_page_write(MTD_NOR_HANDLE handle, uint32_t addr,
+                                          const void *data, uint32_t size)
 {
     OPERATE_RET ret = OPRT_COM_ERROR;
     if (handle->interface == MTD_IF_QSPI) {
@@ -73,8 +73,8 @@ static OPERATE_RET tal_mtd_nor_page_write(MTD_NOR_HANDLE handle, UINT_T addr,
     return ret;
 }
 
-static OPERATE_RET tal_mtd_nor_erase_byType(MTD_NOR_HANDLE handle, UINT_T addr,
-                                            UINT_T byType)
+static OPERATE_RET tal_mtd_nor_erase_byType(MTD_NOR_HANDLE handle, uint32_t addr,
+                                            uint32_t byType)
 {
     OPERATE_RET ret = OPRT_COM_ERROR;
     if (handle->interface == MTD_IF_QSPI) {
@@ -99,7 +99,7 @@ static OPERATE_RET tal_mtd_nor_erase_byType(MTD_NOR_HANDLE handle, UINT_T addr,
 MTD_NOR_HANDLE tal_mtd_nor_init(MTD_NOR_DEV_T *dev, MTD_NOR_CFG_T *cfg)
 {
     MTD_NOR_HANDLE handle = NULL;
-    VOID_T *interface_handle = NULL;
+    void *interface_handle = NULL;
 
     if (!tal_mtd_is_align(dev->total_size) ||
         !tal_mtd_is_align(dev->page_size) ||
@@ -149,8 +149,8 @@ MTD_NOR_HANDLE tal_mtd_nor_init(MTD_NOR_DEV_T *dev, MTD_NOR_CFG_T *cfg)
  *
  * @return Bytes on success. Others on error, please refer to tal_error_code.h
  */
-OPERATE_RET tal_mtd_nor_read(MTD_NOR_HANDLE handle, UINT_T addr, UINT8_T *data,
-                             UINT_T size)
+OPERATE_RET tal_mtd_nor_read(MTD_NOR_HANDLE handle, uint32_t addr, uint8_t *data,
+                             uint32_t size)
 {
     OPERATE_RET ret = OPRT_OK;
 
@@ -160,23 +160,23 @@ OPERATE_RET tal_mtd_nor_read(MTD_NOR_HANDLE handle, UINT_T addr, UINT8_T *data,
     if (addr >= handle->total_size || size > handle->total_size - addr) {
         return OPRT_INVALID_PARM;
     }
-    UINT_T page_mask = handle->page_size - 1;
-    UINT_T first_page_addr = addr & ~page_mask;
-    UINT_T first_page_offset = addr & page_mask;
-    UINT_T first_page_left_len = handle->page_size - first_page_offset;
-    UINT_T first_page_copy_len =
+    uint32_t page_mask = handle->page_size - 1;
+    uint32_t first_page_addr = addr & ~page_mask;
+    uint32_t first_page_offset = addr & page_mask;
+    uint32_t first_page_left_len = handle->page_size - first_page_offset;
+    uint32_t first_page_copy_len =
         (size < first_page_left_len) ? size : first_page_left_len;
-    UINT_T continue_page_num = 0;
+    uint32_t continue_page_num = 0;
     if (size > first_page_copy_len) {
         continue_page_num = (size - first_page_copy_len) / handle->page_size;
     }
-    UINT_T continue_start_addr = first_page_addr + handle->page_size;
-    UINT_T last_page_start_addr =
+    uint32_t continue_start_addr = first_page_addr + handle->page_size;
+    uint32_t last_page_start_addr =
         continue_start_addr + continue_page_num * handle->page_size;
-    UINT_T last_ofs =
+    uint32_t last_ofs =
         first_page_copy_len + continue_page_num * handle->page_size;
-    UINT_T last_copy_len = size - last_ofs;
-    UINT8_T *buf = (UINT8_T *)tkl_system_malloc(handle->page_size);
+    uint32_t last_copy_len = size - last_ofs;
+    uint8_t *buf = (uint8_t *)tkl_system_malloc(handle->page_size);
     if (buf == NULL) {
         return OPRT_MALLOC_FAILED;
     }
@@ -201,9 +201,9 @@ OPERATE_RET tal_mtd_nor_read(MTD_NOR_HANDLE handle, UINT_T addr, UINT8_T *data,
 
     // 2. whole pages continue
     for (int i = 0; i < continue_page_num; i++) {
-        UINT_T tmp_addr = continue_start_addr + i * handle->page_size;
-        UINT_T r_ofs = first_page_copy_len + i * handle->page_size;
-        ret = tal_mtd_nor_page_read(handle, tmp_addr, (UINT8_T *)data + r_ofs,
+        uint32_t tmp_addr = continue_start_addr + i * handle->page_size;
+        uint32_t r_ofs = first_page_copy_len + i * handle->page_size;
+        ret = tal_mtd_nor_page_read(handle, tmp_addr, (uint8_t *)data + r_ofs,
                                     handle->page_size);
         if (ret != OPRT_OK) {
             tkl_system_free(buf);
@@ -238,8 +238,8 @@ OPERATE_RET tal_mtd_nor_read(MTD_NOR_HANDLE handle, UINT_T addr, UINT8_T *data,
  *
  * @return OPRT_OK on success. Others on error, please refer to tal_error_code.h
  */
-OPERATE_RET tal_mtd_nor_write(MTD_NOR_HANDLE handle, UINT_T addr,
-                              const UINT8_T *data, UINT_T size)
+OPERATE_RET tal_mtd_nor_write(MTD_NOR_HANDLE handle, uint32_t addr,
+                              const uint8_t *data, uint32_t size)
 {
     OPERATE_RET ret = OPRT_OK;
 
@@ -249,24 +249,24 @@ OPERATE_RET tal_mtd_nor_write(MTD_NOR_HANDLE handle, UINT_T addr,
     if ((addr >= handle->total_size) || (size > (handle->total_size - addr))) {
         return OPRT_INVALID_PARM;
     }
-    UINT_T page_mask = handle->page_size - 1;
-    UINT_T first_page_addr = addr & ~page_mask;
-    UINT_T first_page_offset = addr & page_mask;
-    UINT_T first_page_left_len = handle->page_size - first_page_offset;
-    UINT_T first_page_write_len =
+    uint32_t page_mask = handle->page_size - 1;
+    uint32_t first_page_addr = addr & ~page_mask;
+    uint32_t first_page_offset = addr & page_mask;
+    uint32_t first_page_left_len = handle->page_size - first_page_offset;
+    uint32_t first_page_write_len =
         (size < first_page_left_len) ? size : first_page_left_len;
-    UINT_T continue_page_num = 0;
+    uint32_t continue_page_num = 0;
     if (size > first_page_left_len) {
         continue_page_num = (size - first_page_left_len) / handle->page_size;
     }
-    UINT_T continue_start_addr = first_page_addr + handle->page_size;
-    UINT_T last_page_start_addr =
+    uint32_t continue_start_addr = first_page_addr + handle->page_size;
+    uint32_t last_page_start_addr =
         continue_start_addr + continue_page_num * handle->page_size;
-    UINT_T last_ofs =
+    uint32_t last_ofs =
         first_page_write_len + continue_page_num * handle->page_size;
-    UINT_T last_page_write_len =
+    uint32_t last_page_write_len =
         (size - first_page_write_len) % handle->page_size;
-    UINT8_T *buf = (UINT8_T *)tkl_system_malloc(handle->page_size);
+    uint8_t *buf = (uint8_t *)tkl_system_malloc(handle->page_size);
     if (buf == NULL) {
         return OPRT_MALLOC_FAILED;
     }
@@ -291,8 +291,8 @@ OPERATE_RET tal_mtd_nor_write(MTD_NOR_HANDLE handle, UINT_T addr,
 
     // 2. whole pages continue
     for (int i = 0; i < continue_page_num; i++) {
-        UINT_T tmp_addr = continue_start_addr + i * handle->page_size;
-        UINT_T w_ofs = first_page_write_len + i * handle->page_size;
+        uint32_t tmp_addr = continue_start_addr + i * handle->page_size;
+        uint32_t w_ofs = first_page_write_len + i * handle->page_size;
         ret = tal_mtd_nor_page_write(handle, tmp_addr, data + w_ofs,
                                      handle->page_size);
         if (ret != OPRT_OK) {
@@ -335,13 +335,13 @@ OPERATE_RET tal_mtd_nor_write(MTD_NOR_HANDLE handle, UINT_T addr,
  *
  * @return OPRT_OK on success. Others on error, please refer to tal_error_code.h
  */
-OPERATE_RET tal_mtd_nor_erase(MTD_NOR_HANDLE handle, UINT_T addr, UINT_T size)
+OPERATE_RET tal_mtd_nor_erase(MTD_NOR_HANDLE handle, uint32_t addr, uint32_t size)
 {
     OPERATE_RET ret = OPRT_OK;
-    const UINT_T block_size = handle->block_size;   // 块大小（字节）
-    const UINT_T sector_size = handle->sector_size; // 页/扇区大小（字节）
+    const uint32_t block_size = handle->block_size;   // 块大小（字节）
+    const uint32_t sector_size = handle->sector_size; // 页/扇区大小（字节）
     // 计算擦除区域的起始和结束地址
-    const UINT_T end_addr = addr + size;
+    const uint32_t end_addr = addr + size;
 
     if (handle->block_size == 0 || handle->page_size == 0 ||
         handle->total_size == 0) {
@@ -353,14 +353,14 @@ OPERATE_RET tal_mtd_nor_erase(MTD_NOR_HANDLE handle, UINT_T addr, UINT_T size)
     }
 
     // 遍历所有涉及的块
-    UINT_T current_block_start =
+    uint32_t current_block_start =
         (addr / block_size) * block_size; // 起始块的首地址
-    UINT_T current_block_end = current_block_start + block_size;
+    uint32_t current_block_end = current_block_start + block_size;
 
     while (current_block_start < end_addr) {
         // 计算当前块内需要擦除的起始和结束地址
-        UINT_T erase_start_in_block = MAX(addr, current_block_start);
-        UINT_T erase_end_in_block = MIN(end_addr, current_block_end);
+        uint32_t erase_start_in_block = MAX(addr, current_block_start);
+        uint32_t erase_end_in_block = MIN(end_addr, current_block_end);
 
         // 情况1：整个块需要擦除
         if (erase_start_in_block == current_block_start &&
@@ -372,11 +372,11 @@ OPERATE_RET tal_mtd_nor_erase(MTD_NOR_HANDLE handle, UINT_T addr, UINT_T size)
         // 情况2：部分页需要擦除
         else {
             // 计算当前块内需要擦除的页
-            UINT_T sector_start = erase_start_in_block / sector_size;
-            UINT_T sector_end = (erase_end_in_block - 1) / sector_size;
+            uint32_t sector_start = erase_start_in_block / sector_size;
+            uint32_t sector_end = (erase_end_in_block - 1) / sector_size;
 
-            for (UINT_T sector = sector_start; sector <= sector_end; sector++) {
-                UINT_T sector_addr = sector * sector_size;
+            for (uint32_t sector = sector_start; sector <= sector_end; sector++) {
+                uint32_t sector_addr = sector * sector_size;
                 ret = tal_mtd_nor_erase_byType(handle, sector_addr, 1);
                 if (ret != OPRT_OK)
                     return ret;
@@ -399,7 +399,7 @@ OPERATE_RET tal_mtd_nor_erase(MTD_NOR_HANDLE handle, UINT_T addr, UINT_T size)
  *
  * @return OPRT_OK on success. Others on error, please refer to tal_error_code.h
  */
-OPERATE_RET tal_mtd_nor_get_id(MTD_NOR_HANDLE handle, UINT_T *id)
+OPERATE_RET tal_mtd_nor_get_id(MTD_NOR_HANDLE handle, uint32_t *id)
 {
     OPERATE_RET ret = OPRT_OK;
 

@@ -26,7 +26,7 @@ typedef OPERATE_RET (*DVP_FRAME_POST_CB)(TUYA_DVP_FRAME_MANAGE_T *dvp_frame);
  *
  * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
  */
-OPERATE_RET tkl_dvp_init(TUYA_DVP_CFG_T *dvp_cfg, UINT32_T clk);
+OPERATE_RET tkl_dvp_init(TUYA_DVP_CFG_T *dvp_cfg, uint32_t clk);
 
 /**
  * @brief tkl_dvp_deinit

@@ -27,7 +27,7 @@ extern "C" {
 *
 * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
 */
-OPERATE_RET tkl_flash_read(UINT32_T addr, UCHAR_T *dst, UINT32_T size);
+OPERATE_RET tkl_flash_read(uint32_t addr, uint8_t *dst, uint32_t size);
 
 /**
 * @brief write flash
@@ -40,7 +40,7 @@ OPERATE_RET tkl_flash_read(UINT32_T addr, UCHAR_T *dst, UINT32_T size);
 *
 * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
 */
-OPERATE_RET tkl_flash_write(UINT32_T addr, CONST UCHAR_T *src, UINT32_T size);
+OPERATE_RET tkl_flash_write(uint32_t addr, const uint8_t *src, uint32_t size);
 
 /**
 * @brief erase flash
@@ -52,7 +52,7 @@ OPERATE_RET tkl_flash_write(UINT32_T addr, CONST UCHAR_T *src, UINT32_T size);
 *
 * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
 */
-OPERATE_RET tkl_flash_erase(UINT32_T addr, UINT32_T size);
+OPERATE_RET tkl_flash_erase(uint32_t addr, uint32_t size);
 
 /**
 * @brief lock flash
@@ -64,7 +64,7 @@ OPERATE_RET tkl_flash_erase(UINT32_T addr, UINT32_T size);
 *
 * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
 */
-OPERATE_RET tkl_flash_lock(UINT32_T addr, UINT32_T size);
+OPERATE_RET tkl_flash_lock(uint32_t addr, uint32_t size);
 
 /**
 * @brief unlock flash
@@ -76,7 +76,7 @@ OPERATE_RET tkl_flash_lock(UINT32_T addr, UINT32_T size);
 *
 * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
 */
-OPERATE_RET tkl_flash_unlock(UINT32_T addr, UINT32_T size);
+OPERATE_RET tkl_flash_unlock(uint32_t addr, uint32_t size);
 
 /**
 * @brief get flash information

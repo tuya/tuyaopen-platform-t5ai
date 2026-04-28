@@ -193,7 +193,7 @@ OPERATE_RET tkl_cellular_get_ipv6(NW_IP_TYPE type, NW_IP_S *ip)
  *
  * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
  */
-OPERATE_RET tkl_cellular_get_ccid(CHAR_T *ccid)
+OPERATE_RET tkl_cellular_get_ccid(char *ccid)
 {
 #if CONFIG_BK_MODEM
     BK_ASSERT(NULL != ccid);
@@ -218,7 +218,7 @@ OPERATE_RET tkl_cellular_get_ccid(CHAR_T *ccid)
  *
  * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
  */
-OPERATE_RET tkl_cellular_get_rssi(CHAR_T *rssi)
+OPERATE_RET tkl_cellular_get_rssi(char *rssi)
 {
 #if CONFIG_BK_MODEM
     BK_ASSERT(NULL != rssi);
@@ -239,7 +239,7 @@ OPERATE_RET tkl_cellular_get_rssi(CHAR_T *rssi)
  *
  * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
  */
-OPERATE_RET tkl_cellular_get_volt(UINT32_T *volt)
+OPERATE_RET tkl_cellular_get_volt(uint32_t *volt)
 {
 #if CONFIG_BK_MODEM
     BK_ASSERT(NULL != volt);
@@ -261,7 +261,7 @@ OPERATE_RET tkl_cellular_get_volt(UINT32_T *volt)
  *
  * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
  */
-OPERATE_RET tkl_cellular_get_imei(CHAR_T *imei)
+OPERATE_RET tkl_cellular_get_imei(char *imei)
 {
 #if CONFIG_BK_MODEM
     BK_ASSERT(NULL != imei);
@@ -288,7 +288,7 @@ OPERATE_RET tkl_cellular_get_imei(CHAR_T *imei)
  *
  * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
  */
-OPERATE_RET tkl_cellular_get_sn(CHAR_T *sn)
+OPERATE_RET tkl_cellular_get_sn(char *sn)
 {
 #if CONFIG_BK_MODEM
     BK_ASSERT(NULL != sn);
@@ -315,7 +315,7 @@ OPERATE_RET tkl_cellular_get_sn(CHAR_T *sn)
  *
  * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
  */
-OPERATE_RET tkl_cellular_get_sw_ver(CHAR_T *ver)
+OPERATE_RET tkl_cellular_get_sw_ver(char *ver)
 {
 #if CONFIG_BK_MODEM
     BK_ASSERT(NULL != ver);
@@ -379,7 +379,7 @@ OPERATE_RET tkl_cellular_mf_test_start(TKL_CELLULAR_BASE_CFG_T *cfg)
  *
  * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
  */
-OPERATE_RET tkl_cellular_mf_test_stop(VOID)
+OPERATE_RET tkl_cellular_mf_test_stop(void)
 {
 #if CONFIG_BK_MODEM
     bk_modem_deinit();

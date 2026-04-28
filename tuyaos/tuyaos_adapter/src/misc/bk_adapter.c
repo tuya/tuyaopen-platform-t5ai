@@ -79,13 +79,13 @@ void tuya_get_usb_dev(uint32_t *vid, uint32_t *pid)
 }
 #endif  // CONFIG_CPU_INDEX != 0
 
-VOID tkl_data_dump(CONST int     level,
-        CONST CHAR_T              *file,
-        CONST INT_T               line,
-        CONST CHAR_T              *title,
-        UINT8_T                   width,
-        UINT8_T                   *buf,
-        UINT16_T                  size)
+void tkl_data_dump(const int     level,
+        const char              *file,
+        const int32_t               line,
+        const char              *title,
+        uint8_t                   width,
+        uint8_t                   *buf,
+        uint16_t                  size)
 {
     int i = 0;
 

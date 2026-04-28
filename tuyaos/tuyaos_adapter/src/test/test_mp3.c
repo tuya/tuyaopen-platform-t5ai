@@ -229,7 +229,7 @@ void cli_aud_intf_mp3_play_test_cmd(char *pcWriteBuffer, int xWriteBufferLen, in
 
     tkl_ai_set_vol(0, 0, 80);
 
-    extern VOID_T tkl_system_sleep(UINT_T num_ms);
+    extern void tkl_system_sleep(uint32_t num_ms);
     tkl_system_sleep(200);
     do {
         ret = mp3_decode_handler(0);

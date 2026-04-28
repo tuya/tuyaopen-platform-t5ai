@@ -28,14 +28,14 @@ typedef struct {
     OPERATE_RET (*set_ip)                   (NW_IP_S *ip);
     OPERATE_RET (*get_ip)                   (NW_IP_S *ip);
     OPERATE_RET (*get_ipv6)                 (NW_IP_TYPE type, NW_IP_S *ip);
-    OPERATE_RET (*get_ccid)                 (CHAR_T *ccid);
-    OPERATE_RET (*get_rssi)                 (CHAR_T *rssi);
-    OPERATE_RET (*get_volt)                 (UINT32_T *volt);
-    OPERATE_RET (*get_imei)                 (CHAR_T *imei);
-    OPERATE_RET (*get_sn)                   (CHAR_T *sn);
-    OPERATE_RET (*get_sw_ver)               (CHAR_T *ver);
+    OPERATE_RET (*get_ccid)                 (char *ccid);
+    OPERATE_RET (*get_rssi)                 (char *rssi);
+    OPERATE_RET (*get_volt)                 (uint32_t *volt);
+    OPERATE_RET (*get_imei)                 (char *imei);
+    OPERATE_RET (*get_sn)                   (char *sn);
+    OPERATE_RET (*get_sw_ver)               (char *ver);
     OPERATE_RET (*mf_test_start)            (TKL_CELLULAR_BASE_CFG_T *cfg);
-    OPERATE_RET (*mf_test_stop)             (VOID);
+    OPERATE_RET (*mf_test_stop)             (void);
 } TKL_CELLULAR_DESC_T;
 
 /**
@@ -43,7 +43,7 @@ typedef struct {
  *
  * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
  */
-TKL_CELLULAR_DESC_T* tkl_cellular_desc_get(VOID_T);
+TKL_CELLULAR_DESC_T* tkl_cellular_desc_get(void);
 
 #ifdef __cplusplus
 } // extern "C"

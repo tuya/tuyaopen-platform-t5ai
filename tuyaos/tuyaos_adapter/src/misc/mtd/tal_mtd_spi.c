@@ -39,9 +39,9 @@
  ** FUNCTION                                                           **
  **********************************************************************/
 
-static void spi_flash_send_command(MTD_SPI_HANDLE handle, UINT8_T cmd)
+static void spi_flash_send_command(MTD_SPI_HANDLE handle, uint8_t cmd)
 {
-    UINT8_T ucmd[] = {0x00, 0x00, 0x00, 0x00};
+    uint8_t ucmd[] = {0x00, 0x00, 0x00, 0x00};
     MTD_SPI_CFG_T spi_cfg = {0};
     ucmd[0] = cmd;
 
@@ -50,11 +50,11 @@ static void spi_flash_send_command(MTD_SPI_HANDLE handle, UINT8_T cmd)
     handle->dev.ops.wait(&spi_cfg);
 }
 
-OPERATE_RET tal_mtd_spi_page_read(MTD_SPI_HANDLE handle, UINT_T addr,
-                                  VOID_T *data, UINT_T size, BOOL_T is_nand)
+OPERATE_RET tal_mtd_spi_page_read(MTD_SPI_HANDLE handle, uint32_t addr,
+                                  void *data, uint32_t size, BOOL_T is_nand)
 {
     OPERATE_RET ret = OPRT_COM_ERROR;
-    UINT8_T ucmd[] = {0x00, 0x00, 0x00, 0x00};
+    uint8_t ucmd[] = {0x00, 0x00, 0x00, 0x00};
 
     if (is_nand) {
         ucmd[0] = handle->dev.cmd_set.spi_read_cache;
@@ -77,12 +77,12 @@ OPERATE_RET tal_mtd_spi_page_read(MTD_SPI_HANDLE handle, UINT_T addr,
     return ret;
 }
 
-OPERATE_RET tal_mtd_spi_page_program(MTD_SPI_HANDLE handle, UINT_T addr,
-                                     const VOID_T *data, UINT_T size,
+OPERATE_RET tal_mtd_spi_page_program(MTD_SPI_HANDLE handle, uint32_t addr,
+                                     const void *data, uint32_t size,
                                      BOOL_T is_nand)
 {
     OPERATE_RET ret = OPRT_COM_ERROR;
-    UINT8_T *ucmd = tkl_system_malloc(size + 4);
+    uint8_t *ucmd = tkl_system_malloc(size + 4);
     if (!ucmd)
         return 1;
 
@@ -111,11 +111,11 @@ OPERATE_RET tal_mtd_spi_page_program(MTD_SPI_HANDLE handle, UINT_T addr,
     return ret;
 }
 
-OPERATE_RET tal_mtd_spi_erase(MTD_SPI_HANDLE handle, UINT_T addr,
-                              UINT_T erase_type)
+OPERATE_RET tal_mtd_spi_erase(MTD_SPI_HANDLE handle, uint32_t addr,
+                              uint32_t erase_type)
 {
     OPERATE_RET ret = OPRT_COM_ERROR;
-    UINT8_T ucmd[] = {0x00, 0x00, 0x00, 0x00};
+    uint8_t ucmd[] = {0x00, 0x00, 0x00, 0x00};
     uint32_t send_len;
     if (erase_type == ERASE_SECTOR) {
         ucmd[0] = handle->dev.cmd_set.sector_erase;
@@ -133,11 +133,11 @@ OPERATE_RET tal_mtd_spi_erase(MTD_SPI_HANDLE handle, UINT_T addr,
     return ret;
 }
 
-OPERATE_RET tal_mtd_spi_read_id(MTD_SPI_HANDLE handle, UINT_T *reg_id)
+OPERATE_RET tal_mtd_spi_read_id(MTD_SPI_HANDLE handle, uint32_t *reg_id)
 {
     OPERATE_RET ret = OPRT_COM_ERROR;
-    UINT8_T ucmd[] = {0x00, 0x00, 0x00, 0x00};
-    UINT8_T uid_buf[MTD_ID_LEN] = {0};
+    uint8_t ucmd[] = {0x00, 0x00, 0x00, 0x00};
+    uint8_t uid_buf[MTD_ID_LEN] = {0};
 
     ucmd[0] = handle->dev.cmd_set.read_id;
 
@@ -169,7 +169,7 @@ MTD_SPI_HANDLE tal_mtd_spi_init(MTD_SPI_DEV_T *dev, MTD_SPI_CFG_T *cfg)
 
 OPERATE_RET tal_mtd_spi_deinit(MTD_SPI_HANDLE handle)
 {
-    INT32_T ret = OPRT_OK;
+    int32_t ret = OPRT_OK;
     ret = tkl_spi_deinit(handle->port);
     if (OPRT_OK != ret) {
         ret = OPRT_COM_ERROR;

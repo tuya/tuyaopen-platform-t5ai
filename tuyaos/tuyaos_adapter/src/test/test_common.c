@@ -14,7 +14,7 @@ static int qflash_ref = 0;
 static int sdcard_ref = 0;
 static int inner_flash_ref = 0;
 
-int test_fs_mount(CONST CHAR_T *path, FS_DEV_TYPE_T dev_type)
+int test_fs_mount(const char *path, FS_DEV_TYPE_T dev_type)
 {
     int ret = 0;
     int is_need_mount = 0;
@@ -48,7 +48,7 @@ int test_fs_mount(CONST CHAR_T *path, FS_DEV_TYPE_T dev_type)
     return ret;
 }
 
-int test_fs_unmount(CONST CHAR_T *path)
+int test_fs_unmount(const char *path)
 {
     int ret = 0;
     FS_DEV_TYPE_T dev_type;

@@ -36,7 +36,7 @@ OPERATE_RET tkl_timer_init(TUYA_TIMER_NUM_E timer_id, TUYA_TIMER_BASE_CFG_T *cfg
  *
  * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
  */
-OPERATE_RET tkl_timer_start(TUYA_TIMER_NUM_E timer_id, UINT_T us);
+OPERATE_RET tkl_timer_start(TUYA_TIMER_NUM_E timer_id, uint32_t us);
 
 /**
  * @brief timer stop
@@ -64,7 +64,7 @@ OPERATE_RET tkl_timer_deinit(TUYA_TIMER_NUM_E timer_id);
  *
  * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
  */
-OPERATE_RET tkl_timer_get_current_value(TUYA_TIMER_NUM_E timer_id, UINT_T *us);
+OPERATE_RET tkl_timer_get_current_value(TUYA_TIMER_NUM_E timer_id, uint32_t *us);
 
 /**
  * @brief timer get
@@ -74,7 +74,7 @@ OPERATE_RET tkl_timer_get_current_value(TUYA_TIMER_NUM_E timer_id, UINT_T *us);
  *
  * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
  */
-OPERATE_RET tkl_timer_get(TUYA_TIMER_NUM_E timer_id, UINT_T *us);
+OPERATE_RET tkl_timer_get(TUYA_TIMER_NUM_E timer_id, uint32_t *us);
 
 
 

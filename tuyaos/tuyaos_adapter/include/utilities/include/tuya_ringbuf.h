@@ -18,7 +18,7 @@
 #include "tuya_cloud_types.h"
 
 
-typedef VOID_T* TUYA_RINGBUFF_T;
+typedef void* TUYA_RINGBUFF_T;
 
 typedef enum {
     OVERFLOW_STOP_TYPE = 0, ///< unread buff area will not be overwritten when writing overflow
@@ -40,7 +40,7 @@ typedef enum {
  * @param[in]   ringbuff: ringbuff handle
  * @return  TRUE/ FALSE
  */
-OPERATE_RET tuya_ring_buff_create(UINT32_T len, RINGBUFF_TYPE_E type, TUYA_RINGBUFF_T *ringbuff);
+OPERATE_RET tuya_ring_buff_create(uint32_t len, RINGBUFF_TYPE_E type, TUYA_RINGBUFF_T *ringbuff);
 
 /**
  * @brief ringbuff free
@@ -65,7 +65,7 @@ OPERATE_RET tuya_ring_buff_reset(TUYA_RINGBUFF_T ringbuff);
  * @param[in]   ringbuff: ringbuff handle
  * @return  size of ringbuff not used
  */
-UINT32_T tuya_ring_buff_free_size_get(TUYA_RINGBUFF_T ringbuff);
+uint32_t tuya_ring_buff_free_size_get(TUYA_RINGBUFF_T ringbuff);
 
 /**
  * @brief ringbuff used size get
@@ -73,7 +73,7 @@ UINT32_T tuya_ring_buff_free_size_get(TUYA_RINGBUFF_T ringbuff);
  * @param[in]   ringbuff: ringbuff handle
  * @return  size of ringbuff used
  */
-UINT32_T tuya_ring_buff_used_size_get(TUYA_RINGBUFF_T ringbuff);
+uint32_t tuya_ring_buff_used_size_get(TUYA_RINGBUFF_T ringbuff);
 
 /**
  * @brief ringbuff data read 
@@ -83,7 +83,7 @@ UINT32_T tuya_ring_buff_used_size_get(TUYA_RINGBUFF_T ringbuff);
  * @param[in]   len:      read len
  * @return  length of the data read
  */
-UINT32_T tuya_ring_buff_read(TUYA_RINGBUFF_T ringbuff, VOID_T *data, UINT32_T len);
+uint32_t tuya_ring_buff_read(TUYA_RINGBUFF_T ringbuff, void *data, uint32_t len);
 
 /**
  * @brief Discards a specified number of bytes from the ring buffer.
@@ -109,7 +109,7 @@ uint32_t tuya_ring_buff_discard(TUYA_RINGBUFF_T ringbuff, uint32_t len);
  * @param[in]   len:      read len
  * @return  length of the data read
  */
-UINT32_T tuya_ring_buff_peek(TUYA_RINGBUFF_T ringbuff, VOID_T *data, UINT32_T len);
+uint32_t tuya_ring_buff_peek(TUYA_RINGBUFF_T ringbuff, void *data, uint32_t len);
 
 /**
  * @brief ringbuff data write 
@@ -119,7 +119,7 @@ UINT32_T tuya_ring_buff_peek(TUYA_RINGBUFF_T ringbuff, VOID_T *data, UINT32_T le
  * @param[in]   len:      write len
  * @return  length of the data write
  */
-UINT32_T tuya_ring_buff_write(TUYA_RINGBUFF_T ringbuff, CONST VOID_T *data, UINT32_T len);
+uint32_t tuya_ring_buff_write(TUYA_RINGBUFF_T ringbuff, const void *data, uint32_t len);
 
 
 #ifdef __cplusplus

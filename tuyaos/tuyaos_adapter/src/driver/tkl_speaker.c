@@ -20,7 +20,7 @@
 #define DEFAULT_FRAME_SIZE 640
 #define DEFAULT_POOL_SIZE (DEFAULT_FRAME_SIZE * 2)
 
-static UINT32_T m_play_gain = 0;
+static uint32_t m_play_gain = 0;
 #ifdef CONFIG_ADK_ONBOARD_SPEAKER_STREAM
 static audio_element_handle_t m_spk_decode = NULL;
 static audio_pipeline_handle_t m_spk_pipeline = NULL;
@@ -46,9 +46,9 @@ OPERATE_RET tkl_speaker_init(TKL_SPK_CFG_T *config)
         return OPRT_INVALID_PARM;
     }
 
-    UINT32_T sample_rate =
+    uint32_t sample_rate =
         config->sample_rate ? config->sample_rate : DEFAULT_SAMPLE_RATE;
-    UINT32_T frame_size =
+    uint32_t frame_size =
         sample_rate * CHANNEL_NUM * TIME_SAMPLE_MS / MS_PER_SEC;
     if (config->spk_gpio < 56) {
         TUYA_GPIO_BASE_CFG_T cfg;
@@ -199,7 +199,7 @@ err:
     }
     return OPRT_COM_ERROR;
 #else
-    UINT32_T pool_size = frame_size * 2;
+    uint32_t pool_size = frame_size * 2;
     audio_play_cfg_t play_config = DEFAULT_AUDIO_PLAY_CONFIG();
     play_config.bitsPerSample = config->datebits;
     play_config.sampRate = sample_rate;
@@ -217,9 +217,9 @@ err:
 #endif
 }
 
-INT32_T tkl_speaker_start(VOID_T)
+int32_t tkl_speaker_start(void)
 {
-    INT32_T ret = OPRT_OK;
+    int32_t ret = OPRT_OK;
 #ifdef CONFIG_ADK_ONBOARD_SPEAKER_STREAM
     if (m_spk_pipeline) {
         ret = audio_pipeline_run(m_spk_pipeline);
@@ -236,9 +236,9 @@ INT32_T tkl_speaker_start(VOID_T)
     return ret;
 }
 
-INT32_T tkl_speaker_pause(VOID_T)
+int32_t tkl_speaker_pause(void)
 {
-    INT32_T ret = OPRT_OK;
+    int32_t ret = OPRT_OK;
 #ifdef CONFIG_ADK_ONBOARD_SPEAKER_STREAM
     if (m_spk_pipeline) {
         ret = audio_pipeline_pause(m_spk_pipeline);
@@ -252,9 +252,9 @@ INT32_T tkl_speaker_pause(VOID_T)
     return ret;
 }
 
-INT32_T tkl_speaker_resume(VOID_T)
+int32_t tkl_speaker_resume(void)
 {
-    INT32_T ret = OPRT_OK;
+    int32_t ret = OPRT_OK;
 #ifdef CONFIG_ADK_ONBOARD_SPEAKER_STREAM
     if (m_spk_pipeline) {
         ret = audio_pipeline_resume(m_spk_pipeline);
@@ -268,9 +268,9 @@ INT32_T tkl_speaker_resume(VOID_T)
     return ret;
 }
 
-INT32_T tkl_speaker_set_gain(INT32_T gain)
+int32_t tkl_speaker_set_gain(int32_t gain)
 {
-    INT32_T ret = OPRT_OK;
+    int32_t ret = OPRT_OK;
     if (gain > 100)
     {
         return OPRT_INVALID_PARM;
@@ -293,13 +293,13 @@ INT32_T tkl_speaker_set_gain(INT32_T gain)
     return ret;
 }
 
-INT32_T tkl_speaker_get_gain(VOID_T)
+int32_t tkl_speaker_get_gain(void)
 {
-    INT32_T gain = 0;
-    INT32_T ret = OPRT_OK;
+    int32_t gain = 0;
+    int32_t ret = OPRT_OK;
 #ifdef CONFIG_ADK_ONBOARD_SPEAKER_STREAM
     if (m_spk_stream) {
-        ret = onboard_speaker_stream_get_digital_gain(m_spk_stream, (UINT8_T *)&gain);
+        ret = onboard_speaker_stream_get_digital_gain(m_spk_stream, (uint8_t *)&gain);
         ret = gain;
     }
 #else
@@ -311,9 +311,9 @@ INT32_T tkl_speaker_get_gain(VOID_T)
     return ret;
 }
 
-INT32_T tkl_speaker_write(UINT8_T *data, UINT32_T len)
+int32_t tkl_speaker_write(uint8_t *data, uint32_t len)
 {
-    INT32_T ret = OPRT_OK;
+    int32_t ret = OPRT_OK;
 #ifdef CONFIG_ADK_ONBOARD_SPEAKER_STREAM
     if (m_raw_spk_stream) {
         ret = raw_stream_write(m_raw_spk_stream, (char *)data, len);
@@ -326,9 +326,9 @@ INT32_T tkl_speaker_write(UINT8_T *data, UINT32_T len)
     return ret;
 }
 
-INT32_T tkl_speaker_stop(VOID_T)
+int32_t tkl_speaker_stop(void)
 {
-    INT32_T ret = OPRT_OK;
+    int32_t ret = OPRT_OK;
 #ifdef CONFIG_ADK_ONBOARD_SPEAKER_STREAM
     if (m_spk_pipeline) {
         if (BK_OK != audio_pipeline_stop(m_spk_pipeline)) {
@@ -349,7 +349,7 @@ INT32_T tkl_speaker_stop(VOID_T)
     return ret;
 }
 
-VOID_T tkl_speaker_deinit(VOID_T)
+void tkl_speaker_deinit(void)
 {
 #ifdef CONFIG_ADK_ONBOARD_SPEAKER_STREAM
     if (BK_OK != audio_pipeline_stop(m_spk_pipeline)) {

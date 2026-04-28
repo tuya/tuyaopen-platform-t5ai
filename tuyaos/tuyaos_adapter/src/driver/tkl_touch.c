@@ -32,39 +32,39 @@
 // Internal callback function type
 typedef struct {
     TUYA_TOUCH_CALLBACK callback;
-    VOID *arg;
+    void *arg;
 } touch_callback_t;
 
 // Touch channel state structure
 typedef struct {
     BOOL_T enabled;
-    UINT32_T calibration_value;
+    uint32_t calibration_value;
     TUYA_TOUCH_DETECT_RANGE_E detect_range;
 } touch_channel_state_t;
 
 // Define independent state variables for each channel
 typedef struct {
-    UINT8_T touch_state; // 0: Not touched, 1: Touched
-    UINT8_T touch_flag;
+    uint8_t touch_state; // 0: Not touched, 1: Touched
+    uint8_t touch_flag;
     float baseline;
     float raw_buf[BUF_SIZE];
     float filtered_buf[BUF_SIZE];
     float last_filtered_value;
-    UINT8_T buf_index;
+    uint8_t buf_index;
 } touch_channel_data_t;
 
 // Maintain independent key states for each channel
 typedef struct {
-    UINT8_T key_state;      // Current key state
-    UINT8_T last_key_state; // Last key state
-    UINT32_T press_count;   // Press counter
-    UINT32_T released_count;// Release counter
+    uint8_t key_state;      // Current key state
+    uint8_t last_key_state; // Last key state
+    uint32_t press_count;   // Press counter
+    uint32_t released_count;// Release counter
 } key_state_t;
 
 static touch_callback_t touch_callbacks[TUYA_TOUCH_CHANNEL_MAX] = {0};
 static touch_channel_state_t touch_channel_states[TUYA_TOUCH_CHANNEL_MAX] = {0};
 static BOOL_T touch_initialized = FALSE;
-static UINT32_T current_enabled_channels = 0;
+static uint32_t current_enabled_channels = 0;
 static touch_config_t touch_config;
 static beken_thread_t __tkl_touch_scan_thread_handle = NULL;
 static key_state_t key_states[TUYA_TOUCH_CHANNEL_MAX] = {0};
@@ -76,21 +76,21 @@ static float __max_raw_value = 0;
 /***********************************************************
 ***********************function define**********************
 ***********************************************************/
-float get_median_value(float find_array[], UINT8_T array_len);
-float get_avg_value(float find_array[], UINT8_T array_len);
-float get_variance_value(float array[], UINT8_T array_len);
+float get_median_value(float find_array[], uint8_t array_len);
+float get_avg_value(float find_array[], uint8_t array_len);
+float get_variance_value(float array[], uint8_t array_len);
 float get_discrete_state(float value, float avg_value);
-float get_max_value(float find_array[], UINT8_T array_len);
-INT32_T find_index(float array[], UINT8_T array_len, float find_value);
-float get_iir_filter_value(float current_value, float last_value, UINT32_T k, UINT32_T n);
-float get_square_wave_filter(float raw_value, float baseline_value, UINT8_T touch_id);
-float get_adaptive_baseline(float current_value, float old_baseline, UINT8_T is_stable);
-UINT8_T tkl_touch_get_single_channel_status(UINT8_T touch_id);
-OPERATE_RET tkl_touch_get_single_calibration_value(UINT32_T touch_id, float *value);
+float get_max_value(float find_array[], uint8_t array_len);
+int32_t find_index(float array[], uint8_t array_len, float find_value);
+float get_iir_filter_value(float current_value, float last_value, uint32_t k, uint32_t n);
+float get_square_wave_filter(float raw_value, float baseline_value, uint8_t touch_id);
+float get_adaptive_baseline(float current_value, float old_baseline, uint8_t is_stable);
+uint8_t tkl_touch_get_single_channel_status(uint8_t touch_id);
+OPERATE_RET tkl_touch_get_single_calibration_value(uint32_t touch_id, float *value);
 
-static void __touch_parameter_init(UINT32_T channel_mask)
+static void __touch_parameter_init(uint32_t channel_mask)
 {
-    UINT8_T i, channel;
+    uint8_t i, channel;
     float raw_data[BUF_SIZE] = {0};
 
     // Multiple sampling to obtain stable baseline
@@ -104,7 +104,7 @@ static void __touch_parameter_init(UINT32_T channel_mask)
             channel_data[channel].baseline = init_baseline;
 
             // Initialize buffers
-            for (UINT8_T j = 0; j < BUF_SIZE; j++) {
+            for (uint8_t j = 0; j < BUF_SIZE; j++) {
                 channel_data[channel].raw_buf[j] = init_baseline;
                 channel_data[channel].filtered_buf[j] = init_baseline;
             }
@@ -117,9 +117,9 @@ static void __touch_parameter_init(UINT32_T channel_mask)
     }
 }
 
-UINT8_T __touch_status_process(UINT32_T touch_id)
+uint8_t __touch_status_process(uint32_t touch_id)
 {
-    UINT8_T rt = 0;
+    uint8_t rt = 0;
     static float raw_value, filtered_value;
     static float variance_value_raw;
     static float median_buf[BUF_SIZE] = {0};
@@ -214,8 +214,8 @@ static void __tkl_touch_isr(void *param)
 {
     bk_touch_clear_int(0xFFFF);
 
-    UINT32_T channel = (UINT32_T)param;
-    UINT32_T int_status = 0;
+    uint32_t channel = (uint32_t)param;
+    uint32_t int_status = 0;
 
     // Get interrupt status
     int_status = bk_touch_get_int_status();
@@ -237,10 +237,10 @@ static void __tkl_touch_scan_thread(void)
     // Calculate long press time
     if (current_enabled_channels == 0)
         return;
-    UINT32_T long_press_threshold = TOUCH_LONG_PRESSED_TIME / TOUCH_SAMPLE_TIME / COUNT_SET_BITS(current_enabled_channels);
-    UINT32_T event = 0;
+    uint32_t long_press_threshold = TOUCH_LONG_PRESSED_TIME / TOUCH_SAMPLE_TIME / COUNT_SET_BITS(current_enabled_channels);
+    uint32_t event = 0;
 
-    for (UINT8_T i = 0; i < TUYA_TOUCH_CHANNEL_MAX; i++) {
+    for (uint8_t i = 0; i < TUYA_TOUCH_CHANNEL_MAX; i++) {
         key_states[i].key_state = 0;
         key_states[i].last_key_state = 0;
         key_states[i].press_count = 0;
@@ -248,7 +248,7 @@ static void __tkl_touch_scan_thread(void)
     }
     while (1) {
         // Traverse all enabled channels
-        for (UINT8_T touch_id = 0; touch_id < TUYA_TOUCH_CHANNEL_MAX; touch_id++) {
+        for (uint8_t touch_id = 0; touch_id < TUYA_TOUCH_CHANNEL_MAX; touch_id++) {
             // Check if channel is enabled
             if (!(current_enabled_channels & (1 << touch_id))) {
                 continue;
@@ -309,9 +309,9 @@ static void __tkl_touch_scan_thread(void)
     }
 }
 
-OPERATE_RET tkl_touch_init(UINT32_T channel_mask, TUYA_TOUCH_CONFIG_T *cfg)
+OPERATE_RET tkl_touch_init(uint32_t channel_mask, TUYA_TOUCH_CONFIG_T *cfg)
 {
-    UINT32_T channel;
+    uint32_t channel;
 
     if (NULL == cfg) {
         return OPRT_INVALID_PARM;
@@ -421,9 +421,9 @@ OPERATE_RET tkl_touch_init(UINT32_T channel_mask, TUYA_TOUCH_CONFIG_T *cfg)
     return OPRT_OK;
 }
 
-OPERATE_RET tkl_touch_deinit(UINT32_T channel_mask)
+OPERATE_RET tkl_touch_deinit(uint32_t channel_mask)
 {
-    UINT32_T channel;
+    uint32_t channel;
 
     if (!touch_initialized) {
         return OPRT_OK;
@@ -455,21 +455,21 @@ OPERATE_RET tkl_touch_deinit(UINT32_T channel_mask)
     return OPRT_OK;
 }
 
-OPERATE_RET tkl_touch_enable(UINT32_T channel_mask)
+OPERATE_RET tkl_touch_enable(uint32_t channel_mask)
 {
     bk_touch_enable(channel_mask);
     return OPRT_OK;
 }
 
-OPERATE_RET tkl_touch_disable(UINT32_T channel_mask)
+OPERATE_RET tkl_touch_disable(uint32_t channel_mask)
 {
     bk_touch_disable();
     return OPRT_OK;
 }
 
-OPERATE_RET tkl_touch_register_callback(UINT32_T channel_mask, TUYA_TOUCH_CALLBACK callback, VOID *arg)
+OPERATE_RET tkl_touch_register_callback(uint32_t channel_mask, TUYA_TOUCH_CALLBACK callback, void *arg)
 {
-    UINT32_T channel;
+    uint32_t channel;
 
     // Register scan thread (create only once)
     if (__tkl_touch_scan_thread_handle == NULL) {
@@ -491,10 +491,10 @@ OPERATE_RET tkl_touch_register_callback(UINT32_T channel_mask, TUYA_TOUCH_CALLBA
     return OPRT_OK;
 }
 
-OPERATE_RET tkl_touch_get_single_calibration_value(UINT32_T touch_id, float *value)
+OPERATE_RET tkl_touch_get_single_calibration_value(uint32_t touch_id, float *value)
 {
-    UINT32_T channel = 0;
-    UINT32_T cap_out2 = 0, cap_out0 = 0, cap_out1 = 0;
+    uint32_t channel = 0;
+    uint32_t cap_out2 = 0, cap_out0 = 0, cap_out1 = 0;
     for (channel = 0; channel < TUYA_TOUCH_CHANNEL_MAX; channel++) {
         if (channel == 6 || channel == 7 || channel == 13 || channel == 12) {
             continue;
@@ -562,7 +562,7 @@ OPERATE_RET tkl_touch_get_single_calibration_value(UINT32_T touch_id, float *val
     return OPRT_OK;
 }
 
-OPERATE_RET tkl_touch_get_single_median_filter_value(UINT8_T touch_id, float *value)
+OPERATE_RET tkl_touch_get_single_median_filter_value(uint8_t touch_id, float *value)
 {
     if (touch_id >= TUYA_TOUCH_CHANNEL_MAX || value == NULL) {
         return OPRT_INVALID_PARM;
@@ -578,7 +578,7 @@ OPERATE_RET tkl_touch_get_single_median_filter_value(UINT8_T touch_id, float *va
     return OPRT_OK;
 }
 
-OPERATE_RET tkl_touch_get_single_average_filter_value(UINT8_T touch_id, float *value)
+OPERATE_RET tkl_touch_get_single_average_filter_value(uint8_t touch_id, float *value)
 {
     if (touch_id >= TUYA_TOUCH_CHANNEL_MAX || value == NULL) {
         return OPRT_INVALID_PARM;
@@ -594,7 +594,7 @@ OPERATE_RET tkl_touch_get_single_average_filter_value(UINT8_T touch_id, float *v
     return OPRT_OK;
 }
 
-UINT8_T tkl_touch_get_single_channel_status(UINT8_T touch_id)
+uint8_t tkl_touch_get_single_channel_status(uint8_t touch_id)
 {
     if (touch_id >= TUYA_TOUCH_CHANNEL_MAX) {
         bk_printf("Error: out of range\n");
@@ -619,19 +619,19 @@ OPERATE_RET tkl_touch_scan_mode_enable(BOOL_T enable)
     return OPRT_OK;
 }
 
-OPERATE_RET tkl_touch_scan_mode_multi_channel_set(UINT32_T channel_mask)
+OPERATE_RET tkl_touch_scan_mode_multi_channel_set(uint32_t channel_mask)
 {
     bk_touch_scan_mode_multi_channl_set(channel_mask);
     return OPRT_OK;
 }
 
-OPERATE_RET tkl_touch_clear_interrupt(UINT32_T channel_mask)
+OPERATE_RET tkl_touch_clear_interrupt(uint32_t channel_mask)
 {
     bk_touch_clear_int(channel_mask);
     return OPRT_OK;
 }
 
-OPERATE_RET tkl_touch_interrupt_enable(UINT32_T channel_mask, BOOL_T enable)
+OPERATE_RET tkl_touch_interrupt_enable(uint32_t channel_mask, BOOL_T enable)
 {
     if (enable) {
         bk_touch_int_enable(channel_mask, 1);
@@ -642,7 +642,7 @@ OPERATE_RET tkl_touch_interrupt_enable(UINT32_T channel_mask, BOOL_T enable)
     return OPRT_OK;
 }
 
-OPERATE_RET tkl_touch_get_channel_detect_range(UINT32_T channel, TUYA_TOUCH_DETECT_RANGE_E *detect_range)
+OPERATE_RET tkl_touch_get_channel_detect_range(uint32_t channel, TUYA_TOUCH_DETECT_RANGE_E *detect_range)
 {
     if (channel >= TUYA_TOUCH_CHANNEL_MAX || detect_range == NULL) {
         return OPRT_INVALID_PARM;
@@ -664,10 +664,10 @@ OPERATE_RET tkl_touch_get_channel_detect_range(UINT32_T channel, TUYA_TOUCH_DETE
  * @param[in] array_len: find array length
  * @return the max value in the input array
  */
-float get_max_value(float find_array[], UINT8_T array_len)
+float get_max_value(float find_array[], uint8_t array_len)
 {
     float max_value;
-    UINT8_T find_index = 0;
+    uint8_t find_index = 0;
 
     if (NULL == find_array || array_len <= 0) {
         return 0;
@@ -690,10 +690,10 @@ float get_max_value(float find_array[], UINT8_T array_len)
  * @param[in] array_len: find array length
  * @return the min value in the input array
  */
-float get_min_value(float find_array[], UINT8_T array_len)
+float get_min_value(float find_array[], uint8_t array_len)
 {
     float min_value;
-    UINT8_T find_index = 0;
+    uint8_t find_index = 0;
 
     if (NULL == find_array || array_len <= 0) {
         return 0;
@@ -716,12 +716,12 @@ float get_min_value(float find_array[], UINT8_T array_len)
  * @param[in] array_len: find array length
  * @return median value
  */
-float get_median_value(float find_array[], UINT8_T array_len)
+float get_median_value(float find_array[], uint8_t array_len)
 {
     if (NULL == find_array || array_len == 0) return 0;
 
     float temp[BUF_SIZE];
-    UINT8_T i, j;
+    uint8_t i, j;
     // copy
     for (i = 0; i < array_len; i++) temp[i] = find_array[i];
 
@@ -746,11 +746,11 @@ float get_median_value(float find_array[], UINT8_T array_len)
  * @param[in] array_len: array length
  * @return average value
  */
-float get_avg_value(float array[], UINT8_T array_len)
+float get_avg_value(float array[], uint8_t array_len)
 {
     float avg_value;
     float sum = 0;
-    UINT8_T i;
+    uint8_t i;
 
     if (NULL == array || array_len <= 0) {
         return 0;
@@ -772,7 +772,7 @@ float get_avg_value(float array[], UINT8_T array_len)
  * @param[in] array_len: array length
  * @return variance value
  */
-float get_variance_value(float array[], UINT8_T array_len)
+float get_variance_value(float array[], uint8_t array_len)
 {
     float variance_value = 0;
     float square_sum = 0;
@@ -783,7 +783,7 @@ float get_variance_value(float array[], UINT8_T array_len)
 
     float avg_value = get_avg_value(array, array_len);
 
-    UINT8_T i;
+    uint8_t i;
     for (i = 0; i < array_len; i++) {
         square_sum += (array[i] - avg_value) * (array[i] - avg_value);
     }
@@ -819,7 +819,7 @@ float get_discrete_state(float value, float avg_value)
  * @param[in] last_value: last iir filter data
  * @return current iir filter value
  */
-float get_iir_filter_value(float current_value, float last_value, UINT32_T k, UINT32_T n)
+float get_iir_filter_value(float current_value, float last_value, uint32_t k, uint32_t n)
 {
     float result = 0;
     float temp_value = 0.0;
@@ -836,7 +836,7 @@ float get_iir_filter_value(float current_value, float last_value, UINT32_T k, UI
  * @param[in] touch_id: Touch channel ID
  * @return Filtered value
  */
-float get_square_wave_filter(float raw_value, float baseline_value, UINT8_T touch_id)
+float get_square_wave_filter(float raw_value, float baseline_value, uint8_t touch_id)
 {
     float change_rate = fabs(raw_value - channel_data[touch_id].last_filtered_value);
     float filtered_result;
@@ -873,7 +873,7 @@ float get_square_wave_filter(float raw_value, float baseline_value, UINT8_T touc
  * @param[in] is_stable: Whether it is a stable state
  * @return New baseline value
  */
-float get_adaptive_baseline(float current_value, float old_baseline, UINT8_T is_stable)
+float get_adaptive_baseline(float current_value, float old_baseline, uint8_t is_stable)
 {
 #if DEBUG_ENABLE
     printf("is_stable=%d\r\n", is_stable);
@@ -891,9 +891,9 @@ float get_adaptive_baseline(float current_value, float old_baseline, UINT8_T is_
     }
 }
 
-INT32_T find_index(float array[], UINT8_T array_len, float find_value)
+int32_t find_index(float array[], uint8_t array_len, float find_value)
 {
-    UINT8_T i;
+    uint8_t i;
 
     if (NULL == array || array_len <= 0) {
         return -1;

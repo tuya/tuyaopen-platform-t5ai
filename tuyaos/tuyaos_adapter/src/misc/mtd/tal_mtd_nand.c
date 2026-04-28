@@ -35,7 +35,7 @@
 /***********************************************************************
  ** FUNCTION                                                           **
  **********************************************************************/
-static inline bool tal_mtd_is_align(UINT_T n)
+static inline bool tal_mtd_is_align(uint32_t n)
 {
     if ((n & (n - 1)) == 0)
         return 1;
@@ -44,7 +44,7 @@ static inline bool tal_mtd_is_align(UINT_T n)
 }
 
 static OPERATE_RET tal_mtd_nand_erase_byType(MTD_NAND_HANDLE handle,
-                                             uint32_t addr, UINT_T erase_type)
+                                             uint32_t addr, uint32_t erase_type)
 {
     OPERATE_RET ret = OPRT_OK;
     if (handle->interface == MTD_IF_QSPI) {
@@ -57,9 +57,9 @@ static OPERATE_RET tal_mtd_nand_erase_byType(MTD_NAND_HANDLE handle,
     return ret;
 }
 
-static OPERATE_RET tal_mtd_nand_page_read(MTD_NAND_HANDLE handle, UINT_T addr,
-                                          VOID_T *data, UINT_T size,
-                                          UINT_T oob_size)
+static OPERATE_RET tal_mtd_nand_page_read(MTD_NAND_HANDLE handle, uint32_t addr,
+                                          void *data, uint32_t size,
+                                          uint32_t oob_size)
 {
     OPERATE_RET ret = OPRT_OK;
     if (handle->interface == MTD_IF_QSPI) {
@@ -74,9 +74,9 @@ static OPERATE_RET tal_mtd_nand_page_read(MTD_NAND_HANDLE handle, UINT_T addr,
     return ret;
 }
 
-static OPERATE_RET tal_mtd_nand_page_write(MTD_NAND_HANDLE handle, UINT_T addr,
-                                           const VOID_T *data, UINT_T size,
-                                           UINT_T oob_size)
+static OPERATE_RET tal_mtd_nand_page_write(MTD_NAND_HANDLE handle, uint32_t addr,
+                                           const void *data, uint32_t size,
+                                           uint32_t oob_size)
 {
     OPERATE_RET ret = OPRT_OK;
     if (handle->interface == MTD_IF_QSPI) {
@@ -102,7 +102,7 @@ static OPERATE_RET tal_mtd_nand_page_write(MTD_NAND_HANDLE handle, UINT_T addr,
 MTD_NAND_HANDLE tal_mtd_nand_init(MTD_NAND_DEV_T *dev, MTD_NAND_CFG_T *cfg)
 {
     MTD_NAND_HANDLE handle = NULL;
-    VOID_T *interface_handle = NULL;
+    void *interface_handle = NULL;
     if (!tal_mtd_is_align(dev->total_size) ||
         !tal_mtd_is_align(dev->page_size) ||
         !tal_mtd_is_align(dev->block_size) ||
@@ -150,8 +150,8 @@ MTD_NAND_HANDLE tal_mtd_nand_init(MTD_NAND_DEV_T *dev, MTD_NAND_CFG_T *cfg)
  *
  * @return Bytes on success. Others on error, please refer to tal_error_code.h
  */
-OPERATE_RET tal_mtd_nand_read(MTD_NAND_HANDLE handle, UINT_T addr,
-                              UINT8_T *buff, UINT_T size)
+OPERATE_RET tal_mtd_nand_read(MTD_NAND_HANDLE handle, uint32_t addr,
+                              uint8_t *buff, uint32_t size)
 {
     OPERATE_RET ret = OPRT_COM_ERROR;
 
@@ -161,24 +161,24 @@ OPERATE_RET tal_mtd_nand_read(MTD_NAND_HANDLE handle, UINT_T addr,
         return OPRT_INVALID_PARM;
     }
 
-    UINT_T page_mask = handle->page_size - 1;
-    UINT_T first_page_addr = addr / handle->page_size;
-    UINT_T first_page_offset = addr & page_mask;
-    UINT_T first_page_left_len = handle->page_size - first_page_offset;
-    UINT_T first_page_copy_len =
+    uint32_t page_mask = handle->page_size - 1;
+    uint32_t first_page_addr = addr / handle->page_size;
+    uint32_t first_page_offset = addr & page_mask;
+    uint32_t first_page_left_len = handle->page_size - first_page_offset;
+    uint32_t first_page_copy_len =
         (size < first_page_left_len) ? size : first_page_left_len;
-    UINT_T continue_page_num = 0;
+    uint32_t continue_page_num = 0;
     if (size > first_page_copy_len) {
         continue_page_num = (size - first_page_copy_len) / handle->page_size;
     }
-    UINT_T continue_start_addr = first_page_addr + 1;
-    UINT_T last_page_start_addr = continue_start_addr + continue_page_num;
-    UINT_T last_ofs =
+    uint32_t continue_start_addr = first_page_addr + 1;
+    uint32_t last_page_start_addr = continue_start_addr + continue_page_num;
+    uint32_t last_ofs =
         first_page_copy_len + continue_page_num * handle->page_size;
-    UINT_T last_copy_len = size - last_ofs;
+    uint32_t last_copy_len = size - last_ofs;
     // oob暂不处理
-    UINT8_T *buf =
-        (UINT8_T *)tkl_system_malloc(handle->page_size + handle->oob_size);
+    uint8_t *buf =
+        (uint8_t *)tkl_system_malloc(handle->page_size + handle->oob_size);
     if (buf == NULL) {
         return OPRT_MALLOC_FAILED;
     }
@@ -204,10 +204,10 @@ OPERATE_RET tal_mtd_nand_read(MTD_NAND_HANDLE handle, UINT_T addr,
 
     // 2. whole pages continue
     for (int i = 0; i < continue_page_num; i++) {
-        UINT_T tmp_addr = continue_start_addr + i;
-        UINT_T r_ofs = first_page_copy_len + i * handle->page_size;
+        uint32_t tmp_addr = continue_start_addr + i;
+        uint32_t r_ofs = first_page_copy_len + i * handle->page_size;
         memset(buf, 0, handle->page_size + handle->oob_size);
-        ret = tal_mtd_nand_page_read(handle, tmp_addr, (UINT8_T *)buf,
+        ret = tal_mtd_nand_page_read(handle, tmp_addr, (uint8_t *)buf,
                                      handle->page_size, handle->oob_size);
         if (ret != OPRT_OK) {
             tkl_system_free(buf);
@@ -243,8 +243,8 @@ OPERATE_RET tal_mtd_nand_read(MTD_NAND_HANDLE handle, UINT_T addr,
  *
  * @return OPRT_OK on success. Others on error, please refer to tal_error_code.h
  */
-OPERATE_RET tal_mtd_nand_write(MTD_NAND_HANDLE handle, UINT_T addr,
-                               const UINT8_T *buff, UINT_T size)
+OPERATE_RET tal_mtd_nand_write(MTD_NAND_HANDLE handle, uint32_t addr,
+                               const uint8_t *buff, uint32_t size)
 {
     OPERATE_RET ret = OPRT_OK;
 
@@ -253,26 +253,26 @@ OPERATE_RET tal_mtd_nand_write(MTD_NAND_HANDLE handle, UINT_T addr,
         return OPRT_INVALID_PARM;
     }
 
-    UINT_T page_mask = handle->page_size - 1;
-    UINT_T first_page_addr = addr / handle->page_size;
-    UINT_T first_page_offset = addr & page_mask;
-    UINT_T first_page_left_len = handle->page_size - first_page_offset;
-    UINT_T first_page_write_len =
+    uint32_t page_mask = handle->page_size - 1;
+    uint32_t first_page_addr = addr / handle->page_size;
+    uint32_t first_page_offset = addr & page_mask;
+    uint32_t first_page_left_len = handle->page_size - first_page_offset;
+    uint32_t first_page_write_len =
         (size < first_page_left_len) ? size : first_page_left_len;
-    UINT_T continue_page_num = 0;
+    uint32_t continue_page_num = 0;
     if (size > first_page_left_len) {
         continue_page_num = (size - first_page_left_len) / handle->page_size;
     }
-    UINT_T continue_start_addr = first_page_addr + 1;
-    UINT_T last_page_start_addr = continue_start_addr + continue_page_num;
-    UINT_T last_ofs =
+    uint32_t continue_start_addr = first_page_addr + 1;
+    uint32_t last_page_start_addr = continue_start_addr + continue_page_num;
+    uint32_t last_ofs =
         first_page_write_len + continue_page_num * handle->page_size;
-    UINT_T last_page_write_len =
+    uint32_t last_page_write_len =
         (size - first_page_write_len) % handle->page_size;
     // oob暂不处理
     bk_printf("size %x %x\n", handle->page_size, &handle->page_size);
-    UINT8_T *buf =
-        (UINT8_T *)tkl_system_malloc(handle->page_size + handle->oob_size);
+    uint8_t *buf =
+        (uint8_t *)tkl_system_malloc(handle->page_size + handle->oob_size);
     if (buf == NULL) {
         return OPRT_MALLOC_FAILED;
     }
@@ -297,8 +297,8 @@ OPERATE_RET tal_mtd_nand_write(MTD_NAND_HANDLE handle, UINT_T addr,
 
     // 2. whole pages continue
     for (int i = 0; i < continue_page_num; i++) {
-        UINT_T tmp_addr = continue_start_addr + i;
-        UINT_T w_ofs = first_page_write_len + i * handle->page_size;
+        uint32_t tmp_addr = continue_start_addr + i;
+        uint32_t w_ofs = first_page_write_len + i * handle->page_size;
         memset(buf, 0, handle->page_size + handle->oob_size);
         memcpy(buf, buff + w_ofs, handle->page_size);
         ret = tal_mtd_nand_page_write(handle, tmp_addr, buf, handle->page_size,
@@ -343,28 +343,28 @@ OPERATE_RET tal_mtd_nand_write(MTD_NAND_HANDLE handle, UINT_T addr,
  *
  * @return OPRT_OK on success. Others on error, please refer to tal_error_code.h
  */
-OPERATE_RET tal_mtd_nand_erase(MTD_NAND_HANDLE handle, UINT_T addr, UINT_T size)
+OPERATE_RET tal_mtd_nand_erase(MTD_NAND_HANDLE handle, uint32_t addr, uint32_t size)
 {
     OPERATE_RET ret = OPRT_OK;
     // 遍历所有涉及的块
-    const UINT_T block_size = handle->block_size; // 块大小（字节）
-    const UINT_T page_nums_per_block =
+    const uint32_t block_size = handle->block_size; // 块大小（字节）
+    const uint32_t page_nums_per_block =
         handle->block_size / handle->page_size; // 页大小（字节）
 
-    const UINT_T start_block = addr / block_size;
-    const UINT_T end_block = (addr + size - 1) / block_size;
+    const uint32_t start_block = addr / block_size;
+    const uint32_t end_block = (addr + size - 1) / block_size;
     if (handle->block_size == 0 || handle->page_size == 0 ||
         handle->total_size == 0) {
         return OPRT_INVALID_PARM;
     }
     if (size == 0 || addr >= handle->total_size ||
-        size > (handle->total_size - addr) || addr > (((UINT_T)-1L) - size)) {
+        size > (handle->total_size - addr) || addr > (((uint32_t)-1L) - size)) {
         return OPRT_INVALID_PARM;
     }
 
-    for (UINT_T block = start_block; block <= end_block; block++) {
+    for (uint32_t block = start_block; block <= end_block; block++) {
         // 转换为行地址
-        const UINT_T page_addr = block * page_nums_per_block;
+        const uint32_t page_addr = block * page_nums_per_block;
         // if (tal_mtd_nand_is_bad_block(cfg, block_addr)) {
         //     continue; // 跳过坏块
         // }
@@ -384,7 +384,7 @@ OPERATE_RET tal_mtd_nand_erase(MTD_NAND_HANDLE handle, UINT_T addr, UINT_T size)
  *
  * @return OPRT_OK on success. Others on error, please refer to tal_error_code.h
  */
-OPERATE_RET tal_mtd_nand_get_id(MTD_NAND_HANDLE handle, UINT_T *id)
+OPERATE_RET tal_mtd_nand_get_id(MTD_NAND_HANDLE handle, uint32_t *id)
 {
     OPERATE_RET ret = OPRT_OK;
 

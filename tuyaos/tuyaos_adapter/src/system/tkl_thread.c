@@ -32,11 +32,11 @@
 * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
 */
 OPERATE_RET tkl_thread_create(TKL_THREAD_HANDLE* thread,
-                           CONST CHAR_T* name,
-                           UINT_T stack_size,
-                           UINT_T priority,
+                           const char* name,
+                           uint32_t stack_size,
+                           uint32_t priority,
                            THREAD_FUNC_T func,
-                           VOID_T* CONST arg)
+                           void* const arg)
 {
     if (!thread) {
         return OPRT_INVALID_PARM;
@@ -73,12 +73,12 @@ OPERATE_RET tkl_thread_create(TKL_THREAD_HANDLE* thread,
 * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
 */
 OPERATE_RET tkl_thread_smp_create(TKL_THREAD_HANDLE* thread,
-                           UINT_T coreID,
-                           CONST CHAR_T* name,
-                           UINT_T stack_size,
-                           UINT_T priority,
+                           uint32_t coreID,
+                           const char* name,
+                           uint32_t stack_size,
+                           uint32_t priority,
                            THREAD_FUNC_T func,
-                           VOID_T* CONST arg)
+                           void* const arg)
 {
     //smp仅支持核1、2
     if (!thread || (coreID > (CONFIG_CPU_CNT - 1))) {
@@ -125,7 +125,7 @@ OPERATE_RET tkl_thread_release(TKL_THREAD_HANDLE thread)
 *
 * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
 */
-OPERATE_RET tkl_thread_get_watermark(TKL_THREAD_HANDLE thread, UINT_T* watermark)
+OPERATE_RET tkl_thread_get_watermark(TKL_THREAD_HANDLE thread, uint32_t* watermark)
 {
     // TODO
     *watermark = uxTaskGetStackHighWaterMark(thread) * sizeof( StackType_t );
@@ -156,7 +156,7 @@ OPERATE_RET tkl_thread_get_id(TKL_THREAD_HANDLE *thread)
 *
 * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
 */
-OPERATE_RET tkl_thread_set_self_name(CONST CHAR_T* name)
+OPERATE_RET tkl_thread_set_self_name(const char* name)
 {
     if (!name) {
         return OPRT_INVALID_PARM;
@@ -215,11 +215,11 @@ OPERATE_RET tkl_thread_diagnose(TKL_THREAD_HANDLE thread)
 * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
 */
 OPERATE_RET tkl_thread_create_in_psram(TKL_THREAD_HANDLE* thread,
-                           CONST CHAR_T* name,
-                           UINT_T stack_size,
-                           UINT_T priority,
+                           const char* name,
+                           uint32_t stack_size,
+                           uint32_t priority,
                            THREAD_FUNC_T func,
-                           VOID_T* CONST arg)
+                           void* const arg)
 {
     if (!thread) {
         return OPRT_INVALID_PARM;

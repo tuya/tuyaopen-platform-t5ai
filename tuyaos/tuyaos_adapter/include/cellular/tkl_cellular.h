@@ -34,10 +34,10 @@ typedef enum {
 
 typedef struct
 {
-    CHAR_T apn[TKL_CELLULAR_APN_LEN+1];                               ///< Access Point Name
-//  CHAR_T username[TKL_CELLULAR_USER_NAME_LEN+1];                    ///< User Name
-//  CHAR_T password[TKL_CELLULAR_USER_PASSWD_LEN+1];                  ///< User Password
-//  CHAR_T dial_up_phone_num[TKL_CELLULAR_DIAL_UP_CMD_LEN+1];         ///< dial-up phone number
+    char apn[TKL_CELLULAR_APN_LEN+1];                               ///< Access Point Name
+//  char username[TKL_CELLULAR_USER_NAME_LEN+1];                    ///< User Name
+//  char password[TKL_CELLULAR_USER_PASSWD_LEN+1];                  ///< User Password
+//  char dial_up_phone_num[TKL_CELLULAR_DIAL_UP_CMD_LEN+1];         ///< dial-up phone number
 }TKL_CELLULAR_BASE_CFG_T;
 
 /**
@@ -56,7 +56,7 @@ OPERATE_RET tkl_cellular_init(TKL_CELLULAR_BASE_CFG_T *cfg);
  *
  * @param[out]       is_up         the cellular link status is up or not
  */
-typedef VOID_T (*TKL_CELLULAR_STATUS_CHANGE_CB)(TKL_CELLULAR_STAT_E status);
+typedef void (*TKL_CELLULAR_STATUS_CHANGE_CB)(TKL_CELLULAR_STAT_E status);
 
 /**
  * @brief  get the link status of cellular link
@@ -101,7 +101,7 @@ OPERATE_RET tkl_cellular_get_ipv6(NW_IP_TYPE type, NW_IP_S *ip);
  *
  * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
  */
-OPERATE_RET tkl_cellular_get_ccid(CHAR_T *ccid);
+OPERATE_RET tkl_cellular_get_ccid(char *ccid);
 
 /**
  * @brief  get the rssi of the cellular link
@@ -110,7 +110,7 @@ OPERATE_RET tkl_cellular_get_ccid(CHAR_T *ccid);
  *
  * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
  */
-OPERATE_RET tkl_cellular_get_rssi(CHAR_T *rssi);
+OPERATE_RET tkl_cellular_get_rssi(char *rssi);
 
 /**
  * @brief  get the voltage of the cellular module
@@ -119,7 +119,7 @@ OPERATE_RET tkl_cellular_get_rssi(CHAR_T *rssi);
  *
  * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
  */
-OPERATE_RET tkl_cellular_get_volt(UINT32_T *volt);
+OPERATE_RET tkl_cellular_get_volt(uint32_t *volt);
 
 /**
  * @brief  get the IMEI of the cellular module
@@ -128,7 +128,7 @@ OPERATE_RET tkl_cellular_get_volt(UINT32_T *volt);
  *
  * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
  */
-OPERATE_RET tkl_cellular_get_imei(CHAR_T *imei);
+OPERATE_RET tkl_cellular_get_imei(char *imei);
 
 /**
  * @brief  get the Serial Number of the cellular module
@@ -137,7 +137,7 @@ OPERATE_RET tkl_cellular_get_imei(CHAR_T *imei);
  *
  * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
  */
-OPERATE_RET tkl_cellular_get_sn(CHAR_T *sn);
+OPERATE_RET tkl_cellular_get_sn(char *sn);
 
 /**
  * @brief  get the Software version of the cellular module
@@ -146,7 +146,7 @@ OPERATE_RET tkl_cellular_get_sn(CHAR_T *sn);
  *
  * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
  */
-OPERATE_RET tkl_cellular_get_sw_ver(CHAR_T *ver);
+OPERATE_RET tkl_cellular_get_sw_ver(char *ver);
 
 /**
  * @brief  start cellular mf test
@@ -162,7 +162,7 @@ OPERATE_RET tkl_cellular_mf_test_start(TKL_CELLULAR_BASE_CFG_T *cfg);
  *
  * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
  */
-OPERATE_RET tkl_cellular_mf_test_stop(VOID);
+OPERATE_RET tkl_cellular_mf_test_stop(void);
 
 #ifdef __cplusplus
 } // extern "C"

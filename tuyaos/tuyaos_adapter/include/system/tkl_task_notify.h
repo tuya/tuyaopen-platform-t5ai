@@ -29,7 +29,7 @@ typedef enum {
 * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
 */
 
-OPERATE_RET tkl_task_notify(CONST TKL_THREAD_HANDLE thread, UINT32_T ulValue, TUYA_TASK_NOTIFY_ACTION_E action);
+OPERATE_RET tkl_task_notify(const TKL_THREAD_HANDLE thread, uint32_t ulValue, TUYA_TASK_NOTIFY_ACTION_E action);
 
 /**
 * @brief Task Notify Take
@@ -41,7 +41,7 @@ OPERATE_RET tkl_task_notify(CONST TKL_THREAD_HANDLE thread, UINT32_T ulValue, TU
 *
 * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
 */
-UINT32_T tkl_task_notify_take(BOOL_T clearcount, UINT_T timeout);
+uint32_t tkl_task_notify_take(BOOL_T clearcount, uint32_t timeout);
 
 /**
 * @brief  Task Notify Give
@@ -52,7 +52,7 @@ UINT32_T tkl_task_notify_take(BOOL_T clearcount, UINT_T timeout);
 *
 * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
 */
-OPERATE_RET tkl_task_notify_give(CONST TKL_THREAD_HANDLE thread);
+OPERATE_RET tkl_task_notify_give(const TKL_THREAD_HANDLE thread);
 
 /**
 * @brief  Task Notify Clear
@@ -61,7 +61,7 @@ OPERATE_RET tkl_task_notify_give(CONST TKL_THREAD_HANDLE thread);
 *
 * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
 */
-OPERATE_RET tkl_task_notify_state_clear(CONST TKL_THREAD_HANDLE thread);
+OPERATE_RET tkl_task_notify_state_clear(const TKL_THREAD_HANDLE thread);
 
 
 #ifdef __cplusplus

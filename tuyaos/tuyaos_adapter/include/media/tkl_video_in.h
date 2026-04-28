@@ -34,21 +34,21 @@ typedef enum {
 typedef struct
 {
     // 1个IIC+host 对应一个video设备   hardware_port[0] + host_port[0] 构造成1个video设备
-    UINT32_T * hardware_port;          // 存放iic
-    UINT32_T * host_port;              // 存放host dvp or mipi
-    UINT32_T   haraware_source_num;    // 一共有多少对 iic + host
+    uint32_t * hardware_port;          // 存放iic
+    uint32_t * host_port;              // 存放host dvp or mipi
+    uint32_t   haraware_source_num;    // 一共有多少对 iic + host
 
     // 视频内存池的分配方法 在RTOS系统有片外的PSRAM 所以需要支持这个
     void (*v_mem_free)(void *);
-    void *(*v_mem_malloc)(UINT32_T size);
+    void *(*v_mem_malloc)(uint32_t size);
 
 }TKL_VI_HARDWARE_SOURCE_T;
 
 typedef struct
 {
-    UINT32_T page;
-    UINT32_T reg_index;
-    UINT32_T val;
+    uint32_t page;
+    uint32_t reg_index;
+    uint32_t val;
 }TKL_VI_SENSOR_REG_CONFIG_T;
 
 typedef enum
@@ -59,20 +59,20 @@ typedef enum
 
 typedef struct
 {
-    CHAR_T conf[128];                                             // isp conf path
-    CHAR_T conf1[128];                                            // isp conf1 path
-    CHAR_T conf2[128];                                            // isp conf2 path
-    CHAR_T conf3[128];                                            // isp conf3 path
-    CHAR_T version[32];                                           // version num
-    CHAR_T name[16];                                              // isp sensor num
+    char conf[128];                                             // isp conf path
+    char conf1[128];                                            // isp conf1 path
+    char conf2[128];                                            // isp conf2 path
+    char conf3[128];                                            // isp conf3 path
+    char version[32];                                           // version num
+    char name[16];                                              // isp sensor num
     TKL_ISP_DN_SWITCH_CONFIG_T isp_dn_switch_config;              // ADN switch config
     TKL_VI_SENSOR_CBUS_TYPE_E  sensor_type;                       // sensor control bus type
-    INT32_T              addr;                                    // sensor address
-    INT32_T              width;                                   // sensor width
-    INT32_T              height;                                  // sensor height
+    int32_t              addr;                                    // sensor address
+    int32_t              width;                                   // sensor width
+    int32_t              height;                                  // sensor height
     TKL_ISP_FIG_STYLE_CONFIG_T isp_fig_style_day;                 // isp fig style in day
     TKL_ISP_FIG_STYLE_CONFIG_T isp_fig_style_night;               // isp fig style in night
-    INT32_T              fps;                                     // sensor fps
+    int32_t              fps;                                     // sensor fps
 }TKL_VI_ISP_CONFIG_T;
 
 typedef enum
@@ -91,9 +91,9 @@ typedef struct
 {
     TKL_VI_CAMERA_TYPE_E    camera_type;
     TKL_MEDIA_CODEC_TYPE_E  fmt;
-    INT32_T                 width;
-    INT32_T                 height;
-    INT32_T                 fps;
+    int32_t                 width;
+    int32_t                 height;
+    int32_t                 fps;
     TKL_VI_ROTATE_E         rotate;
     TUYA_GPIO_NUM_E         power_pin;
     TUYA_GPIO_LEVEL_E       active_level;
@@ -117,34 +117,34 @@ typedef struct
 
 typedef struct
 {
-    INT32_T              enable;                                  // 1,enable,0,disable
+    int32_t              enable;                                  // 1,enable,0,disable
     TKL_VI_CHN_E         chn;                                     // video input channel
-    INT32_T              mirror;                                  // mirror defaults
-    INT32_T              filp;                                    // filp defaults
+    int32_t              mirror;                                  // mirror defaults
+    int32_t              filp;                                    // filp defaults
     TKL_VI_ISP_CONFIG_T  isp;                                     // isp config
-    VOID * pdata;                                                 // reserver data
+    void * pdata;                                                 // reserver data
 }TKL_VI_CONFIG_T;
 
 typedef struct
 {
-    FLOAT_T x;                                                     // 矩形框x坐标 | [0.0 - 1.0]
-    FLOAT_T y;                                                     // 矩形框y坐标 | [0.0 - 1.0]
-    FLOAT_T width;                                                 // 矩形框宽度　| [0.0 - 1.0]
-    FLOAT_T height;                                                // 矩形框高度　| [0.0 - 1.0]
+    float x;                                                     // 矩形框x坐标 | [0.0 - 1.0]
+    float y;                                                     // 矩形框y坐标 | [0.0 - 1.0]
+    float width;                                                 // 矩形框宽度　| [0.0 - 1.0]
+    float height;                                                // 矩形框高度　| [0.0 - 1.0]
 } TKL_VI_RECT_T;
 
 typedef struct
 {
-    INT32_T x;
-    INT32_T y;
+    int32_t x;
+    int32_t y;
 } TKL_VI_POINT_T;
 
 typedef struct
 {
     TKL_VI_RECT_T    draw_rect;                                   // coordinate region
-    FLOAT_T          score;                                       // score       | [0.0 - 1.0]
+    float          score;                                       // score       | [0.0 - 1.0]
     TKL_MEDIA_DETECT_TYPE_E type;                                 // 目标类型，人形，宠物，火焰等
-	UINT32_T         id;                                          // 目标编号
+	uint32_t         id;                                          // 目标编号
 } TKL_VI_DETECT_TARGET_T;
 
 typedef struct
@@ -155,30 +155,30 @@ typedef struct
 
 typedef struct
 {
-    INT32_T count;
+    int32_t count;
     TKL_VI_DETECT_TARGET_T target[TKL_VI_TARGET_MAX];
     union{
         TKL_VI_MD_RESULT_T md;
     };
-    UINT64_T timestamp;                                           // utc time, 单位:ms
+    uint64_t timestamp;                                           // utc time, 单位:ms
 } TKL_VI_DETECT_RESULT_T;
 
 typedef struct
 {
-    UINT32_T roi_count;                                           // 检测有效区域个数
+    uint32_t roi_count;                                           // 检测有效区域个数
     TKL_VI_RECT_T roi_rect[TKL_VI_MD_ROI_RECT_MAX];               // 区域框
-    INT32_T track_enable;                                         // 移动追踪使能
+    int32_t track_enable;                                         // 移动追踪使能
 } TKL_VI_MD_PARAM_T;
 
 typedef struct
 {
-    UINT32_T point_count;                                         // 顶点个数
+    uint32_t point_count;                                         // 顶点个数
     TKL_VI_POINT_T point[TKL_VI_PERI_POINT_MAX];                  // 点
 } TKL_VI_PERI_PARAM_T;
 
 typedef struct
 {
-    INT32_T sensitivity;
+    int32_t sensitivity;
     union{
         TKL_VI_MD_PARAM_T md;
         TKL_VI_PERI_PARAM_T peri;
@@ -187,8 +187,8 @@ typedef struct
 
 typedef struct
 {
-    CHAR_T         *pmodel;                                       // 检测模型数据指针
-    INT32_T         model_len;                                    // 检测模型的数据长度
+    char         *pmodel;                                       // 检测模型数据指针
+    int32_t         model_len;                                    // 检测模型的数据长度
 }TKL_VI_DETECT_CONFIG_T;
 
 /**
@@ -199,7 +199,7 @@ typedef struct
 *
 * @return OPRT_OK on success. Others on error, please refer to tkl_error_code.h
 */
-OPERATE_RET tkl_vi_init(TKL_VI_CONFIG_T *pconfig, INT32_T count);
+OPERATE_RET tkl_vi_init(TKL_VI_CONFIG_T *pconfig, int32_t count);
 
 /**
 * @brief vi set mirror and flip

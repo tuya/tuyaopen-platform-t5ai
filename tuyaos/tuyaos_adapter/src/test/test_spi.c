@@ -273,7 +273,7 @@ __spi_error_exit:
     return;
 }
 
-VOID_T spi_tx_done_cb(TUYA_QSPI_NUM_E port, TUYA_QSPI_IRQ_EVT_E event)
+void spi_tx_done_cb(TUYA_QSPI_NUM_E port, TUYA_QSPI_IRQ_EVT_E event)
 {
     bk_printf("----------qspi_tx_done_cb:%x,%x \r\n", port, event);
 }

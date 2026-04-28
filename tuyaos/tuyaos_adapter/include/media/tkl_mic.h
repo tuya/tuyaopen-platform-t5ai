@@ -45,9 +45,9 @@ typedef enum
 }TKL_MIC_CODEC_TYPE_E;
 
 typedef struct {
-    UINT8_T chl_num;        //adc通道
-    UINT8_T volume;        //音量
-    UINT32_T sample_rate;   // 采样率
+    uint8_t chl_num;        //adc通道
+    uint8_t volume;        //音量
+    uint32_t sample_rate;   // 采样率
     TKL_MIC_DATABITS_E    datebits;                    // datebit
     TKL_MIC_TYPE_E  card;                   // codec type
     TKL_MIC_CODEC_TYPE_E  codectype;                   // codec type
@@ -65,14 +65,14 @@ OPERATE_RET tkl_mic_init(TKL_MIC_CFG_T *config);
 *
 * @return OPRT_OK on success. Others on error, please refer to tkl_error_code.h
 */
-INT32_T tkl_mic_start(VOID_T);
+int32_t tkl_mic_start(void);
 
 /**
 * @brief mic stop
 *
 * @return OPRT_OK on success. Others on error, please refer to tkl_error_code.h
 */
-INT32_T tkl_mic_stop(VOID_T);
+int32_t tkl_mic_stop(void);
 
 /**
 * @brief mic get frame
@@ -83,7 +83,7 @@ INT32_T tkl_mic_stop(VOID_T);
 *
 * @return OPRT_OK on success. Others on error, please refer to tkl_error_code.h
 */
-INT32_T tkl_mic_pause(VOID_T);
+int32_t tkl_mic_pause(void);
 
 /**
 * @brief mic set vqe param
@@ -95,7 +95,7 @@ INT32_T tkl_mic_pause(VOID_T);
 *
 * @return OPRT_OK on success. Others on error, please refer to tkl_error_code.h
 */
-INT32_T tkl_mic_resume(VOID_T);
+int32_t tkl_mic_resume(void);
 
 /**
 * @brief mic set gain
@@ -104,7 +104,7 @@ INT32_T tkl_mic_resume(VOID_T);
 *
 * @return OPRT_OK on success. Others on error, please refer to tkl_error_code.h
 */
-INT32_T tkl_mic_set_gain(INT32_T gain);
+int32_t tkl_mic_set_gain(int32_t gain);
 
 /**
 * @brief mic stop
@@ -114,21 +114,21 @@ INT32_T tkl_mic_set_gain(INT32_T gain);
 *
 * @return OPRT_OK on success. Others on error, please refer to tkl_error_code.h
 */
-INT32_T tkl_mic_read(UINT8_T *data, UINT32_T len);
+int32_t tkl_mic_read(uint8_t *data, uint32_t len);
 
 /**
 * @brief mic uninit
 *
 * @return OPRT_OK on success. Others on error, please refer to tkl_error_code.h
 */
-INT32_T tkl_mic_stop(VOID_T);
+int32_t tkl_mic_stop(void);
 
 /**
 * @brief mic deinit
 *
 * @return OPRT_OK on success. Others on error, please refer to tkl_error_code.h
 */
-VOID_T tkl_mic_deinit(VOID_T);
+void tkl_mic_deinit(void);
 
 #ifdef __cplusplus
 }

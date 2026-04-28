@@ -194,7 +194,7 @@ static void __tkl_kws_post(uint8_t force)
     }
 }
 
-static void __tkl_kws_drop(VOID)
+static void __tkl_kws_drop(void)
 {
     if (!sg_kws_mgr.init || !sg_kws_mgr.enable) {
         return;
