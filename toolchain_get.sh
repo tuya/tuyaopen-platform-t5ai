@@ -118,40 +118,108 @@ esac
 
 echo "Running on [$SYSTEM_NAME]"
 
-if [ ! -f $TOOLCHAIN_FILE ]; then
-    wget $TOOLCHAIN_URL -O $TOOLCHAIN_FILE
+MAX_DOWNLOAD_ATTEMPTS=2
 
+cleanup_toolchain_artifacts() {
+    rm -rf "$TOOLCHAIN_FILE"
+    rm -rf "$TOOLCHAIN_NAME"
+}
+
+download_toolchain_package() {
+    wget "$TOOLCHAIN_URL" -O "$TOOLCHAIN_FILE"
     if [ $? -ne 0 ]; then
-        echo "Download toolchain failed, please run script again"
-        rm -rf $TOOLCHAIN_FILE
-        exit 1
+        echo "Download toolchain failed"
+        cleanup_toolchain_artifacts
+        return 1
     fi
-fi
+    return 0
+}
 
-if [ $TOOLCHAIN_SHA256 != $(sha256sum $TOOLCHAIN_FILE | awk '{print $1}') ]; then
-    echo "Toolchain file checksum error, please run script again"
-    rm -rf $TOOLCHAIN_FILE
-    exit 1
-fi
+verify_toolchain_package() {
+    if [ "$TOOLCHAIN_SHA256" != "$(sha256sum "$TOOLCHAIN_FILE" | awk '{print $1}')" ]; then
+        echo "Toolchain file checksum error"
+        cleanup_toolchain_artifacts
+        return 1
+    fi
 
-if [ $TOOLCHAIN_SIZE != $(stat -c %s $TOOLCHAIN_FILE) ]; then
-    echo "Toolchain file size error, please run script again"
-    rm -rf $TOOLCHAIN_FILE
-    exit 1
-fi
+    if [ "$TOOLCHAIN_SIZE" != "$(stat -c %s "$TOOLCHAIN_FILE")" ]; then
+        echo "Toolchain file size error"
+        cleanup_toolchain_artifacts
+        return 1
+    fi
 
-FILE_EXTENSION=${TOOLCHAIN_FILE##*.}
+    return 0
+}
 
-echo "start decompression"
+extract_toolchain_package() {
+    FILE_EXTENSION=${TOOLCHAIN_FILE##*.}
 
-echo "FILE_EXTENSION: ${FILE_EXTENSION}"
+    echo "start decompression"
+    echo "FILE_EXTENSION: ${FILE_EXTENSION}"
 
-if [ $FILE_EXTENSION = "bz2" ]; then
-    tar -xvf $TOOLCHAIN_FILE -C $TOOLCHAIN_PATH
-elif [ $FILE_EXTENSION = "zip" ]; then
-    unzip $TOOLCHAIN_FILE
-else
-    echo "File not support"
+    rm -rf "$TOOLCHAIN_NAME"
+
+    if [ "$FILE_EXTENSION" = "bz2" ]; then
+        tar -xvf "$TOOLCHAIN_FILE" -C "$TOOLCHAIN_PATH" || {
+            echo "Toolchain extract failed"
+            cleanup_toolchain_artifacts
+            return 1
+        }
+    elif [ "$FILE_EXTENSION" = "zip" ]; then
+        unzip "$TOOLCHAIN_FILE" || {
+            echo "Toolchain extract failed"
+            cleanup_toolchain_artifacts
+            return 1
+        }
+    else
+        echo "File not support"
+        cleanup_toolchain_artifacts
+        return 1
+    fi
+
+    return 0
+}
+
+retry_toolchain_prepare() {
+    local attempt=1
+
+    while [ "$attempt" -le "$MAX_DOWNLOAD_ATTEMPTS" ]; do
+        if [ -f "$TOOLCHAIN_FILE" ]; then
+            if ! verify_toolchain_package; then
+                if [ "$attempt" -ge "$MAX_DOWNLOAD_ATTEMPTS" ]; then
+                    return 1
+                fi
+                attempt=$((attempt + 1))
+                echo "Retrying toolchain download: ${attempt}/${MAX_DOWNLOAD_ATTEMPTS}"
+                continue
+            fi
+        else
+            if ! download_toolchain_package || ! verify_toolchain_package; then
+                if [ "$attempt" -ge "$MAX_DOWNLOAD_ATTEMPTS" ]; then
+                    return 1
+                fi
+                attempt=$((attempt + 1))
+                echo "Retrying toolchain download: ${attempt}/${MAX_DOWNLOAD_ATTEMPTS}"
+                continue
+            fi
+        fi
+
+        if extract_toolchain_package; then
+            return 0
+        fi
+
+        if [ "$attempt" -ge "$MAX_DOWNLOAD_ATTEMPTS" ]; then
+            return 1
+        fi
+
+        attempt=$((attempt + 1))
+        echo "Retrying toolchain download: ${attempt}/${MAX_DOWNLOAD_ATTEMPTS}"
+    done
+
+    return 1
+}
+
+if ! retry_toolchain_prepare; then
     exit 1
 fi
 

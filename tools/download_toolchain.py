@@ -91,6 +91,7 @@ efab46f5250505c29cb81f548222d794",
 
 
 LAST_PROGRESS = 0
+MAX_DOWNLOAD_ATTEMPTS = 2
 
 
 def _show_progress(block_num, block_size, total_size):
@@ -183,28 +184,77 @@ def unzip_toolchain_package(toolchain_root, package_info) -> bool:
     return extract_archive(package, toolchain_root)
 
 
+def cleanup_toolchain_cache(toolchain_root, package_info, remove_folder=False) -> bool:
+    name = package_info["name"]
+    package = os.path.join(toolchain_root, name)
+    if os.path.exists(package):
+        print(f"[Removing invalid toolchain package]: {package}")
+        rm_rf(package)
+
+    if remove_folder:
+        folder = package_info["folder"]
+        folder_path = os.path.join(toolchain_root, folder)
+        if os.path.exists(folder_path):
+            print(f"[Removing incomplete toolchain folder]: {folder_path}")
+            rm_rf(folder_path)
+
+    return True
+
+
+def prepare_toolchain_package(toolchain_root, package_info) -> bool:
+    name = package_info["name"]
+    package = os.path.join(toolchain_root, name)
+
+    if os.path.exists(package):
+        if check_toolchain_package(toolchain_root, package_info):
+            return True
+        cleanup_toolchain_cache(toolchain_root, package_info)
+
+    if not wget_toolchain_package(toolchain_root, package_info):
+        cleanup_toolchain_cache(toolchain_root, package_info)
+        return False
+
+    if not check_toolchain_package(toolchain_root, package_info):
+        cleanup_toolchain_cache(toolchain_root, package_info)
+        return False
+
+    return True
+
+
 def download_toolchain(toolchain_root) -> bool:
     package_info = get_toolchain_package_info()
     # print(f"package_info: {package_info}")
     if not package_info:
         return False
 
+    name = package_info["name"]
     folder = package_info["folder"]
+    package_path = os.path.join(toolchain_root, name)
     folder_path = os.path.join(toolchain_root, folder)
     if os.path.exists(folder_path):
-        print(f"[Toolchain folder is exists]: {folder_path}")
-        return True
+        if os.path.exists(package_path) \
+                and not check_toolchain_package(toolchain_root, package_info):
+            cleanup_toolchain_cache(toolchain_root, package_info,
+                                    remove_folder=True)
+        else:
+            print(f"[Toolchain folder is exists]: {folder_path}")
+            return True
 
-    if not wget_toolchain_package(toolchain_root, package_info):
-        return False
+    for idx in range(MAX_DOWNLOAD_ATTEMPTS):
+        if idx > 0:
+            print(f"[Retrying toolchain download]: {idx + 1}/{MAX_DOWNLOAD_ATTEMPTS}")
 
-    if not check_toolchain_package(toolchain_root, package_info):
-        return False
+        if not prepare_toolchain_package(toolchain_root, package_info):
+            continue
 
-    if not unzip_toolchain_package(toolchain_root, package_info):
-        return False
+        rm_rf(folder_path)
+        if unzip_toolchain_package(toolchain_root, package_info):
+            return True
 
-    return True
+        cleanup_toolchain_cache(toolchain_root, package_info,
+                                remove_folder=True)
+
+    return False
 
 
 def download_bashtools(tools_root) -> bool:
