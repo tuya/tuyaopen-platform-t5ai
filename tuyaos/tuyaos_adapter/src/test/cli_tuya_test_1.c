@@ -4,6 +4,7 @@
 #include "tuya_cloud_types.h"
 #include "tkl_wifi.h"
 #include "cli_tuya_test.h"
+#include "tkl_display.h"
 #include "lwip_netif_address.h"
 #include "lwip/inet.h"
 #include "driver/hal/hal_efuse_types.h"
@@ -80,6 +81,55 @@ static void cli_test_cmd(char *pcWriteBuffer, int xWriteBufferLen, int argc, cha
     }
     bk_printf_raw(0, NULL, "\r\n");
 
+#if 0
+    static uint8_t sdio_cfg = 0;
+    if (sdio_cfg == 0) {
+        tkl_io_pinmux_config(GPIO_14, TUYA_SDIO_CLK);
+        tkl_io_pinmux_config(GPIO_15, TUYA_SDIO_CMD);
+        tkl_io_pinmux_config(GPIO_16, TUYA_SDIO_DATA0);
+        tkl_io_pinmux_config(GPIO_17, TUYA_SDIO_DATA1);
+        tkl_io_pinmux_config(GPIO_18, TUYA_SDIO_DATA2);
+        tkl_io_pinmux_config(GPIO_19, TUYA_SDIO_DATA3);
+        sdio_cfg = 1;
+    }
+#endif
+
+
+#if 0
+    if (!os_strcmp(argv[1], "mic")) {
+        bk_printf_raw(0, NULL, "------------------------------------------- record\r\n");
+        tal_audio_onboard_mic_test();
+    } else if (!os_strcmp(argv[1], "spk")) {
+        bk_printf_raw(0, NULL, "------------------------------------------- play\r\n");
+        tal_audio_onboard_spk_test();
+    } else if (!os_strcmp(argv[1], "dmic")) {
+        bk_printf_raw(0, NULL, "------------------------------------------- dmic\r\n");
+        tal_audio_digital_dual_mic_input_sync_test();
+    } else if (!os_strcmp(argv[1], "xd")) {
+        bk_printf_raw(0, NULL, "------------------------------------------- xun fei dmic\r\n");
+        // audio_input_test_start();
+    } else if (!os_strcmp(argv[1], "i2s")) {
+        if (argc < 5) {
+            bk_printf("usage: xt i2s <port> <m|s> <0|1|2>  (0=rx,1=tx,2=both)\r\n");
+            return;
+        }
+        UINT8_T port = (UINT8_T)os_strtoul(argv[2], NULL, 10);
+        UINT8_T is_master = (argv[3][0] == 'm') ? 1 : 0;
+        UINT8_T direction = (UINT8_T)os_strtoul(argv[4], NULL, 10);
+        CONST char *dir_str = (direction == 2) ? "rx+tx" : (direction == 1) ? "tx" : "rx";
+        bk_printf_raw(0, NULL, "------------------------------------------- i2s test: port=%d %s %s\r\n",
+                      port, is_master ? "master" : "slave", dir_str);
+        tal_audio_i2s_test(port, is_master, direction);
+    } else if (!os_strcmp(argv[1], "usb")) {
+        uint8_t *out = NULL;
+        uint16_t out_len = 0;
+        extern OPERATE_RET tkl_mftest_ctrl(USHORT_T cmd, UCHAR_T *in, UINT_T inlen, UCHAR_T **out, USHORT_T *outlen);
+        tkl_mftest_ctrl(3, NULL, 0, &out, &out_len);
+        if(out) tkl_system_free(out); out = NULL;
+    }
+
+    bk_printf_raw(0, NULL, "------------------------------------------- end\r\n");
+
     if (!os_strcmp(argv[1], "init")) {
         smp_arch_dwt_trap_write(&g_dwt_test, 0);
         bk_printf_raw(0, NULL, "init\r\n");
@@ -90,38 +140,40 @@ static void cli_test_cmd(char *pcWriteBuffer, int xWriteBufferLen, int argc, cha
         tkl_system_sleep(500);
         g_dwt_test = 0;
     }
+#endif
 }
 
 
 static const struct cli_command tuya_cli_commands[] = {
     // {"audio_test", "mic to speaker test", cli_audio_test_cmd},
     {"info",    "system info",      cli_system_info_cmd},
+    {"xlp",     "lp test",          cli_lp_test_cmd},
+    {"xt",      "test",             cli_test_cmd},
+    {"xgpio",   "gpio test",        cli_gpio_cmd},
+    {"xfs",     "fs test",          cli_fs_cmd},
+#if 0
+    {"xtimer",  "timer test",       cli_tkl_timer_test},
     {"xt",      "test",             cli_test_cmd},
     {"lfs",     "little fs test",   cli_littlefs_cmd},
     {"xsd",     "sd card test",     cli_sdcard_test_cmd},
     {"xgpio",   "gpio test",        cli_gpio_cmd},
-#if 0
     {"xid",     "set mac",          cli_tmp_cmd},
-#if 1
     {"xadc",    "adc test",         cli_adc_cmd},
-#endif
     {"xwifi",   "wifi test",        cli_wifi_cmd},
     {"xlcd",    "lcd test",         cli_xlcd_cmd},
     {"xpwm",    "pwm test",         cli_pwm_cmd},
-    // {"xmt",     "media test",       cli_tuya_media_cmd},
+    {"xmt",     "media test",       cli_tuya_media_cmd},
     {"xqspi",   "qspi test",        cli_xqspi_cmd},
-
     {"xqspilcd",   "qspi test",        cli_xqspi_lcd_cmd},
-    // {"xmtd",   "mtd test",        cli_xmtd_cmd},
     {"xusb",    "usb device check", cli_usb_cmd},
     {"xspi",    "spi test",         cli_spi_cmd},
-    {"xspi2",    "spi test",        cli_spi_2_3_cmd},
 
-
+    // {"xspi2",    "spi test",        cli_spi_2_3_cmd},
     // {"xeth",    "eth test",         cli_eth_cmd},
     // {"xiperf",  "iperf test",       cli_iperf_cmd},
-    {"xmic",    "mic test",         cli_mic_cmd},
-    {"xspk",    "spk test",         cli_speaker_cmd},
+    // {"xmtd",   "mtd test",        cli_xmtd_cmd},
+    // {"xmic",    "mic test",         cli_mic_cmd},
+    // {"xspk",    "spk test",         cli_speaker_cmd},
     // {"xi2s",    "i2s test",         cli_tuya_i2s_cmd},
 #endif
 };

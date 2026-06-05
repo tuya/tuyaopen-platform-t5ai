@@ -25,14 +25,13 @@
 #define ERASE_QSECTOR (1)
 #define ERASE_QBLOCK (0)
 
-uint32_t swap_24(uint32_t value) {
-    return ((value & 0xFF0000) >> 16) | 
-           (value & 0x00FF00)         |
-           ((value & 0x0000FF) << 16);
-}
-
-uint16_t swap_16(uint16_t value) {
-    return ((value & 0xFF00) >> 8) | ((value & 0x00FF) << 8);
+static void fill_addr_le(uint8_t *out, uint32_t addr, uint32_t addr_size)
+{
+    memset(out, 0, sizeof(uint8_t) * 4);
+    if (addr_size >= 1) out[0] = (addr >> 24) & 0xff;
+    if (addr_size >= 2) out[1] = (addr >> 16) & 0xff;
+    if (addr_size >= 3) out[2] = (addr >> 8) & 0xff;
+    if (addr_size >= 4) out[3] = addr & 0xff;
 }
 /***********************************************************************
  ** STRUCT                                                            **
@@ -66,15 +65,7 @@ OPERATE_RET tal_mtd_qspi_write_reg(MTD_QSPI_HANDLE handle, uint32_t addr,
     reg_cmd.cmd[0] = temp_cmd->cmd;
     reg_cmd.cmd_size = 1;
     reg_cmd.cmd_lines = TUYA_QSPI_1WIRE;
-    if (temp_cmd->addr_size == 2)
-    {
-        addr = swap_16(addr);
-    }
-    else
-    {
-        addr = swap_24(addr);
-    }
-    memcpy(reg_cmd.addr, &addr, sizeof(uint32_t));
+    fill_addr_le(reg_cmd.addr, (uint32_t)addr, temp_cmd->addr_size);
     reg_cmd.addr_size = temp_cmd->addr_size;
     reg_cmd.addr_lines = temp_cmd->addr_lines;
     reg_cmd.data = temp_cmd->data;
@@ -100,16 +91,8 @@ OPERATE_RET tal_mtd_qspi_read_reg(MTD_QSPI_HANDLE handle, uint32_t addr,
     reg_cmd.cmd[0] = temp_cmd->cmd;
     reg_cmd.cmd_size = 1;
     reg_cmd.cmd_lines = TUYA_QSPI_1WIRE;
-    if (temp_cmd->addr_size == 2)
-    {
-        addr = swap_16(addr);
-    }
-    else
-    {
-        addr = swap_24(addr);
-    }
     
-    memcpy(reg_cmd.addr, &addr, sizeof(uint32_t));
+    fill_addr_le(reg_cmd.addr, (uint32_t)addr, temp_cmd->addr_size);
     reg_cmd.addr_size = temp_cmd->addr_size;
     reg_cmd.data_size = size;
     reg_cmd.addr_lines = temp_cmd->addr_lines;
@@ -272,7 +255,6 @@ OPERATE_RET tal_mtd_qspi_page_read(MTD_QSPI_HANDLE handle, uint32_t addr,
             // NOR: 直接地址累加（addr + 偏移）
             target_addr = addr + data_off;
         }
-
         temp_cmd.addr_size = handle->dev.cmd_set.quad_read_data.addr_size;
         temp_cmd.cmd = handle->dev.cmd_set.quad_read_data.command;
         temp_cmd.dummy = handle->dev.cmd_set.quad_read_data.dummy;

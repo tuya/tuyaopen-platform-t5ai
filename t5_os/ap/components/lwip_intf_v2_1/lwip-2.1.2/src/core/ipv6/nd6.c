@@ -776,14 +776,26 @@ nd6_input(struct pbuf *p, struct netif *inp)
 
             if (htonl(rdnss_opt->lifetime) > 0) {
               /* TODO implement Lifetime > 0 */
+// Modified by TUYA Start			  
+#ifdef CONFIG_LWIP_PPP_SUPPORT
+              dns_setserver(rdnss_server_idx++, &rdnss_address, inp);
+#else
               dns_setserver(rdnss_server_idx++, &rdnss_address);
+#endif
+// Modified by TUYA End              
             } else {
               /* TODO implement DNS removal in dns.c */
               u8_t s;
               for (s = 0; s < DNS_MAX_SERVERS; s++) {
                 const ip_addr_t *addr = dns_getserver(s);
                 if(ip_addr_cmp(addr, &rdnss_address)) {
+// Modified by TUYA Start				
+#ifdef CONFIG_LWIP_PPP_SUPPORT
+                  dns_setserver(s, NULL, inp);
+#else
                   dns_setserver(s, NULL);
+#endif
+// Modified by TUYA End                 
                 }
               }
             }

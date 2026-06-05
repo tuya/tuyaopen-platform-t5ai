@@ -19,6 +19,11 @@
 #include <driver/gpio.h>
 #include "gpio_driver.h"
 
+// Modified by TUYA Start
+// TUYA: 运行期 SDIO 线宽（1/4），替代编译期 4线开关
+extern uint8_t tuya_sdio_line_mode(void);
+// Modified by TUYA End
+
 #if CONFIG_SDIO_V2P0
 #include "sys_driver.h"
 
@@ -480,6 +485,10 @@ static bk_err_t sd_card_cmd_set_bus_width(bool four_lines)
 	}
 
 	cmd_cfg.cmd_index = SD_CMD_APP_CMD6_SET_BUS_WIDTH;
+// Modified by TUYA Start
+#if 1 /* TUYA: 运行期线宽 */
+	cmd_cfg.argument = four_lines ? 2 : 0;
+#else
 #if CONFIG_SDCARD_BUSWIDTH_4LINE
 	if(four_lines)
 		cmd_cfg.argument = 2;
@@ -488,6 +497,8 @@ static bk_err_t sd_card_cmd_set_bus_width(bool four_lines)
 #else
 	cmd_cfg.argument = 0;
 #endif
+#endif
+// Modified by TUYA End
 	cmd_cfg.response = SDIO_HOST_CMD_RSP_SHORT;
 	cmd_cfg.wait_rsp_timeout = sd_card_get_cmd_timeout_param();
 	cmd_cfg.crc_check = true;
@@ -964,11 +975,17 @@ static bk_err_t sd_card_init_card(void)
 	rtos_delay_milliseconds(2);
 
 	/* Set sdcard buswidth four lines or one line */
+// Modified by TUYA Start
+#if 1 /* TUYA: 运行期线宽 */
+	error_state = sd_card_cmd_set_bus_width(tuya_sdio_line_mode() == 4);
+#else
 #if CONFIG_SDCARD_BUSWIDTH_4LINE
 	error_state = sd_card_cmd_set_bus_width(true);
 #else
 	error_state = sd_card_cmd_set_bus_width(false);
 #endif
+#endif
+// Modified by TUYA End
 	if (error_state != BK_OK) {
 		return error_state;
 	}
@@ -1049,11 +1066,17 @@ bk_err_t bk_sd_card_init(void)
 #else
 	sdio_cfg.clock_freq = CONFIG_SDIO_HOST_DEFAULT_CLOCK_FREQ;
 #endif
+// Modified by TUYA Start
+#if 1 /* TUYA: 运行期线宽 */
+	sdio_cfg.bus_width = (tuya_sdio_line_mode() == 4) ? SDIO_HOST_BUS_WIDTH_4LINE : SDIO_HOST_BUS_WIDTH_1LINE;
+#else
 #if CONFIG_SDIO_4LINES_EN
 	sdio_cfg.bus_width = SDIO_HOST_BUS_WIDTH_4LINE;
 #else
 	sdio_cfg.bus_width = SDIO_HOST_BUS_WIDTH_1LINE;
 #endif
+#endif
+// Modified by TUYA End
 #if CONFIG_SDIO_GDMA_EN
 	sdio_cfg.dma_tx_en = 1;
 	sdio_cfg.dma_rx_en = 1;
@@ -1254,11 +1277,17 @@ bk_err_t bk_sdcard_wait_busy_to_idle(uint32_t max_time)
 	while(1)
 	{
 		retry_cnt++;
+// Modified by TUYA Start
+#if 1 /* TUYA: 运行期线宽 */
+		error_state = sd_card_cmd_set_bus_width(tuya_sdio_line_mode() == 4);
+#else
 #if CONFIG_SDCARD_BUSWIDTH_4LINE
 		error_state = sd_card_cmd_set_bus_width(true);
 #else
 		error_state = sd_card_cmd_set_bus_width(false);
 #endif
+#endif
+// Modified by TUYA End
 		if(error_state == BK_OK)
 		{
 			break;

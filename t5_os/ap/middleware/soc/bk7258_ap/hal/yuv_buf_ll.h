@@ -25,12 +25,6 @@ extern "C" {
 
 #define YUV_BUF_LL_REG_BASE    (SOC_YUV_BUF_REG_BASE)
 
-static inline void yuv_buf_ll_soft_reset(yuv_buf_hw_t *hw)
-{
-	hw->global_ctrl.soft_reset = 0;
-	hw->global_ctrl.soft_reset = 1;
-}
-
 static inline void yuv_buf_ll_init(yuv_buf_hw_t *hw)
 {
 	hw->global_ctrl.soft_reset = 0;
@@ -41,6 +35,16 @@ static inline void yuv_buf_ll_init(yuv_buf_hw_t *hw)
 static inline void yuv_buf_ll_set_mclk_div(yuv_buf_hw_t *hw, mclk_div_t mclk_div)
 {
 	hw->ctrl.mclk_div = mclk_div & YUV_BUF_F_MCLK_DIV_M;
+}
+
+static inline void yuv_buf_ll_global_soft_reset_enable(yuv_buf_hw_t *hw)
+{
+	hw->global_ctrl.soft_reset = 0;
+}
+
+static inline void yuv_buf_ll_global_soft_reset_disable(yuv_buf_hw_t *hw)
+{
+	hw->global_ctrl.soft_reset = 1;
 }
 
 static inline void yuv_buf_ll_enable_yuv_buf_mode(yuv_buf_hw_t *hw)

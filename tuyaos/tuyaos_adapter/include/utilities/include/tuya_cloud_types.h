@@ -184,17 +184,60 @@ typedef struct {
 
 #define IPADDR4_FMT           "%d.%d.%d.%d"
 #define IPADDR4_PR(__addr)    (uint8_t)((__addr)->ipaddr4 >> 24), (uint8_t)((__addr)->ipaddr4 >> 16), (uint8_t)((__addr)->ipaddr4 >> 8), (__addr)->ipaddr4 & 0xFF
+#define TUYA_IP_ADDR_SET_TYPE(addr, t)   do { (addr).type = (t); } while (0)
+#define TUYA_IP_ADDR_GET_TYPE(addr)      (((addr).type == 0) ? TY_AF_INET : (addr).type)
+#define TUYA_IP_ADDR_GET_IP4(addr)       ((addr).ipaddr4)
+#define TUYA_IP_ADDR_SET_IP4(addr, v)   do { (addr).ipaddr4 = (v); } while (0)
+#define TUYA_IP_ADDR_IS_ANY(addr)       ((addr).u_addr.ip6[0] == 0 && (addr).u_addr.ip6[1] == 0 && \
+                                         (addr).u_addr.ip6[2] == 0 && (addr).u_addr.ip6[3] == 0)
+#define TY_IPADDR_ANY          ((TUYA_IP_ADDR_T){ .u_addr = { .ip4 = 0 }, .type = TY_AF_INET })
+#define TY_IPADDR_BROADCAST    ((TUYA_IP_ADDR_T){ .u_addr = { .ip4 = 0xffffffffUL }, .type = TY_AF_INET })
+#define TY_IPADDR_LOOPBACK     ((TUYA_IP_ADDR_T){ .u_addr = { .ip4 = 0x7f000001UL }, .type = TY_AF_INET })
+#define TY_IP6_ADDR_ANY        ((TUYA_IP_ADDR_T){ .type = TY_AF_INET6 })
+
+/* Portable TUYA_IP_ADDR_T / NW_IP_S helpers (keep component code free of ENABLE_IPv6) */
+#define TUYA_IP_ADDR_IS_IPV4(addr)       (TUYA_IP_ADDR_GET_TYPE(addr) == TY_AF_INET)
+#define TUYA_IP_ADDR_IS_IPV6(addr)       (TUYA_IP_ADDR_GET_TYPE(addr) == TY_AF_INET6)
+#define TUYA_IP_ADDR_IP4_EQ(a, b)        (TUYA_IP_ADDR_GET_IP4(a) == TUYA_IP_ADDR_GET_IP4(b))
+#define TUYA_IP_ADDR_IPV6_UADDR_EQ(a, b) \
+    (0 == memcmp(&(a).u_addr.ip6[0], &(b).u_addr.ip6[0], sizeof((a).u_addr.ip6)))
+#define NW_IP_S_IPV6_IP_STR(_nw)         ((CHAR_T *)(_nw)->addr.ip6.ip)
+#define TUYA_IP_ADDR_MAKE_IP4(val)       ((TUYA_IP_ADDR_T){ .u_addr = { .ip4 = (val) }, .type = TY_AF_INET })
 #else
 typedef struct
 {
+    #define nwipstr        ip
+    #define nwmaskstr      mask
+    #define nwgwstr        gw
     char ip[16];    /* ip addr:  xxx.xxx.xxx.xxx  */
     char mask[16];  /* net mask: xxx.xxx.xxx.xxx  */
     char gw[16];    /* gateway:  xxx.xxx.xxx.xxx  */
     char dns[16];    /* dns server:  xxx.xxx.xxx.xxx  */
     BOOL_T dhcpen;  /* enable dhcp or not */
+    IP_ADDR_TYPE type;
 } NW_IP_S;
 /* tuyaos definition of IP addr */
 typedef uint32_t TUYA_IP_ADDR_T;
+#define IPADDR4_FMT           "%d.%d.%d.%d"
+#define IPADDR4_PR(__addr)    (UINT8_T)((*(__addr)) >> 24), (UINT8_T)((*(__addr)) >> 16), (UINT8_T)((*(__addr)) >> 8), (*(__addr)) & 0xFF
+#define TUYA_IP_ADDR_SET_TYPE(addr, t)   do { (void)(t); } while (0)
+#define TUYA_IP_ADDR_GET_TYPE(addr)      (TY_AF_INET)
+#define TUYA_IP_ADDR_GET_IP4(addr)       (addr)
+#define TUYA_IP_ADDR_SET_IP4(addr, v)   do { (addr) = (v); } while (0)
+#define TUYA_IP_ADDR_IS_ANY(addr)       ((addr) == 0)
+#define TY_IPADDR_ANY          ((TUYA_IP_ADDR_T)0x00000000UL)
+#define TY_IPADDR_BROADCAST    ((TUYA_IP_ADDR_T)0xffffffffUL)
+#define TY_IPADDR_LOOPBACK     ((TUYA_IP_ADDR_T)0x7f000001UL)
+#define TY_IP6_ADDR_ANY        ((TUYA_IP_ADDR_T)0)
+
+#define IS_NW_IPV4_ADDR(ip)              (TY_AF_INET == (ip)->type)
+#define IS_NW_IPV6_ADDR(ip)              (0)
+#define TUYA_IP_ADDR_IS_IPV4(addr)       (TUYA_IP_ADDR_GET_TYPE(addr) == TY_AF_INET)
+#define TUYA_IP_ADDR_IS_IPV6(addr)       (TUYA_IP_ADDR_GET_TYPE(addr) == TY_AF_INET6)
+#define TUYA_IP_ADDR_IP4_EQ(a, b)        (TUYA_IP_ADDR_GET_IP4(a) == TUYA_IP_ADDR_GET_IP4(b))
+#define TUYA_IP_ADDR_IPV6_UADDR_EQ(a, b) (0)
+#define NW_IP_S_IPV6_IP_STR(_nw)         ((CHAR_T *)(_nw)->ip)
+#define TUYA_IP_ADDR_MAKE_IP4(val)       ((TUYA_IP_ADDR_T)(val))
 #endif
 
 #define MAC_ADDR_LEN 6
@@ -555,14 +598,14 @@ typedef uint16_t TUYA_PIN_FUNC_E;
 #define  TUYA_I2S1_SDO_0     0x606
 #define  TUYA_I2S1_SDI_0     0x607
 
-#define  TUYA_SDIO_HOST_CLK  0x700
-#define  TUYA_SDIO_HOST_CMD  0x701
-#define  TUYA_SDIO_HOST_D0   0x702
-#define  TUYA_SDIO_HOST_D1   0x703
-#define  TUYA_SDIO_HOST_D2   0x704
-#define  TUYA_SDIO_HOST_D3   0x705
+#define  TUYA_GPIO           0x700
 
-#define  TUYA_GPIO           0x800
+#define  TUYA_SDIO_CLK       0x800
+#define  TUYA_SDIO_CMD       0x801
+#define  TUYA_SDIO_DATA0     0x802
+#define  TUYA_SDIO_DATA1     0x803
+#define  TUYA_SDIO_DATA2     0x804
+#define  TUYA_SDIO_DATA3     0x805
 
 #define  TUYA_PIN_FUNC_MAX   0xFFFF
 
@@ -888,9 +931,9 @@ typedef enum {
 typedef struct {
     TUYA_PWM_CAPTURE_MODE_E     cap_mode;       /* pwm capture mode */
     TUYA_PWM_POLARITY_E         trigger_level;  /* trigger level, TUYA_PWM_NEGATIVE:falling edge, TUYA_PWM_POSITIVE:rising edge */
-    uint32_t                      clk;            /* sampling rate of capture signal */
+    uint32_t                    clk;            /* sampling rate of capture signal */
     TUYA_PWM_IRQ_CB             cb;             /* pwm irq cb */
-    void                      *arg;           /* arg which would be passed to the irq cb */
+    void                        *arg;           /* arg which would be passed to the irq cb */
 } TUYA_PWM_CAP_IRQ_T;
 
 /**
@@ -1143,6 +1186,58 @@ typedef struct {
     TUYA_I2S_COMM_FORMAT_E      communication_format;       /*!< I2S communication format */
     uint32_t                    i2s_dma_flags;              /*!< I2S dma format , 1 use dma */
 }TUYA_I2S_BASE_CFG_T;
+
+/**
+ * @brief sdio num
+ */
+typedef enum {
+    TUYA_SDIO_NUM_0 = 0,
+    TUYA_SDIO_NUM_1 = 1,
+    TUYA_SDIO_NUM_2 = 2,
+    TUYA_SDIO_NUM_3 = 3,
+    TUYA_SDIO_NUM_4 = 4,
+    TUYA_SDIO_NUM_MAX,
+} TUYA_SDIO_NUM_E;
+
+
+/**
+ * @brief SDIO bus width
+ */
+typedef enum {
+    TUYA_SDIO_BUS_WIDTH_1BIT = 0,
+    TUYA_SDIO_BUS_WIDTH_4BIT,
+    TUYA_SDIO_BUS_WIDTH_8BIT,
+} TUYA_SDIO_BUS_WIDTH_E;
+
+/**
+ * @brief SDIO speed mode
+ */
+typedef enum {
+    TUYA_SDIO_SPEED_DEFAULT = 0,    ///< Default speed, <=25MHz
+    TUYA_SDIO_SPEED_HIGH,           ///< High speed, <=50MHz
+    TUYA_SDIO_SPEED_UHS_SDR12,      ///< UHS-I SDR12, 25MHz
+    TUYA_SDIO_SPEED_UHS_SDR25,      ///< UHS-I SDR25, 50MHz
+    TUYA_SDIO_SPEED_UHS_SDR50,      ///< UHS-I SDR50, 100MHz
+    TUYA_SDIO_SPEED_UHS_SDR104,     ///< UHS-I SDR104, 208MHz
+    TUYA_SDIO_SPEED_UHS_DDR50,      ///< UHS-I DDR50, 50MHz DDR
+} TUYA_SDIO_SPEED_MODE_E;
+
+/**
+ * @brief SDIO signal voltage
+ */
+typedef enum {
+    TUYA_SDIO_VOLTAGE_3V3 = 0,
+    TUYA_SDIO_VOLTAGE_1V8,
+} TUYA_SDIO_VOLTAGE_E;
+
+typedef struct {
+    TUYA_SDIO_BUS_WIDTH_E   bus_width;      ///< Bus width: 1/4/8 bit
+    TUYA_SDIO_SPEED_MODE_E  speed_mode;     ///< Speed mode
+    TUYA_SDIO_VOLTAGE_E     voltage;        ///< Signal voltage
+    uint32_t                clock_hz;       ///< Clock frequency in Hz
+    uint32_t                flags;          ///< Reserved flags (set 0)
+} TUYA_SDIO_BASE_CFG_T;
+
 
     // 文件访问权限
 #define TUYA_IRUSR  0400    /* Read by owner.  */
@@ -1484,7 +1579,7 @@ typedef struct
     uint32_t data_len;
     uint8_t *data;
     uint32_t total_frame_len;
-    void    *arg;
+    void    *arg; // For TuyaOpen
 } TUYA_DVP_FRAME_MANAGE_T;
 
 // H.264 编码质量参数
@@ -1512,6 +1607,19 @@ typedef struct
     H264_CFG h264_cfg;
 } TUYA_DVP_ENCODED_QUALITY;
 
+typedef OPERATE_RET (*DVP_SET_UP_CB)(void *args);
+typedef TUYA_DVP_FRAME_MANAGE_T *(*DVP_FRAME_ASSIGN_CB)(TUYA_FRAME_FMT_E fmt, void *args);
+typedef OPERATE_RET (*DVP_FRAME_POST_CB)(TUYA_DVP_FRAME_MANAGE_T *dvp_frame, void *args);
+
+typedef struct
+{
+    DVP_SET_UP_CB setup_cb;
+    DVP_FRAME_ASSIGN_CB assign_cb;
+    DVP_FRAME_POST_CB post_cb;
+    void *cb_param;
+    uint32_t sensor_clk;
+    /*ToDo: Add param which tkl_dvp needed*/
+} TUYA_DVP_TKL_CFG_T;
 typedef struct {
     uint16_t fps;
     uint16_t width;
@@ -1519,6 +1627,7 @@ typedef struct {
     TUYA_DVP_SYNC_MODE sync_polarity;
     TUYA_CAMERA_OUTPUT_MODE output_mode;
     TUYA_DVP_ENCODED_QUALITY encoded_quality;
+    TUYA_DVP_TKL_CFG_T inter_cfg;
 } TUYA_DVP_CFG_T;
 
 /**
@@ -1663,8 +1772,6 @@ typedef enum {
     TUYA_NETIF_NUM
 } TUYA_NETIF_TYPE_E;
 
-/* tuyaos definition of IP addr */
-typedef uint32_t TUYA_IP_ADDR_T;
 
 /* MTD 接口类型枚举 */
 typedef enum {
@@ -1676,6 +1783,16 @@ typedef enum {
     TYPE_SRAM = 0,
     TYPE_PSRAM,
 } RAM_TYPE_E;
+
+/* CELLULAR */
+typedef enum {
+    TUYA_CELLULAR_IF_USB = 0,
+    TUYA_CELLULAR_IF_UART,
+}TUYA_CELLULAR_IF_E;
+
+typedef enum {
+    TUYA_CELLULAR_PROTOCOL_PPP = 0,
+}TUYA_CELLULAR_PROTOCOL_E;
 
 /* tuyaos errorno */
 typedef int TUYA_ERRNO;

@@ -56,7 +56,9 @@ typedef struct {
 
 #define h264_hal_disable_internal_en(hal) h264_ll_disable_r_h264_en_bps((hal)->hw)
 
-#define h264_hal_reset(hal)   h264_ll_reset((hal)->hw)
+#define h264_hal_global_soft_reset_enable(hal) h264_ll_global_soft_reset_enable((hal)->hw)
+
+#define h264_hal_global_soft_reset_disable(hal) h264_ll_global_soft_reset_disable((hal)->hw)
 
 #define h264_hal_enable_stream_swap(hal) h264_ll_enable_stream_swap((hal)->hw)
 

@@ -35,6 +35,11 @@
 #include "sdio_utils.h"
 #include "sdio_slave_driver.h"
 
+// Modified by TUYA Start
+// TUYA: 运行期 SDIO 线宽（1/4），替代编译期 4线开关
+extern uint8_t tuya_sdio_line_mode(void);
+// Modified by TUYA End
+
 static bk_err_t sdio_slave_add_ongoing_buf_trans_len(sdio_chan_id_t chan_id, chan_direct_t direct, uint32_t trans_len);
 static void sdio_send_msg(sdio_msg_t *msg_p);
 
@@ -566,11 +571,20 @@ static void sdio_send_msg(sdio_msg_t *msg_p)
 
 static bk_err_t sdio_gpio_init(void)
 {
+// Modified by TUYA Start
+#if 1 /* TUYA: 运行期线宽 */
+	if (tuya_sdio_line_mode() == 4)
+		return gpio_sdio_sel(GPIO_SDIO_MAP_MODE0);
+	else
+		return gpio_sdio_one_line_sel(GPIO_SDIO_MAP_MODE0);
+#else
 #if CONFIG_SDIO_4LINES_EN
 	return gpio_sdio_sel(GPIO_SDIO_MAP_MODE0);
 #else
 	return gpio_sdio_one_line_sel(GPIO_SDIO_MAP_MODE0);
 #endif
+#endif
+// Modified by TUYA End
 }
 
 static bk_err_t sdio_gpio_deinit(void)
@@ -2558,9 +2572,16 @@ static bk_err_t sdio_slave_hw_init(void)
 	sys_hal_set_sdio_clk_sel((uint32_t)SDIO_CLK_XTL);
 	sys_hal_set_sdio_clk_div((uint32_t)SDIO_CLK_DIV_1);
 
+// Modified by TUYA Start
+#if 1 /* TUYA: 运行期线宽 */
+	if (tuya_sdio_line_mode() == 4)
+		sdio_hal_set_sd_data_bus(1);
+#else
 #if CONFIG_SDIO_4LINES_EN
 	sdio_hal_set_sd_data_bus(1);
 #endif
+#endif
+// Modified by TUYA End
 
 #if CONFIG_SDIO_1V8_EN
 	sys_drv_psram_psldo_vset(1, 3);        //set vddpsram voltage as 1.8v

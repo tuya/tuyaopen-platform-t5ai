@@ -671,7 +671,11 @@ void netif_invoke_ext_callback(struct netif* netif, netif_nsc_reason_t reason, c
 #define netif_remove_ext_callback(callback)
 #define netif_invoke_ext_callback(netif, reason, args)
 #endif
-
+// Modified by TUYA Start
+#ifdef CONFIG_LWIP_PPP_SUPPORT
+struct netif *netif_get_by_ipaddr(ip_addr_t ip);
+#endif
+// Modified by TUYA End
 #ifdef __cplusplus
 }
 #endif

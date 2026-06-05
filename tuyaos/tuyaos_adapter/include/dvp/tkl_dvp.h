@@ -16,9 +16,6 @@ extern "C" {
 
 #include "tuya_cloud_types.h"
 
-typedef TUYA_DVP_FRAME_MANAGE_T *(*DVP_FRAME_ASSIGN_CB)(TUYA_FRAME_FMT_E fmt);
-typedef OPERATE_RET (*DVP_FRAME_POST_CB)(TUYA_DVP_FRAME_MANAGE_T *dvp_frame);
-
 /**
  * @brief tkl_dvp_init
  * 
@@ -26,7 +23,7 @@ typedef OPERATE_RET (*DVP_FRAME_POST_CB)(TUYA_DVP_FRAME_MANAGE_T *dvp_frame);
  *
  * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
  */
-OPERATE_RET tkl_dvp_init(TUYA_DVP_CFG_T *dvp_cfg, uint32_t clk);
+OPERATE_RET tkl_dvp_init(TUYA_DVP_CFG_T *dvp_cfg);
 
 /**
  * @brief tkl_dvp_deinit
@@ -36,22 +33,18 @@ OPERATE_RET tkl_dvp_init(TUYA_DVP_CFG_T *dvp_cfg, uint32_t clk);
 OPERATE_RET tkl_dvp_deinit(void);
 
 /**
- * @brief tkl_dvp_frame_assign_cb_register
- *
- * @param[in] func: get idle dvp frame callback
+ * @brief tkl_dvp_start
  *
  * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
  */
-OPERATE_RET tkl_dvp_frame_assign_cb_register(DVP_FRAME_ASSIGN_CB func);
+OPERATE_RET tkl_dvp_start(void);
 
 /**
- * @brief tkl_dvp_frame_post_register_callback
- *
- * @param[in] func: capture module output frame ready to callback func
+ * @brief tkl_dvp_stop
  *
  * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
  */
-OPERATE_RET tkl_dvp_frame_post_cb_register(DVP_FRAME_POST_CB func);
+OPERATE_RET tkl_dvp_stop(void);
 
 #ifdef __cplusplus
 }

@@ -22,6 +22,8 @@
 #include "dbus/dbus_new.h"
 #endif
 #include "rsn_supp/wpa.h"
+#include "rsn_supp/wpa_i.h"
+#include "rsn_supp/pmksa_cache.h"
 #include "fst/fst.h"
 #include "crypto/tls.h"
 #include "bss.h"

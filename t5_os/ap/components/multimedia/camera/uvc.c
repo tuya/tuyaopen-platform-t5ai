@@ -134,6 +134,30 @@ bk_err_t bk_uvc_camera_open(camera_handle_t *handle, media_camera_device_t *devi
     return ret;
 }
 
+//! tuya-linch 
+bk_err_t bk_uvc_camera_start(camera_handle_t *handle, media_camera_device_t *device)
+{
+    int ret = BK_FAIL;
+    uvc_config_t config = {0};
+    
+    config.port = device->port;
+    config.width = device->width;
+    config.height = device->height;
+    config.fps = device->fps;
+    config.img_format = device->format;
+
+    ret = bk_uvc_set_start(handle, &config);
+    
+    return ret;
+}
+
+bk_err_t bk_uvc_camera_stop(camera_handle_t *handle)
+{
+    int ret = BK_FAIL;
+    ret = bk_uvc_set_stop(handle);
+    return ret;
+}
+
 bk_err_t bk_uvc_camera_close(camera_handle_t *handle)
 {
     int ret = BK_OK;

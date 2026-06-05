@@ -50,12 +50,6 @@ static inline void h264_ll_init(h264_hw_t *hw)
 	hw->global_ctrl.clkg_bypass = 1;
 }
 
-static inline void h264_ll_reset(h264_hw_t *hw)
-{
-	hw->global_ctrl.soft_reset = 0;
-	hw->global_ctrl.soft_reset = 1;
-}
-
 static inline void h264_ll_encode_enable(h264_hw_t *hw)
 {
 	hw->enc_ctrl.enc_en = 1;
@@ -64,6 +58,16 @@ static inline void h264_ll_encode_enable(h264_hw_t *hw)
 static inline void h264_ll_encode_disable(h264_hw_t *hw)
 {
 	hw->enc_ctrl.enc_en = 0;
+}
+
+static inline void h264_ll_global_soft_reset_enable(h264_hw_t *hw)
+{
+	hw->global_ctrl.soft_reset = 0;
+}
+
+static inline void h264_ll_global_soft_reset_disable(h264_hw_t *hw)
+{
+	hw->global_ctrl.soft_reset = 1;
 }
 
 static inline void h264_ll_set_img_width(h264_hw_t *hw, uint32_t img_width)

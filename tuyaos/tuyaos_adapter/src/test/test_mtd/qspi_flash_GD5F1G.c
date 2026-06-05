@@ -78,10 +78,10 @@ static uint16_t swap_16(uint16_t value) {
     return ((value & 0xFF00) >> 8) | ((value & 0x00FF) << 8);
 }
 
-static OPERATE_RET flash_gd5f1g_read_status(MTD_QSPI_CFG_T *cfg, uint32_t cmd, uint32_t addr, uint32_t addr_len)
+static OPERATE_RET flash_gd5f1g_read_status(MTD_QSPI_CFG_T *cfg, UINT_T cmd, UINT_T addr, UINT_T addr_len)
 {
     OPERATE_RET ret = OPRT_OK;
-    uint8_t status;
+    UINT8_T status;
     TUYA_QSPI_CMD_T reg_cmd = {0};
 
     reg_cmd.op = TUYA_QSPI_READ;
@@ -89,10 +89,10 @@ static OPERATE_RET flash_gd5f1g_read_status(MTD_QSPI_CFG_T *cfg, uint32_t cmd, u
     reg_cmd.cmd_size = 1;
     reg_cmd.cmd_lines = TUYA_QSPI_1WIRE;
 
-    memcpy(reg_cmd.addr, &addr, sizeof(uint32_t));
+    memcpy(reg_cmd.addr, &addr, sizeof(UINT_T));
 
     reg_cmd.addr_size = addr_len;
-    reg_cmd.data_size = sizeof(uint8_t);
+    reg_cmd.data_size = sizeof(UINT8_T);
     reg_cmd.addr_lines = TUYA_QSPI_1WIRE;
     reg_cmd.data_lines = TUYA_QSPI_1WIRE;
     reg_cmd.dummy_cycle = 0;
@@ -104,7 +104,7 @@ static OPERATE_RET flash_gd5f1g_read_status(MTD_QSPI_CFG_T *cfg, uint32_t cmd, u
     {
         return OPRT_COM_ERROR;
     }
-    // ret = tkl_qspi_recv(cfg->port, &status, sizeof(uint8_t));
+    // ret = tkl_qspi_recv(cfg->port, &status, sizeof(UINT8_T));
     // if (ret != 0)
     // {
     //     return OPRT_COM_ERROR;
@@ -113,9 +113,9 @@ static OPERATE_RET flash_gd5f1g_read_status(MTD_QSPI_CFG_T *cfg, uint32_t cmd, u
     return status;
 }
 
-static void flash_gd5f1g_wait_done(MTD_QSPI_CFG_T *cfg)
+static VOID_T flash_gd5f1g_wait_done(MTD_QSPI_CFG_T *cfg)
 {
-    uint32_t status_reg_data = 0;
+    UINT_T status_reg_data = 0;
 
     for(int i = 0; i <= (2000 / DELAY_CYCLE); i++) {
         status_reg_data = flash_gd5f1g_read_status(cfg, GD5F_GET_FEATURE, GD5F_STATUS, 1);
@@ -126,7 +126,7 @@ static void flash_gd5f1g_wait_done(MTD_QSPI_CFG_T *cfg)
     }
 }
 
-static OPERATE_RET flash_gd5f1g_write_status(MTD_QSPI_CFG_T *cfg, uint32_t cmd, uint32_t addr, uint32_t addr_len)
+static OPERATE_RET flash_gd5f1g_write_status(MTD_QSPI_CFG_T *cfg, UINT_T cmd, UINT_T addr, UINT_T addr_len)
 {
 
     OPERATE_RET ret = OPRT_COM_ERROR;
@@ -137,7 +137,7 @@ static OPERATE_RET flash_gd5f1g_write_status(MTD_QSPI_CFG_T *cfg, uint32_t cmd, 
     reg_cmd.cmd_size = 1;
     reg_cmd.cmd_lines = TUYA_QSPI_1WIRE;
 
-    memcpy(reg_cmd.addr, &addr, sizeof(uint32_t));
+    memcpy(reg_cmd.addr, &addr, sizeof(UINT_T));
 
     reg_cmd.addr_size = addr_len;
     reg_cmd.addr_lines = 0;
@@ -152,13 +152,13 @@ static OPERATE_RET flash_gd5f1g_write_status(MTD_QSPI_CFG_T *cfg, uint32_t cmd, 
     return OPRT_OK;
 }
 
-static int32_t flash_gd5f1g_nor_set_protect_none(MTD_QSPI_CFG_T *cfg)
+static INT32_T flash_gd5f1g_nor_set_protect_none(MTD_QSPI_CFG_T *cfg)
 {
-    uint8_t status_reg_data = 0;
+    UINT8_T status_reg_data = 0;
 
     bk_printf("-----------%s %d----------\n", __func__, __LINE__);
     status_reg_data = flash_gd5f1g_read_status(cfg, GD5F_GET_FEATURE, GD5F_STATUS, 1) & 0xff;
-    uint8_t clean_bits = ~(GD5F_BP_BP0 | GD5F_BP_BP1 | GD5F_BP_BP2);
+    UINT8_T clean_bits = ~(GD5F_BP_BP0 | GD5F_BP_BP1 | GD5F_BP_BP2);
     status_reg_data &= clean_bits;
     
     flash_gd5f1g_write_status(cfg, GD5F_WRITE_ENABLE, 0, 0);
@@ -167,13 +167,13 @@ static int32_t flash_gd5f1g_nor_set_protect_none(MTD_QSPI_CFG_T *cfg)
 }
 
 
-static int32_t flash_gd5f1g_init(MTD_QSPI_CFG_T *cfg)
+static INT32_T flash_gd5f1g_init(MTD_QSPI_CFG_T *cfg)
 {
     //????????????????flash????????
-    int32_t ret = OPRT_OK;
-    uint32_t status_reg_data = 0;
+    INT32_T ret = OPRT_OK;
+    UINT_T status_reg_data = 0;
     bk_printf("-----------%s %d----------\n", __func__, __LINE__);
-    status_reg_data = (uint8_t)flash_gd5f1g_read_status(cfg, GD5F_GET_FEATURE, GD5F_SECURE_OTP, 1);
+    status_reg_data = (UINT8_T)flash_gd5f1g_read_status(cfg, GD5F_GET_FEATURE, GD5F_SECURE_OTP, 1);
     if ((status_reg_data & GD5F_SOTP_QE) == 0) {
         status_reg_data |= GD5F_SOTP_QE;
         flash_gd5f1g_write_status(cfg, GD5F_WRITE_ENABLE, 0, 0);
@@ -183,13 +183,13 @@ static int32_t flash_gd5f1g_init(MTD_QSPI_CFG_T *cfg)
     return ret;
 }
 
-static int32_t flash_gd5f1g_deinit(MTD_QSPI_CFG_T *cfg)
+static INT32_T flash_gd5f1g_deinit(MTD_QSPI_CFG_T *cfg)
 {
     //????????????????flash????????
-    int32_t ret = OPRT_OK;
-    uint32_t status_reg_data = 0;
+    INT32_T ret = OPRT_OK;
+    UINT_T status_reg_data = 0;
 
-    status_reg_data = (uint8_t)flash_gd5f1g_read_status(cfg, GD5F_GET_FEATURE, GD5F_SECURE_OTP, 1);
+    status_reg_data = (UINT8_T)flash_gd5f1g_read_status(cfg, GD5F_GET_FEATURE, GD5F_SECURE_OTP, 1);
     if ((status_reg_data & GD5F_SOTP_QE) == GD5F_SOTP_QE) {
         status_reg_data &= ~GD5F_SOTP_QE;
         flash_gd5f1g_write_status(cfg, GD5F_WRITE_ENABLE, 0, 2);

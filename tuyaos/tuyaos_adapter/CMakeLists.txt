@@ -95,11 +95,10 @@ else()
         src/driver/tkl_wired.c
         src/driver/tkl_hci_1.c
         src/driver/tkl_video_enc.c
-        src/driver/tkl_video_in.c
         src/driver/tkl_mic.c
         src/driver/tkl_speaker.c
         src/driver/tkl_audio.c
-	src/driver/tkl_cellular.c
+        src/driver/tkl_cellular.c
         src/driver/tkl_vad.c
         src/driver/tkl_kws.c
         src/driver/tkl_pinmux.c
@@ -130,6 +129,7 @@ else()
         src/misc/sflash.c
         src/misc/bk_adapter.c
         src/misc/tuya_dma.c
+        src/misc/tkl_mftest.c
 
 
         src/system/tkl_fs.c

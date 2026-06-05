@@ -84,7 +84,8 @@ static void jpeg_deinit_common(void)
 #endif
 
 	// jpeg soft_reset
-	jpeg_hal_soft_reset(&s_jpeg.hal);
+	jpeg_hal_global_soft_reset_enable(&s_jpeg.hal);
+	jpeg_hal_global_soft_reset_disable(&s_jpeg.hal);
 	// jpeg int clear
 	jpeg_hal_reset_config_to_default(&s_jpeg.hal);
 	// jpeg clk diable
@@ -360,11 +361,8 @@ bk_err_t bk_jpeg_enc_soft_reset(void)
 {
 	JPEG_RETURN_ON_NOT_INIT();
 
-	uint32_t int_level = rtos_enter_critical();
-
-	jpeg_hal_soft_reset(&s_jpeg.hal);
-
-	rtos_exit_critical(int_level);
+	jpeg_hal_global_soft_reset_enable(&s_jpeg.hal);
+	jpeg_hal_global_soft_reset_disable(&s_jpeg.hal);
 
 	return BK_OK;
 }
@@ -437,3 +435,19 @@ static void jpeg_isr(void)
 	}
 }
 
+
+bk_err_t bk_jpeg_enc_global_soft_reset(uint8_t enable)
+{
+	JPEG_RETURN_ON_NOT_INIT();
+
+	if (enable)
+	{
+		jpeg_hal_global_soft_reset_enable(&s_jpeg.hal);
+	}
+	else
+	{
+		jpeg_hal_global_soft_reset_disable(&s_jpeg.hal);
+	}
+
+	return BK_OK;
+}

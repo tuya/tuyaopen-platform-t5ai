@@ -143,7 +143,7 @@ typedef struct
 
 #define DEFAULT_ONBOARD_DUAL_DMIC_STREAM_CONFIG() {         \
     .adc_cfg = {                                            \
-                   .chl_num = 1,                            \
+                   .chl_num = 2,                            \
                    .bits = 16,                              \
                    .sample_rate = 8000,                     \
                    .dig_gain = 0x2D,                        \
@@ -158,7 +158,7 @@ typedef struct
     .task_stack = ONBOARD_DUAL_DMIC_MIC_STREAM_TASK_STACK,  \
     .task_core = ONBOARD_DUAL_DMIC_MIC_STREAM_TASK_CORE,    \
     .task_prio = ONBOARD_DUAL_DMIC_MIC_STREAM_TASK_PRIO,    \
-    .ref_mode =  0,                                         \
+    .ref_mode =  1,                                         \
     .dual_dmic =  1,                                        \
     .dual_dmic_sgl_out =  0,                                \
 }

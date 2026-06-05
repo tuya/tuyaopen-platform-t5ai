@@ -45,6 +45,7 @@ extern void pan_ip_start(void);
 extern void pan_set_ip_start_flag(bool enable);
 extern uint32_t pan_ip_is_start(void);
 bk_err_t bk_pan_get_mac(uint8_t *mac);
+// Modified by TUYA Start
 extern void pan_netif_notify_got_ip(void);
 extern void pan_ip_down(void);
 int net_pan_remove_netif(void);
@@ -60,6 +61,7 @@ extern void modem_ip_down(void);
 extern int net_modem_remove_netif(void);
 extern void modem_netif_notify_got_ip(void);
 #endif
+// Modified by TUYA End
 #ifdef CONFIG_WIFI_VNET_CONTROLLER
 int host_wlan_add_netif(uint8_t *mac);
 int host_wlan_remove_netif(void);
@@ -70,11 +72,17 @@ void *net_get_ppp_netif_handle(void);
 void *net_get_ppp_pcb_handle(void);
 void net_set_ppp_pcb_handle(void *ppp);  
 uint32_t ppp_ip_is_start(void);
+// Modified by TUYA Start
+void ppp_ip_start(void);
+void ppp_ip_down(void);
+// Modified by TUYA End
 #endif
+// Modified by TUYA Start
 #if LWIP_NETIF_LOOPBACK
 void bk_netif_trigger_loopnetif_msg(void);
 #endif
 void bk_netif_add_dns_server(uint8_t idx, const char* szIpv4);
+// Modified by TUYA End
 #ifdef __cplusplus
 }
 #endif

@@ -42,10 +42,12 @@
 #if CONFIG_PAN
 #include "panif.h"
 #endif
+// Modified by TUYA Start
 #if CONFIG_BK_MODEM
 #include "modemif.h"
 #include <components/event.h>
 #endif
+// Modified by TUYA End
 #ifdef CONFIG_WIFI_VNET_CONTROLLER
 #include "wdrv_cntrl.h"
 #include "wifi_api.h"
@@ -106,6 +108,7 @@ struct ipv4_config pan_ip_settings = {
 	.dns1 = 0,
 #endif
 
+// Modified by TUYA Start
 #if CONFIG_BK_MODEM
 struct ipv4_config modem_ip_settings = {
 	.addr_type = ADDR_TYPE_STATIC,
@@ -116,7 +119,7 @@ struct ipv4_config modem_ip_settings = {
 	.dns2 = 0,
 };
 #endif
-
+// Modified by TUYA End
 static char up_iface;
 static bool sta_ip_start_flag = false;
 bool uap_ip_start_flag = false;
@@ -129,10 +132,14 @@ static bool bridge_ip_start_flag = false;
 #if CONFIG_PAN
 static bool pan_ip_start_flag = false;
 #endif
+// Modified by TUYA Start
 #if CONFIG_BK_MODEM
 static bool modem_ip_start_flag = false;
 #endif
-
+#if CONFIG_LWIP_PPP_SUPPORT
+static bool ppp_ip_start_flag = false;
+#endif
+// Modified by TUYA End
 #ifdef CONFIG_IPV6
 #define IPV6_ADDR_STATE_TENTATIVE       "Tentative"
 #define IPV6_ADDR_STATE_PREFERRED       "Preferred"
@@ -175,9 +182,11 @@ static struct iface g_pan = {{0}, .name = "pan"};
 #if CONFIG_LWIP_PPP_SUPPORT
 static struct iface g_ppp = {{0}, .name = "ppp"};
 #endif
+// Modified by TUYA Start
 #if CONFIG_BK_MODEM
 static struct iface g_modem = {{0}, .name = "modem"};
 #endif
+// Modified by TUYA End
 net_sta_ipup_cb_fn sta_ipup_cb = NULL;
 
 extern void *net_get_sta_handle(void);
@@ -194,10 +203,11 @@ bk_err_t bk_wifi_get_ip_status(IPStatusTypedef *outNetpara, WiFi_Interface inInt
 #if CONFIG_PAN
 int net_pan_add_netif(uint8_t *mac);
 #endif
+// Modified by TUYA Start
 #if CONFIG_BK_MODEM
 int net_modem_add_netif(uint8_t *mac);
 #endif
-
+// Modified by TUYA End
 #ifdef CONFIG_IPV6
 char *ipv6_addr_state_to_desc(unsigned char addr_state)
 {
@@ -306,7 +316,7 @@ void net_pan_init(void)
 	net_pan_add_netif(pan_mac);
 }
 #endif
-
+// Modified by TUYA Start
 #if CONFIG_BK_MODEM
 bk_err_t bk_modem_get_mac(uint8_t *mac)
 {
@@ -332,7 +342,7 @@ void net_modem_init(void)
 	net_modem_add_netif(modem_mac);
 }
 #endif
-
+// Modified by TUYA End
 void net_set_sta_ipup_callback(void *fn)
 {
 	sta_ipup_cb = (net_sta_ipup_cb_fn)fn;
@@ -476,6 +486,7 @@ static void wm_netif_status_callback(struct netif *n)
 
 #endif // CONFIG_WIFI_ENABLE
 				}
+// Modified by TUYA Start				
 #ifdef CONFIG_BK_MODEM
 				 else if (n == &g_modem.netif) {
 					modem_netif_notify_got_ip();
@@ -486,6 +497,7 @@ static void wm_netif_status_callback(struct netif *n)
 					pan_netif_notify_got_ip();
 				}
 #endif
+// Modified by TUYA End
 #ifdef CONFIG_ETH
 			} else if (n == &g_mlan.netif) {
 				// Ethernet DHCP handler, clear ps prevent
@@ -577,14 +589,14 @@ void *net_get_pan_handle(void)
 	return &g_pan.netif;
 }
 #endif
-
+// Modified by TUYA Start
 #if CONFIG_BK_MODEM
 void *net_get_modem_handle(void)
 {
 	return &g_modem.netif;
 }
 #endif
-
+// Modified by TUYA End
 #if CONFIG_LWIP_PPP_SUPPORT
 #include "ppp/ppp.h"
 void *net_get_ppp_netif_handle(void)
@@ -612,6 +624,23 @@ uint32_t ppp_ip_is_start(void)
 	}
 	return false;
 }
+// Modified by TUYA Start
+void ppp_ip_start(void)
+{
+	if (!ppp_ip_start_flag) {
+		ppp_ip_start_flag = true;
+	}
+}
+
+void ppp_ip_down(void)
+{
+	if (ppp_ip_start_flag) {
+		if (netif_is_up(&g_mlan.netif) && netif_is_link_up(&g_mlan.netif)) {
+			netifapi_netif_set_default(net_get_sta_handle());
+		}
+	}
+}
+// Modified by TUYA End
 #endif
 void *net_get_netif_handle(uint8_t iface)
 {
@@ -644,7 +673,7 @@ void net_interface_dhcp_stop(void *intrfc_handle)
 void sta_ip_down(void)
 {
 	if (sta_ip_start_flag) {
-		LWIP_LOGI("sta ip down\r\n");
+		LWIP_LOGD("sta ip down\r\n");
 
 		sta_ip_start_flag = false;
 
@@ -657,13 +686,21 @@ void sta_ip_down(void)
 			g_mlan.netif.ip6_addr_state[addr_idx] = IP6_ADDR_INVALID;
 		}
 #endif
+// Modified by TUYA Start
+#ifdef CONFIG_LWIP_PPP_SUPPORT
+		struct netif *ppp_netif = (struct netif *)net_get_ppp_netif_handle();
+		if (ppp_netif && netif_is_up(ppp_netif)) {
+			netifapi_netif_set_default(ppp_netif);
+		}
+#endif
+// Modified by TUYA End
 	}
 }
 
 void sta_ip_start(void)
 {
 	if (!sta_ip_start_flag) {
-		LWIP_LOGI("sta ip start\r\n");
+		LWIP_LOGD("sta ip start\r\n");
 		sta_ip_start_flag = true;
 		net_configure_address(&sta_ip_settings, net_get_sta_handle());
 		return;
@@ -755,7 +792,7 @@ void pan_set_default_netif(void)
 {
 	netifapi_netif_set_default(net_get_pan_handle());
 }
-
+// Modified by TUYA Start
 void pan_ip_down(void)
 {
 	if (pan_ip_start_flag) {
@@ -778,6 +815,7 @@ void modem_set_ip_start_flag(bool enable)
 
 void modem_ip_start(void)
 {
+	bk_printf("[XX]%s:%d ip_start %d\r\n", __func__, __LINE__, modem_ip_start_flag);
 	if(!modem_ip_start_flag) {
 		LWIP_LOGD("modem ip start \r\n");
 		modem_ip_start_flag = true;
@@ -809,7 +847,7 @@ void modem_ip_down(void)
 	}
 }
 #endif
-
+// Modified by TUYA End
 void sta_set_default_netif(void)
 {
 	netifapi_netif_set_default(net_get_sta_handle());
@@ -1095,11 +1133,13 @@ int net_configure_address(struct ipv4_config *addr, void *intrfc_handle)
 		up_iface = 1;
 		pan_set_default_netif();
 #endif
+// Modified by TUYA Start
 #ifdef CONFIG_BK_MODEM
 	} else if (if_handle == &g_modem) {
 		up_iface = 1;
 		modem_set_default_netif();
 #endif
+// Modified by TUYA End
 	} else {
 		// softap IP up, start dhcp server;
 		dhcp_server_start(net_get_uap_handle());
@@ -1128,9 +1168,11 @@ int net_get_if_addr(struct wlan_ip_config *addr, void *intrfc_handle)
 #ifdef CONFIG_PAN
 			|| if_handle == &g_pan
 #endif
+// Modified by TUYA Start
 #ifdef CONFIG_BK_MODEM
 			|| if_handle == &g_modem
 #endif
+// Modified by TUYA End
 #if CONFIG_LWIP_PPP_SUPPORT
 			|| if_handle == &g_ppp
 #endif
@@ -1241,9 +1283,19 @@ void net_configure_dns(struct iface *if_handle, struct wlan_ip_config *ip)
 			ip->ipv4.dns2 = ip->ipv4.dns1;
 
 		ip_addr_set_ip4_u32(&tmp, ip->ipv4.dns1);
+// Modified by TUYA Start		
+#ifdef CONFIG_LWIP_PPP_SUPPORT
+		dns_setserver(0, &tmp, &if_handle->netif);
+#else
 		dns_setserver(0, &tmp);
+#endif		
 		ip_addr_set_ip4_u32(&tmp, ip->ipv4.dns2);
+#ifdef CONFIG_LWIP_PPP_SUPPORT
+		dns_setserver(1, &tmp, &if_handle->netif);
+#else		
 		dns_setserver(1, &tmp);
+#endif
+// Modified by TUYA End	
 	}
 
 	/* DNS MAX Retries should be configured in lwip/dns.c to 3/4 */
@@ -1367,7 +1419,7 @@ int net_pan_add_netif(uint8_t *mac)
 
 	return ERR_OK;
 }
-
+// Modified by TUYA Start
 int net_pan_remove_netif(void)
 {
 	err_t err = netifapi_netif_remove(&g_pan.netif);
@@ -1438,7 +1490,7 @@ void modem_netif_notify_got_ip(void)
 								&event_data, sizeof(event_data), BEKEN_NEVER_TIMEOUT));
 }
 #endif
-
+// Modified by TUYA End
 #if CONFIG_WIFI6_CODE_STACK
 bool etharp_tmr_flag = false;
 #if CONFIG_BRIDGE
@@ -1675,7 +1727,7 @@ int host_wlan_remove_sap_netif(void)
 }
 
 #endif
-
+// Modified by TUYA Start
 void bk_netif_add_dns_server(uint8_t idx, const char* szIpv4)
 {
     ip_addr_t ipaddr;
@@ -1683,11 +1735,15 @@ void bk_netif_add_dns_server(uint8_t idx, const char* szIpv4)
     if (ipaddr_aton(szIpv4, &ipaddr))
     {
         LWIP_LOGI("idx:(%d)dns:(%s)",idx,szIpv4);
+#ifdef CONFIG_LWIP_PPP_SUPPORT
+		dns_setserver(idx, &ipaddr, NULL);
+#else
         dns_setserver(idx, &ipaddr);
+#endif		
     }
     else
     {
         LWIP_LOGI("idx:(%d)dns:(%s)",idx,szIpv4);
     }
 }
-
+// Modified by TUYA End

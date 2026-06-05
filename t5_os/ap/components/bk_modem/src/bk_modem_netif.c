@@ -13,6 +13,7 @@
 #include <../../lwip_intf_v2_1/lwip-2.1.2/port/net.h>
 #include <string.h>
 #include "lwip/ip6_addr.h"
+#include "net.h"
 #include "components/log.h"
 #include <components/event.h>
 #include <components/netif.h>
@@ -100,6 +101,8 @@ extern const ip_addr_t *sta_dns;
             bk_modem_send_msg(MSG_PPP_STOP, ABNORMAL_STOP,0,0);
             if (bk_modem_ppp_netif_link_chg_cb) {
                 bk_modem_ppp_netif_link_chg_cb(BK_MODEM_NETIF_LINK_DOWN);
+                ppp_ip_down();
+                dns_clear_all_cache();
             }
             return;
 
@@ -228,6 +231,7 @@ int bk_modem_ppp_netif_event_cb(void *arg, event_module_t event_module,
 			BK_MODEM_LOGI("BK PPP got ip\r\n");
             if (bk_modem_ppp_netif_link_chg_cb) {
                 bk_modem_ppp_netif_link_chg_cb(BK_MODEM_NETIF_LINK_UP);
+                ppp_ip_start();
             }
         }
 		break;
@@ -305,6 +309,12 @@ bk_err_t bk_modem_netif_stop_ppp(void)
     if (ret != ERR_OK) {
         BK_MODEM_LOGE("pppapi_close failed with %d\r\n", ret);
         return BK_FAIL;
+    }
+
+    if (bk_modem_ppp_netif_link_chg_cb) {
+        bk_modem_ppp_netif_link_chg_cb(BK_MODEM_NETIF_LINK_DOWN);
+        ppp_ip_down();
+        dns_clear_all_cache();
     }
     return BK_OK;
 }

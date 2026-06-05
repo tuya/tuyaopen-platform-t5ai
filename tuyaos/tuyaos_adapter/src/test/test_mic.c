@@ -12,7 +12,7 @@
 #include "tuya_cloud_types.h"
 #include "tkl_mic.h"
 #include "tkl_speaker.h"
-static int32_t buffer[1024] = {0};
+static INT32_T buffer[1024] = {0};
 
 void cli_mic_cmd(char *pcWriteBuffer, int xWriteBufferLen, int argc, char **argv)
 {

@@ -362,8 +362,9 @@ static int _onboard_mic_read(audio_port_handle_t self, char *buffer, int len, Ti
             //TODO
             /* ============== workaround handle================== */
             os_memset(buffer, 0, len);
-            ret = read_size;
+            // ret = read_size;
             //ret = 0;
+            ret = len;
         }
     }
     else

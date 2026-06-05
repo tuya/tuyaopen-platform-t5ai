@@ -837,6 +837,11 @@ netif_set_default(struct netif *netif)
   netif_default = netif;
   LWIP_DEBUGF(NETIF_DEBUG, ("netif: setting default interface %c%c\n",
                             netif ? netif->name[0] : '\'', netif ? netif->name[1] : '\''));
+// Modified by TUYA Start							
+#ifdef CONFIG_LWIP_PPP_SUPPORT
+  dns_servers_sort_by_default_netif();
+#endif
+// Modified by TUYA End
 }
 
 /**
@@ -852,6 +857,7 @@ netif_set_up(struct netif *netif)
   LWIP_ERROR("netif_set_up: invalid netif", netif != NULL, return);
 
   if (!(netif->flags & NETIF_FLAG_UP)) {
+    bk_printf("%s %d\r\n", __func__, __LINE__);
     netif_set_flags(netif, NETIF_FLAG_UP);
 
     MIB2_COPY_SYSUPTIME_TO(&netif->ts);
@@ -927,6 +933,7 @@ netif_set_down(struct netif *netif)
   LWIP_ERROR("netif_set_down: invalid netif", netif != NULL, return);
 
   if (netif->flags & NETIF_FLAG_UP) {
+    bk_printf("%s %d\r\n", __func__, __LINE__);
 #if LWIP_NETIF_EXT_STATUS_CALLBACK
     {
       netif_ext_callback_args_t args;
@@ -996,6 +1003,7 @@ netif_set_link_up(struct netif *netif)
   LWIP_ERROR("netif_set_link_up: invalid netif", netif != NULL, return);
 
   if (!(netif->flags & NETIF_FLAG_LINK_UP)) {
+    bk_printf("%s %d\r\n", __func__, __LINE__);
     netif_set_flags(netif, NETIF_FLAG_LINK_UP);
 
 #if LWIP_DHCP
@@ -1034,6 +1042,7 @@ netif_set_link_down(struct netif *netif)
   LWIP_ERROR("netif_set_link_down: invalid netif", netif != NULL, return);
 
   if (netif->flags & NETIF_FLAG_LINK_UP) {
+    bk_printf("%s %d\r\n", __func__, __LINE__);
     netif_clear_flags(netif, NETIF_FLAG_LINK_UP);
     NETIF_LINK_CALLBACK(netif);
 #if LWIP_NETIF_EXT_STATUS_CALLBACK
@@ -1820,3 +1829,30 @@ netif_invoke_ext_callback(struct netif *netif, netif_nsc_reason_t reason, const 
   }
 }
 #endif /* LWIP_NETIF_EXT_STATUS_CALLBACK */
+// Modified by TUYA Start
+#ifdef CONFIG_LWIP_PPP_SUPPORT
+/**
+* @ingroup netif
+* Return the interface for the netif IP address
+*
+* @param addr IP address of netif to find
+*/
+struct netif *
+netif_get_by_ipaddr(ip_addr_t ip)
+{
+  struct netif *netif;
+
+  LWIP_ASSERT_CORE_LOCKED();
+
+  if (ip.addr) {
+    NETIF_FOREACH(netif) {
+      if (netif_is_link_up(netif) && netif_is_up(netif) && (netif->ip_addr.addr == ip.addr)) {
+        return netif;
+      }
+    }
+  }
+
+  return NULL;
+}
+#endif
+// Modified by TUYA End

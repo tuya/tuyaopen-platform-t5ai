@@ -83,7 +83,7 @@
 #if CONFIG_FTP_SERVER
 #define TCPIP_THREAD_STACKSIZE          1024
 #else
-#define TCPIP_THREAD_STACKSIZE          512
+#define TCPIP_THREAD_STACKSIZE          (4 * 1024)
 #endif
 #endif
 
@@ -455,7 +455,13 @@ u32_t beken_random(void);
 #define LWIP_DNS                        1
 #define DNS_TABLE_SIZE                  CONFIG_DNS_TABLE_SIZE  // number of table entries, default 4
 //#define DNS_MAX_NAME_LENGTH           64  // max. name length, default 256
+// Modified by TUYA Start
+#ifdef CONFIG_LWIP_PPP_SUPPORT
+#define DNS_MAX_SERVERS                 6  // number of DNS servers, default 6
+#else
 #define DNS_MAX_SERVERS                 2  // number of DNS servers, default 2
+#endif
+// Modified by TUYA End
 #define DNS_DOES_NAME_CHECK             1  // compare received name with given,def 0
 #define DNS_MSG_SIZE                    512
 #define MDNS_MSG_SIZE                   512
@@ -658,10 +664,10 @@ The STM32F107 allows computing and verifying the IP, UDP, TCP and ICMP checksums
 #ifdef CONFIG_RIO
 #define LWIP_HOOK_FILENAME              "lwip_hooks.h"
 #endif
-#if 0
+#ifdef CONFIG_LWIP_HOOK_IP4_ROUTE_SRC
 #define LWIP_HOOK_IP4_ROUTE_SRC         ip4_route_src_hook
 #endif
-#define BK_IP4_ROUTE                    1
+#define BK_IP4_ROUTE                    0
 #define BK_DHCPS_DNS                    1
 
 #if CONFIG_FREERTOS

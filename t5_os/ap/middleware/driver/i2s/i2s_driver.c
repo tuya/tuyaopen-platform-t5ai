@@ -141,8 +141,12 @@ static void i2s_init_gpio(i2s_gpio_group_id_t id)
 	}
 }
 
+static uint8_t is_bk_i2s_driver_init = 0;
 bk_err_t bk_i2s_driver_init(void)
 {
+	if (is_bk_i2s_driver_init) {
+		return BK_OK;
+	}
 	bk_pm_module_vote_power_ctrl(PM_POWER_SUB_MODULE_NAME_AUDP_I2S, PM_POWER_MODULE_STATE_ON);
 	sys_drv_i2s_select_clock(1); //APLL
 	bk_pm_clock_ctrl(PM_CLK_ID_I2S_1, CLK_PWR_CTRL_PWR_UP);
@@ -155,38 +159,44 @@ bk_err_t bk_i2s_driver_init(void)
 	delay(10);
 	sys_drv_apll_spi_trigger_set(0);
 
+	is_bk_i2s_driver_init = 1;
 	return BK_OK;
 }
 
 bk_err_t bk_i2s_driver_deinit(void)
 {
+	if (!is_bk_i2s_driver_init) {
+		return BK_OK;
+	}
+	
 	i2s_int_config_t int_config_table;
-	uint8_t i2s_index = i2s_hal_get_cfg_index();
 
 	bk_pm_module_vote_power_ctrl(PM_POWER_SUB_MODULE_NAME_AUDP_I2S, PM_POWER_MODULE_STATE_OFF);
 	bk_pm_clock_ctrl(PM_CLK_ID_I2S_1, CLK_PWR_CTRL_PWR_DOWN);
 	sys_drv_i2s_disckg_set(0);
 
-	if (i2s_index == 0) {
-		I2S_RETURN_ON_NOT_INIT();
+	if (!s_i2s_driver_is_init)
+	{
 		sys_drv_i2s_clock_en(CLK_PWR_CTRL_PWR_DOWN);
 		sys_drv_i2s_int_en(0);
 		int_config_table.int_src = INT_SRC_I2S0;
-		s_i2s_driver_is_init = false;
-	} else if (i2s_index == 1) {
-		I2S1_RETURN_ON_NOT_INIT();
+		s_i2s_driver_is_init = false;		
+	}
+
+	if (!s_i2s1_driver_is_init)
+	{
 		sys_drv_i2s1_clock_en(CLK_PWR_CTRL_PWR_DOWN);
 		sys_drv_i2s1_int_en(0);
 		int_config_table.int_src = INT_SRC_I2S1;
-		s_i2s1_driver_is_init = false;
-	} else if (i2s_index == 2) {
-		I2S2_RETURN_ON_NOT_INIT();
+		s_i2s1_driver_is_init = false;		
+	}
+
+	if (!s_i2s2_driver_is_init)
+	{
 		sys_drv_i2s2_clock_en(CLK_PWR_CTRL_PWR_DOWN);
 		sys_drv_i2s2_int_en(0);
 		int_config_table.int_src = INT_SRC_I2S2;
 		s_i2s2_driver_is_init = false;
-	} else {
-		return BK_FAIL;
 	}
 
 	//set apll clock config
@@ -196,6 +206,7 @@ bk_err_t bk_i2s_driver_deinit(void)
 
 	bk_int_isr_unregister(int_config_table.int_src);
 
+	is_bk_i2s_driver_init = 0;
 	return BK_OK;
 }
 
@@ -350,6 +361,7 @@ bk_err_t bk_i2s_init(i2s_gpio_group_id_t id, const i2s_config_t *config)
 
 	return BK_OK;
 }
+
 
 bk_err_t bk_i2s_deinit(void)
 {
@@ -2132,4 +2144,3 @@ bk_err_t bk_i2s_stop(void)
 
 	return BK_OK;
 }
-

@@ -93,8 +93,8 @@ static bk_err_t bk_modem_uart_rx_send_msg(int type, uint32_t arg, uint32_t len, 
         return BK_FAIL;
     }
 
-    /* Reset sleep timer for all messages except sleep message */
-    if (type != MSG_MODEM_UART_NIC_SLEEP)
+    /* Reset sleep timer for all messages except sleep message (NIC mode only) */
+    if ((type != MSG_MODEM_UART_NIC_SLEEP) && (bk_modem_env.comm_proto == UART_NIC_MODE))
     {
         bk_modem_uart_sleep_check();
     }
@@ -250,12 +250,18 @@ static void bk_modem_uart_rx_thread_main(void *args)
 
         if (ret ==  kNoErr)
         {
-            BK_MODEM_LOGI("%s: msg.type %d\r\n", __func__, msg.type);
+            BK_MODEM_LOGV("%s: msg.type %d\r\n", __func__, msg.type);
             switch (msg.type)
             {
                 case MSG_MODEM_UART_RX:
                 {
-                    //bk_modem_uart_rx(&msg);
+                    uint32_t length;
+                    os_memset(g_uart_rx_buff, 0, BK_MODEM_UART_READ_BUFF_SIZE);
+                    length = bk_uart_read_bytes(BK_MODEM_UART_ID, g_uart_rx_buff, BK_MODEM_UART_READ_BUFF_SIZE, 0);
+                    if (length)
+                    {
+                        bk_modem_dte_recv_data(length, g_uart_rx_buff);
+                    }
                     break;
                 }
 
@@ -304,7 +310,10 @@ static void bk_modem_uart_tx_thread_main(void *args)
             {
                 case MSG_MODEM_UART_TX:
                 {
-                    //bk_modem_uart_send(&msg);
+                    if (msg.param && msg.len)
+                    {
+                        bk_uart_write_bytes(BK_MODEM_UART_ID, msg.param, msg.len);
+                    }
                     break;
                 }
 
@@ -476,8 +485,13 @@ bk_err_t bk_modem_uart_init(uint32_t baud_rate)
     {
         config.src_clk = UART_SCLK_APLL;
     }
+
+    if ((bk_modem_env.comm_proto == PPP_MODE) && (BK_MODEM_UART_ID == UART_ID_0))
+    {
+        config.flow_ctrl = UART_FLOWCTRL_CTS_RTS;
+    }
     
-    BK_MODEM_LOGI("[%s][%d] set baud:%d, uart id %d\r\n", __FUNCTION__, __LINE__, config.baud_rate,BK_MODEM_UART_ID);
+    BK_MODEM_LOGI("[%s][%d] init baud:%d, uart id %d\r\n", __FUNCTION__, __LINE__, config.baud_rate,BK_MODEM_UART_ID);
     /* Initialize UART */
     ret = bk_uart_init(BK_MODEM_UART_ID, &config);
     if(BK_OK != ret)

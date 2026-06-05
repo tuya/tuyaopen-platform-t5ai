@@ -85,7 +85,8 @@ bool ip4_netif_exist(const ip4_addr_t *dest, const ip4_addr_t *src)
  * 3. Avoid configuring the IP of AP's address to the same sub-net as STA's, suggest using
  *    the special local sub-net address scope.
  */
-struct netif* ip4_route_src_hook(const ip4_addr_t *dest, const ip4_addr_t *src)
+// Modified by TUYA Start 
+struct netif* ip4_route_src_hook(const ip4_addr_t *src, const ip4_addr_t *dest)
 {
 	struct netif *netif = NULL;
 
@@ -107,3 +108,4 @@ struct netif* ip4_route_src_hook(const ip4_addr_t *dest, const ip4_addr_t *src)
 
 	return netif;
 }
+// Modified by TUYA End

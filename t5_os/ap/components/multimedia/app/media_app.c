@@ -281,6 +281,45 @@ bk_err_t media_app_camera_open(camera_handle_t *handle, media_camera_device_t *d
 
     return ret;
 }
+//! tuya-linch 
+
+#include <driver/uvc_camera.h>
+
+bk_err_t media_app_camera_start(camera_handle_t *handle, media_camera_device_t *device)
+{
+    int ret = BK_FAIL;
+
+    uvc_config_t config = {0};
+
+    config.port = device->port;
+    config.width = device->width;
+    config.height = device->height;
+    config.fps = device->fps;
+    config.img_format = device->format;
+
+    ret = bk_uvc_set_start(handle, &config); 
+
+    return ret;
+}
+
+bk_err_t media_app_camera_set_frame_drop_mode(uint8_t mode)
+{
+    return bk_uvc_set_frame_drop_mode(mode);
+}
+
+bk_err_t media_app_camera_set_power_pin(uint32_t gpio_id)
+{
+    extern bk_err_t bk_usb_set_power_pin(uint32_t gpio_id);
+
+    return bk_usb_set_power_pin(gpio_id);
+}
+
+bk_err_t media_app_camera_stop(camera_handle_t *handle)
+{
+    int ret = BK_FAIL;
+    ret = bk_uvc_set_stop(handle);
+    return ret;
+}
 
 bk_err_t media_app_camera_close(camera_handle_t *handle)
 {

@@ -12,6 +12,7 @@ set(srcs
 		camera/net_camera.c
 		cli/media_cli.c
 		app/camera_handle_list.c
+		app/lv_jpeg_hw_decode.c
 	)
 
 if (CONFIG_DVP_CAMERA)

@@ -69,6 +69,7 @@ static WIFI_EVENT_CB wifi_event_cb = NULL;
 static unsigned char mgnt_cb_exist_flag = 0;
 static unsigned char first_set_flag = TRUE;
 static BOOL_T wifi_lp_flag = FALSE;
+static volatile uint8_t last_wifi_connect_status = 0;
 
 extern BOOL_T ble_init_flag;
 
@@ -172,10 +173,12 @@ OPERATE_RET tkl_wifi_init(WIFI_EVENT_CB cb)
 static int scan_cb(void *arg, event_module_t event_module,
                     int event_id, void *_event_data)
 {
-    uint32_t thread_id = (uint32_t)arg;
-    wifi_event_scan_done_t *event_data = _event_data;
+    (void)arg;
+    (void)event_id;
+    (void)_event_data;
+    (void)event_module;
 
-    bk_printf("%s\r\n", __func__);
+    // bk_printf("%s\r\n", __func__);
     if(scanHandle) {
         tkl_semaphore_post(scanHandle);
     }
@@ -525,10 +528,10 @@ OPERATE_RET tkl_wifi_start_ap(const WF_AP_CFG_IF_S *cfg)
         tkl_system_memcpy((char *)wApConfig.ssid, cfg->ssid, cfg->s_len);
         tkl_system_memcpy((char *)wApConfig.password, cfg->passwd, cfg->p_len);
 
-        os_strncpy((char *)wIp4_config.ip, cfg->ip.ip, 16);
-        os_strncpy((char *)wIp4_config.mask, cfg->ip.mask, 16);
-        os_strncpy((char *)wIp4_config.gateway, cfg->ip.gw, 16);
-        os_strncpy((char *)wIp4_config.dns, cfg->ip.gw, 16);
+        os_strncpy((char *)wIp4_config.ip, cfg->ip.nwipstr, 16);
+        os_strncpy((char *)wIp4_config.mask, cfg->ip.nwmaskstr, 16);
+        os_strncpy((char *)wIp4_config.gateway, cfg->ip.nwgwstr, 16);
+        os_strncpy((char *)wIp4_config.dns, cfg->ip.nwgwstr, 16);
 
         bk_printf("ssid:%s, key:%s, channel: %d\r\n", wApConfig.ssid, wApConfig.password, wApConfig.channel);
         BK_LOG_ON_ERR(bk_netif_set_ip4_config(NETIF_IF_AP, &wIp4_config));
@@ -699,9 +702,9 @@ OPERATE_RET tkl_wifi_get_ip(const WF_IF_E wf, NW_IP_S *ip)
 
     if (OPRT_OK == ret) {
         ret = bk_netif_get_ip4_config(iface, &wIp4Config);
-        os_strncpy(ip->ip, wIp4Config.ip, 16);
-        os_strncpy(ip->mask, wIp4Config.mask, 16);
-        os_strncpy(ip->gw, wIp4Config.gateway, 16);
+        os_strncpy(ip->nwipstr, wIp4Config.ip, 16);
+        os_strncpy(ip->nwmaskstr, wIp4Config.mask, 16);
+        os_strncpy(ip->nwgwstr, wIp4Config.gateway, 16);
     }
 
     return ret;
@@ -769,7 +772,7 @@ static OPERATE_RET _wf_wk_mode_exit(WF_WK_MD_E last_mode, WF_WK_MD_E curr_mode)
             if(curr_mode == WWM_POWERDOWN) {
                 bk_printf("power down\r\n");
                 // 普通低功耗模式处理,功耗小于15ma
-                tkl_wifi_set_lp_mode(1, 1);
+                tkl_wifi_set_lp_mode(1, 10);
                 tkl_system_sleep(100);
                 bk_pm_module_vote_cpu_freq(PM_DEV_ID_DECODER, PM_CPU_FRQ_DEFAULT);
                 // cpu无需进入低功耗，否则串口接口可能会有异常，此时功耗已经满足15ma的需求
@@ -998,20 +1001,41 @@ OPERATE_RET tkl_wifi_set_country_code_v2(const uint8_t *ccode)
  *
  * @param[in]       ccode   country code buffer to restore
  * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
+ * @note Results are cached for 30 seconds to avoid blocking the CP IPC thread
+ *       with repeated scan commands
  */
 OPERATE_RET tkl_wifi_get_country_code(uint8_t *ccode)
 {
-	uint8_t country_code[3] = {0};
+    static uint8_t s_cc_cache[8] = {0};
+    static SYS_TIME_T s_cc_cache_time = 0;
+    static BOOL_T s_cc_cached = FALSE;
+    static BOOL_T s_cc_found = FALSE;
 
-    int len = 0;
-    bk_err_t ret = bk_scan_country_code(country_code, &len);
-    if(ret == 0) {
-        strncpy((char *)ccode, (char *)country_code, 2);
-        return OPRT_OK;
+    SYS_TIME_T now = tkl_system_get_millisecond();
+
+    if (s_cc_cached && (now - s_cc_cache_time) < 30000) {
+        memcpy(ccode, s_cc_cache, strlen((char *)s_cc_cache) + 1);
+        return s_cc_found ? OPRT_OK : OPRT_NOT_FOUND;
     }
 
-    memcpy(ccode, "UNKNOW", sizeof("UNKNOW"));
-    return OPRT_NOT_FOUND;
+    uint8_t country_code[3] = {0};
+    int len = 0;
+    bk_err_t ret = bk_scan_country_code(country_code, &len);
+    if (ret == 0 && len > 0) {
+        strncpy((char *)ccode, (char *)country_code, 2);
+        memcpy(s_cc_cache, ccode, 3);
+        s_cc_cache[3] = '\0';
+        s_cc_found = TRUE;
+    } else {
+        memcpy(ccode, "UNKNOW", sizeof("UNKNOW"));
+        memcpy(s_cc_cache, "UNKNOW", sizeof("UNKNOW"));
+        s_cc_found = FALSE;
+    }
+
+    s_cc_cache_time = now;
+    s_cc_cached = TRUE;
+
+    return s_cc_found ? OPRT_OK : OPRT_NOT_FOUND;
 }
 
 /**
@@ -1105,8 +1129,14 @@ int _wifi_event_cb(void *arg, event_module_t event_module,
 		sta_disconnected = (wifi_event_sta_disconnected_t *)event_data;
         // TODO
         // etharp_remove_all_static();
-        if(sta_disconnected->disconnect_reason == 0)
-            break;
+        if(sta_disconnected->disconnect_reason == 0) {
+            if (last_wifi_connect_status == 1) {
+                // 部分AP断开时候，reason给0，此处判断，如果已连接状态，需要上报断开事件
+                last_wifi_connect_status = 0;
+            } else {
+                break;
+            }
+        }
         dhcp_stop(net_get_sta_handle());
         if(tkl_get_lp_flag()) {
             _bk_rtc_wakeup_register(1000);  //由于默认设置cpu是处于sleep模式， 当资源释放后进入idle线程，cpu就会进入睡眠。需要先设置rtc唤醒，否则再不能唤醒cpu，导致程序异常
@@ -1155,16 +1185,16 @@ int _netif_event_cb(void *arg, event_module_t event_module,
 					   int event_id, void *event_data)
 {
     bk_printf("_netif_event_cb %d\r\n", event_id);
-
     netif_event_got_ip4_t *pri_data = (netif_event_got_ip4_t *)event_data;
-    if (pri_data->netif_if != NETIF_IF_STA) {
+    if (pri_data && (pri_data->netif_if != NETIF_IF_STA)) {
         bk_printf("netif_if not wifi: %d\r\n", pri_data->netif_if);
         return 0;
     }
-
+    
 	switch (event_id) {
 	case EVENT_NETIF_GOT_IP4:
         bk_printf("WFE_CONNECTED %d\r\n", event_id);
+        last_wifi_connect_status = 1;
         __notify_wifi_event(WFE_CONNECTED, NULL);
         if(tkl_get_lp_flag()) {
             if(!ble_init_flag) {
@@ -1365,6 +1395,12 @@ OPERATE_RET tkl_wifi_station_get_conn_ap_rssi(int8_t *rssi)
         ret = OPRT_COM_ERROR;
     } else {
         *rssi = (sum_rssi - min_rssi - max_rssi)/3;
+        if (*rssi > -1) {
+            *rssi = -1;
+        }
+        if (*rssi < -100) {
+            *rssi = -100;
+        }
     }
 
     return ret;

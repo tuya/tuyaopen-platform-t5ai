@@ -2,16 +2,20 @@
 #include <driver/timer.h>
 
 /* private macros */
-#define TIMER_DEV_NUM       6
+#define TIMER_DEV_NUM       3
+
+/*
+ *  SMP只能使用定时器3/4/5，对上层屏蔽细节，i
+ *  上层代码传递定时器id 0/1/2，这里转换为对应的4/5/6*/
+#define TIMER_DEV_OFFSET    3
+#define BK_TIMER_IDX(x) (x + TIMER_DEV_OFFSET)
+#define TY_TIMER_IDX(x) (x - TIMER_DEV_OFFSET)
 
 /* private variables */
-static TUYA_TIMER_BASE_CFG_T cfg_save[] = {
+static TUYA_TIMER_BASE_CFG_T cfg_save[TIMER_DEV_NUM] = {
     {TUYA_TIMER_MODE_ONCE, NULL, NULL},
     {TUYA_TIMER_MODE_ONCE, NULL, NULL},
     {TUYA_TIMER_MODE_ONCE, NULL, NULL},
-    {TUYA_TIMER_MODE_ONCE, NULL, NULL},
-    {TUYA_TIMER_MODE_ONCE, NULL, NULL},
-    {TUYA_TIMER_MODE_ONCE, NULL, NULL}
 };
 
 /* extern function */
@@ -28,8 +32,14 @@ static TUYA_TIMER_BASE_CFG_T cfg_save[] = {
 static void __tkl_hw_timer_cb(void *args)
 {
     TUYA_TIMER_NUM_E timer_id = (TUYA_TIMER_NUM_E)args;
-    if(cfg_save[timer_id].cb){
-        cfg_save[timer_id].cb(cfg_save[timer_id].args);
+    if ((timer_id < TIMER_DEV_NUM) || (timer_id > (TIMER_DEV_NUM + TIMER_DEV_OFFSET))) {
+        return;
+    }
+
+    int idx = TY_TIMER_IDX(timer_id);
+
+    if(cfg_save[idx].cb){
+        cfg_save[idx].cb(cfg_save[idx].args);
     }
     return;
 }
@@ -69,11 +79,12 @@ OPERATE_RET tkl_timer_start(TUYA_TIMER_NUM_E timer_id, uint32_t us)
         return OPRT_NOT_SUPPORTED;
     }
 
-    bk_timer_set_period_us(timer_id, 0);
+    int idx = BK_TIMER_IDX(timer_id);
+    bk_timer_set_period_us(idx, 0);
     if(!(us % 1000)) {
-        bk_timer_start(timer_id, (uint32_t)(us / 1000), (timer_isr_t)__tkl_hw_timer_cb);
+        bk_timer_start(idx, (uint32_t)(us / 1000), (timer_isr_t)__tkl_hw_timer_cb);
     } else {
-        bk_timer_start_us(timer_id, us, (timer_isr_t)__tkl_hw_timer_cb);
+        bk_timer_start_us(idx, us, (timer_isr_t)__tkl_hw_timer_cb);
     }
 
     return OPRT_OK;
@@ -92,8 +103,9 @@ OPERATE_RET tkl_timer_stop(TUYA_TIMER_NUM_E timer_id)
         return OPRT_NOT_SUPPORTED;
     }
 
-    bk_timer_stop(timer_id);
-    bk_timer_set_period_us(timer_id, 0);
+    int idx = BK_TIMER_IDX(timer_id);
+    bk_timer_stop(idx);
+    bk_timer_set_period_us(idx, 0);
 
     return OPRT_OK;
 }
@@ -111,7 +123,7 @@ OPERATE_RET tkl_timer_deinit(TUYA_TIMER_NUM_E timer_id)
         return OPRT_NOT_SUPPORTED;
     }
 
-    bk_timer_stop(timer_id);
+    bk_timer_stop(BK_TIMER_IDX(timer_id));
     return OPRT_OK;
 }
 
@@ -125,9 +137,12 @@ OPERATE_RET tkl_timer_deinit(TUYA_TIMER_NUM_E timer_id)
  */
 OPERATE_RET tkl_timer_get(TUYA_TIMER_NUM_E timer_id, uint32_t *us)
 {
-    uint32_t count;
+    uint32_t count = 0;
+    if (timer_id >= TIMER_DEV_NUM) {
+        return OPRT_NOT_SUPPORTED;
+    }
 
-    count = bk_timer_get_cnt(timer_id);
+    count = bk_timer_get_cnt(BK_TIMER_IDX(timer_id));
     if (us != NULL) {
         *us = count / 26;
     } else {
@@ -147,7 +162,19 @@ OPERATE_RET tkl_timer_get(TUYA_TIMER_NUM_E timer_id, uint32_t *us)
  */
 OPERATE_RET tkl_timer_get_current_value(TUYA_TIMER_NUM_E timer_id, uint32_t *us)
 {
-    return tkl_timer_get(timer_id, us);
+    uint32_t count = 0;
+    if (timer_id >= TIMER_DEV_NUM) {
+        return OPRT_NOT_SUPPORTED;
+    }
+
+    count = bk_timer_get_cnt(BK_TIMER_IDX(timer_id));
+    if (us != NULL) {
+        *us = count / 26;
+    } else {
+        return OPRT_INVALID_PARM;
+    }
+
+    return OPRT_OK;
 }
 
 

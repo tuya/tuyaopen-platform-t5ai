@@ -1,5 +1,9 @@
 #include "tkl_dvp.h"
 #include "tkl_memory.h"
+#include "tkl_output.h"
+#include "tkl_semaphore.h"
+#include "tkl_queue.h"
+#include "tkl_thread.h"
 #include <driver/int.h>
 #include <os/os.h>
 #include <os/mem.h>
@@ -8,9 +12,6 @@
 #include <driver/yuv_buf.h>
 #include <driver/h264.h>
 #include <driver/video_common_driver.h>
-
-#define MODULE_ON       (1)
-#define MODULE_OFF      (0)
 
 #define HARDWARE_BLOCK_WDITH_BYTE   8
 #define HARDWARE_BLOCK_LINE         8
@@ -25,9 +26,27 @@
 
 #define DVP_H264_SEI_SIZE       (96)
 #define DVP_DMA_CACHE           (1024 * 10)
+#define DVP_MSG_QUE_SIZE        (10)
 
-static DVP_FRAME_ASSIGN_CB dvp_frame_assign_cb = NULL;
-static DVP_FRAME_POST_CB dvp_frame_post_cb = NULL;
+typedef enum
+{
+    DVP_DRV_TURN_OFF = 0,
+    DVP_DRV_TURNING_OFF,
+    DVP_DRV_TURNING_ON,
+    DVP_DRV_TURN_ON,
+};
+
+typedef enum {
+    DVP_YUV_EOF = 0,
+    DVP_JPEG_EOF,
+    DVP_H264_EOF,
+    DVP_TASK_EXIT,
+};
+
+typedef struct {
+    uint32_t event;
+    uint32_t param;
+} TKL_DVP_MSG_T;
 
 typedef struct
 {
@@ -61,10 +80,15 @@ typedef struct
     ENCODER_MANAGE_T encoder_manage;
     yuv_buf_config_t yuv_buf_module_config;
     jpeg_config_t jpeg_module_config;
-    uint8_t module_stat;
+    uint8_t drv_stat;
+    uint8_t output_enable;
     uint32_t frame_id;
     uint8_t error_flag;
     mclk_freq_t bk_clk;
+    TKL_QUEUE_HANDLE msg_queue;
+    TKL_THREAD_HANDLE dvp_frame_task;
+    TKL_SEM_HANDLE drv_close_sem;
+    TKL_SEM_HANDLE task_close_sem;
 } DVP_MODULE_MANAGE_T;
 
 DVP_MODULE_MANAGE_T g_dvp_module_manage =
@@ -93,11 +117,19 @@ DVP_MODULE_MANAGE_T g_dvp_module_manage =
         .sensor_fmt = YUV_FORMAT_YUYV,
     },
 
+    .pingpong_buf = NULL,
+    .base_frame = NULL,
+    .encoded_frame = NULL,
     .is_mix_mode = false,
     .bk_clk = MCLK_24M,
     .frame_id = 0,
-    .module_stat = MODULE_OFF,
+    .drv_stat = DVP_DRV_TURN_OFF,
     .error_flag = false,
+    .msg_queue = NULL,
+    .dvp_frame_task = NULL,
+    .drv_close_sem = NULL,
+    .task_close_sem = NULL,
+    .output_enable = false,
 };
 
 static OPERATE_RET __ty_output_mode_to_bk_work_mode(TUYA_CAMERA_OUTPUT_MODE output_mode, yuv_mode_t *bk_work_mode)
@@ -123,42 +155,43 @@ static OPERATE_RET __ty_output_mode_to_bk_work_mode(TUYA_CAMERA_OUTPUT_MODE outp
     return OPRT_OK;
 }
 
-static OPERATE_RET __dvp_config_param_check(TUYA_DVP_CFG_T *dvp_cfg)
+static OPERATE_RET __dvp_config_param_check(DVP_MODULE_MANAGE_T *dvp_mgmt)
 {
     OPERATE_RET ret = OPRT_OK;
+    TUYA_DVP_CFG_T *dvp_cfg = &(dvp_mgmt->dvp_cfg);
     uint16_t width = dvp_cfg->width;
     uint16_t height = dvp_cfg->height;
     TUYA_CAMERA_OUTPUT_MODE output_mode = dvp_cfg->output_mode;
 
-    ret = __ty_output_mode_to_bk_work_mode(output_mode, &(g_dvp_module_manage.cur_work_mode));
+    ret = __ty_output_mode_to_bk_work_mode(output_mode, &(dvp_mgmt->cur_work_mode));
     if (ret)
         return OPRT_NOT_SUPPORTED;
 
 
     if (output_mode == TUYA_CAMERA_OUTPUT_YUV422
-        || output_mode == TUYA_CAMERA_OUTPUT_JPEG_YUV422_BOTH 
+        || output_mode == TUYA_CAMERA_OUTPUT_JPEG_YUV422_BOTH
         || output_mode == TUYA_CAMERA_OUTPUT_H264_YUV422_BOTH)
     {
-        g_dvp_module_manage.base_frame_fmt = TUYA_FRAME_FMT_YUV422;
-        g_dvp_module_manage.base_frame_len = width * height * YUV422_PER_PIXEL_BYTE;
+        dvp_mgmt->base_frame_fmt = TUYA_FRAME_FMT_YUV422;
+        dvp_mgmt->base_frame_len = width * height * YUV422_PER_PIXEL_BYTE;
 
-        g_dvp_module_manage.is_mix_mode = (output_mode != TUYA_CAMERA_OUTPUT_YUV422) ? true : false;
+        dvp_mgmt->is_mix_mode = (output_mode != TUYA_CAMERA_OUTPUT_YUV422) ? true : false;
     }
 
-    if (g_dvp_module_manage.cur_work_mode == H264_MODE)
+    if (dvp_mgmt->cur_work_mode == H264_MODE)
     {
-        g_dvp_module_manage.encoded_frame_fmt = TUYA_FRAME_FMT_H264;
-        g_dvp_module_manage.encoded_frame_len = CONFIG_H264_FRAME_SIZE;
+        dvp_mgmt->encoded_frame_fmt = TUYA_FRAME_FMT_H264;
+        dvp_mgmt->encoded_frame_len = CONFIG_H264_FRAME_SIZE;
     }
 
-    if (g_dvp_module_manage.cur_work_mode == JPEG_MODE)
+    if (dvp_mgmt->cur_work_mode == JPEG_MODE)
     {
-        g_dvp_module_manage.encoded_frame_fmt = TUYA_FRAME_FMT_JPEG;
-        g_dvp_module_manage.encoded_frame_len = CONFIG_JPEG_FRAME_SIZE;
+        dvp_mgmt->encoded_frame_fmt = TUYA_FRAME_FMT_JPEG;
+        dvp_mgmt->encoded_frame_len = CONFIG_JPEG_FRAME_SIZE;
     }
 
-    yuv_mode_cfg_t *yuv_buf_cfg = &(g_dvp_module_manage.yuv_buf_module_config.yuv_mode_cfg);
-    jpeg_config_t *jpeg_cfg = &(g_dvp_module_manage.jpeg_module_config);
+    yuv_mode_cfg_t *yuv_buf_cfg = &(dvp_mgmt->yuv_buf_module_config.yuv_mode_cfg);
+    jpeg_config_t *jpeg_cfg = &(dvp_mgmt->jpeg_module_config);
     switch (dvp_cfg->sync_polarity)
     {
     case TUYA_DVP_SYNC_MODE_0:
@@ -224,12 +257,14 @@ static OPERATE_RET __ty_clk_to_bk_clk(uint32_t clk, mclk_freq_t *outclk)
     return OPRT_OK;
 }
 
-static OPERATE_RET __dvp_yuv_buf_module_init(TUYA_DVP_CFG_T *dvp_cfg)
+static OPERATE_RET __dvp_yuv_buf_module_init(DVP_MODULE_MANAGE_T *dvp_mgmt)
 {
+    // TODO: mclk_div/yuv_format/vsync/hsync从sensor配置获取
+    TUYA_DVP_CFG_T *dvp_cfg = &(dvp_mgmt->dvp_cfg);
     yuv_buf_config_t yuv_buf_config_cur = {0};
-    memcpy(&yuv_buf_config_cur, &(g_dvp_module_manage.yuv_buf_module_config), sizeof(yuv_buf_config_t));
+    memcpy(&yuv_buf_config_cur, &(dvp_mgmt->yuv_buf_module_config), sizeof(yuv_buf_config_t));
 
-    yuv_buf_config_cur.work_mode = g_dvp_module_manage.cur_work_mode;
+    yuv_buf_config_cur.work_mode = dvp_mgmt->cur_work_mode;
 
     // 横向width的像素块个数
     yuv_buf_config_cur.x_pixel = dvp_cfg->width / BLOCK_WIDTH; // 除以BLOCK_WIDTH得到横向块数
@@ -237,54 +272,55 @@ static OPERATE_RET __dvp_yuv_buf_module_init(TUYA_DVP_CFG_T *dvp_cfg)
     // 纵向像素块个数
     yuv_buf_config_cur.y_pixel = dvp_cfg->height / BLOCK_HEIGHT; // 除以BLOCK_HEIGHT得到纵向块数
 
-    if (g_dvp_module_manage.cur_work_mode == YUV_MODE)
+    if (dvp_mgmt->cur_work_mode == YUV_MODE)
         goto init_yuv_buf;
 
     // 申请pingpong buf
-    if (g_dvp_module_manage.pingpong_buf != NULL)
+    if (dvp_mgmt->pingpong_buf != NULL)
         goto init_yuv_buf;
 
-    if (g_dvp_module_manage.cur_work_mode == H264_MODE)
+    if (dvp_mgmt->cur_work_mode == H264_MODE)
     {
         // h264编码器每16行一输入，16 * pixel_per_size * pingpong
-        g_dvp_module_manage.pingpong_len = dvp_cfg->width * 32 * 2;
-        g_dvp_module_manage.pingpong_buf = (uint8_t *)os_malloc(g_dvp_module_manage.pingpong_len);
+        dvp_mgmt->pingpong_len = dvp_cfg->width * 32 * 2;
+        dvp_mgmt->pingpong_buf = (uint8_t *)os_malloc(dvp_mgmt->pingpong_len);
     }
-    else if (g_dvp_module_manage.cur_work_mode == JPEG_MODE)
+    else if (dvp_mgmt->cur_work_mode == JPEG_MODE)
     {
         // jepg编码器每8行一输入，8 * pixel_per_size * pingpong
-        g_dvp_module_manage.pingpong_len = dvp_cfg->width * 16 * 2;
-        g_dvp_module_manage.pingpong_buf = (uint8_t *)os_malloc(g_dvp_module_manage.pingpong_len);
+        dvp_mgmt->pingpong_len = dvp_cfg->width * 16 * 2;
+        dvp_mgmt->pingpong_buf = (uint8_t *)os_malloc(dvp_mgmt->pingpong_len);
     }
 
-    if (g_dvp_module_manage.pingpong_buf == NULL)
+    if (dvp_mgmt->pingpong_buf == NULL)
     {
         bk_printf("%s malloc pingpong buf failed\r\n", __func__);
         return OPRT_MALLOC_FAILED;
     }
 
 init_yuv_buf:
-    yuv_buf_config_cur.base_addr = (g_dvp_module_manage.pingpong_buf == NULL) ? NULL : g_dvp_module_manage.pingpong_buf;
+    yuv_buf_config_cur.base_addr = (dvp_mgmt->pingpong_buf == NULL) ? NULL : dvp_mgmt->pingpong_buf;
 
     uint8_t ret = bk_yuv_buf_init(&yuv_buf_config_cur);
 	if (ret != BK_OK)
 	{
 		bk_printf("yuv_buf yuv mode init error\n");
-		return OPRT_MALLOC_FAILED;
+		return OPRT_COM_ERROR;
 	}
 
     return OPRT_OK;
 }
 
-static OPERATE_RET __dvp_jpeg_module_init(TUYA_DVP_CFG_T *dvp_cfg)
+static OPERATE_RET __dvp_jpeg_module_init(DVP_MODULE_MANAGE_T *dvp_mgmt)
 {
     jpeg_config_t jpeg_config_cur = {0};
-    memcpy(&jpeg_config_cur, &(g_dvp_module_manage.jpeg_module_config), sizeof(jpeg_config_t));
+    memcpy(&jpeg_config_cur, &(dvp_mgmt->jpeg_module_config), sizeof(jpeg_config_t));
 
+    TUYA_DVP_CFG_T *dvp_cfg = &(dvp_mgmt->dvp_cfg);
     jpeg_config_cur.x_pixel = dvp_cfg->width / BLOCK_WIDTH;
     jpeg_config_cur.y_pixel = dvp_cfg->height / BLOCK_WIDTH;
 
-    jpeg_config_cur.clk = g_dvp_module_manage.bk_clk;
+    jpeg_config_cur.clk = dvp_mgmt->bk_clk;
     jpeg_config_cur.mode = JPEG_MODE;
 
     uint8_t ret = bk_jpeg_enc_init(&jpeg_config_cur);
@@ -302,22 +338,25 @@ static void __dvp_dma_finish_cb(dma_id_t id)
     g_dvp_module_manage.encoder_manage.out_offset += DVP_DMA_CACHE;
 }
 
-static OPERATE_RET __dvp_encoder_output_dma_config(TUYA_DVP_CFG_T *dvp_cfg, yuv_mode_t work_mode)
+static OPERATE_RET __dvp_encoder_output_dma_config(DVP_MODULE_MANAGE_T *dvp_mgmt)
 {
-    if (!dvp_frame_assign_cb)
+    TUYA_DVP_CFG_T *dvp_cfg = &(dvp_mgmt->dvp_cfg);
+
+    if (dvp_cfg->inter_cfg.assign_cb == NULL)
         return OPRT_COM_ERROR;
 
+    OPERATE_RET ret = 0;
     dma_config_t dma_config = {0};
-    ENCODER_MANAGE_T *coder_manage = &(g_dvp_module_manage.encoder_manage);
+    ENCODER_MANAGE_T *coder_manage = &(dvp_mgmt->encoder_manage);
 
     coder_manage->sequence = 0;
     coder_manage->out_offset = 0;
-    if (work_mode == H264_MODE)
+    if (dvp_mgmt->cur_work_mode == H264_MODE)
     {
         bk_h264_get_fifo_addr(&(coder_manage->out_addr));
         coder_manage->out_channel = bk_fixed_dma_alloc(DMA_DEV_H264, DMA_ID_8);
     }
-    else if (work_mode == JPEG_MODE)
+    else if (dvp_mgmt->cur_work_mode == JPEG_MODE)
     {
         bk_jpeg_enc_get_fifo_addr(&(coder_manage->out_addr));
         coder_manage->out_channel = bk_fixed_dma_alloc(DMA_DEV_JPEG, DMA_ID_8);
@@ -328,17 +367,17 @@ static OPERATE_RET __dvp_encoder_output_dma_config(TUYA_DVP_CFG_T *dvp_cfg, yuv_
         return OPRT_MALLOC_FAILED;
     }
 
-    g_dvp_module_manage.encoded_frame = dvp_frame_assign_cb(g_dvp_module_manage.encoded_frame_fmt);
-    if (g_dvp_module_manage.encoded_frame ==NULL)
+    dvp_mgmt->encoded_frame = dvp_cfg->inter_cfg.assign_cb(dvp_mgmt->encoded_frame_fmt, dvp_cfg->inter_cfg.cb_param);
+    if (dvp_mgmt->encoded_frame ==NULL)
     {
         bk_printf("%s, assign idle frame fail\r\n", __func__);
         return OPRT_MALLOC_FAILED;
     }
-    g_dvp_module_manage.encoded_frame->frame_fmt = g_dvp_module_manage.encoded_frame_fmt;
-    g_dvp_module_manage.encoded_frame->width = dvp_cfg->width;
-    g_dvp_module_manage.encoded_frame->height = dvp_cfg->height;
-    g_dvp_module_manage.encoded_frame->is_frame_complete = false;
-    g_dvp_module_manage.encoded_frame->is_i_frame = false;
+    dvp_mgmt->encoded_frame->frame_fmt = dvp_mgmt->encoded_frame_fmt;
+    dvp_mgmt->encoded_frame->width = dvp_cfg->width;
+    dvp_mgmt->encoded_frame->height = dvp_cfg->height;
+    dvp_mgmt->encoded_frame->is_frame_complete = false;
+    dvp_mgmt->encoded_frame->is_i_frame = false;
 
     dma_config.mode = DMA_WORK_MODE_REPEAT;
     dma_config.chan_prio = 0;
@@ -349,19 +388,25 @@ static OPERATE_RET __dvp_encoder_output_dma_config(TUYA_DVP_CFG_T *dvp_cfg, yuv_
     dma_config.dst.addr_inc_en = DMA_ADDR_INC_ENABLE;
     dma_config.dst.addr_loop_en = DMA_ADDR_LOOP_ENABLE;
 
-    if (work_mode == H264_MODE)
+    if (dvp_mgmt->cur_work_mode == H264_MODE)
     {
         dma_config.src.dev = DMA_DEV_H264;
     }
-    else if (work_mode == JPEG_MODE)
+    else if (dvp_mgmt->cur_work_mode == JPEG_MODE)
     {
         dma_config.src.dev = DMA_DEV_JPEG;
     }
 
-    dma_config.dst.start_addr = (uint32_t)g_dvp_module_manage.encoded_frame->data;
-    dma_config.dst.end_addr = (uint32_t)(g_dvp_module_manage.encoded_frame->data + g_dvp_module_manage.encoded_frame_len);
+    dma_config.dst.start_addr = (uint32_t)dvp_mgmt->encoded_frame->data;
+    dma_config.dst.end_addr = (uint32_t)(dvp_mgmt->encoded_frame->data + dvp_mgmt->encoded_frame_len);
 
-    bk_dma_init(coder_manage->out_channel, &dma_config);
+    ret = bk_dma_init(coder_manage->out_channel, &dma_config);
+    if (ret)
+    {
+        bk_printf("init dma(%d) fail \r\n", coder_manage->out_channel);
+        return OPRT_MALLOC_FAILED;
+    }
+
     bk_dma_set_transfer_len(coder_manage->out_channel, DVP_DMA_CACHE);
     bk_dma_register_isr(coder_manage->out_channel, NULL, __dvp_dma_finish_cb);
     bk_dma_enable_finish_interrupt(coder_manage->out_channel);
@@ -371,22 +416,30 @@ static OPERATE_RET __dvp_encoder_output_dma_config(TUYA_DVP_CFG_T *dvp_cfg, yuv_
     bk_dma_set_dest_sec_attr(coder_manage->out_channel, DMA_ATTR_SEC);
     bk_dma_set_src_sec_attr(coder_manage->out_channel, DMA_ATTR_SEC);
 #endif
-    bk_dma_start(coder_manage->out_channel);
+    ret = bk_dma_start(coder_manage->out_channel);
+    if (ret)
+    {
+        bk_printf("start dma(%d) fail \r\n", coder_manage->out_channel);
+        return OPRT_MALLOC_FAILED;
+    }
 
     return OPRT_OK;
 }
 
-static OPERATE_RET __dvp_encoder_input_dma_config(TUYA_DVP_CFG_T *dvp_cfg)
+static OPERATE_RET __dvp_encoder_input_dma_config(DVP_MODULE_MANAGE_T *dvp_mgmt)
 {
-    if (!dvp_frame_assign_cb)
+    TUYA_DVP_CFG_T *dvp_cfg = &(dvp_mgmt->dvp_cfg);
+
+    if (dvp_cfg->inter_cfg.assign_cb == NULL)
         return OPRT_COM_ERROR;
 
+    OPERATE_RET ret = 0;
     dma_config_t dma_config = {0};
-    ENCODER_MANAGE_T *coder_manage = &(g_dvp_module_manage.encoder_manage);
+    ENCODER_MANAGE_T *coder_manage = &(dvp_mgmt->encoder_manage);
 
     coder_manage->in_offset = 0;
     coder_manage->in_addr = bk_yuv_buf_get_em_base_addr();
-    coder_manage->in_line_size = (g_dvp_module_manage.pingpong_len >> 1);
+    coder_manage->in_line_size = (dvp_mgmt->pingpong_len >> 1);
     coder_manage->in_channel = bk_dma_alloc(DMA_DEV_DTCM);
     if (coder_manage->in_channel >= DMA_ID_MAX)
     {
@@ -394,18 +447,18 @@ static OPERATE_RET __dvp_encoder_input_dma_config(TUYA_DVP_CFG_T *dvp_cfg)
         return OPRT_MALLOC_FAILED;
     }
 
-    g_dvp_module_manage.base_frame = dvp_frame_assign_cb(g_dvp_module_manage.base_frame_fmt);
-    if (g_dvp_module_manage.base_frame == NULL)
+    dvp_mgmt->base_frame = dvp_cfg->inter_cfg.assign_cb(dvp_mgmt->base_frame_fmt, dvp_cfg->inter_cfg.cb_param);
+    if (dvp_mgmt->base_frame == NULL)
     {
         bk_printf("%s, assign idle frame fail\r\n", __func__);
         return OPRT_MALLOC_FAILED;
     }
 
-    g_dvp_module_manage.base_frame->width = dvp_cfg->width;
-    g_dvp_module_manage.base_frame->height = dvp_cfg->height;
-    g_dvp_module_manage.base_frame->frame_fmt = g_dvp_module_manage.base_frame_fmt;
-    g_dvp_module_manage.base_frame->data_len = g_dvp_module_manage.base_frame_len;
-    g_dvp_module_manage.base_frame->is_frame_complete = false;
+    dvp_mgmt->base_frame->width = dvp_cfg->width;
+    dvp_mgmt->base_frame->height = dvp_cfg->height;
+    dvp_mgmt->base_frame->frame_fmt = dvp_mgmt->base_frame_fmt;
+    dvp_mgmt->base_frame->data_len = dvp_mgmt->base_frame_len;
+    dvp_mgmt->base_frame->is_frame_complete = false;
 
     dma_config.mode = DMA_WORK_MODE_SINGLE;
     dma_config.chan_prio = 1;
@@ -418,10 +471,16 @@ static OPERATE_RET __dvp_encoder_input_dma_config(TUYA_DVP_CFG_T *dvp_cfg)
     dma_config.dst.dev = DMA_DEV_DTCM;
     dma_config.dst.width = DMA_DATA_WIDTH_32BITS;
     dma_config.dst.addr_inc_en = DMA_ADDR_INC_ENABLE;
-    dma_config.dst.start_addr = (uint32_t)g_dvp_module_manage.base_frame->data;
-    dma_config.dst.end_addr = (uint32_t)(g_dvp_module_manage.base_frame->data + coder_manage->in_line_size);
+    dma_config.dst.start_addr = (uint32_t)dvp_mgmt->base_frame->data;
+    dma_config.dst.end_addr = (uint32_t)(dvp_mgmt->base_frame->data + coder_manage->in_line_size);
 
-    bk_dma_init(coder_manage->in_channel, &dma_config);
+    ret = bk_dma_init(coder_manage->in_channel, &dma_config);
+    if (ret)
+    {
+        bk_printf("init dma(%d) fail \r\n", coder_manage->in_channel);
+        return OPRT_MALLOC_FAILED;
+    }
+
     bk_dma_set_transfer_len(coder_manage->in_channel, coder_manage->in_line_size);
 #if (CONFIG_SPE)
     bk_dma_set_src_burst_len(coder_manage->in_channel, 3);
@@ -433,37 +492,40 @@ static OPERATE_RET __dvp_encoder_input_dma_config(TUYA_DVP_CFG_T *dvp_cfg)
     return OPRT_OK;
 }
 
-static OPERATE_RET __dvp_yuv_mode_init(TUYA_DVP_CFG_T *dvp_cfg)
+static OPERATE_RET __dvp_yuv_mode_init(DVP_MODULE_MANAGE_T *dvp_mgmt)
 {
-    if (!dvp_frame_assign_cb)
+    TUYA_DVP_CFG_T *dvp_cfg = &(dvp_mgmt->dvp_cfg);
+
+    if (dvp_cfg->inter_cfg.assign_cb == NULL)
         return OPRT_COM_ERROR;
 
-    g_dvp_module_manage.base_frame = dvp_frame_assign_cb(g_dvp_module_manage.base_frame_fmt);
-    if (g_dvp_module_manage.base_frame == NULL)
+    dvp_mgmt->base_frame = dvp_cfg->inter_cfg.assign_cb(dvp_mgmt->base_frame_fmt, dvp_cfg->inter_cfg.cb_param);
+    if (dvp_mgmt->base_frame == NULL)
     {
         bk_printf("%s, assign idle frame fail\r\n", __func__);
         return OPRT_MALLOC_FAILED;
     }
 
-    g_dvp_module_manage.base_frame->width = dvp_cfg->width;
-    g_dvp_module_manage.base_frame->height = dvp_cfg->height;
-    g_dvp_module_manage.base_frame->frame_fmt = g_dvp_module_manage.base_frame_fmt;
-    g_dvp_module_manage.base_frame->data_len = g_dvp_module_manage.base_frame_len;
-    g_dvp_module_manage.base_frame->is_frame_complete = false;
-    bk_yuv_buf_set_em_base_addr((uint32_t)g_dvp_module_manage.base_frame->data);
+    dvp_mgmt->base_frame->width = dvp_cfg->width;
+    dvp_mgmt->base_frame->height = dvp_cfg->height;
+    dvp_mgmt->base_frame->frame_fmt = dvp_mgmt->base_frame_fmt;
+    dvp_mgmt->base_frame->data_len = dvp_mgmt->base_frame_len;
+    dvp_mgmt->base_frame->is_frame_complete = false;
+    bk_yuv_buf_set_em_base_addr((uint32_t)dvp_mgmt->base_frame->data);
 
     return OPRT_OK;
 }
 
-static OPERATE_RET __dvp_h264_mode_init(TUYA_DVP_CFG_T *dvp_cfg)
+static OPERATE_RET __dvp_h264_mode_init(DVP_MODULE_MANAGE_T *dvp_mgmt)
 {
     OPERATE_RET ret = 0;
+    TUYA_DVP_CFG_T *dvp_cfg = &(dvp_mgmt->dvp_cfg);
 
     ret = bk_h264_init(dvp_cfg->width, dvp_cfg->height);
     if (ret)
         return OPRT_COM_ERROR;
 
-    ret = __dvp_encoder_output_dma_config(dvp_cfg, H264_MODE);
+    ret = __dvp_encoder_output_dma_config(dvp_mgmt);
     if (ret)
         return OPRT_COM_ERROR;
 
@@ -475,7 +537,7 @@ static OPERATE_RET __dvp_h264_mode_init(TUYA_DVP_CFG_T *dvp_cfg)
 
     if (dvp_cfg->output_mode == TUYA_CAMERA_OUTPUT_H264_YUV422_BOTH)
     {
-        ret = __dvp_encoder_input_dma_config(dvp_cfg);
+        ret = __dvp_encoder_input_dma_config(dvp_mgmt);
         if (ret)
             return OPRT_COM_ERROR;
     }
@@ -483,21 +545,22 @@ static OPERATE_RET __dvp_h264_mode_init(TUYA_DVP_CFG_T *dvp_cfg)
     return ret;
 }
 
-static OPERATE_RET __dvp_jpeg_mode_init(TUYA_DVP_CFG_T *dvp_cfg)
+static OPERATE_RET __dvp_jpeg_mode_init(DVP_MODULE_MANAGE_T *dvp_mgmt)
 {
     OPERATE_RET ret = 0;
+    TUYA_DVP_CFG_T *dvp_cfg = &(dvp_mgmt->dvp_cfg);
 
-    ret = __dvp_jpeg_module_init(dvp_cfg);
+    ret = __dvp_jpeg_module_init(dvp_mgmt);
     if (ret)
         return OPRT_COM_ERROR;
 
-    ret = __dvp_encoder_output_dma_config(dvp_cfg, JPEG_MODE);
+    ret = __dvp_encoder_output_dma_config(dvp_mgmt);
     if (ret)
         return OPRT_COM_ERROR;
 
     if (dvp_cfg->output_mode == TUYA_CAMERA_OUTPUT_JPEG_YUV422_BOTH)
     {
-        ret = __dvp_encoder_input_dma_config(dvp_cfg);
+        ret = __dvp_encoder_input_dma_config(dvp_mgmt);
         if (ret)
             return OPRT_COM_ERROR;
     }
@@ -505,101 +568,88 @@ static OPERATE_RET __dvp_jpeg_mode_init(TUYA_DVP_CFG_T *dvp_cfg)
     return ret;
 }
 
-static OPERATE_RET __dvp_hardware_init(TUYA_DVP_CFG_T *dvp_cfg)
+static OPERATE_RET __dvp_hardware_init(DVP_MODULE_MANAGE_T *dvp_mgmt)
 {
     OPERATE_RET ret = 0;
 
-    ret = __dvp_yuv_buf_module_init(dvp_cfg);
+    ret = __dvp_yuv_buf_module_init(dvp_mgmt);
     if (ret)
         return ret;
 
-    if (g_dvp_module_manage.cur_work_mode == YUV_MODE)
+    if (dvp_mgmt->cur_work_mode == YUV_MODE)
     {
-        ret =  __dvp_yuv_mode_init(dvp_cfg);
+        ret =  __dvp_yuv_mode_init(dvp_mgmt);
         goto end;
     }
 
-    if (g_dvp_module_manage.cur_work_mode == H264_MODE)
+    if (dvp_mgmt->cur_work_mode == H264_MODE)
     {
-        ret = __dvp_h264_mode_init(dvp_cfg);
+        ret = __dvp_h264_mode_init(dvp_mgmt);
     }
 
-    if (g_dvp_module_manage.cur_work_mode == JPEG_MODE)
+    if (dvp_mgmt->cur_work_mode == JPEG_MODE)
     {
-        ret = __dvp_jpeg_mode_init(dvp_cfg);
+        ret = __dvp_jpeg_mode_init(dvp_mgmt);
     }
 
 end:
     return ret;
 }
 
-static void __dvp_yuv_eof_handler(yuv_buf_unit_t id, void *param)
+static void __dvp_yuv_eof_handler(DVP_MODULE_MANAGE_T *dvp_mgmt)
 {
-    if (!g_dvp_module_manage.module_stat || !dvp_frame_assign_cb || !param)
+    if (!dvp_mgmt || dvp_mgmt->drv_stat != DVP_DRV_TURN_ON)
 		return;
 
-    TUYA_DVP_CFG_T *dvp_cfg = (TUYA_DVP_CFG_T *)param;
+    if (dvp_mgmt->error_flag)
+        return;
 
-    g_dvp_module_manage.base_frame->frame_id = g_dvp_module_manage.frame_id++;
-    g_dvp_module_manage.base_frame->is_frame_complete = true;
-    g_dvp_module_manage.base_frame->total_frame_len = g_dvp_module_manage.base_frame_len;
-    TUYA_DVP_FRAME_MANAGE_T *new_frame = dvp_frame_assign_cb(g_dvp_module_manage.base_frame_fmt);
+    TUYA_DVP_CFG_T *dvp_cfg = &(dvp_mgmt->dvp_cfg);
+    if (dvp_cfg->inter_cfg.assign_cb == NULL)
+        return;
+
+    dvp_mgmt->base_frame->frame_id = dvp_mgmt->frame_id++;
+    dvp_mgmt->base_frame->is_frame_complete = true;
+    dvp_mgmt->base_frame->total_frame_len = dvp_mgmt->base_frame_len;
+    TUYA_DVP_FRAME_MANAGE_T *new_frame = dvp_cfg->inter_cfg.assign_cb(dvp_mgmt->base_frame_fmt, dvp_cfg->inter_cfg.cb_param);
     if (new_frame)
     {
 		new_frame->width = dvp_cfg->width;
 		new_frame->height = dvp_cfg->height;
-		new_frame->frame_fmt = g_dvp_module_manage.base_frame_fmt;
-		new_frame->data_len = g_dvp_module_manage.base_frame_len;
+		new_frame->frame_fmt = dvp_mgmt->base_frame_fmt;
+		new_frame->data_len = dvp_mgmt->base_frame_len;
         new_frame->is_frame_complete = false;
-        if (dvp_frame_post_cb)
-            dvp_frame_post_cb(g_dvp_module_manage.base_frame);
+        if (dvp_cfg->inter_cfg.post_cb)
+            dvp_cfg->inter_cfg.post_cb(dvp_mgmt->base_frame, dvp_cfg->inter_cfg.cb_param);
 
-		g_dvp_module_manage.base_frame = new_frame;
+		dvp_mgmt->base_frame = new_frame;
     }
 
-    bk_yuv_buf_set_em_base_addr((uint32_t)g_dvp_module_manage.base_frame->data);
+    bk_yuv_buf_set_em_base_addr((uint32_t)dvp_mgmt->base_frame->data);
 }
 
-static void __dvp_yuv_line_done(yuv_buf_unit_t id, void *param)
+static void __dvp_h264_eof_handler(DVP_MODULE_MANAGE_T *dvp_mgmt)
 {
-    if (!g_dvp_module_manage.module_stat || !param)
+    if (!dvp_mgmt || dvp_mgmt->drv_stat != DVP_DRV_TURN_ON)
 		return;
 
-    uint8_t *line_idx = (uint8_t *)param;
-    ENCODER_MANAGE_T *coder_manage = &(g_dvp_module_manage.encoder_manage);
+    if (dvp_mgmt->error_flag)
+        return;
 
-    if ((coder_manage->in_offset + coder_manage->in_line_size) > g_dvp_module_manage.base_frame_len)
+    TUYA_DVP_CFG_T *dvp_cfg = &(dvp_mgmt->dvp_cfg);
+    if (dvp_cfg->inter_cfg.assign_cb == NULL)
+        return;
+
+    if (dvp_mgmt->encoded_frame == NULL
+        || dvp_mgmt->encoded_frame->data == NULL)
     {
-        coder_manage->in_offset = 0;
-    }
-
-    while(bk_dma_get_enable_status(coder_manage->in_channel));
-    bk_dma_stop(coder_manage->in_channel);
-    bk_dma_set_src_start_addr(coder_manage->in_channel,
-                              (uint32_t)coder_manage->in_addr + (*line_idx) * coder_manage->in_line_size);
-    bk_dma_set_dest_start_addr(coder_manage->in_channel,
-                               (uint32_t)(g_dvp_module_manage.base_frame->data + coder_manage->in_offset));
-    bk_dma_start(coder_manage->in_channel);
-    coder_manage->in_offset += coder_manage->in_line_size;
-}
-
-static void __dvp_h264_eof_handler(h264_unit_t id, void *param)
-{
-    if (!g_dvp_module_manage.module_stat || !dvp_frame_assign_cb || !param)
-		return;
-
-    TUYA_DVP_CFG_T *dvp_cfg = (TUYA_DVP_CFG_T *)param;
-
-    if (g_dvp_module_manage.encoded_frame == NULL
-        || g_dvp_module_manage.encoded_frame->data == NULL)
-    {
-        bk_printf("g_dvp_module_manage->encode_frame NULL error\n");
+        tkl_log_output("Error: encode_frame NULL\r\n");
         return;
     }
 
     uint32_t real_length = bk_h264_get_encode_count() * 4;
     uint32_t remain_length = 0;
-    ENCODER_MANAGE_T *coder_manage = &(g_dvp_module_manage.encoder_manage);
+    ENCODER_MANAGE_T *coder_manage = &(dvp_mgmt->encoder_manage);
 
     coder_manage->sequence++;
 
@@ -621,7 +671,7 @@ static void __dvp_h264_eof_handler(h264_unit_t id, void *param)
     if (real_length > CONFIG_H264_FRAME_SIZE - 0x20)
     {
         bk_printf("%s size over h264 buffer range, %d\r\n", __func__, real_length);
-        g_dvp_module_manage.error_flag = true;
+        dvp_mgmt->error_flag = true;
     }
 
     bk_dma_flush_src_buffer(coder_manage->out_channel);
@@ -638,25 +688,18 @@ static void __dvp_h264_eof_handler(h264_unit_t id, void *param)
         bk_printf("%s size no match:%d-%d=%d\r\n", __func__, real_length, coder_manage->out_offset, left_length);
         if (left_length != DVP_DMA_CACHE)
         {
-            g_dvp_module_manage.error_flag = true;
+            dvp_mgmt->error_flag = true;
+            return;
         }
     }
 
     coder_manage->out_offset = 0;
 
-    if (g_dvp_module_manage.error_flag)
-    {
-        bk_h264_soft_reset();
-        g_dvp_module_manage.encoded_frame->data_len = 0;
-        coder_manage->sequence = 0;
-        goto out;
-    }
-
-    g_dvp_module_manage.encoded_frame->frame_id = g_dvp_module_manage.frame_id++;
-    g_dvp_module_manage.encoded_frame->data_len = real_length;
-    g_dvp_module_manage.encoded_frame->total_frame_len = real_length;
-    g_dvp_module_manage.encoded_frame->is_frame_complete = true;
-    g_dvp_module_manage.encoded_frame->is_i_frame = coder_manage->is_i_frame_flag;
+    dvp_mgmt->encoded_frame->frame_id = dvp_mgmt->frame_id++;
+    dvp_mgmt->encoded_frame->data_len = real_length;
+    dvp_mgmt->encoded_frame->total_frame_len = real_length;
+    dvp_mgmt->encoded_frame->is_frame_complete = true;
+    dvp_mgmt->encoded_frame->is_i_frame = coder_manage->is_i_frame_flag;
 
 #if 0
     handle->encode_frame->crc = hnd_crc8(handle->encode_frame->frame, handle->encode_frame->length, 0xFF);
@@ -665,7 +708,7 @@ static void __dvp_h264_eof_handler(h264_unit_t id, void *param)
     os_memcpy(&handle->encode_frame->frame[handle->encode_frame->length - H264_SELF_DEFINE_SEI_SIZE], &handle->sei[0], H264_SELF_DEFINE_SEI_SIZE);
 #endif
 
-    TUYA_DVP_FRAME_MANAGE_T *new_frame = dvp_frame_assign_cb(TUYA_FRAME_FMT_H264);
+    TUYA_DVP_FRAME_MANAGE_T *new_frame = dvp_cfg->inter_cfg.assign_cb(TUYA_FRAME_FMT_H264, dvp_cfg->inter_cfg.cb_param);
     if (new_frame)
     {
         new_frame->width = dvp_cfg->width;
@@ -673,73 +716,69 @@ static void __dvp_h264_eof_handler(h264_unit_t id, void *param)
         new_frame->frame_fmt = TUYA_FRAME_FMT_H264;
         new_frame->is_frame_complete = false;
         new_frame->is_i_frame = false;
-        if (dvp_frame_post_cb)
-            dvp_frame_post_cb(g_dvp_module_manage.encoded_frame);
+        if (dvp_cfg->inter_cfg.post_cb)
+            dvp_cfg->inter_cfg.post_cb(dvp_mgmt->encoded_frame, dvp_cfg->inter_cfg.cb_param);
 
-        g_dvp_module_manage.encoded_frame = new_frame;
+        dvp_mgmt->encoded_frame = new_frame;
     }
     else
     {
         bk_h264_soft_reset();
-        g_dvp_module_manage.encoded_frame->data_len = 0;
+        dvp_mgmt->encoded_frame->data_len = 0;
         coder_manage->sequence = 0;
     }
 
 out:
-    bk_dma_set_dest_addr(coder_manage->out_channel, (uint32_t)g_dvp_module_manage.encoded_frame->data,
-        (uint32_t)g_dvp_module_manage.encoded_frame->data + g_dvp_module_manage.encoded_frame_len);
+    bk_dma_set_dest_addr(coder_manage->out_channel, (uint32_t)dvp_mgmt->encoded_frame->data,
+        (uint32_t)dvp_mgmt->encoded_frame->data + dvp_mgmt->encoded_frame_len);
     bk_dma_start(coder_manage->out_channel);
 
-    if (!g_dvp_module_manage.error_flag && 
+    if (!dvp_mgmt->error_flag &&
         dvp_cfg->output_mode == TUYA_CAMERA_OUTPUT_H264_YUV422_BOTH)
     {
         coder_manage->in_offset = 0;
         bk_dma_flush_src_buffer(coder_manage->in_channel);
-        g_dvp_module_manage.base_frame->frame_id = g_dvp_module_manage.frame_id - 1;
-        g_dvp_module_manage.base_frame->is_frame_complete = true;
-        g_dvp_module_manage.base_frame->total_frame_len = g_dvp_module_manage.base_frame_len;
-        new_frame = dvp_frame_assign_cb(g_dvp_module_manage.base_frame_fmt);
+        dvp_mgmt->base_frame->frame_id = dvp_mgmt->frame_id - 1;
+        dvp_mgmt->base_frame->is_frame_complete = true;
+        dvp_mgmt->base_frame->total_frame_len = dvp_mgmt->base_frame_len;
+        new_frame = dvp_cfg->inter_cfg.assign_cb(dvp_mgmt->base_frame_fmt, dvp_cfg->inter_cfg.cb_param);
         if (new_frame)
         {
             new_frame->width = dvp_cfg->width;
             new_frame->height = dvp_cfg->height;
-            new_frame->frame_fmt = g_dvp_module_manage.base_frame_fmt;
-            new_frame->data_len = g_dvp_module_manage.base_frame_len;
+            new_frame->frame_fmt = dvp_mgmt->base_frame_fmt;
+            new_frame->data_len = dvp_mgmt->base_frame_len;
             new_frame->is_frame_complete = false;
-            if (dvp_frame_post_cb)
-                dvp_frame_post_cb(g_dvp_module_manage.base_frame);
+            if (dvp_cfg->inter_cfg.post_cb)
+                dvp_cfg->inter_cfg.post_cb(dvp_mgmt->base_frame, dvp_cfg->inter_cfg.cb_param);
 
-            g_dvp_module_manage.base_frame = new_frame;
+            dvp_mgmt->base_frame = new_frame;
         }
     }
 
     return;
 }
 
-static void __dvp_jpeg_eof_handler(h264_unit_t id, void *param)
+static void __dvp_jpeg_eof_handler(DVP_MODULE_MANAGE_T *dvp_mgmt)
 {
-    if (!g_dvp_module_manage.module_stat || !dvp_frame_assign_cb || !param)
+    if (!dvp_mgmt || dvp_mgmt->drv_stat != DVP_DRV_TURN_ON)
 		return;
 
-    TUYA_DVP_CFG_T *dvp_cfg = (TUYA_DVP_CFG_T *)param;
-    ENCODER_MANAGE_T *coder_manage = &(g_dvp_module_manage.encoder_manage);
+    if (dvp_mgmt->error_flag)
+        return;
 
-    if (g_dvp_module_manage.error_flag)
+    TUYA_DVP_CFG_T *dvp_cfg = &(dvp_mgmt->dvp_cfg);
+    if (dvp_cfg->inter_cfg.assign_cb == NULL)
+        return;
+
+    if (dvp_mgmt->encoded_frame == NULL
+        || dvp_mgmt->encoded_frame->data == NULL)
     {
-        g_dvp_module_manage.encoded_frame->data_len = 0;
-        coder_manage->out_offset = 0;
-        bk_dma_stop(coder_manage->out_channel);
-        bk_dma_start(coder_manage->out_channel);
+        tkl_log_output("g_dvp_module_manage->encode_frame NULL error\n");
         return;
     }
 
-    if (g_dvp_module_manage.encoded_frame == NULL
-        || g_dvp_module_manage.encoded_frame->data == NULL)
-    {
-        bk_printf("g_dvp_module_manage->encode_frame NULL error\n");
-        return;
-    }
-
+    ENCODER_MANAGE_T *coder_manage = &(dvp_mgmt->encoder_manage);
     bk_dma_flush_src_buffer(coder_manage->out_channel);
 
     uint32_t real_length = bk_jpeg_enc_get_frame_size();
@@ -754,12 +793,14 @@ static void __dvp_jpeg_eof_handler(h264_unit_t id, void *param)
 
     if (coder_manage->out_offset != real_length)
     {
-        bk_printf("%s size no match:%u-%u=%u\r\n", __func__, real_length, coder_manage->out_offset, real_length - coder_manage->out_offset);
+        tkl_log_output("%s size no match:%u-%u=%u\r\n", __func__, real_length, coder_manage->out_offset, real_length - coder_manage->out_offset);
+        dvp_mgmt->error_flag = true;
+        return;
     }
 
     coder_manage->out_offset = 0;
 
-    uint8_t *jpeg_buf = g_dvp_module_manage.encoded_frame->data;
+    uint8_t *jpeg_buf = dvp_mgmt->encoded_frame->data;
     uint8_t eof_flag = false;
     for (uint32_t i = real_length; i > real_length - 10; i--)
     {
@@ -774,125 +815,323 @@ static void __dvp_jpeg_eof_handler(h264_unit_t id, void *param)
 
     if (!eof_flag)
     {
-        g_dvp_module_manage.encoded_frame->data_len = 0;
+        dvp_mgmt->encoded_frame->data_len = 0;
         goto out;
     }
 
-    g_dvp_module_manage.encoded_frame->frame_id = g_dvp_module_manage.frame_id++;
-    g_dvp_module_manage.encoded_frame->data_len = real_length;
-    g_dvp_module_manage.encoded_frame->total_frame_len = real_length;
-    g_dvp_module_manage.encoded_frame->is_frame_complete = true;
+    dvp_mgmt->encoded_frame->frame_id = dvp_mgmt->frame_id++;
+    dvp_mgmt->encoded_frame->data_len = real_length;
+    dvp_mgmt->encoded_frame->total_frame_len = real_length;
+    dvp_mgmt->encoded_frame->is_frame_complete = true;
 
-    TUYA_DVP_FRAME_MANAGE_T *new_frame = dvp_frame_assign_cb(TUYA_FRAME_FMT_JPEG);
+    TUYA_DVP_FRAME_MANAGE_T *new_frame = dvp_cfg->inter_cfg.assign_cb(TUYA_FRAME_FMT_JPEG, dvp_cfg->inter_cfg.cb_param);
     if (new_frame)
     {
         new_frame->width = dvp_cfg->width;
         new_frame->height = dvp_cfg->height;
         new_frame->frame_fmt = TUYA_FRAME_FMT_JPEG;
         new_frame->is_frame_complete = false;
-        if (dvp_frame_post_cb)
-            dvp_frame_post_cb(g_dvp_module_manage.encoded_frame);
+        if (dvp_cfg->inter_cfg.post_cb)
+            dvp_cfg->inter_cfg.post_cb(dvp_mgmt->encoded_frame, dvp_cfg->inter_cfg.cb_param);
 
-        g_dvp_module_manage.encoded_frame = new_frame;
+        dvp_mgmt->encoded_frame = new_frame;
     }
     else
     {
-        g_dvp_module_manage.encoded_frame->data_len = 0;
+        dvp_mgmt->encoded_frame->data_len = 0;
     }
 
 out:
-    bk_dma_set_dest_addr(coder_manage->out_channel, (uint32_t)g_dvp_module_manage.encoded_frame->data,
-        (uint32_t)g_dvp_module_manage.encoded_frame->data + g_dvp_module_manage.encoded_frame_len);
+    bk_dma_set_dest_addr(coder_manage->out_channel, (uint32_t)dvp_mgmt->encoded_frame->data,
+        (uint32_t)dvp_mgmt->encoded_frame->data + dvp_mgmt->encoded_frame_len);
     bk_dma_start(coder_manage->out_channel);
 
-    if (!g_dvp_module_manage.error_flag &&
+    if (!dvp_mgmt->error_flag &&
         dvp_cfg->output_mode == TUYA_CAMERA_OUTPUT_JPEG_YUV422_BOTH)
     {
         coder_manage->in_offset = 0;
         bk_dma_flush_src_buffer(coder_manage->in_channel);
-        g_dvp_module_manage.base_frame->frame_id = g_dvp_module_manage.frame_id - 1;
-        g_dvp_module_manage.base_frame->is_frame_complete = true;
-        g_dvp_module_manage.base_frame->total_frame_len = g_dvp_module_manage.base_frame_len;
-        new_frame = dvp_frame_assign_cb(g_dvp_module_manage.base_frame_fmt);
+        dvp_mgmt->base_frame->frame_id = dvp_mgmt->frame_id - 1;
+        dvp_mgmt->base_frame->is_frame_complete = true;
+        dvp_mgmt->base_frame->total_frame_len = dvp_mgmt->base_frame_len;
+        new_frame = dvp_cfg->inter_cfg.assign_cb(dvp_mgmt->base_frame_fmt, dvp_cfg->inter_cfg.cb_param);
         if (new_frame)
         {
             new_frame->width = dvp_cfg->width;
             new_frame->height = dvp_cfg->height;
-            new_frame->frame_fmt = g_dvp_module_manage.base_frame_fmt;
-            new_frame->data_len = g_dvp_module_manage.base_frame_len;
+            new_frame->frame_fmt = dvp_mgmt->base_frame_fmt;
+            new_frame->data_len = dvp_mgmt->base_frame_len;
             new_frame->is_frame_complete = false;
-            if (dvp_frame_post_cb)
-                dvp_frame_post_cb(g_dvp_module_manage.base_frame);
+            if (dvp_cfg->inter_cfg.post_cb)
+                dvp_cfg->inter_cfg.post_cb(dvp_mgmt->base_frame, dvp_cfg->inter_cfg.cb_param);
 
-            g_dvp_module_manage.base_frame = new_frame;
+            dvp_mgmt->base_frame = new_frame;
         }
     }
 
     return;
 }
 
-static void __dvp_hardware_vsync_negedge_handler(jpeg_unit_t id, void *param)
+static void __yuv_arv_isr_cb(yuv_buf_unit_t id, void *param)
 {
-    if (!g_dvp_module_manage.error_flag)
+    DVP_MODULE_MANAGE_T *dvp_mgmt = (DVP_MODULE_MANAGE_T *)param;
+    if (dvp_mgmt == NULL || dvp_mgmt->msg_queue == NULL)
         return;
 
-    yuv_mode_t mode = g_dvp_module_manage.cur_work_mode;
+    TKL_DVP_MSG_T msg = {DVP_YUV_EOF, NULL};
+    if (tkl_queue_post(dvp_mgmt->msg_queue, &msg, 0) != OPRT_OK)
+        dvp_mgmt->error_flag = true;
+}
+
+static void __jpeg_eof_isr_cb(yuv_buf_unit_t id, void *param)
+{
+    DVP_MODULE_MANAGE_T *dvp_mgmt = (DVP_MODULE_MANAGE_T *)param;
+    if (dvp_mgmt == NULL || dvp_mgmt->msg_queue == NULL)
+        return;
+
+    TKL_DVP_MSG_T msg = {DVP_JPEG_EOF, NULL};
+    if (tkl_queue_post(dvp_mgmt->msg_queue, &msg, 0) != OPRT_OK)
+        dvp_mgmt->error_flag = true;
+}
+
+static void __h264_eof_isr_cb(yuv_buf_unit_t id, void *param)
+{
+    DVP_MODULE_MANAGE_T *dvp_mgmt = (DVP_MODULE_MANAGE_T *)param;
+    if (dvp_mgmt == NULL || dvp_mgmt->msg_queue == NULL)
+        return;
+
+    TKL_DVP_MSG_T msg = {DVP_H264_EOF, NULL};
+    if (tkl_queue_post(dvp_mgmt->msg_queue, &msg, 0) != OPRT_OK)
+        dvp_mgmt->error_flag = true;
+}
+
+static void __yuv_sm0_isr_cb(yuv_buf_unit_t id, void *param)
+{
+    DVP_MODULE_MANAGE_T *dvp_mgmt = (DVP_MODULE_MANAGE_T *)param;
+    if (!dvp_mgmt || dvp_mgmt->drv_stat != DVP_DRV_TURN_ON)
+		return;
+
+    if (dvp_mgmt->error_flag)
+        return;
+
+    ENCODER_MANAGE_T *coder_manage = &(dvp_mgmt->encoder_manage);
+
+    if ((coder_manage->in_offset + coder_manage->in_line_size) > dvp_mgmt->base_frame_len)
+    {
+        coder_manage->in_offset = 0;
+    }
+
+    if (bk_dma_get_enable_status(coder_manage->in_channel))
+    {
+        tkl_log_output("%s dma channel to xfer yuv data is still busy\r\n", __func__);
+        dvp_mgmt->error_flag = true;
+        return;
+    }
+
+    bk_dma_stop(coder_manage->in_channel);
+    bk_dma_set_src_start_addr(coder_manage->in_channel,
+                              (uint32_t)coder_manage->in_addr);
+    bk_dma_set_dest_start_addr(coder_manage->in_channel,
+                               (uint32_t)(dvp_mgmt->base_frame->data + coder_manage->in_offset));
+    bk_dma_start(coder_manage->in_channel);
+    coder_manage->in_offset += coder_manage->in_line_size;
+}
+
+static void __yuv_sm1_isr_cb(yuv_buf_unit_t id, void *param)
+{
+    DVP_MODULE_MANAGE_T *dvp_mgmt = (DVP_MODULE_MANAGE_T *)param;
+    if (!dvp_mgmt || dvp_mgmt->drv_stat != DVP_DRV_TURN_ON)
+		return;
+
+    if (dvp_mgmt->error_flag)
+        return;
+
+    ENCODER_MANAGE_T *coder_manage = &(dvp_mgmt->encoder_manage);
+
+    if ((coder_manage->in_offset + coder_manage->in_line_size) > dvp_mgmt->base_frame_len)
+    {
+        coder_manage->in_offset = 0;
+    }
+
+    if (bk_dma_get_enable_status(coder_manage->in_channel))
+    {
+        tkl_log_output("%s dma channel to xfer yuv data is still busy\r\n", __func__);
+        dvp_mgmt->error_flag = true;
+        return;
+    }
+
+    bk_dma_stop(coder_manage->in_channel);
+    bk_dma_set_src_start_addr(coder_manage->in_channel,
+                              (uint32_t)coder_manage->in_addr + coder_manage->in_line_size);
+    bk_dma_set_dest_start_addr(coder_manage->in_channel,
+                               (uint32_t)(dvp_mgmt->base_frame->data + coder_manage->in_offset));
+    bk_dma_start(coder_manage->in_channel);
+    coder_manage->in_offset += coder_manage->in_line_size;
+}
+
+static void __error_isr_cb(jpeg_unit_t id, void *param)
+{
+    DVP_MODULE_MANAGE_T *dvp_mgmt = (DVP_MODULE_MANAGE_T *)param;
+    if (dvp_mgmt != NULL && !dvp_mgmt->error_flag)
+        dvp_mgmt->error_flag = true;
+}
+
+static void __tkl_dvp_reset(DVP_MODULE_MANAGE_T *dvp_mgmt)
+{
+    TUYA_DVP_CFG_T *dvp_cfg = &(dvp_mgmt->dvp_cfg);
+
+    bk_yuv_buf_stop(YUV_MODE);
+
+    yuv_mode_t mode = dvp_mgmt->cur_work_mode;
 	if (mode == JPEG_MODE || mode == JPEG_YUV_MODE)
 	{
+        bk_yuv_buf_stop(JPEG_MODE);
 		bk_jpeg_enc_soft_reset();
-        bk_yuv_buf_start(JPEG_MODE);
 	}
 	else if (mode == H264_MODE || mode == H264_YUV_MODE)
 	{
-		bk_h264_config_reset();
-		bk_yuv_buf_start(H264_MODE);
-        bk_h264_encode_enable();
+        bk_yuv_buf_stop(H264_MODE);
+        bk_h264_encode_disable();
+        bk_h264_init(dvp_cfg->width, dvp_cfg->height);
 	}
 
     bk_yuv_buf_soft_reset();
 
-    g_dvp_module_manage.error_flag = false;
-
-    ENCODER_MANAGE_T *coder_manage = &(g_dvp_module_manage.encoder_manage);
+    ENCODER_MANAGE_T *coder_manage = &(dvp_mgmt->encoder_manage);
     coder_manage->sequence = 0;
 
-    if (g_dvp_module_manage.is_mix_mode)
+    if (dvp_mgmt->is_mix_mode)
     {
+        bk_dma_flush_src_buffer(coder_manage->in_channel);
         coder_manage->in_offset = 0;
     }
 
     if (coder_manage->out_channel < DMA_ID_MAX)
     {
+        bk_dma_flush_src_buffer(coder_manage->out_channel);
+        coder_manage->out_offset = 0;
         bk_dma_stop(coder_manage->out_channel);
-        if (g_dvp_module_manage.encoded_frame != NULL)
+        if (dvp_mgmt->encoded_frame != NULL)
         {
-            g_dvp_module_manage.encoded_frame->data_len = 0;
+            dvp_mgmt->encoded_frame->data_len = 0;
         }
         bk_dma_start(coder_manage->out_channel);
     }
+
+	if (mode == JPEG_MODE || mode == JPEG_YUV_MODE)
+	{
+        bk_yuv_buf_start(JPEG_MODE);
+	}
+	else if (mode == H264_MODE || mode == H264_YUV_MODE)
+	{
+        bk_yuv_buf_start(H264_MODE);
+        bk_h264_encode_enable();
+	}
+    else
+    {
+        bk_yuv_buf_start(YUV_MODE);
+    }
 }
 
-static void __dvp_error_handler(jpeg_unit_t id, void *param)
+static void __yuv_vsync_negedge_cb(jpeg_unit_t id, void *param)
 {
-    if (!g_dvp_module_manage.error_flag)
-        g_dvp_module_manage.error_flag = true;
+    DVP_MODULE_MANAGE_T *dvp_mgmt = (DVP_MODULE_MANAGE_T *)param;
+    if (!dvp_mgmt)
+        return;
+
+    if (dvp_mgmt->drv_stat == DVP_DRV_TURNING_OFF || !dvp_mgmt->output_enable)
+    {
+        bk_yuv_buf_stop(YUV_MODE);
+		bk_yuv_buf_stop(JPEG_MODE);
+		bk_yuv_buf_stop(H264_MODE);
+
+        if (dvp_mgmt->drv_stat == DVP_DRV_TURNING_OFF && 
+            g_dvp_module_manage.drv_close_sem != NULL)
+            tkl_semaphore_post(g_dvp_module_manage.drv_close_sem);
+
+        return;
+    }
+
+    if (!dvp_mgmt->error_flag)
+        return;
+
+    __tkl_dvp_reset(dvp_mgmt);
+
+    dvp_mgmt->error_flag = false;
 }
 
-static void __dvp_isr_register(TUYA_DVP_CFG_T *dvp_cfg)
+static void __dvp_frame_task(void *args)
 {
+	if (!args)
+		return;
+
+	TKL_DVP_MSG_T msg = {0};
+    DVP_MODULE_MANAGE_T *dvp_mgmt = (DVP_MODULE_MANAGE_T *)args;
+    uint8_t task_running = true;
+
+	OPERATE_RET ret = tkl_queue_create_init(&(dvp_mgmt->msg_queue), sizeof(TKL_DVP_MSG_T), DVP_MSG_QUE_SIZE);
+
+	while (task_running)
+	{
+		ret = tkl_queue_fetch(dvp_mgmt->msg_queue, &msg, TKL_QUEUE_WAIT_FROEVER);
+        if(ret == OPRT_OK)
+		{
+            switch(msg.event)
+			{
+                case DVP_YUV_EOF:
+				{
+                    __dvp_yuv_eof_handler(dvp_mgmt);
+					break;
+				}
+                case DVP_H264_EOF:
+                {
+                    __dvp_h264_eof_handler(dvp_mgmt);
+                    break;
+                }
+                case DVP_JPEG_EOF:
+                {
+                    __dvp_jpeg_eof_handler(dvp_mgmt);
+                    break;
+                }
+                case DVP_TASK_EXIT:
+				{
+                    while(tkl_queue_fetch(dvp_mgmt->msg_queue, &msg, 0) == OPRT_OK);
+					task_running = false;
+                    break;
+				}
+                default:
+                    break;
+            }
+        }
+	}
+
+	tkl_queue_free(dvp_mgmt->msg_queue);
+	dvp_mgmt->msg_queue = NULL;
+
+	bk_printf("Tkl dvp task ready to release.....\r\n");
+	if (dvp_mgmt->task_close_sem)
+		tkl_semaphore_post(dvp_mgmt->task_close_sem);
+
+	tkl_thread_release(dvp_mgmt->dvp_frame_task);
+	dvp_mgmt->dvp_frame_task = NULL;
+}
+
+static void __dvp_isr_register(DVP_MODULE_MANAGE_T *dvp_mgmt)
+{
+    TUYA_DVP_CFG_T *dvp_cfg = &(dvp_mgmt->dvp_cfg);
     switch (dvp_cfg->output_mode)
     {
     case TUYA_CAMERA_OUTPUT_YUV422:
-        bk_yuv_buf_register_isr(YUV_BUF_YUV_ARV, __dvp_yuv_eof_handler, (void *)dvp_cfg);
+        bk_yuv_buf_register_isr(YUV_BUF_YUV_ARV, __yuv_arv_isr_cb, (void *)dvp_mgmt);
         break;
     case TUYA_CAMERA_OUTPUT_JPEG:
     case TUYA_CAMERA_OUTPUT_JPEG_YUV422_BOTH:
-        bk_jpeg_enc_register_isr(JPEG_EOF, __dvp_jpeg_eof_handler, (void *)dvp_cfg);
-        bk_jpeg_enc_register_isr(JPEG_FRAME_ERR, __dvp_error_handler, NULL);
+        bk_jpeg_enc_register_isr(JPEG_EOF, __jpeg_eof_isr_cb, (void *)dvp_mgmt);
+        bk_jpeg_enc_register_isr(JPEG_FRAME_ERR, __error_isr_cb, NULL);
         break;
     case TUYA_CAMERA_OUTPUT_H264:
     case TUYA_CAMERA_OUTPUT_H264_YUV422_BOTH:
-        bk_h264_register_isr(H264_FINAL_OUT, __dvp_h264_eof_handler, (void *)dvp_cfg);
+        bk_h264_register_isr(H264_FINAL_OUT, __h264_eof_isr_cb, (void *)dvp_mgmt);
         break;
     default:
         break;
@@ -901,65 +1140,63 @@ static void __dvp_isr_register(TUYA_DVP_CFG_T *dvp_cfg)
     if (dvp_cfg->output_mode == TUYA_CAMERA_OUTPUT_H264_YUV422_BOTH
         || dvp_cfg->output_mode == TUYA_CAMERA_OUTPUT_JPEG_YUV422_BOTH)
     {
-        static uint8_t line_0 = 0;
-        bk_yuv_buf_register_isr(YUV_BUF_SM0_WR, __dvp_yuv_line_done, (void *)(&line_0));
-        static uint8_t line_1 = 1;
-        bk_yuv_buf_register_isr(YUV_BUF_SM1_WR, __dvp_yuv_line_done, (void *)(&line_1));
+        bk_yuv_buf_register_isr(YUV_BUF_SM0_WR, __yuv_sm0_isr_cb, (void *)dvp_mgmt);
+        bk_yuv_buf_register_isr(YUV_BUF_SM1_WR, __yuv_sm1_isr_cb, (void *)dvp_mgmt);
     }
 
-    bk_yuv_buf_register_isr(YUV_BUF_VSYNC_NEGEDGE, __dvp_hardware_vsync_negedge_handler, NULL);
-	bk_yuv_buf_register_isr(YUV_BUF_SEN_RESL, __dvp_error_handler, NULL);
-    bk_yuv_buf_register_isr(YUV_BUF_FULL, __dvp_error_handler, NULL);
-    bk_yuv_buf_register_isr(YUV_BUF_H264_ERR, __dvp_error_handler, NULL);
-    bk_yuv_buf_register_isr(YUV_BUF_ENC_SLOW, __dvp_error_handler, NULL);
+    bk_yuv_buf_register_isr(YUV_BUF_VSYNC_NEGEDGE, __yuv_vsync_negedge_cb, (void *)dvp_mgmt);
+	bk_yuv_buf_register_isr(YUV_BUF_SEN_RESL, __error_isr_cb, (void *)dvp_mgmt);
+    bk_yuv_buf_register_isr(YUV_BUF_FULL, __error_isr_cb, (void *)dvp_mgmt);
+    bk_yuv_buf_register_isr(YUV_BUF_H264_ERR, __error_isr_cb, (void *)dvp_mgmt);
+    bk_yuv_buf_register_isr(YUV_BUF_ENC_SLOW, __error_isr_cb, (void *)dvp_mgmt);
 }
 
-OPERATE_RET tkl_dvp_init(TUYA_DVP_CFG_T *dvp_cfg, uint32_t clk)
+static OPERATE_RET __tkl_dvp_init(DVP_MODULE_MANAGE_T *dvp_mgmt)
 {
     OPERATE_RET ret = 0;
-
-    if (!dvp_cfg)
-        return OPRT_INVALID_PARM;
-
-    TUYA_DVP_CFG_T *cfg = &(g_dvp_module_manage.dvp_cfg);
-    memcpy(cfg, dvp_cfg, sizeof(TUYA_DVP_CFG_T));
-
-    ret = __dvp_config_param_check(cfg);
+    ret = __dvp_config_param_check(dvp_mgmt);
     if (ret)
         return OPRT_NOT_SUPPORTED;
 
-    if(clk) {
-        g_dvp_module_manage.bk_clk = MCLK_24M;
-        __ty_clk_to_bk_clk(clk, &g_dvp_module_manage.bk_clk);
-		
-		//enable mclk
-        bk_video_dvp_mclk_enable(YUV_MODE);
-		
-        //update mclk config
-        bk_video_set_mclk(g_dvp_module_manage.bk_clk);
-    }else {
-		g_dvp_module_manage.bk_clk = 0;
-	}
+    TUYA_DVP_CFG_T *dvp_cfg = &(dvp_mgmt->dvp_cfg);
+    uint32_t clk = dvp_cfg->inter_cfg.sensor_clk;
+    __ty_clk_to_bk_clk(clk, &dvp_mgmt->bk_clk);
 
     // SMP版本gpio功能都在usr_gpio_cfg配好
     // bk_video_gpio_init(DVP_GPIO_ALL);
 
-
-
-    ret = __dvp_hardware_init(cfg);
-    if (ret)
+    if (dvp_mgmt->bk_clk)
     {
-        tkl_dvp_deinit();
-        return OPRT_NOT_SUPPORTED;
+        //enable mclk
+        // bk_video_dvp_mclk_enable(YUV_MODE);
+        //update mclk config
+        bk_video_set_mclk(dvp_mgmt->bk_clk);
+
+        if (dvp_cfg->inter_cfg.setup_cb != NULL)
+        {
+            ret = dvp_cfg->inter_cfg.setup_cb(dvp_cfg->inter_cfg.cb_param);
+            if (ret != OPRT_OK)
+                return ret;
+        }
     }
 
-    __dvp_isr_register(cfg);
+    ret = tkl_thread_create(&(dvp_mgmt->dvp_frame_task), "dvp_frame", 16384, 4, __dvp_frame_task, (void *)dvp_mgmt);
+    if (ret)
+        return OPRT_NOT_SUPPORTED;
 
-    yuv_mode_t work_mode = g_dvp_module_manage.cur_work_mode;
+    ret = __dvp_hardware_init(dvp_mgmt);
+    if (ret)
+        return OPRT_NOT_SUPPORTED;
+
+    __dvp_isr_register(dvp_mgmt);
+
+    dvp_mgmt->output_enable = true;
+
+    yuv_mode_t work_mode = dvp_mgmt->cur_work_mode;
 
     if (work_mode == JPEG_MODE && dvp_cfg->encoded_quality.jpeg_cfg.enable)
     {
-        JPEG_CFG *jpeg_cfg = &cfg->encoded_quality.jpeg_cfg;
+        JPEG_CFG *jpeg_cfg = &dvp_cfg->encoded_quality.jpeg_cfg;
         uint16_t max_bytes = (jpeg_cfg->max_size << 10) & 0xFFFF;
         uint16_t min_bytes = (jpeg_cfg->min_size << 10) & 0xFFFF;
         bk_jpeg_enc_encode_config(1, max_bytes, min_bytes);
@@ -970,40 +1207,44 @@ OPERATE_RET tkl_dvp_init(TUYA_DVP_CFG_T *dvp_cfg, uint32_t clk)
     if (work_mode == H264_MODE)
         bk_h264_encode_enable();
 
-    g_dvp_module_manage.module_stat = MODULE_ON;
-
     return OPRT_OK;
 }
 
-OPERATE_RET tkl_dvp_deinit()
+OPERATE_RET tkl_dvp_init(TUYA_DVP_CFG_T *dvp_cfg)
 {
-    // step 1: stop module work
-    if (g_dvp_module_manage.module_stat == MODULE_ON)
-    {
-        bk_yuv_buf_stop(YUV_MODE);
-		bk_yuv_buf_stop(JPEG_MODE);
-		bk_yuv_buf_stop(H264_MODE);
-        g_dvp_module_manage.module_stat = MODULE_OFF;
-    }
+    OPERATE_RET ret = 0;
 
+    if (!dvp_cfg)
+        return OPRT_INVALID_PARM;
+
+    memcpy(&(g_dvp_module_manage.dvp_cfg), dvp_cfg, sizeof(TUYA_DVP_CFG_T));
+
+    g_dvp_module_manage.drv_stat = DVP_DRV_TURNING_ON;
+    ret = __tkl_dvp_init(&g_dvp_module_manage);
+    g_dvp_module_manage.drv_stat = DVP_DRV_TURN_ON;
+
+    return ret;
+}
+
+OPERATE_RET __tkl_dvp_deinit(DVP_MODULE_MANAGE_T *dvp_mgmt)
+{
 	// SMP版本gpio功能都在usr_gpio_cfg配好
 	// bk_video_gpio_deinit(DVP_GPIO_ALL);
 
-    // step 2: deinit hardware
+    // step 1: deinit hardware
 	bk_yuv_buf_deinit();
 	bk_h264_encode_disable();
 	bk_h264_deinit();
 	bk_jpeg_enc_deinit();
+    if (dvp_mgmt->bk_clk)
+    {
+        bk_video_dvp_mclk_disable();
+        dvp_mgmt->bk_clk = 0;
+    }
 
-	if (g_dvp_module_manage.bk_clk) {
-    	bk_video_dvp_mclk_disable();
-        g_dvp_module_manage.bk_clk = 0;
-	}
-	
-
-    // step 3: deinit dma
-    ENCODER_MANAGE_T *coder_manage = &(g_dvp_module_manage.encoder_manage);
-    if (g_dvp_module_manage.cur_work_mode == H264_MODE && coder_manage->out_channel < DMA_ID_MAX)
+    // step 2: deinit dma
+    ENCODER_MANAGE_T *coder_manage = &(dvp_mgmt->encoder_manage);
+    if (dvp_mgmt->cur_work_mode == H264_MODE && coder_manage->out_channel < DMA_ID_MAX)
     {
         bk_dma_stop(coder_manage->out_channel);
         bk_dma_deinit(coder_manage->out_channel);
@@ -1011,7 +1252,7 @@ OPERATE_RET tkl_dvp_deinit()
         coder_manage->out_channel = DMA_ID_MAX;
     }
 
-    if (g_dvp_module_manage.cur_work_mode == JPEG_MODE && coder_manage->out_channel < DMA_ID_MAX)
+    if (dvp_mgmt->cur_work_mode == JPEG_MODE && coder_manage->out_channel < DMA_ID_MAX)
     {
         bk_dma_stop(coder_manage->out_channel);
         bk_dma_deinit(coder_manage->out_channel);
@@ -1019,43 +1260,97 @@ OPERATE_RET tkl_dvp_deinit()
         coder_manage->out_channel = DMA_ID_MAX;
     }
 
-    if (g_dvp_module_manage.is_mix_mode)
+    if (dvp_mgmt->is_mix_mode)
     {
         bk_dma_stop(coder_manage->in_channel);
         bk_dma_deinit(coder_manage->in_channel);
         bk_dma_free(DMA_DEV_DTCM, coder_manage->in_channel);
 
-        g_dvp_module_manage.is_mix_mode = false;
+        dvp_mgmt->is_mix_mode = false;
     }
 
-    if (g_dvp_module_manage.pingpong_buf)
+    // step3: exit dvp_frame thread
+    if (dvp_mgmt->dvp_frame_task)
     {
-        os_free(g_dvp_module_manage.pingpong_buf);
-        g_dvp_module_manage.pingpong_buf = NULL;
+        tkl_semaphore_create_init(&dvp_mgmt->task_close_sem, 0, 1);
+        TKL_DVP_MSG_T msg = {DVP_TASK_EXIT, NULL};
+        tkl_queue_post(dvp_mgmt->msg_queue, &msg, 0);
+        if (dvp_mgmt->task_close_sem)
+        {
+            tkl_semaphore_wait(dvp_mgmt->task_close_sem, 500);
+            tkl_semaphore_release(dvp_mgmt->task_close_sem);
+            dvp_mgmt->task_close_sem = NULL;
+        }
     }
 
-    g_dvp_module_manage.base_frame_len = 0;
-    g_dvp_module_manage.base_frame = NULL;
+    dvp_mgmt->output_enable = false;
 
-    g_dvp_module_manage.encoded_frame_len = 0;
-    g_dvp_module_manage.encoded_frame = NULL;
+    if (dvp_mgmt->pingpong_buf)
+    {
+        os_free(dvp_mgmt->pingpong_buf);
+        dvp_mgmt->pingpong_buf = NULL;
+    }
 
-    TUYA_DVP_CFG_T *cfg = &(g_dvp_module_manage.dvp_cfg);
+    dvp_mgmt->base_frame_len = 0;
+    dvp_mgmt->base_frame = NULL;
+
+    dvp_mgmt->encoded_frame_len = 0;
+    dvp_mgmt->encoded_frame = NULL;
+
+    TUYA_DVP_CFG_T *cfg = &(dvp_mgmt->dvp_cfg);
     memset(cfg, 0, sizeof(TUYA_DVP_CFG_T));
 
+    dvp_mgmt->error_flag = false;
+
+    return OPRT_OK;
+}
+
+OPERATE_RET tkl_dvp_deinit()
+{
+    if (g_dvp_module_manage.drv_stat != DVP_DRV_TURN_ON)
+        return OPRT_COM_ERROR;
+
+    OPERATE_RET ret = 0;
+    g_dvp_module_manage.drv_stat = DVP_DRV_TURNING_OFF;
+
+    // if output_enable is false, directly deinit hardware
+    if (g_dvp_module_manage.output_enable == false)
+        goto deinit_hardware;
+
+    // wait frame_neg sync
+    tkl_semaphore_create_init(&g_dvp_module_manage.drv_close_sem, 0, 1);
+    if (g_dvp_module_manage.drv_close_sem)
+    {
+        if (tkl_semaphore_wait(g_dvp_module_manage.drv_close_sem, 500))
+            bk_printf("[%s] Not wait yuv vsync negedge!\r\n", __func__);
+        tkl_semaphore_release(g_dvp_module_manage.drv_close_sem);
+        g_dvp_module_manage.drv_close_sem = NULL;
+    }
+
+deinit_hardware:
+    ret = __tkl_dvp_deinit(&g_dvp_module_manage);
+    g_dvp_module_manage.drv_stat = DVP_DRV_TURN_OFF;
+    g_dvp_module_manage.output_enable = true;
     g_dvp_module_manage.error_flag = false;
 
+    return ret;
+}
+
+OPERATE_RET tkl_dvp_start()
+{
+    if (g_dvp_module_manage.drv_stat != DVP_DRV_TURN_ON || g_dvp_module_manage.output_enable)
+        return OPRT_COM_ERROR;
+
+    g_dvp_module_manage.output_enable = true;
+    __tkl_dvp_reset(&g_dvp_module_manage);
     return OPRT_OK;
 }
 
-OPERATE_RET tkl_dvp_frame_assign_cb_register(DVP_FRAME_ASSIGN_CB func)
+OPERATE_RET tkl_dvp_stop()
 {
-    dvp_frame_assign_cb = func;
-    return OPRT_OK;
-}
+    if (g_dvp_module_manage.drv_stat != DVP_DRV_TURN_ON)
+        return OPRT_COM_ERROR;
 
-OPERATE_RET tkl_dvp_frame_post_cb_register(DVP_FRAME_POST_CB func)
-{
-    dvp_frame_post_cb = func;
+    g_dvp_module_manage.output_enable = false;
     return OPRT_OK;
 }

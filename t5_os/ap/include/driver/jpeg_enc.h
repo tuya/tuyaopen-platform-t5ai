@@ -322,6 +322,20 @@ bk_err_t bk_jpeg_enc_set_mclk_div(mclk_div_t div);
  */
 bk_err_t bk_jpeg_enc_soft_reset(void);
 
+/**
+ * @brief h264 module global softreset
+ *
+ * This API will use for resetting h264 module
+ *
+ * @param enable 0:disable, 1:enable
+ *
+ * @attenation this api must be called twice to complete the reset: first enable(1), then disable(0)
+ *
+ * @return
+ *    - BK_OK: Success
+ *    - others: Other errors.
+ */
+bk_err_t bk_h264_global_soft_reset(uint8_t enable);
 
 #ifdef __cplusplus
 }

@@ -35,10 +35,10 @@
 ***********************variable define**********************
 ***********************************************************/
 /* app thread handle */
-static THREAD_HANDLE ty_app_thread = NULL;
+STATIC THREAD_HANDLE ty_app_thread = NULL;
 
 
-static uint16_t *p_frame_buff = NULL;
+STATIC USHORT_T *p_frame_buff = NULL;
 
 
 const uint8_t cILI9488_INIT_SEQ[] = {
@@ -72,9 +72,9 @@ void ty_rgb_isr(TUYA_RGB_EVENT_E event)
     TAL_PR_NOTICE("ty_rgb_isr event:%d", event);
 }
 
-void set_random_color(uint16_t *p_buff)
+void set_random_color(USHORT_T *p_buff)
 {
-    uint16_t color = 0;
+    USHORT_T color = 0;
     int i = 0;
 
     color = tkl_system_get_random(0xFFFFFFFF);
@@ -95,7 +95,7 @@ void user_main(void)
 #endif
 
     p_frame_buff = tkl_system_psram_malloc(LCD_WIDTH * LCD_HEIGHT*2);
-    uint16_t *p_frame_buff1 = tkl_system_psram_malloc(LCD_WIDTH * LCD_HEIGHT*2);
+    USHORT_T *p_frame_buff1 = tkl_system_psram_malloc(LCD_WIDTH * LCD_HEIGHT*2);
     if(NULL == p_frame_buff || NULL == p_frame_buff1) {
         TAL_PR_ERR("malloc failed");
         return;
@@ -105,7 +105,7 @@ void user_main(void)
     ty_frame_buffer_t ty_frame_buff1 = {.type = 1, .fmt = 0, .width =LCD_WIDTH, .height = LCD_HEIGHT, .free_cb = NULL, .len = LCD_WIDTH * LCD_HEIGHT * 2, .frame = p_frame_buff1};
     bk_printf("frame_buf addr : %p  %p *****..**8\r\n", p_frame_buff,&ty_frame_buff);
     bk_printf("frame_buf addr : %p  %p *****..**8\r\n", p_frame_buff1,&ty_frame_buff1);
-    uint16_t *buf = NULL;
+    USHORT_T *buf = NULL;
     uint32_t cnt = 0;
     while(1) {
         if(++cnt % 2 == 0) {
@@ -143,7 +143,7 @@ void user_main(void)
 * @param[in] arg:Parameters when creating a task
 * @return none
 */
-static void tuya_app_thread(void *arg)
+STATIC VOID_T tuya_app_thread(VOID_T *arg)
 {
     /* Initialization LWIP first!!! */
 #if defined(ENABLE_LWIP) && (ENABLE_LWIP == 1)
@@ -164,9 +164,9 @@ static void tuya_app_thread(void *arg)
  * @return none
  */
 #if OPERATING_SYSTEM == SYSTEM_LINUX
-int32_t main(int32_t argc, char **argv)
+INT_T main(INT_T argc, CHAR_T **argv)
 #else
-void tuya_app_main(void)
+VOID_T tuya_app_main(VOID)
 #endif
 {
     THREAD_CFG_T thrd_param = {4096, 4, "tuya_app_main"};

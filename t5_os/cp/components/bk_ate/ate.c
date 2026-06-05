@@ -37,9 +37,10 @@ static bk_err_t ate_gpio_init(void)
 {
 	bk_err_t ret = BK_ERR_BUSY;
 	bool gpio_value = 0;
-	gpio_id_t gpio_id;
+	gpio_id_t gpio_id, gpio_id_1;
 	const gpio_config_t gpio_cfg = {GPIO_INPUT_ENABLE, GPIO_PULL_UP_EN};
-	uint32_t gpio_cfg_v;
+	uint32_t gpio_cfg_v, gpio_cfg_v_1;
+    uint8_t gpio_select = 0;
 
 	gpio_id = ate_get_gpio_id();
 
@@ -61,6 +62,34 @@ static bk_err_t ate_gpio_init(void)
 			s_ate_enabled = true;
 		}
 	}
+
+    // Modified by TUYA Start
+    // 涂鸦默认使用日志口 / 串口1 的TX作为ATE判断GPIO,部分客户需要
+    // 使用串口0的TX作为判断条件，此处如果默认的判断条件<即串口1 TX>
+    // 不是期望电平，判断串口0电平是否允许进入ATE模式
+    if(s_ate_enabled != true) {
+		gpio_id_1 = (gpio_id == GPIO_0)? GPIO_11: GPIO_0;
+
+		gpio_cfg_v_1 = bk_gpio_get_value(gpio_id_1);
+		gpio_dev_unmap(gpio_id_1);
+
+		ret = bk_gpio_set_config(gpio_id_1, &gpio_cfg);
+		if(ret == BK_OK)
+		{
+			gpio_value = bk_gpio_get_input(gpio_id_1);
+			if(gpio_value == ATE_ENABLE_GPIO_LEVEL) {
+				#if CONFIG_SHELL_ASYNCLOG
+				shell_set_uart_port(CONFIG_UART_ATE_PRINT_PORT);
+				#else
+				bk_set_printf_port(CONFIG_UART_ATE_PRINT_PORT);
+				#endif
+				s_ate_enabled = true;
+			}
+        }
+        gpio_select = 1;
+    }
+    // Modified by TUYA End
+
 #if CONFIG_ATE_TEST
 	s_ate_enabled = true;
 #endif
@@ -71,6 +100,11 @@ static bk_err_t ate_gpio_init(void)
 	}
 
 	bk_gpio_set_value(gpio_id, gpio_cfg_v);
+    // Modified by TUYA Start
+    if (gpio_select == 1) {
+		bk_gpio_set_value(gpio_id_1, gpio_cfg_v_1);
+    }
+    // Modified by TUYA End
 
 	return ret;
 }

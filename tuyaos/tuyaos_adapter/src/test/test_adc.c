@@ -32,8 +32,8 @@ static void __test_tuya_adc(void *arg)
 
     memset(&tkl_cfg, 0, sizeof(tkl_cfg));
 
-    int32_t adc_chan1 = tkl_io_pin_to_func(24, TUYA_IO_TYPE_ADC);
-    int32_t adc_chan2 = tkl_io_pin_to_func(25, TUYA_IO_TYPE_ADC);
+    INT32_T adc_chan1 = tkl_io_pin_to_func(24, TUYA_IO_TYPE_ADC);
+    INT32_T adc_chan2 = tkl_io_pin_to_func(25, TUYA_IO_TYPE_ADC);
 
     tkl_cfg.ch_list.data = BIT(adc_chan1 & 0xFF);
     tkl_cfg.ch_list.data |= BIT(adc_chan2 & 0xFF);
@@ -45,12 +45,12 @@ static void __test_tuya_adc(void *arg)
     tkl_cfg.conv_cnt = ADC_CONV_TIMES;
     tkl_adc_init(0, &tkl_cfg);
 
-    int32_t buffer[ADC_CHAN_NUM][ADC_CONV_TIMES] = {0};
+    INT32_T buffer[ADC_CHAN_NUM][ADC_CONV_TIMES] = {0};
 
     while (1) {
         memset(buffer, 0, sizeof(buffer));
 
-        tkl_adc_read_voltage(0, (int32_t *)buffer, ADC_CHAN_NUM * ADC_CONV_TIMES);
+        tkl_adc_read_voltage(0, (INT32_T *)buffer, ADC_CHAN_NUM * ADC_CONV_TIMES);
 
         for (int i = 0; i < ADC_CHAN_NUM; i++) {
             bk_printf("ch: %2d, %4d, %4d, %4d, %4d, %4d, %4d, %4d, %4d\r\n", chan_list[i],
@@ -70,11 +70,11 @@ void cli_adc_cmd(char *pcWriteBuffer, int xWriteBufferLen, int argc, char **argv
 
     uint8_t chan_list[ADC_CHAN_NUM] = {25, 24, 28, 12, 13};
     TUYA_ADC_BASE_CFG_T tkl_cfg;
-    int32_t adc_chan0 = tkl_io_pin_to_func(12, TUYA_IO_TYPE_ADC);
-    int32_t adc_chan1 = tkl_io_pin_to_func(13, TUYA_IO_TYPE_ADC);
-    int32_t adc_chan2 = tkl_io_pin_to_func(24, TUYA_IO_TYPE_ADC);
-    int32_t adc_chan3 = tkl_io_pin_to_func(25, TUYA_IO_TYPE_ADC);
-    int32_t adc_chan4 = tkl_io_pin_to_func(28, TUYA_IO_TYPE_ADC);
+    INT32_T adc_chan0 = tkl_io_pin_to_func(12, TUYA_IO_TYPE_ADC);
+    INT32_T adc_chan1 = tkl_io_pin_to_func(13, TUYA_IO_TYPE_ADC);
+    INT32_T adc_chan2 = tkl_io_pin_to_func(24, TUYA_IO_TYPE_ADC);
+    INT32_T adc_chan3 = tkl_io_pin_to_func(25, TUYA_IO_TYPE_ADC);
+    INT32_T adc_chan4 = tkl_io_pin_to_func(28, TUYA_IO_TYPE_ADC);
 
     tkl_cfg.ch_list.data = BIT(adc_chan0 & 0xFF);
     tkl_cfg.ch_list.data |= BIT(adc_chan1 & 0xFF);
@@ -89,10 +89,10 @@ void cli_adc_cmd(char *pcWriteBuffer, int xWriteBufferLen, int argc, char **argv
     tkl_cfg.conv_cnt = ADC_CONV_TIMES;
     tkl_adc_init(0, &tkl_cfg);
 
-    int32_t buffer[ADC_CHAN_NUM][ADC_CONV_TIMES] = {0};
+    INT32_T buffer[ADC_CHAN_NUM][ADC_CONV_TIMES] = {0};
     memset(buffer, 0, sizeof(buffer));
 
-    tkl_adc_read_voltage(0, (int32_t *)buffer, ADC_CHAN_NUM * ADC_CONV_TIMES);
+    tkl_adc_read_voltage(0, (INT32_T *)buffer, ADC_CHAN_NUM * ADC_CONV_TIMES);
     uint8_t outbuf[128] = {0};
 
     snprintf(outbuf, 128, "%s", "adc input voltage:\r\n");

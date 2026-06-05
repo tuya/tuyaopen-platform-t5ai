@@ -124,3 +124,21 @@ void *audio_dma_mem_calloc(uint32_t nmemb, uint32_t size)
     return data;
 }
 
+// Modified by TUYA Start
+void *audio_dma_mem_calloc_on_sram(uint32_t nmemb, uint32_t size)
+{
+    void *data =  NULL;
+
+    data = os_malloc(nmemb * size);
+    if (data)
+    {
+        os_memset(data, 0x00, nmemb * size);
+    }
+
+#ifdef ENABLE_AUDIO_MEM_TRACE
+    BK_LOGD(TAG, "dma mem calloc:%p, size:%d, called:0x%08x \n", data, size, (intptr_t)__builtin_return_address(0) - 2);
+#endif
+    return data;
+}
+// Modified by TUYA End
+

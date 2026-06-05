@@ -525,7 +525,7 @@ bk_err_t cif_handle_wifi_api_cmd(struct bk_msg_hdr *msg)
 
     if (cif_bk_cmd_confirm(msg, (uint8_t *)&ret, sizeof(ret)) != BK_OK)
     {
-        CIF_LOGE("wifi api confirm FAILED\n",__func__,__LINE__);
+        CIF_LOGE("%s %d wifi api confirm FAILED\n",__func__,__LINE__);  // Modified by TUYA
         return BK_FAIL;
     }
 

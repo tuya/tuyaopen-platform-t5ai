@@ -2188,6 +2188,20 @@ bk_err_t bk_wifi_sta_start(void)
 	wpa_psk_request(g_sta_param_ptr->ssid.array, g_sta_param_ptr->ssid.length,
 						(char *)g_sta_param_ptr->key, psk, psk_len);
 
+#if CONFIG_WLAN_FAST_CONNECT_WPA3
+	WIFI_LOGI("XXX: fast connect %d, pmk_len %d\n", fast_connect, fci.pmk_len);
+	if (fast_connect && fci.pmk_len) {
+		wlan_sta_add_pmksa_cache_entry_t entry;
+		os_memset(&entry, 0, sizeof(entry));
+		os_memcpy(entry.bssid, fci.bssid, ETH_ALEN);
+		entry.akmp = fci.akmp;
+		entry.pmk_len = fci.pmk_len;
+		os_memcpy(entry.pmk, fci.pmk, entry.pmk_len);
+		os_memcpy(entry.pmkid, fci.pmkid, 16);
+		wpa_ctrl_request(WPA_CTRL_CMD_STA_ADD_PMKSA_CACHE_ENTRY, &entry);
+	}
+#endif
+
 #if CONFIG_STA_AUTO_RECONNECT
 	/* set auto reconnect parameters */
 	ar.max_count = g_sta_param_ptr->auto_reconnect_count;
@@ -4572,7 +4586,7 @@ bk_err_t bk_scan_country_code(uint8_t *country_code, int *len)
 		bk_wifi_bcn_cc_rxed_register_cb(bk_scan_country_code_callback, &bk_scan, false);
 		err = cc_scan_start();
 		if (err == kNoErr) {
-			err = rtos_get_semaphore(&bk_scan.cc_wait, 4000);
+			err = rtos_get_semaphore(&bk_scan.cc_wait, 2500); // Modified by TUYA
 			cc_scan_stop();
 			if (err == kNoErr) {
 				rtos_deinit_semaphore(&bk_scan.cc_wait);

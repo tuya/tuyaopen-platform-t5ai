@@ -10,9 +10,54 @@
 
 #define CLI_GETCHAR_TIMEOUT           (120000)
 
-volatile int g_test_mode = 1;
-
 extern void bk_printf(const char *fmt, ...);
+
+static gpio_id_t __tkl_uart2_rx_pin = GPIO_30;
+static gpio_id_t __tkl_uart2_tx_pin = GPIO_31;
+
+static inline int __tkl_uart2_pin_check(void)
+{
+    if (((__tkl_uart2_rx_pin == GPIO_30) && (__tkl_uart2_tx_pin == GPIO_31)) ||
+        ((__tkl_uart2_rx_pin == GPIO_40) && (__tkl_uart2_tx_pin == GPIO_41))) {
+        return 0;
+    } else {
+        return -1;
+    }
+}
+gpio_id_t __tkl_uart2_get_rx_pin(void)
+{
+    if (__tkl_uart2_pin_check() != 0) {
+        return GPIO_30;
+    }
+    return __tkl_uart2_rx_pin;
+}
+gpio_id_t __tkl_uart2_get_tx_pin(void)
+{
+    if (__tkl_uart2_pin_check() != 0) {
+        return GPIO_31;
+    }
+    return __tkl_uart2_tx_pin;
+}
+
+void __tkl_uart2_set_rx_pin(TUYA_I2C_NUM_E port, const TUYA_PIN_NAME_E pin)
+{
+    // only support UART2
+    if (pin != GPIO_30 && pin != GPIO_40) {
+        bk_printf("tkl_uart2_set_rx_pin unsupport pin: %d\r\n", pin);
+        return;
+    }
+    __tkl_uart2_rx_pin = (gpio_id_t)pin;
+}
+
+void __tkl_uart2_set_tx_pin(TUYA_I2C_NUM_E port, const TUYA_PIN_NAME_E pin)
+{
+    // only support UART2
+    if (pin != GPIO_31 && pin != GPIO_41) {
+        bk_printf("tkl_uart2_set_tx_pin unsupport pin: %d\r\n", pin);
+        return;
+    }
+    __tkl_uart2_tx_pin = (gpio_id_t)pin;
+}
 
 /**
  * @brief uart init

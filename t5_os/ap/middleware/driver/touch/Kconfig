@@ -1,7 +1,7 @@
 menu "TOUCH"
 	config TOUCH
 		bool "Enable TOUCH"
-		default y
+		default n
 	config TOUCH_INTERNAL_SERIAL_CAP
 		bool "Enable TOUCH INTERNAL SERIAL CAP"
 		default n

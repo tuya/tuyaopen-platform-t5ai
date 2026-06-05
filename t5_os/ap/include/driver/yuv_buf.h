@@ -300,6 +300,21 @@ bk_err_t bk_yuv_buf_set_mclk_div(mclk_div_t div);
  */
 bk_err_t bk_yuv_buf_soft_reset(void);
 
+/**
+ * @brief     global soft reset yuv buf
+ *
+ * This API use to global soft reset yuv buf module
+ *
+ * @param enable 0:disable, 1:enable
+ *
+ * @attenation 1. this api only used in bk7236xx
+ * @attenation 2. this api must be called twice to complete the reset: first enable(1), then disable(0)
+ *
+ * @return
+ *    - BK_OK: succeed
+ *    - others: other errors.
+ */
+bk_err_t bk_yuv_buf_global_soft_reset(uint8_t enable);
 
 #ifdef __cplusplus
 }

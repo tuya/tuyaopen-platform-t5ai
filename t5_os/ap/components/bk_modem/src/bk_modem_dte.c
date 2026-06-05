@@ -119,7 +119,16 @@ void bk_modem_dte_send_data(uint32_t data_length, uint8_t *data, enum bk_modem_p
 
     if (bk_modem_env.bk_modem_ppp_mode == ppp_mode)
     {
-        bk_modem_usbh_bulkout_ind((char *)data, data_length);
+        if (bk_modem_env.comm_if == USB_IF)
+        {
+            bk_modem_usbh_bulkout_ind((char *)data, data_length);
+        }
+        else if (bk_modem_env.comm_if == UART_IF)
+        {
+            enum bk_modem_uart_trx_mode_e trx_mode =
+                (ppp_mode == PPP_DATA_MODE) ? DATA_MODE : AT_CMD_MODE;
+            bk_modem_uart_data_send(data_length, data, trx_mode);
+        }
     }
     else
         BK_MODEM_LOGE("%s: different ppp mode. %d %d\r\n",__func__, bk_modem_env.bk_modem_ppp_mode, ppp_mode);
@@ -286,6 +295,9 @@ void bk_modem_dte_handle_modem_check(void)
         }
 
 		if (!bk_modem_mf_test) {
+            if (!bk_modem_dce_get_ati()) {
+                //break;
+            }
 #if 0            
             if (!bk_modem_dce_get_cgsn()) {
                 temp_flag = 9;
@@ -317,7 +329,7 @@ void bk_modem_dte_handle_modem_check(void)
 			if (!bk_modem_dce_get_ccid())
             {
                 temp_flag = 13;
-                break;
+                //break;
             }
 
             //if (!bk_modem_dce_get_cbc())
@@ -439,13 +451,13 @@ void bk_modem_dte_handle_ppp_start(void)
 
     if (bk_modem_env.bk_modem_ppp_mode == PPP_CMD_MODE)
     {
-        #if 0
         if (!bk_modem_dce_set_apn())
         {
             temp_flag = 1;
             goto retry;
         }
         
+        #if 0
         if (!bk_modem_dce_check_attach())
         {
             temp_flag = 2;

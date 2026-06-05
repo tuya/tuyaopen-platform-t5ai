@@ -46,7 +46,7 @@ extern "C" {
  *    - others: other errors.
  */
 bk_err_t bk_i2s_driver_init(void);
-
+bk_err_t bk_i2s_multi_driver_init(void);
 /**
  * @brief     Deinit i2s module driver
  *
@@ -60,7 +60,7 @@ bk_err_t bk_i2s_driver_init(void);
  *    - others: other errors.
  */
 bk_err_t bk_i2s_driver_deinit(void);
-
+bk_err_t bk_i2s_multi_driver_deinit(void);
 /**
  * @brief     Init i2s module
  *
@@ -105,7 +105,7 @@ bk_err_t bk_i2s_driver_deinit(void);
  *    - others: other errors.
  */
 bk_err_t bk_i2s_init(i2s_gpio_group_id_t id, const i2s_config_t *config);
-
+bk_err_t bk_i2s_init_by_id(i2s_gpio_group_id_t id, const i2s_config_t *config);
 /**
  * @brief     Deinit i2s module
  *
@@ -117,7 +117,7 @@ bk_err_t bk_i2s_init(i2s_gpio_group_id_t id, const i2s_config_t *config);
  *    - others: other errors.
  */
 bk_err_t bk_i2s_deinit(void);
-
+bk_err_t bk_i2s_deinit_by_id(i2s_gpio_group_id_t id);
 /**
  * @brief     Get the i2s Rx fifo status
  *
@@ -586,7 +586,7 @@ bk_err_t bk_i2s_register_i2s_isr(i2s_isr_id_t isr_id, i2s_isr_t isr, void *param
  *    - others: other errors.
  */
 bk_err_t bk_i2s_chl_init(i2s_channel_id_t chl, i2s_txrx_type_t type, uint32_t buff_size, i2s_data_handle_cb data_handle_cb, RingBufferContext **rb);
-
+bk_err_t bk_i2s_chl_init_by_id(i2s_gpio_group_id_t id, i2s_channel_id_t chl, i2s_txrx_type_t type, uint32_t buff_size, i2s_data_handle_cb data_handle_cb, RingBufferContext **rb);
 /**
  * @brief     deinit i2s channel
  *
@@ -601,7 +601,7 @@ bk_err_t bk_i2s_chl_init(i2s_channel_id_t chl, i2s_txrx_type_t type, uint32_t bu
  *    - others: other errors.
  */
 bk_err_t bk_i2s_chl_deinit(i2s_channel_id_t chl, i2s_txrx_type_t type);
-
+bk_err_t bk_i2s_chl_deinit_by_id(i2s_gpio_group_id_t id, i2s_channel_id_t chl, i2s_txrx_type_t type);
 /**
  * @brief     start i2s
  *
@@ -638,7 +638,7 @@ bk_err_t bk_i2s_chl_deinit(i2s_channel_id_t chl, i2s_txrx_type_t type);
  *    - others: other errors.
  */
 bk_err_t bk_i2s_start(void);
-
+bk_err_t bk_i2s_start_by_id(i2s_gpio_group_id_t id);
 /**
  * @brief     stop i2s
  *
@@ -657,7 +657,7 @@ bk_err_t bk_i2s_start(void);
  *    - others: other errors.
  */
 bk_err_t bk_i2s_stop(void);
-
+bk_err_t bk_i2s_stop_by_id(i2s_gpio_group_id_t id);
 /**
  * @}
  */

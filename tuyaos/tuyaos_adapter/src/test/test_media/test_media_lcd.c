@@ -8,9 +8,9 @@
 #include "test_media.h"
 #include "tal_display_service.h"
 
-static TY_DISPLAY_HANDLE tkl_test_lcd_handle = NULL;
-static uint16_t *p_frame_buff = NULL;
-static uint16_t *p_frame_buff1 = NULL;
+STATIC TY_DISPLAY_HANDLE tkl_test_lcd_handle = NULL;
+STATIC USHORT_T *p_frame_buff = NULL;
+STATIC USHORT_T *p_frame_buff1 = NULL;
 
 static const ty_display_cfg ai_board_rgb_cfg = {
     .rgb_cfg = {
@@ -30,9 +30,9 @@ static const ty_display_cfg ai_board_rgb_cfg = {
     }
 };
 
-static void set_random_color(uint16_t *p_buff, uint16_t w, uint16_t h)
+static void set_random_color(USHORT_T *p_buff, uint16_t w, uint16_t h)
 {
-    uint16_t color = 0;
+    USHORT_T color = 0;
     int i = 0;
 
     color = tkl_system_get_random(0xFFFFFFFF);
@@ -44,7 +44,7 @@ static void set_random_color(uint16_t *p_buff, uint16_t w, uint16_t h)
 }
 
 static TKL_THREAD_HANDLE test_random_test_thread = NULL;
-static void func_random_test(void *args)
+static VOID_T func_random_test(VOID_T *args)
 {
     ty_display_device_s *lcd_handle = (ty_display_device_s *)args;
 
@@ -63,7 +63,7 @@ static void func_random_test(void *args)
     ty_frame_buffer_t ty_frame_buff1 = {.type = 1, .fmt = 0, .width =width, .height = height, .free_cb = NULL, .len = width * height * 2, .frame = p_frame_buff1};
     bk_printf("frame_buf addr : %p  %p *****..**8\r\n", p_frame_buff,&ty_frame_buff);
     bk_printf("frame_buf addr : %p  %p *****..**8\r\n", p_frame_buff1,&ty_frame_buff1);
-    uint16_t *buf = NULL;
+    USHORT_T *buf = NULL;
     uint32_t cnt = 0;
     while(1) {
         if(++cnt % 2 == 0) {
@@ -82,7 +82,7 @@ static void func_random_test(void *args)
 
 void test_media_lcd_open(int pipeline)
 {
-    extern void *tdd_lcd_driver_query(const char *name, uint32_t type);
+    extern VOID *tdd_lcd_driver_query(CONST CHAR_T *name, UINT_T type);
     TY_DISPLAY_HANDLE *dev = (TY_DISPLAY_HANDLE *)tdd_lcd_driver_query("t35p128cq", DISPLAY_RGB);
 
     bk_printf("--- trace %s %d\r\n", __func__, __LINE__);

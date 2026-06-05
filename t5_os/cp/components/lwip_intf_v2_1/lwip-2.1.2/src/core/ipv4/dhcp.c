@@ -668,12 +668,12 @@ dhcp_handle_ack(struct netif *netif, struct dhcp_msg *msg_in)
 
   #if CONFIG_DHCP_ONGOING_OPTIM
   /* not allownd too short time to avoid dhcp-renew too frequency */
-  if(dhcp->offered_t0_lease < DHCP_MIN_RELESE_TIME_S)
-  {
-    dhcp->offered_t0_lease = DHCP_MIN_RELESE_TIME_S;
-    dhcp->offered_t1_renew = dhcp->offered_t0_lease / 2;
-    dhcp->offered_t2_rebind = (dhcp->offered_t0_lease * 7U) / 8U;
-  }
+  // if(dhcp->offered_t0_lease < DHCP_MIN_RELESE_TIME_S)
+  // {
+  //   dhcp->offered_t0_lease = DHCP_MIN_RELESE_TIME_S;
+  //   dhcp->offered_t1_renew = dhcp->offered_t0_lease / 2;
+  //   dhcp->offered_t2_rebind = (dhcp->offered_t0_lease * 7U) / 8U;
+  // }
   #endif
 
   /* (y)our internet address */

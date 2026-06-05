@@ -2,31 +2,33 @@
 #ifndef _BK_MODEM_AT_H_
 #define _BK_MODEM_AT_H_
 
-#define ATD						"ATD\r"
-#define ATO						"ATO\r"
-#define ATH						"ATH\r"
-#define AT_C					"AT&C\r"
-#define AT_D					"AT&D\r"
-#define AT_CONNECT_CMD			"ATD*99#\r"
+#define ATD						"ATD\r\n"
+#define ATO						"ATO\r\n"
+#define ATH						"ATH\r\n"
+#define AT_C					"AT&C\r\n"
+#define AT_D					"AT&D\r\n"
+#define AT_CONNECT_CMD			"ATD*99#\r\n"
 #define AT_CHANGE_TO_AT_MODE	"+++"
 
-#define AT						"AT\r"
-#define ATI                     "ATI\r"
-#define AT_COPS					"AT+COPS?\r"
-#define AT_CPIN					"AT+CPIN?\r"
-#define AT_CSQ					"AT+CSQ\r"
-#define AT_CGDCONT				"AT+CGDCONT?\r"
-#define AT_CFUN_0				"AT+CFUN=0\r"
-#define AT_CFUN_1				"AT+CFUN=1\r"
-#define AT_CGREG				"AT+CGREG?\r"
-#define AT_CEREG				"AT+CEREG?\r"
-#define AT_CCID                 "AT+CCID\r"
-#define AT_CBC                  "AT+CBC\r"
+#define AT						"AT\r\n"
+#define ATI                     "ATI\r\n"
+#define AT_COPS					"AT+COPS?\r\n"
+#define AT_CPIN					"AT+CPIN?\r\n"
+#define AT_CSQ					"AT+CSQ\r\n"
+#define AT_CGDCONT				"AT+CGDCONT?\r\n"
+#define AT_CFUN_0				"AT+CFUN=0\r\n"
+#define AT_CFUN_1				"AT+CFUN=1\r\n"
+#define AT_CGREG				"AT+CGREG?\r\n"
+#define AT_CEREG				"AT+CEREG?\r\n"
+#define AT_CCID                 "AT+CCID\r\n"
+#define AT_ECICCID              "AT+ECICCID\r\n"
+#define AT_CBC                  "AT+CBC\r\n"
 
-#define AT_CGSN                 "AT+CGSN?\r"
-#define AT_CFSN                 "AT+CFSN?\r" 
-#define AT_CFUN                 "AT+CFUN?\r"
-#define AT_CGMR                 "AT+CGMR?\r"
+#define AT_CGSN                 "AT+CGSN?\r\n"
+#define AT_CFSN                 "AT+CFSN?\r\n"
+#define AT_CFUN                 "AT+CFUN?\r\n"
+#define AT_CGMR                 "AT+CGMR?\r\n"
+#define AT_IPR                  "AT+IPR="
 
 #define AT_RSP_OK				"OK"
 #define AT_RSP_ERROR			"ERROR"
@@ -39,11 +41,11 @@
 
 
 ///ec at begin
-#define AT_ECPCFG 				"AT+ECPCFG=\"usbCtrl\",1\r"
-#define AT_ECNETCFG_Q			"AT+ECNETCFG?\r"
-#define AT_ECNETCFG_S			"AT+ECNETCFG=\"nat\",1,\"192.168.10.2\"\r"
-#define AT_ECNETDEVCTL			"AT+ECNETDEVCTL=3,1,1\r"
-#define AT_ECRST				"AT+ECRST\r"
+#define AT_ECPCFG 				"AT+ECPCFG=\"usbCtrl\",1\r\n"
+#define AT_ECNETCFG_Q			"AT+ECNETCFG?\r\n"
+#define AT_ECNETCFG_S			"AT+ECNETCFG=\"nat\",1,\"192.168.10.2\"\r\n"
+#define AT_ECNETDEVCTL			"AT+ECNETDEVCTL=3,1,1\r\n"
+#define AT_ECRST				"AT+ECRST\r\n"
 ///ec at end
 
 //AT
@@ -92,6 +94,7 @@ bk_err_t bk_modem_at_get_cfsn(void);
 bk_err_t bk_modem_at_get_cfun(void);
 //AT_CGMR
 bk_err_t bk_modem_at_get_cgmr(void);
+bk_err_t bk_modem_at_change_baudrate(uint32_t baudrate);
 
 // receive at command responce
 void bk_modem_at_rcv_resp(const char *resp,uint32_t len);

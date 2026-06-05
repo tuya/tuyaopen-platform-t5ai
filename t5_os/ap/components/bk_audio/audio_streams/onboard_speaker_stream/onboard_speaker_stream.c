@@ -572,7 +572,10 @@ static bk_err_t aud_dac_dma_config(onboard_speaker_stream_t *onboard_spk)
 
     /* init two frames ringbuffer */
     /* the pause address can not is the same as the end address of dma, so add 8 bytes to protect speaker ring buffer. */
-    onboard_spk->spk_ring_buff = (int8_t *)audio_dma_mem_calloc(2, onboard_spk->frame_size + DMA_CARRY_SPK_RINGBUF_SAFE_INTERVAL/2);
+    // Modified by TUYA Start
+    // onboard_spk->spk_ring_buff = (int8_t *)audio_dma_mem_calloc(2, onboard_spk->frame_size + DMA_CARRY_SPK_RINGBUF_SAFE_INTERVAL/2);
+    onboard_spk->spk_ring_buff = (int8_t *)audio_dma_mem_calloc_on_sram(2, onboard_spk->frame_size + DMA_CARRY_SPK_RINGBUF_SAFE_INTERVAL/2);
+    // Modified by TUYA End
     AUDIO_MEM_CHECK(TAG, onboard_spk->spk_ring_buff, return BK_FAIL);
     ring_buffer_init(&onboard_spk->spk_rb, (uint8_t *)onboard_spk->spk_ring_buff, onboard_spk->frame_size * 2 + DMA_CARRY_SPK_RINGBUF_SAFE_INTERVAL, onboard_spk->spk_dma_id, RB_DMA_TYPE_READ);
     BK_LOGD(TAG, "%s, %d, spk_ring_buff: %p, spk_ring_buff size: %d \n", __func__, __LINE__, onboard_spk->spk_ring_buff, onboard_spk->frame_size * 2 + DMA_CARRY_SPK_RINGBUF_SAFE_INTERVAL);

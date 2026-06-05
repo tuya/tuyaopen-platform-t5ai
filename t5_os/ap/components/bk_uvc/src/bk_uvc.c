@@ -12,6 +12,19 @@
 #define LOGD(...) BK_LOGD(TAG, ##__VA_ARGS__)
 #define LOGV(...) BK_LOGV(TAG, ##__VA_ARGS__)
 
+/**
+ * UVC帧丢弃控制 - 全局变量
+ * 
+ * g_uvc_frame_drop_mode:
+ *   0 = 不丢帧 (30fps保持30fps)
+ *   1 = 每2帧保留1帧 (30fps → 15fps)
+ *   2 = 每3帧保留1帧 (30fps → 10fps)
+ *   3 = 每4帧保留1帧 (30fps → 7.5fps)
+ *   N = 每(N+1)帧保留1帧
+ */
+static uint8_t g_uvc_frame_drop_mode = 0;
+static uint8_t g_uvc_frame_drop_counter = 0;
+
 #define UVC_MAX_PACKET_SIZE (1024)
 //#define UVC_DEBUG_TIME
 
@@ -350,6 +363,19 @@ static bk_err_t uvc_camera_stream_check_config(camera_param_t *param)
     }
 
     uvc_device_param_config->ep_desc = uvc_device_param->ep_desc;
+
+    // 初始化丢帧计数器
+    g_uvc_frame_drop_counter = 0;
+    
+    if (g_uvc_frame_drop_mode > 0)
+    {
+        LOGD("%s, Frame drop enabled: mode=%d (keep 1 per %d frames)\r\n",
+             __func__, g_uvc_frame_drop_mode, g_uvc_frame_drop_mode + 1);
+    }
+    else
+    {
+        LOGD("%s, Frame drop disabled\r\n", __func__);
+    }
 
     LOGV("%s, %d\r\n", __func__, __LINE__);
 
@@ -1020,7 +1046,8 @@ static void uvc_camera_stream_disconnect_handle(uint32_t param)
 
 bk_err_t uvc_camera_stream_check_frame_buffer_length(frame_buffer_t *frame, uint32_t total_length)
 {
-    if (frame->size <= total_length)
+    //! 这里帧大小可以等于总长度
+    if (frame->size < total_length)
     {
         return BK_FAIL;
     }
@@ -1057,6 +1084,10 @@ int uvc_camera_stream_check_frame_buffer_sof_eof_mask(frame_buffer_t *frame)
             {
                 ret = BK_OK;
             }
+            break;
+
+        case PIXEL_FMT_YUV422:
+            ret = BK_OK;
             break;
 
         default:
@@ -1097,7 +1128,7 @@ static void uvc_camera_stream_eof_handle(camera_param_t *camera_param, uvc_pro_c
 
     if (check_length < 0)
     {
-        LOGV("%s, %d, frame_length:%d\r\n", __func__, __LINE__, curr_frame_buffer->length);
+        LOGD("%s, %d, frame_length:%d\r\n", __func__, __LINE__, curr_frame_buffer->length);
         curr_frame_buffer->length = 0;
         goto out;
     }
@@ -1116,10 +1147,46 @@ static void uvc_camera_stream_eof_handle(camera_param_t *camera_param, uvc_pro_c
 
     curr_frame_buffer->timestamp = get_current_timestamp();
 
+    // 全局丢帧控制
+    bool should_drop_frame = false;
+    
+    if (g_uvc_frame_drop_mode > 0)
+    {
+        // 递增帧计数器
+        g_uvc_frame_drop_counter++;
+        
+        // 计算周期：mode + 1
+        // mode=1: 周期2, 保留counter=1, 丢弃counter=2
+        // mode=2: 周期3, 保留counter=1, 丢弃counter=2,3
+        uint8_t period = g_uvc_frame_drop_mode + 1;
+        
+        if (g_uvc_frame_drop_counter > period)
+        {
+            g_uvc_frame_drop_counter = 1;  // 重置计数器
+        }
+        
+        // 只在counter=1时保留帧，其他情况都丢弃
+        should_drop_frame = (g_uvc_frame_drop_counter > 1);
+        
+        if (should_drop_frame)
+        {
+            LOGV("[%d]%s, frame_drop: mode=%d, counter=%d/%d\r\n", 
+                 index, __func__, g_uvc_frame_drop_mode, 
+                 g_uvc_frame_drop_counter, period);
+        }
+    }
+
     if (camera_param->info->drop_num > 0)
     {
         camera_param->info->drop_num--;
-        LOGV("[%d]%s, drop_num:%d\r\n", index, __func__, camera_param->info->drop_num);
+        LOGD("[%d]%s, drop_num:%d\r\n", index, __func__, camera_param->info->drop_num);
+    }
+    else if (should_drop_frame)
+    {
+        // 丢帧：不分配新frame，不调用frame_complete
+        LOGV("[%d]%s, frame dropped by fps control\r\n", index, __func__);
+        curr_frame_buffer->length = 0;  // 清空当前帧
+        return;
     }
     else
     {
@@ -1492,7 +1559,7 @@ bk_err_t uvc_camera_process_task_init(uvc_stream_handle_t *handle, bk_uvc_callba
                                        BEKEN_DEFAULT_WORKER_PRIORITY - 3,
                                        "uvc_pro_task",
                                        (beken_thread_function_t)uvc_camera_process_task_main,
-                                       1024,
+                                       1024 * 2,
                                        (beken_thread_arg_t)handle);
 
         if (BK_OK != ret)
@@ -1894,6 +1961,9 @@ bk_err_t bk_uvc_init(camera_handle_t *handle, uvc_config_t *config, bk_uvc_callb
         os_memset(output_handle, 0, sizeof(camera_config_t));
         os_memcpy(param->info, config, sizeof(uvc_config_t));
         rtos_clear_event_flags(&uvc_handle->handle, UVC_STREAM_START_BIT);
+
+        //! TODO: 初始化不启动，只进行枚举，在调用start在启动
+    #if 0 //! tuya-linch 
         ret = uvc_stream_task_send_msg(UVC_START_IND, (uint32_t)param);
         if (ret != BK_OK)
         {
@@ -1907,6 +1977,7 @@ bk_err_t bk_uvc_init(camera_handle_t *handle, uvc_config_t *config, bk_uvc_callb
             LOGW("%s, start fail....\n", __func__);
             ret = BK_FAIL;
         }
+    #endif
     }
     else
     {
@@ -2251,5 +2322,39 @@ bk_err_t bk_uvc_set_stream_state(uint32_t state)
     }
 
     LOGV("%s, set stream state:%d\n", __func__, uvc_handle->pro_config->stream_state);
+    return BK_OK;
+}
+
+/**
+ * @brief 设置UVC帧丢弃模式
+ * 
+ * @param mode 丢帧模式
+ *   0: 不丢帧 (30fps → 30fps)
+ *   1: 每2帧保留1帧 (30fps → 15fps)
+ *   2: 每3帧保留1帧 (30fps → 10fps)
+ *   3: 每4帧保留1帧 (30fps → 7.5fps)
+ *   N: 每(N+1)帧保留1帧
+ * 
+ * @return bk_err_t BK_OK成功
+ * 
+ * @note 该函数可在运行时动态调整，立即生效
+ */
+bk_err_t bk_uvc_set_frame_drop_mode(uint8_t mode)
+{
+    if (mode != g_uvc_frame_drop_mode)
+    {
+        g_uvc_frame_drop_mode = mode;
+        g_uvc_frame_drop_counter = 0;  // 重置计数器
+        
+        if (mode > 0)
+        {
+            LOGI("UVC frame drop mode set to %d (keep 1 per %d frames)\r\n", mode, mode + 1);
+        }
+        else
+        {
+            LOGI("UVC frame drop mode disabled\r\n");
+        }
+    }
+    
     return BK_OK;
 }

@@ -61,11 +61,25 @@ OPERATE_RET tkl_cellular_init(TKL_CELLULAR_BASE_CFG_T *cfg)
 #if CONFIG_BK_MODEM
     bk_err_t ret;
     struct bk_modem_dce_pdp_ctx_s ctx;
+
+    if (cfg->protocol != TUYA_CELLULAR_PROTOCOL_PPP) {
+        bk_printf("%s: protocol not support %d\r\n", __func__, cfg->protocol);
+        return OPRT_NOT_SUPPORTED;
+    }
+
     memset(&ctx, 0, sizeof(ctx));
     strncpy(ctx.apn, cfg->apn, TKL_CELLULAR_APN_LEN);
-    bk_printf("%s: Start USB Cellular Network\r\n", __func__);
     bk_modem_dec_pdp_ctx_init(ctx.apn);
-    ret = bk_modem_init(PPP_MODE, USB_IF);
+    if (cfg->iface == TUYA_CELLULAR_IF_UART) {
+        bk_printf("%s: Start UART Cellular Network\r\n", __func__);
+        ret = bk_modem_init(PPP_MODE, UART_IF);
+    } else if (cfg->iface == TUYA_CELLULAR_IF_USB) {
+        bk_printf("%s: Start USB Cellular Network\r\n", __func__);
+        ret = bk_modem_init(PPP_MODE, USB_IF);
+    } else {
+        return OPRT_NOT_SUPPORTED;
+    }
+
     if (BK_OK != ret) {
         return OPRT_COM_ERROR;
     }
@@ -155,13 +169,13 @@ OPERATE_RET tkl_cellular_get_ip(NW_IP_S *ip)
 
     if (0 != netif->ip_addr.addr) {
         ip_addr = netif->ip_addr.addr;
-        sprintf(ip->ip, "%d.%d.%d.%d", IPADDR2STR(ip_addr));
+        sprintf(ip->nwipstr, "%d.%d.%d.%d", IPADDR2STR(ip_addr));
 
         ip_addr = netif->gw.addr;
-        sprintf(ip->gw, "%d.%d.%d.%d", IPADDR2STR(ip_addr));
+        sprintf(ip->nwgwstr, "%d.%d.%d.%d", IPADDR2STR(ip_addr));
 
         ip_addr = netif->netmask.addr;
-        sprintf(ip->mask, "%d.%d.%d.%d", IPADDR2STR(ip_addr));
+        sprintf(ip->nwmaskstr, "%d.%d.%d.%d", IPADDR2STR(ip_addr));
 
         return OPRT_OK;
     }

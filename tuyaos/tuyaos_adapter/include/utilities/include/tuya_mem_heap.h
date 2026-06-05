@@ -30,6 +30,8 @@ typedef struct {
     unsigned long free_size; // current free heap size
     unsigned long free_watermark; // minimum ever free heap size
     unsigned long max_free_block_size; //size of the largest free block
+	unsigned long used_block;
+	unsigned long free_block;
 }heap_state_t;
 
 typedef void* HEAP_HANDLE;

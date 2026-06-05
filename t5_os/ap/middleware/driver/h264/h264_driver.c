@@ -45,7 +45,7 @@ typedef struct {
 		}\
 	} while (0)
 
-extern void delay(int num);
+extern uint32_t platform_is_in_interrupt_context(void);
 
 static h264_driver_t s_h264 = {0};
 static uint8_t h264_dma_rx_id = 0;
@@ -76,12 +76,16 @@ static void h264_init_common(void)
 {
 	// h264 power enable
 	//sys_drv_h264_power_en(1);
-	bk_pm_module_vote_power_ctrl(PM_POWER_SUB_MODULE_NAME_VIDP_H264, PM_POWER_MODULE_STATE_ON);
-	/* h264 clock set */
-	sys_drv_set_clk_div_mode1_clkdiv_h264(1);
-	sys_drv_set_h264_clk_sel(H264_CLK_SEL_480M);
-	// h264 clk enable
-	sys_drv_set_h264_clk_en(1);
+	uint32_t isr_context = platform_is_in_interrupt_context();
+	if(!isr_context)
+	{
+		bk_pm_module_vote_power_ctrl(PM_POWER_SUB_MODULE_NAME_VIDP_H264, PM_POWER_MODULE_STATE_ON);
+		/* h264 clock set */
+		sys_drv_set_clk_div_mode1_clkdiv_h264(1);
+		sys_drv_set_h264_clk_sel(H264_CLK_SEL_480M);
+		// h264 clk enable
+		sys_drv_set_h264_clk_en(1);
+	}
 
 	/* h264 global ctrl set */
 	h264_hal_set_global_ctrl(&s_h264.hal);
@@ -95,7 +99,8 @@ static void h264_deinit_common(void)
 	// h264 soft reset
 	bk_h264_soft_reset();
 	// h264 config reset
-	h264_hal_reset(&s_h264.hal);
+	h264_hal_global_soft_reset_enable(&s_h264.hal);
+	h264_hal_global_soft_reset_disable(&s_h264.hal);
 	// h264 int disable
 	h264_int_disable();
 	// h264 clk disable
@@ -214,7 +219,8 @@ bk_err_t bk_h264_driver_deinit(void)
 	h264_int_disable();
 	bk_int_isr_unregister(INT_SRC_H264);
 
-	h264_hal_reset(&s_h264.hal);
+	h264_hal_global_soft_reset_enable(&s_h264.hal);
+	h264_hal_global_soft_reset_disable(&s_h264.hal);
 	os_memset(&s_h264, 0, sizeof(s_h264));
 	s_h264_driver_is_init = false;
 
@@ -598,7 +604,8 @@ bk_err_t bk_h264_config_reset(void)
 	ratio.imb_bits = s_h264.hal.hw->iframe_bit_ctrl.v & 0xFFF;
 	ratio.pmb_bits = s_h264.hal.hw->num_pmb_bits & 0xFFFF;
 	fps = (s_h264.hal.hw->vui_time_scale_L & 0xFFFF) / (2 * config->vui_num_u_tick_L);
-	h264_hal_reset(&s_h264.hal);
+	h264_hal_global_soft_reset_enable(&s_h264.hal);
+	h264_hal_global_soft_reset_disable(&s_h264.hal);
 
 	/* h264 global ctrl set */
 	h264_hal_set_global_ctrl(&s_h264.hal);
@@ -630,6 +637,22 @@ bk_err_t bk_h264_soft_reset(void)
 	H264_RETURN_ON_DRIVER_NOT_INIT();
 	h264_hal_soft_reset_active(&s_h264.hal);
 	h264_hal_soft_reset_deactive(&s_h264.hal);
+	return BK_OK;
+}
+
+bk_err_t bk_h264_global_soft_reset(uint8_t enable)
+{
+	H264_RETURN_ON_DRIVER_NOT_INIT();
+	if (enable)
+	{
+		h264_hal_soft_reset_active(&s_h264.hal);
+		h264_hal_global_soft_reset_enable(&s_h264.hal);
+	}
+	else
+	{
+		h264_hal_soft_reset_deactive(&s_h264.hal);
+		h264_hal_global_soft_reset_disable(&s_h264.hal);
+	}
 	return BK_OK;
 }
 
