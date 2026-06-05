@@ -298,6 +298,21 @@ bk_err_t bk_h264_enc_lcd_dma_cpy(void *out, const void *in, uint32_t len, dma_id
  */
 bk_err_t bk_h264_updata_encode_fps(uint32_t fps);
 
+/**
+ * @brief h264 module global softreset
+ *
+ * This API will use for resetting h264 module
+ *
+ * @param enable 0:disable, 1:enable
+ *
+ * @attenation this api must be called twice to complete the reset: first enable(1), then disable(0)
+ *
+ * @return
+ *    - BK_OK: Success
+ *    - others: Other errors.
+ */
+bk_err_t bk_h264_global_soft_reset(uint8_t enable);
+
 #ifdef __cplusplus
 }
 #endif

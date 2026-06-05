@@ -144,6 +144,13 @@ if(CONFIG_LWIP_PPP_SUPPORT)
         lwip-2.1.2/src/netif/ppp/polarssl/md5.c
         lwip-2.1.2/src/netif/ppp/polarssl/sha1.c)
 endif()
+
+if(CONFIG_LWIP_HOOK_IP4_ROUTE_SRC)
+	list(APPEND srcs
+	lwip-2.1.2/port/lwip_hooks.c
+	)
+endif()
+
 else()
 
 

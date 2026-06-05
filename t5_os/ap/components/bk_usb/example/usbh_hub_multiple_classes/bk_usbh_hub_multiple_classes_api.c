@@ -188,12 +188,14 @@ bk_err_t bk_usbh_hub_multiple_devices_power_on(E_USB_MODE mode, E_USB_HUB_PORT_I
 
 	if(!usb_hub_class_dev->usbh_hub_class_device_vote_power_flag[port_index]) {
 		gpio_id = bk_usbh_hub_get_port_vbus_control_gpio_id(port_index);
+		USB_HUB_MD_LOGD("bk_usbh_hub_multiple_devices_power_on: %d, %d\r\n", port_index, gpio_id);
 		bk_usbh_hub_port_power_ops(gpio_id, 1);
 	}
 
 	if(usb_hub_class_dev->usbh_hub_power_flag) {
 		ret = BK_OK;
 	} else {
+		USB_HUB_MD_LOGD("bk_usb_open: %d, %d\r\n", port_index, CONFIG_USB_VBAT_CONTROL_GPIO_ID);
 		bk_usb_power_ops(CONFIG_USB_VBAT_CONTROL_GPIO_ID, 1);
 		ret = bk_usb_open(mode);
 		if(ret == BK_OK) {
@@ -432,6 +434,8 @@ static uint32_t bk_usbh_hub_uvc_parse_param(struct usbh_hubport *hport, uint8_t 
 	uint32_t device_index = 0;
 	uint8_t video_format_type = 0;
 	uint32_t k = 0;
+
+	//! TODO: 需要优化，根据应用选择的格式和实际格式进行判断
 	for (; k < uvc_device->num_of_formats; k++)
 	{
 		video_format_type = uvc_device->format[k].format_type;
@@ -502,8 +506,8 @@ static uint32_t bk_usbh_hub_uvc_parse_param(struct usbh_hubport *hport, uint8_t 
 	uvc_device_info->device_bcd   = hport->device_desc.bcdDevice;
 	uvc_device_info->support_devs = 0;
 
-	USB_HUB_MD_LOGV("[=]%s begin format\r\n", __func__);
-	for(int index = 0; index < 3; index++)
+	USB_HUB_MD_LOGV("[=]%s begin format %d\r\n", __func__, uvc_device->num_of_formats);
+	for(int index = 0; index < uvc_device->num_of_formats; index++)
 	{
 		switch(uvc_device->format[index].format_type)
 		{
@@ -531,7 +535,7 @@ static uint32_t bk_usbh_hub_uvc_parse_param(struct usbh_hubport *hport, uint8_t 
 				break;
 		}
 	}
-	
+	//! TODO: 这里在干嘛？？？端点数量不累计吗？
 	for (uint8_t i = 0; i < uvc_device->num_of_intf_altsettings; i++) {
 		uvc_device_info->endpoints_num = uvc_device->hport->config.intf[uvc_device->data_intf].altsetting[i].intf_desc.bNumEndpoints;
 		uvc_device_info->ep_desc       = (struct s_bk_usb_endpoint_descriptor *)&uvc_device->hport->config.intf[uvc_device->data_intf].altsetting[i].ep[0].ep_desc;
@@ -821,15 +825,25 @@ bk_err_t bk_usbh_hub_port_video_open_handle(bk_usb_hub_port_info *port_dev_info)
 	uvc_device->probe.dwFrameInterval = 10000000/config->fps;
 	usbh_videostreaming_set_cur_probe(uvc_device, formatindex, frameindex, dwMaxVideoFrameSize, dwMaxPayloadTransferSize);
 
+	//! 实测更新FPS后，虽然USB返回生效了，但实际还是按照格式里指定的FPS
 	usbh_videostreaming_get_cur_probe(uvc_device);
 	dwMaxVideoFrameSize = uvc_device->probe.dwMaxVideoFrameSize;
 	dwMaxPayloadTransferSize = uvc_device->probe.dwMaxPayloadTransferSize;
+	USB_HUB_MD_LOGD("after get cur probe, dwMaxVideoFrameSize: %d, dwMaxPayloadTransferSize: %d, dwFrameInterval: %d\r\n", 
+		uvc_device->probe.dwMaxVideoFrameSize, uvc_device->probe.dwMaxPayloadTransferSize, uvc_device->probe.dwFrameInterval);
+
 	usbh_videostreaming_set_cur_commit(uvc_device, formatindex, frameindex, dwMaxVideoFrameSize, dwMaxPayloadTransferSize); /* select resolution from list */
 	usbh_videostreaming_get_cur_probe(uvc_device);
-
+	USB_HUB_MD_LOGD("after set cur commit, dwMaxVideoFrameSize: %d, dwMaxPayloadTransferSize: %d, dwFrameInterval: %d\r\n", 
+		uvc_device->probe.dwMaxVideoFrameSize, uvc_device->probe.dwMaxPayloadTransferSize, uvc_device->probe.dwFrameInterval);
+	
+	//! FIXME: 是否是根据分辨率获取接口的备用号
 	for (uint8_t i = 1; i < uvc_device->num_of_intf_altsettings; i++) {
 		altsettings = uvc_device->hport->config.intf[uvc_device->data_intf].altsetting[i].intf_desc.bAlternateSetting;
 	}
+	altsettings = frameindex - 1;
+	USB_HUB_MD_LOGD("altsettings: %d, frameindex: %d\r\n", altsettings, frameindex);
+
 
 	ret = usbh_video_open(uvc_device, altsettings); /* select ep mps from altsettings ,just for reference now */
 	if(ret < 0) {

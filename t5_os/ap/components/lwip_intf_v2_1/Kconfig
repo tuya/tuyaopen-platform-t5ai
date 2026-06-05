@@ -89,6 +89,12 @@ menu "Lwip_intf_v2_1"
 
 	menu "Modify Lwip Config"
 		depends on LWIP
+		config LWIP_HOOK_IP4_ROUTE_SRC
+			bool "Enable LWIP IP4 ROUTR SRC"
+			default n
+			help
+				Modified by TUYA
+			
 
 		config DHCP
 			depends on WIFI_ENABLE

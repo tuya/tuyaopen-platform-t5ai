@@ -344,9 +344,7 @@ TUYA_WEAK_ATTRIBUTE TUYA_FILE tkl_fopen(const char *path, const char *mode)
         bk_printf("tkl_fopen file failed, path:%s\n", path);
         return NULL;
     }
-    else {
-        bk_printf("tkl_fopen file success, path:%s fd = %d\n",path,fd);
-    }
+
     return (TUYA_FILE)(fd + FILE_HANDLE_OFFSET);
 }
 
@@ -412,8 +410,12 @@ TUYA_WEAK_ATTRIBUTE int32_t tkl_fread(void *buf, int32_t bytes, TUYA_FILE file)
  *
  * @return the bytes write to file
  */
+#include "tkl_mutex.h"
+static TKL_MUTEX_HANDLE wr_mutex = NULL;
 TUYA_WEAK_ATTRIBUTE int32_t tkl_fwrite(void *buf, int32_t bytes, TUYA_FILE file)
 {
+    OPERATE_RET ret = 0;
+
     int fd = (int)file;
     fd -= FILE_HANDLE_OFFSET;
     if (fd < 0) {
@@ -421,7 +423,29 @@ TUYA_WEAK_ATTRIBUTE int32_t tkl_fwrite(void *buf, int32_t bytes, TUYA_FILE file)
     }
     // bk_printf("begin tkl_fwrite: fd=%d, bytes=%d\n", fd, bytes);
 
-    return write(fd, buf, bytes);
+    if (wr_mutex == NULL) {
+        ret = tkl_mutex_create_init(&wr_mutex);
+        if (ret != OPRT_OK) {
+            bk_printf("fs write mutex init failed, %d\r\n", ret);
+            return OPRT_OS_ADAPTER_MUTEX_CREAT_FAILED;
+        }
+    }
+
+    ret = tkl_mutex_lock(wr_mutex);
+    if (ret != OPRT_OK) {
+        bk_printf("fs write lock failed, %d\r\n", ret);
+        return OPRT_OS_ADAPTER_MUTEX_LOCK_FAILED;
+    }
+
+    int len = write(fd, buf, bytes);
+
+    ret = tkl_mutex_unlock(wr_mutex);
+    if (ret != OPRT_OK) {
+        bk_printf("fs write unlock failed, %d\r\n", ret);
+        return OPRT_OS_ADAPTER_MUTEX_UNLOCK_FAILED;
+    }
+
+    return len;
 }
 
 /**
@@ -730,7 +754,10 @@ int32_t tkl_fs_mount(const char *path, FS_DEV_TYPE_T dev_type)
             ret = littlefs_mount(path, LFS_QSPI_FLASH);
             break;
         case DEV_SDCARD:
-            ret = fatfs_mount(path, FATFS_DEVICE);
+            ret = fatfs_mount(path, DEV_SDCARD);
+            break;
+        case DEV_USB_DISK:
+            ret = fatfs_mount(path, DEV_USB_DISK);
             break;
         default:
             return -1;

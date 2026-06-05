@@ -173,6 +173,29 @@ bk_err_t bk_uvc_register_separate_packet_callback(uvc_separate_config_t *cb);
  */
 bk_err_t bk_uvc_set_stream_state(uint32_t state);
 
+/**
+ * @brief     Set UVC frame drop mode
+ *
+ * This API controls the frame drop rate to reduce system load
+ *
+ * @param mode Frame drop mode:
+ *   0: No frame drop (30fps → 30fps)
+ *   1: Keep 1 per 2 frames (30fps → 15fps)
+ *   2: Keep 1 per 3 frames (30fps → 10fps)
+ *   3: Keep 1 per 4 frames (30fps → 7.5fps)
+ *   N: Keep 1 per (N+1) frames
+ *
+ * @attention
+ *   - Can be called at runtime, takes effect immediately
+ *   - Global setting, affects all UVC streams
+ *   - Counter resets automatically when mode changes
+ *
+ * @return
+ *    - BK_OK: succeed
+ *    - others: other errors.
+ */
+bk_err_t bk_uvc_set_frame_drop_mode(uint8_t mode);
+
 #if (CONFIG_STANDARD_DUALSTREAM)
 
 bk_err_t bk_uvc_h26x_power_on(uint32_t trigger);

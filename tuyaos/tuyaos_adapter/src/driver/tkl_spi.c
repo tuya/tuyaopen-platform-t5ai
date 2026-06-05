@@ -123,21 +123,177 @@ typedef struct {
 #define SPI_CHECK_SECURE(id)
 #endif
 
+
+#define TKL_SPI0_G0_SCK_PIN     GPIO_14
+#define TKL_SPI0_G0_CSN_PIN     GPIO_15
+#define TKL_SPI0_G0_MOSI_PIN    GPIO_16
+#define TKL_SPI0_G0_MISO_PIN    GPIO_17
+
+#define TKL_SPI0_G1_SCK_PIN     GPIO_33
+#define TKL_SPI0_G1_CSN_PIN     GPIO_34
+#define TKL_SPI0_G1_MOSI_PIN    GPIO_35
+#define TKL_SPI0_G1_MISO_PIN    GPIO_36
+
+#define TKL_SPI0_G2_SCK_PIN     GPIO_44
+#define TKL_SPI0_G2_CSN_PIN     GPIO_45
+#define TKL_SPI0_G2_MOSI_PIN    GPIO_46
+#define TKL_SPI0_G2_MISO_PIN    GPIO_47
+
+
+#define TKL_SPI1_SCK_PIN        GPIO_2
+#define TKL_SPI1_CSN_PIN        GPIO_3
+#define TKL_SPI1_MOSI_PIN       GPIO_4
+#define TKL_SPI1_MISO_PIN       GPIO_5
+
+struct tkl_spi_pin_s {
+	gpio_id_t sck;
+	gpio_id_t csn;
+	gpio_id_t mosi;
+	gpio_id_t miso;
+};
+static struct tkl_spi_pin_s spi_pin_config[SOC_SPI_MAX_NUM] = {
+	{
+		.sck = TKL_SPI0_G0_SCK_PIN,
+		.csn = TKL_SPI0_G0_CSN_PIN,
+		.mosi = TKL_SPI0_G0_MOSI_PIN,
+		.miso = TKL_SPI0_G0_MISO_PIN,
+	},
+	{
+		.sck = TKL_SPI1_SCK_PIN,
+		.csn = TKL_SPI1_CSN_PIN,
+		.mosi = TKL_SPI1_MOSI_PIN,
+		.miso = TKL_SPI1_MISO_PIN,
+	},
+};
+
+void __tkl_spi_set_clk_pin(TUYA_SPI_NUM_E port, TUYA_PIN_NAME_E pin)
+{
+	// only support set spi0
+	if (port == TUYA_SPI_NUM_0) {
+		if (TUYA_IO_PIN_14 == pin) {
+			spi_pin_config[0].sck = GPIO_14;
+		} else if (TUYA_IO_PIN_33 == pin) {
+			spi_pin_config[0].sck = GPIO_33;
+		} else if (TUYA_IO_PIN_44 == pin) {
+			spi_pin_config[0].sck = GPIO_44;
+		}
+	}
+}
+
+void __tkl_spi_set_cs_pin(TUYA_SPI_NUM_E port, TUYA_PIN_NAME_E pin)
+{
+	// only support set spi0
+	if (port == TUYA_SPI_NUM_0) {
+		if (TUYA_IO_PIN_15 == pin) {
+			spi_pin_config[0].csn = GPIO_15;
+		} else if (TUYA_IO_PIN_34 == pin) {
+			spi_pin_config[0].csn = GPIO_34;
+		} else if (TUYA_IO_PIN_45 == pin) {
+			spi_pin_config[0].csn = GPIO_45;
+		}
+	}
+}
+
+void __tkl_spi_set_mosi_pin(TUYA_SPI_NUM_E port, TUYA_PIN_NAME_E pin)
+{
+	// only support set spi0
+	if (port == TUYA_SPI_NUM_0) {
+		if (TUYA_IO_PIN_16 == pin) {
+			spi_pin_config[0].mosi = GPIO_16;
+		} else if (TUYA_IO_PIN_35 == pin) {
+			spi_pin_config[0].mosi = GPIO_35;
+		} else if (TUYA_IO_PIN_46 == pin) {
+			spi_pin_config[0].mosi = GPIO_46;
+		}
+	}
+}
+
+void __tkl_spi_set_miso_pin(TUYA_SPI_NUM_E port, TUYA_PIN_NAME_E pin)
+{
+	// only support set spi0
+	if (port == TUYA_SPI_NUM_0) {
+		if (TUYA_IO_PIN_17 == pin) {
+			spi_pin_config[0].miso = GPIO_17;
+		} else if (TUYA_IO_PIN_36 == pin) {
+			spi_pin_config[0].miso = GPIO_36;
+		} else if (TUYA_IO_PIN_47 == pin) {
+			spi_pin_config[0].miso = GPIO_47;
+		}
+	}
+}
+
+static int __tkl_check_spi0_pins(void)
+{
+	static const struct tkl_spi_pin_s valid_pin_groups[] = {
+		{TKL_SPI0_G0_SCK_PIN, TKL_SPI0_G0_CSN_PIN, TKL_SPI0_G0_MOSI_PIN, TKL_SPI0_G0_MISO_PIN},
+		{TKL_SPI0_G1_SCK_PIN, TKL_SPI0_G1_CSN_PIN, TKL_SPI0_G1_MOSI_PIN, TKL_SPI0_G1_MISO_PIN},
+		{TKL_SPI0_G2_SCK_PIN, TKL_SPI0_G2_CSN_PIN, TKL_SPI0_G2_MOSI_PIN, TKL_SPI0_G2_MISO_PIN},
+	};
+
+	for (int i = 0; i < sizeof(valid_pin_groups) / sizeof(valid_pin_groups[0]); i++) {
+		if ((spi_pin_config[0].sck == valid_pin_groups[i].sck) &&
+		    (spi_pin_config[0].csn == valid_pin_groups[i].csn) &&
+		    (spi_pin_config[0].mosi == valid_pin_groups[i].mosi) &&
+		    (spi_pin_config[0].miso == valid_pin_groups[i].miso)) {
+			return BK_OK;
+		}
+	}
+
+	return BK_FAIL;
+}
+
+static gpio_id_t __tkl_spi_get_pin(TUYA_SPI_NUM_E port, gpio_id_t default_pin,
+                                    gpio_id_t (*get_config_pin)(uint8_t))
+{
+	if (port > 1)
+		return 56;
+
+	if (port == 0 ) {
+		return (__tkl_check_spi0_pins() == BK_OK) ? get_config_pin(0) : default_pin;
+	}
+	return get_config_pin(port);
+}
+
+static gpio_id_t get_sck_pin(uint8_t port) { return spi_pin_config[port].sck; }
+static gpio_id_t get_csn_pin(uint8_t port) { return spi_pin_config[port].csn; }
+static gpio_id_t get_mosi_pin(uint8_t port) { return spi_pin_config[port].mosi; }
+static gpio_id_t get_miso_pin(uint8_t port) { return spi_pin_config[port].miso; }
+
+gpio_id_t __tkl_spi_get_cs_pin(TUYA_SPI_NUM_E port)
+{
+	return __tkl_spi_get_pin(port, TKL_SPI0_G0_CSN_PIN, get_csn_pin);
+}
+
+gpio_id_t __tkl_spi_get_clk_pin(TUYA_SPI_NUM_E port)
+{
+	return __tkl_spi_get_pin(port, TKL_SPI0_G0_SCK_PIN, get_sck_pin);
+}
+
+gpio_id_t __tkl_spi_get_mosi_pin(TUYA_SPI_NUM_E port)
+{
+	return __tkl_spi_get_pin(port, TKL_SPI0_G0_MOSI_PIN, get_mosi_pin);
+}
+
+gpio_id_t __tkl_spi_get_miso_pin(TUYA_SPI_NUM_E port)
+{
+	return __tkl_spi_get_pin(port, TKL_SPI0_G0_MISO_PIN, get_miso_pin);
+}
+
 #define TKL_SPI_SET_PIN(id) do {\
-	gpio_dev_unmap(SPI##id##_LL_CSN_PIN);\
-	gpio_dev_unmap(SPI##id##_LL_SCK_PIN);\
-	gpio_dev_unmap(SPI##id##_LL_MOSI_PIN);\
-	gpio_dev_unmap(SPI##id##_LL_MISO_PIN);\
-	gpio_dev_map(SPI##id##_LL_CSN_PIN, GPIO_DEV_SPI##id##_CSN);\
-	gpio_dev_map(SPI##id##_LL_SCK_PIN, GPIO_DEV_SPI##id##_SCK);\
-	gpio_dev_map(SPI##id##_LL_MOSI_PIN, GPIO_DEV_SPI##id##_MOSI);\
-	gpio_dev_map(SPI##id##_LL_MISO_PIN, GPIO_DEV_SPI##id##_MISO);\
-	bk_gpio_pull_up(SPI##id##_LL_CSN_PIN);\
-	bk_gpio_pull_up(SPI##id##_LL_SCK_PIN);\
-	bk_gpio_set_capacity(SPI##id##_LL_CSN_PIN, 0);\
-	bk_gpio_set_capacity(SPI##id##_LL_SCK_PIN, 1);\
-	bk_gpio_set_capacity(SPI##id##_LL_MOSI_PIN, 0);\
-	bk_gpio_set_capacity(SPI##id##_LL_MISO_PIN, 0);\
+	gpio_dev_unmap(__tkl_spi_get_cs_pin(id));\
+	gpio_dev_unmap(__tkl_spi_get_clk_pin(id));\
+	gpio_dev_unmap(__tkl_spi_get_mosi_pin(id));\
+	gpio_dev_unmap(__tkl_spi_get_miso_pin(id));\
+	gpio_dev_map(__tkl_spi_get_cs_pin(id), GPIO_DEV_SPI##id##_CSN);\
+	gpio_dev_map(__tkl_spi_get_clk_pin(id), GPIO_DEV_SPI##id##_SCK);\
+	gpio_dev_map(__tkl_spi_get_mosi_pin(id), GPIO_DEV_SPI##id##_MOSI);\
+	gpio_dev_map(__tkl_spi_get_miso_pin(id), GPIO_DEV_SPI##id##_MISO);\
+	bk_gpio_pull_up(__tkl_spi_get_cs_pin(id));\
+	bk_gpio_pull_up(__tkl_spi_get_clk_pin(id));\
+	bk_gpio_set_capacity(__tkl_spi_get_cs_pin(id), 0);\
+	bk_gpio_set_capacity(__tkl_spi_get_clk_pin(id), 1);\
+	bk_gpio_set_capacity(__tkl_spi_get_mosi_pin(id), 0);\
+	bk_gpio_set_capacity(__tkl_spi_get_miso_pin(id), 0);\
 } while(0)
 
 static tkl_spi_driver_t spi[SOC_SPI_MAX_NUM] = {
@@ -416,7 +572,7 @@ static void spi_dma_rx_finish_handler(dma_id_t id, DMA_ISR_TYPE_E event)
 			break;
 		}
 	}
-	
+
 	uint32_t int_level = spi_enter_critical();
 	tkl_dma_stop(spi[spi_dma_rd_id].spi_rx_dma_chan);
 	spi_hal_disable_rx(&spi[spi_dma_rd_id].hal);

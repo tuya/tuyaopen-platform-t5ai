@@ -54,12 +54,6 @@ static inline void jpeg_ll_reset_config_to_default(jpeg_hw_t *hw)
 	REG_WRITE(JPEG_R_INT_STATUS, REG_READ(JPEG_R_INT_STATUS));
 }
 
-static inline void jpeg_ll_soft_reset(jpeg_hw_t *hw)
-{
-	hw->global_ctrl.soft_reset = 0;
-	hw->global_ctrl.soft_reset = 1;
-}
-
 static inline void jpeg_ll_init(jpeg_hw_t *hw)
 {
 	hw->global_ctrl.soft_reset = 0;
@@ -70,6 +64,16 @@ static inline void jpeg_ll_init(jpeg_hw_t *hw)
 static inline void jpeg_ll_clear_config(jpeg_hw_t *hw)
 {
 	hw->cfg.v = 0;
+}
+
+static inline void jpeg_ll_global_soft_reset_enable(jpeg_hw_t *hw)
+{
+	hw->global_ctrl.soft_reset = 0;
+}
+
+static inline void jpeg_ll_global_soft_reset_disable(jpeg_hw_t *hw)
+{
+	hw->global_ctrl.soft_reset = 1;
 }
 
 static inline void jpeg_ll_enable_jpeg_mode(jpeg_hw_t *hw)

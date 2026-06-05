@@ -131,7 +131,7 @@ void cli_xqspi_cmd(char *pcWriteBuffer, int xWriteBufferLen, int argc, char **ar
 
 #define LCD_SPD2010_WRITE_COMMAND     0x02
 
-uint8_t init_data1[] =
+UCHAR_T init_data1[] =
 {
 	0xa5,
 	0x10,
@@ -236,7 +236,7 @@ uint8_t init_data1[] =
 	0x00,
 };
 
-static TUYA_QSPI_CMD_T  init_cmd1[] =
+STATIC TUYA_QSPI_CMD_T  init_cmd1[] =
 {
 	{TUYA_QSPI_WRITE, {LCD_SPD2010_WRITE_COMMAND}, 1, TUYA_QSPI_1WIRE,  {0x0,0xFF,0x0},0x3,    TUYA_QSPI_1WIRE,         {NULL}, 1, TUYA_QSPI_1WIRE,0x0},
 	{TUYA_QSPI_WRITE, {LCD_SPD2010_WRITE_COMMAND}, 1, TUYA_QSPI_1WIRE,  {0x0,0xe7,0x0},0x3,    TUYA_QSPI_1WIRE,         {NULL}, 1, TUYA_QSPI_1WIRE,0x0},
@@ -342,51 +342,51 @@ static TUYA_QSPI_CMD_T  init_cmd1[] =
 };
 
 
-static TUYA_QSPI_CMD_T  init_cmd2[] =
+STATIC TUYA_QSPI_CMD_T  init_cmd2[] =
 {
 	{TUYA_QSPI_WRITE, {LCD_SPD2010_WRITE_COMMAND}, 1, TUYA_QSPI_1WIRE,  {0x0,0x29,0x0},0x3, TUYA_QSPI_1WIRE,   {0x00}, 0, TUYA_QSPI_1WIRE,0x0},
 };
 
-static TUYA_QSPI_CMD_T  init_cmd3[] =
+STATIC TUYA_QSPI_CMD_T  init_cmd3[] =
 {
 	{TUYA_QSPI_WRITE, {0x32}, 1, TUYA_QSPI_1WIRE,  {0x00, 0x2c, 0x00},0x3, TUYA_QSPI_1WIRE,  {0x00}, 0, TUYA_QSPI_1WIRE,0x0},
 };
 
 #if 0
-static TUYA_QSPI_CMD_T  init_cmd30[] =
+STATIC TUYA_QSPI_CMD_T  init_cmd30[] =
 {
 	{TUYA_QSPI_WRITE, {0x32}, 0, TUYA_QSPI_1WIRE,  {0x00, 0x2c, 0x00},0x0, TUYA_QSPI_1WIRE,  {0}, 2, TUYA_QSPI_4WIRE,0x0},
 };
 
 
-static TUYA_QSPI_CMD_T  init_cmd31[] =
+STATIC TUYA_QSPI_CMD_T  init_cmd31[] =
 {
 	{TUYA_QSPI_WRITE, {0x32}, 1, TUYA_QSPI_1WIRE,  {0x00, 0x2c, 0x00},0x3, TUYA_QSPI_4WIRE,  {0x00}, 0, TUYA_QSPI_1WIRE,0x0},
 };
 
-static TUYA_QSPI_CMD_T  init_cmd32[] =
+STATIC TUYA_QSPI_CMD_T  init_cmd32[] =
 {
 	{TUYA_QSPI_WRITE, {0x32}, 1, TUYA_QSPI_1WIRE,  {0x2c},0x1, TUYA_QSPI_1WIRE,  {0x00}, 0, TUYA_QSPI_1WIRE,0x0},
 };
 
-static TUYA_QSPI_CMD_T  init_cmd33[] =
+STATIC TUYA_QSPI_CMD_T  init_cmd33[] =
 {
 	{TUYA_QSPI_WRITE, {0x32}, 1, TUYA_QSPI_1WIRE,  {0x01, 0x2c},0x2, TUYA_QSPI_4WIRE,  {0x00}, 0, TUYA_QSPI_1WIRE,0x0},
 };
 
 
-static TUYA_QSPI_CMD_T  init_cmd34[] =
+STATIC TUYA_QSPI_CMD_T  init_cmd34[] =
 {
 	{TUYA_QSPI_WRITE, {0x32}, 1, TUYA_QSPI_1WIRE,  {0x01, 0x2,0x3,0x4},0x4, TUYA_QSPI_4WIRE,  {0x00}, 0, TUYA_QSPI_1WIRE,0x0},
 };
 
 
-static TUYA_QSPI_CMD_T  init_cmd35[] =
+STATIC TUYA_QSPI_CMD_T  init_cmd35[] =
 {
 	{TUYA_QSPI_WRITE, {0x32}, 1, TUYA_QSPI_1WIRE,  {0x0},0x0, TUYA_QSPI_4WIRE,  {0x0}, 0, TUYA_QSPI_1WIRE,0x0},
 };
 
-static TUYA_QSPI_CMD_T  init_cmd36[] =
+STATIC TUYA_QSPI_CMD_T  init_cmd36[] =
 {
 	{TUYA_QSPI_WRITE, {0x32,0x31}, 2, TUYA_QSPI_4WIRE,  {0x0},0x0, TUYA_QSPI_4WIRE,  {0x0}, 0, TUYA_QSPI_1WIRE,0x0},
 };
@@ -428,7 +428,7 @@ bk_err_t lcd_qspi_co5300_hardware_reset(void)
 static beken_semaphore_t lcd_qspi_semaphore = NULL;
 extern bk_err_t bk_lcd_qspi_quad_write_stops(qspi_id_t qspi_id);
 
-void qspi_tx_done_cb(TUYA_QSPI_NUM_E port, TUYA_QSPI_IRQ_EVT_E event)
+VOID_T qspi_tx_done_cb(TUYA_QSPI_NUM_E port, TUYA_QSPI_IRQ_EVT_E event)
 {
     if (lcd_qspi_semaphore)
         rtos_set_semaphore(&lcd_qspi_semaphore);
@@ -436,13 +436,13 @@ void qspi_tx_done_cb(TUYA_QSPI_NUM_E port, TUYA_QSPI_IRQ_EVT_E event)
 }
 
 
-static TUYA_QSPI_CMD_T  init_cmd_53001[] =
+STATIC TUYA_QSPI_CMD_T  init_cmd_53001[] =
 {
     {TUYA_QSPI_WRITE, {LCD_SPD2010_WRITE_COMMAND}, 1, TUYA_QSPI_1WIRE,  {0x0,0x11,0x0},0x3, TUYA_QSPI_1WIRE,  {0x0}, 0, TUYA_QSPI_1WIRE,0x0},
 };
 //delay 120
 
-static uint8_t init_data_53002_data[] =
+STATIC UCHAR_T init_data_53002_data[] =
 {
 	0x20,
 	0x10,
@@ -456,7 +456,7 @@ static uint8_t init_data_53002_data[] =
     0xff,
 };
 
-static TUYA_QSPI_CMD_T  init_cmd_53002[] =
+STATIC TUYA_QSPI_CMD_T  init_cmd_53002[] =
 {
     {TUYA_QSPI_WRITE, {LCD_SPD2010_WRITE_COMMAND}, 1, TUYA_QSPI_1WIRE,  {0x0,0xfe,0x0},0x3, TUYA_QSPI_1WIRE,  {0x0}, 0, TUYA_QSPI_1WIRE,0x0},
     {TUYA_QSPI_WRITE, {LCD_SPD2010_WRITE_COMMAND}, 1, TUYA_QSPI_1WIRE,  {0x0,0x19,0x0},0x3, TUYA_QSPI_1WIRE,  {0x0}, 0, TUYA_QSPI_1WIRE,0x0},
@@ -473,17 +473,17 @@ static TUYA_QSPI_CMD_T  init_cmd_53002[] =
     
 };
 
-static uint8_t init_data_53003_1_data[] =
+STATIC UCHAR_T init_data_53003_1_data[] =
 {
 	0x00,0x06,0x01,0xd7,
 };
 
-static uint8_t init_data_53003_2_data[] =
+STATIC UCHAR_T init_data_53003_2_data[] =
 {
     0x00,0x00,0x01,0xd1,
 };
 
-static TUYA_QSPI_CMD_T  init_cmd_53003[] =
+STATIC TUYA_QSPI_CMD_T  init_cmd_53003[] =
 {
     {TUYA_QSPI_WRITE, {LCD_SPD2010_WRITE_COMMAND}, 1, TUYA_QSPI_1WIRE,  {0x0,0x2a,0x0},0x3, TUYA_QSPI_1WIRE,  {0x0}, 4, TUYA_QSPI_1WIRE,0x0},
     {TUYA_QSPI_WRITE, {LCD_SPD2010_WRITE_COMMAND}, 1, TUYA_QSPI_1WIRE,  {0x0,0x2b,0x0},0x3, TUYA_QSPI_1WIRE,  {0x0}, 4, TUYA_QSPI_1WIRE,0x0},
@@ -492,14 +492,14 @@ static TUYA_QSPI_CMD_T  init_cmd_53003[] =
 //delay 600
 
 
-static TUYA_QSPI_CMD_T  init_cmd_53004[] =
+STATIC TUYA_QSPI_CMD_T  init_cmd_53004[] =
 {
     {TUYA_QSPI_WRITE, {LCD_SPD2010_WRITE_COMMAND}, 1, TUYA_QSPI_1WIRE,  {0x0,0x11,0x0},0x3, TUYA_QSPI_1WIRE,  {0x0}, 0, TUYA_QSPI_1WIRE,0x0},
 };
 
 //delay 600
 
-static TUYA_QSPI_CMD_T  init_cmd_53005[] =
+STATIC TUYA_QSPI_CMD_T  init_cmd_53005[] =
 {
     {TUYA_QSPI_WRITE, {LCD_SPD2010_WRITE_COMMAND}, 1, TUYA_QSPI_1WIRE,  {0x0,0x29,0x0},0x3, TUYA_QSPI_1WIRE,  {0x0}, 0, TUYA_QSPI_1WIRE,0x0},
 };

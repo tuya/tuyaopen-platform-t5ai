@@ -192,6 +192,7 @@ OPERATE_RET tkl_ai_init(TKL_AUDIO_CONFIG_T *pconfig, int32_t count)
         if (pconfig->mic_volume) {
             onboard_mic_cfg.adc_cfg.dig_gain = (uint32_t)(pconfig->mic_volume * 0x3F / 100);
         }
+
         onboard_dual_mic_cfg.adc_cfg.bits = pconfig->datebits;
         if (sample_rate == 16000 || sample_rate == 8000) {
             onboard_dual_mic_cfg.adc_cfg.sample_rate = sample_rate;
@@ -202,6 +203,7 @@ OPERATE_RET tkl_ai_init(TKL_AUDIO_CONFIG_T *pconfig, int32_t count)
         /* one farme size, 20ms */
         onboard_dual_mic_cfg.frame_size = frame_size;
         onboard_dual_mic_cfg.out_block_size = onboard_dual_mic_cfg.frame_size;
+        onboard_dual_mic_cfg.adc_cfg.clk_src = AUD_CLK_APLL;
         memcpy(&voice_cfg.mic_cfg.onboard_dual_dmic_mic_cfg, &onboard_dual_mic_cfg,
                sizeof(onboard_dual_dmic_mic_stream_cfg_t));
     } else {
@@ -220,6 +222,9 @@ OPERATE_RET tkl_ai_init(TKL_AUDIO_CONFIG_T *pconfig, int32_t count)
         } else {
             onboard_mic_cfg.adc_cfg.chl_num = 1;
         }
+
+        onboard_mic_cfg.task_prio = 2;
+        onboard_mic_cfg.task_stack = 4096;
 
         memcpy(&voice_cfg.mic_cfg.onboard_mic_cfg, &onboard_mic_cfg,
                sizeof(onboard_mic_stream_cfg_t));
@@ -270,9 +275,13 @@ OPERATE_RET tkl_ai_init(TKL_AUDIO_CONFIG_T *pconfig, int32_t count)
             voice_cfg.enc_common.frame_in_ms = TIME_SAMPLE_MS;
             voice_cfg.enc_common.frame_in_size = frame_size;
         }
-        aec_v3_alg_cfg.aec_cfg.drc = 0x1f;
-        aec_v3_alg_cfg.aec_cfg.voice_vol = 0x32;
+        aec_v3_alg_cfg.aec_cfg.drc = 0x0a;
+        aec_v3_alg_cfg.aec_cfg.voice_vol = 0x0d;
         aec_v3_alg_cfg.aec_cfg.mode = AEC_MODE_HARDWARE;
+
+        aec_v3_alg_cfg.aec_cfg.dual_perp = DUAL_CH_90_DEGREE; //DUAL_CH_0_DEGREE;
+        aec_v3_alg_cfg.aec_cfg.ec_only_output = 1;
+
         // voice_cfg.aec_cfg.aec_alg_cfg = aec_alg_cfg;
         voice_cfg.aec_cfg.aec_alg_cfg = aec_v3_alg_cfg;
 
@@ -407,6 +416,7 @@ OPERATE_RET tkl_ai_init(TKL_AUDIO_CONFIG_T *pconfig, int32_t count)
         onboard_spk_cfg.sample_rate = sample_rate;
         /* one farme size, 20ms */
         onboard_spk_cfg.frame_size = frame_size;
+        onboard_spk_cfg.task_stack = 4096;
 
         // voice_cfg.spk_cfg.onboard_spk_cfg = onboard_spk_cfg;
         if (voice_cfg.aec_en) {
@@ -414,6 +424,12 @@ OPERATE_RET tkl_ai_init(TKL_AUDIO_CONFIG_T *pconfig, int32_t count)
         } else {
             onboard_spk_cfg.multi_out_port_num = 0;
         }
+
+        if (pconfig->card == TKL_AUDIO_TYPE_DUAL)
+        {
+            onboard_spk_cfg.clk_src = AUD_CLK_APLL;
+        }
+
         voice_cfg.spk_cfg.onboard_spk_cfg = onboard_spk_cfg;
 
 #if TKL_AUDIO_CONFIG_DUMP
@@ -493,6 +509,7 @@ OPERATE_RET tkl_ai_init(TKL_AUDIO_CONFIG_T *pconfig, int32_t count)
         voice_read_cfg.voice_read_callback = voice_read_callback;
         voice_read_cfg.args = NULL;
         voice_read_cfg.mem_type = AUDIO_MEM_TYPE_PSRAM;
+        voice_read_cfg.task_stack = 4096;
         g_voice_read_handle = bk_voice_read_init(&voice_read_cfg);
         if (!g_voice_read_handle) {
             bk_printf("%s, %d, voice read init fail\n", __func__, __LINE__);
@@ -503,6 +520,7 @@ OPERATE_RET tkl_ai_init(TKL_AUDIO_CONFIG_T *pconfig, int32_t count)
     voice_write_cfg_t voice_write_cfg = VOICE_WRITE_CFG_DEFAULT();
     voice_write_cfg.voice_handle = g_voice_handle;
     voice_write_cfg.mem_type = AUDIO_MEM_TYPE_PSRAM;
+    voice_write_cfg.node_size = 32768;
     g_voice_write_handle = bk_voice_write_init(&voice_write_cfg);
     if (!g_voice_write_handle) {
         bk_printf("%s, %d, voice write init fail\n", __func__, __LINE__);

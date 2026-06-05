@@ -68,7 +68,7 @@ def check_bootloader_bin(build_root) -> bool:
                              "normal_bootloader",
                              "bootloader.bin")
     real_md5sum = calc_md5sum(boot_file)
-    exp_md5sum = "eed24a0637a4e96749aba006807eb3b7"
+    exp_md5sum = "04071779f81970998f2b7c0a00fe5d76"
     if real_md5sum != exp_md5sum:
         print(f"Error md5sum: real[{real_md5sum}], expectation[{exp_md5sum}]")
         return False

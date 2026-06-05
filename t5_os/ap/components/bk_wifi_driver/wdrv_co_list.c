@@ -93,7 +93,7 @@ void co_list_push_back(struct co_list *list,
     ASSERT_ERR(list_hdr != NULL);
 
     // check if list is empty
-    if (co_list_is_empty(list))
+    if (co_list_is_empty(list) || (list->last == NULL))     // Modified by TUYA
     {
         // list empty => pushed element is also head
         list->first = list_hdr;

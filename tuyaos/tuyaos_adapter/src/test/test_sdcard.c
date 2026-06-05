@@ -99,7 +99,7 @@ static void __cli_sdcard_write(const char *path, const uint8_t *buf, uint32_t si
 
 static void __cli_sdcard_list_file(const char* path)
 {
-    int32_t res = 0, is_dir = 0;
+    INT_T res = 0, is_dir = 0;
     TUYA_DIR dir;
     TUYA_FILEINFO info;
     char *f_name = NULL;
@@ -227,6 +227,14 @@ static void __cli_sdcard_speed_test(void)
     tkl_system_sleep(100);
 }
 
+extern OPERATE_RET tkl_io_pinmux_config(TUYA_PIN_NAME_E pin, TUYA_PIN_FUNC_E pin_func);
+static void __cli_sdcard_port_test(void)
+{
+    tkl_io_pinmux_config(TUYA_IO_PIN_14, TUYA_SDIO_CLK);
+    tkl_io_pinmux_config(TUYA_IO_PIN_15, TUYA_SDIO_CMD);
+    tkl_io_pinmux_config(TUYA_IO_PIN_16, TUYA_SDIO_DATA0);
+}
+
 void cli_sdcard_test_cmd(char *pcWriteBuffer, int xWriteBufferLen, int argc, char **argv)
 {
     if (argc < 2) {
@@ -238,6 +246,8 @@ void cli_sdcard_test_cmd(char *pcWriteBuffer, int xWriteBufferLen, int argc, cha
         __cli_sdcard_mount();
     } else if (!os_strcmp(argv[1], "umount")) {
         __cli_sdcard_umount();
+    } else if (!os_strcmp(argv[1], "port")) {
+        __cli_sdcard_port_test();
     } else if (!os_strcmp(argv[1], "ls")) {
         __cli_sdcard_list_file(TEST_SDCARD_MOUNT_POINT);
     } else if (!os_strcmp(argv[1], "read")) {

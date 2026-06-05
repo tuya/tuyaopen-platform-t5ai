@@ -256,9 +256,10 @@ int wdrv_tx_msg_send(uint8_t *msg, uint16_t msg_len,uint8_t waitcfm)
         wdrv_free_cmd_buffer((uint8_t*)cpdu);
     }
 
-    return BK_OK;
+    return ret; // Modified by TUYA
 }
 
+static uint16_t s_wdrv_cmd_sn = 0;  // Modified by TUYA
 int wdrv_tx_msg(uint8_t *msg, uint16_t msg_len, wdrv_cmd_cfm *cfm, uint8_t *result)
 {
     int ret = 0;
@@ -273,6 +274,7 @@ int wdrv_tx_msg(uint8_t *msg, uint16_t msg_len, wdrv_cmd_cfm *cfm, uint8_t *resu
         return ret;
     }
     hdr = (wdrv_cmd_hdr *)msg;
+    hdr->cmd_sn = ++s_wdrv_cmd_sn;  // Modified by TUYA
 
     WDRV_LOGD("%s: msg_id:0x%x len:%d sn:%d waitcfm:%d cfm_id:%x cfm_sn:%d \n", __func__, 
             hdr->cmd_id, msg_len, hdr->cmd_sn, cfm->waitcfm, cfm->cfm_id, cfm->cfm_sn);
@@ -282,33 +284,37 @@ int wdrv_tx_msg(uint8_t *msg, uint16_t msg_len, wdrv_cmd_cfm *cfm, uint8_t *resu
         ret = rtos_init_semaphore(&cfm->sema, 1);
         if(ret == BK_OK) 
         {
+            // Modified by TUYA Start
+            cfm->cfm_buf = (uint8_t *)result;
+            cfm->cfm_id  = hdr->cmd_id + WDRV_CMD_CFM_OFFSET;
+            cfm->cfm_sn  = hdr->cmd_sn;
+
+            __asm__ volatile("" ::: "memory");
 
             WDRV_ENTER_TXMSG_CRITICAL(int_level);
             co_list_push_back((struct co_list *)&wdrv_host_env.cfm_pending_list,(struct co_list_hdr *)&cfm->list);
             WDRV_EXIT_TXMSG_CRITICAL(int_level);
 
-            cfm->cfm_buf = (uint8_t *)result;
-            cfm->cfm_id  = hdr->cmd_id + WDRV_CMD_CFM_OFFSET;
-            cfm->waitcfm = WDRV_CMD_WAITCFM;
-            cfm->cfm_sn  = hdr->cmd_sn;
             wdrv_tx_msg_send(msg, msg_len, WDRV_CMD_WAITCFM);
 
-            // The len of result-buff is PRIVATE_COMMAND_DEF_LEN.
-            if ((rtos_get_semaphore(&cfm->sema, WDRV_CMDCFM_TIMEOUT)) != 0) {
+            {
+                uint32_t t_start = rtos_get_time();
+                int sema_ret = rtos_get_semaphore(&cfm->sema, WDRV_CMDCFM_TIMEOUT);
+                uint32_t t_elapsed = rtos_get_time() - t_start;
 
-                WDRV_ENTER_TXMSG_CRITICAL(int_level);
-                co_list_extract((struct co_list *)&wdrv_host_env.cfm_pending_list,(struct co_list_hdr *)&cfm->list);
-                WDRV_EXIT_TXMSG_CRITICAL(int_level);
+                if (sema_ret != 0) {
+                    rtos_lock_mutex(&wdrv_host_env.cfm_lock);
+                    WDRV_ENTER_TXMSG_CRITICAL(int_level);
+                    co_list_extract((struct co_list *)&wdrv_host_env.cfm_pending_list,(struct co_list_hdr *)&cfm->list);
+                    WDRV_EXIT_TXMSG_CRITICAL(int_level);
+                    rtos_unlock_mutex(&wdrv_host_env.cfm_lock);
 
-                //Print AP/CP debug statistics
-                wdrv_print_debug_info();
-                wdrv_cntrl_get_cif_stats();
-
-                WDRV_LOGW("%s: cmd confirm timeout.\n", __func__);
-                ret = -3;
-            } else {
-                // receive cmd-cfm result
-                ret = cfm->cfm_len;
+                    WDRV_LOGW("%s: cmd confirm timeout, id:0x%x sn:%d waited:%dms.\n",
+                              __func__, hdr->cmd_id, hdr->cmd_sn, t_elapsed);
+                    ret = -3;
+                } else {
+                    ret = cfm->cfm_len;
+                }
             }
 
             rtos_deinit_semaphore(&cfm->sema);

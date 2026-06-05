@@ -33,7 +33,8 @@ typedef struct {
 	gpio_dev_t dev;
 } jpeg_gpio_map_t;
 
-#define jpeg_hal_soft_reset(hal) jpeg_ll_soft_reset((hal)->hw)
+#define jpeg_hal_global_soft_reset_enable(hal) jpeg_ll_global_soft_reset_enable((hal)->hw)
+#define jpeg_hal_global_soft_reset_disable(hal) jpeg_ll_global_soft_reset_disable((hal)->hw)
 #define jpeg_hal_set_global_ctrl(hal) jpeg_ll_init((hal)->hw)
 #define jpeg_hal_enable_end_yuv_int(hal) jpeg_ll_enable_end_yuv_int((hal)->hw)
 #define jpeg_hal_disable_end_yuv_int(hal) jpeg_ll_disable_end_yuv_int((hal)->hw)

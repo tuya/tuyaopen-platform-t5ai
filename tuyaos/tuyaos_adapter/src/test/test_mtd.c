@@ -18,13 +18,14 @@ extern MTD_DEVICE_T w25q32flash_cfg;
 extern MTD_DEVICE_T gd25q127cflash_cfg;
 extern MTD_DEVICE_T gd25q32flash_cfg;
 extern MTD_DEVICE_T gd5f1g_flash_cfg;
+extern MTD_DEVICE_T by25q_flash_cfg;
 
 void cli_xmtd_cmd(char *pcWriteBuffer, int xWriteBufferLen, int argc, char **argv)
 {
     int i;
     uint32_t c = 0x1;
-    uint32_t test_len = 200;
-    uint32_t addr = 0x21f000;
+    uint32_t test_len = 4096;
+    uint32_t addr = 0x1000000;
 
     MTD_CFG_T cfg = {
         .nor_cfg = {
@@ -36,11 +37,11 @@ void cli_xmtd_cmd(char *pcWriteBuffer, int xWriteBufferLen, int argc, char **arg
     MTD_HANDLE handle = NULL;
 
     if (__qspi_has_inited == 0) {
-        handle = tal_mtd_init(&gd5f1g_flash_cfg, &cfg);
+        handle = tal_mtd_init(&by25q_flash_cfg, &cfg);
         __qspi_has_inited = 1;
     }
 
-    test_len <<= 10;
+    // test_len <<= 10;
     // test_len += tal_mtd_dev->block_size;
     // test_len /= tal_mtd_dev->block_size;
     // test_len *= tal_mtd_dev->block_size;
@@ -71,7 +72,7 @@ void cli_xmtd_cmd(char *pcWriteBuffer, int xWriteBufferLen, int argc, char **arg
 #if 1
 
     bk_printf("\r\n------- qspi test erase ------\r\n");
-    tal_mtd_erase(handle, 0, gd5f1g_flash_cfg.nor_dev.total_size);
+    tal_mtd_erase(handle, 0, by25q_flash_cfg.nor_dev.total_size);
     bk_printf("------- qspi large test ------\r\n");
 
     memset(read_buffer, 0x5a, test_len);

@@ -239,8 +239,10 @@ static u16 s_insert_log_cnt = 0;
 // #elif CONFIG_SOC_BK7258 && CONFIG_SYS_PRINT_DEV_UART
 // #define  SHELL_DECLARE_MEMORY_ATTR __attribute__((section(".dtcm_section")))
 // #else
-#define  SHELL_DECLARE_MEMORY_ATTR SPINLOCK_SECTION
+// #define  SHELL_DECLARE_MEMORY_ATTR SPINLOCK_SECTION
 // #endif
+
+#define  SHELL_DECLARE_MEMORY_ATTR
 
 beken_semaphore_t   log_buf_semaphore = NULL;
 
@@ -253,7 +255,9 @@ static SHELL_DECLARE_MEMORY_ATTR u16   buff3_free_list[SHELL_LOG_BUF3_NUM];
 
 
 /*    queue sort ascending in blk_len.    */
-static SPINLOCK_SECTION free_queue_t       free_queue[3] =
+// static SPINLOCK_SECTION free_queue_t       free_queue[3] =
+// according 6233
+static free_queue_t       free_queue[3] =
 	{
 		{.log_buf = shell_log_buff3, .blk_list = buff3_free_list, .blk_num = SHELL_LOG_BUF3_NUM, \
 			.blk_len = SHELL_LOG_BUF3_LEN, .list_out_idx = 0, .list_in_idx = 0, \

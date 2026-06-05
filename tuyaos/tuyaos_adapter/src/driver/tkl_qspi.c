@@ -619,7 +619,7 @@ bk_err_t bk_lcd_qspi_quad_write_stops(qspi_id_t qspi_id)
         sd_command.cmd_size = 1;
         sd_command.addr_lines = qspi_infos[port].dma_data_lines;
         sd_command.data_size = size - 1;
-        sd_command.data = (uint8_t *)(data + 1);
+        sd_command.data = (uint8_t *)(((uint8_t *)data) + 1);
         sd_command.data_lines = qspi_infos[port].dma_data_lines;
         ret = tkl_qspi_comand(port,  &sd_command);
         if ((qspi_infos[port].cb) && (ret == OPRT_OK)) {
@@ -688,6 +688,39 @@ typedef union {
     char ponit[4];
 }data_union_s;
 
+static void qspi_pack_cmd_addr_le(const TUYA_QSPI_CMD_T *command, uint32_t *out_h, uint32_t *out_l)
+{
+    uint8_t bytes[8] = {0};
+    uint8_t i = 0;
+    uint8_t total = 0;
+
+    if (command == NULL || out_h == NULL || out_l == NULL) {
+        return;
+    }
+
+    total = command->cmd_size + command->addr_size;
+    if (total > sizeof(bytes)) {
+        total = sizeof(bytes);
+    }
+
+    for (i = 0; i < command->cmd_size && i < sizeof(bytes); i++) {
+        bytes[i] = command->cmd[i];
+    }
+
+    for (i = 0; i < command->addr_size && (command->cmd_size + i) < sizeof(bytes); i++) {
+        bytes[command->cmd_size + i] = command->addr[i];
+    }
+
+    *out_h = ((uint32_t)bytes[0]) |
+             ((uint32_t)bytes[1] << 8) |
+             ((uint32_t)bytes[2] << 16) |
+             ((uint32_t)bytes[3] << 24);
+    *out_l = ((uint32_t)bytes[4]) |
+             ((uint32_t)bytes[5] << 8) |
+             ((uint32_t)bytes[6] << 16) |
+             ((uint32_t)bytes[7] << 24);
+}
+
 static uint32_t line_data_get(TUYA_QSPI_WIRE_MODE_E cmdlines, uint8_t cmd_len, TUYA_QSPI_WIRE_MODE_E addrlines, uint8_t addr_len)
 {
     int i = 0;
@@ -723,7 +756,6 @@ static uint32_t line_data_get(TUYA_QSPI_WIRE_MODE_E cmdlines, uint8_t cmd_len, T
  OPERATE_RET tkl_qspi_comand(TUYA_QSPI_NUM_E port, TUYA_QSPI_CMD_T *command)
  {
     bk_err_t ret = BK_OK;
-    data_union_s union_data;
     uint32_t c_l = 0;
     uint32_t c_h = 0;
 
@@ -755,45 +787,14 @@ static uint32_t line_data_get(TUYA_QSPI_WIRE_MODE_E cmdlines, uint8_t cmd_len, T
          return OPRT_COM_ERROR;
      return OPRT_OK;
 #endif
-    uint32_t  ucmd = 0;
-    uint32_t  uaddr = 0;
-    // get cmd
-    union_data.data = 0;
-    if (command->cmd_size != 0) {
-        memcpy(union_data.ponit, command->cmd, command->cmd_size);
-        ucmd = (uint32_t)union_data.data;
-    }else {
-        bk_printf("cmd size is 0\r\n");
-        // return -1;
-    }
-    // get addr
-    union_data.data = 0;
-    if (command->addr_size != 0) {
-        memcpy(union_data.ponit, command->addr, command->addr_size);
-        uaddr = (uint32_t)union_data.data;
-    }
-
     if (command->op == TUYA_QSPI_WRITE) {
         qspi_hal_set_cmd_c_l(&s_tkl_qspi[port].hal, 0);
         qspi_hal_set_cmd_c_h(&s_tkl_qspi[port].hal, 0);
         qspi_hal_set_cmd_c_cfg1(&s_tkl_qspi[port].hal, 0);
         qspi_hal_set_cmd_c_cfg2(&s_tkl_qspi[port].hal, 0);
-        // bk_printf("write addr:%x, ucmd:%x, addr_size:%d, cmd_size:%d, data_size:%d \r\n", uaddr, ucmd, command->addr_size, command->cmd_size, command->data_size);
-
-        c_h = ucmd;
-        int8_t off = 4 - command->cmd_size;  //cmd : 0 1 2
-        if(off > 0) {
-            c_h = (uint32_t) (ucmd | (uaddr << command->cmd_size * 8));
-        }else {//command->cmd_size >= 4
-            bk_printf("cmd size is out of 4 \r\n");
-            return OPRT_INVALID_PARM;
-        }
+        qspi_pack_cmd_addr_le(command, &c_h, &c_l);
         qspi_hal_set_cmd_c_h(&s_tkl_qspi[port].hal, c_h);
-        if(command->cmd_size + command->addr_size > 4) {
-            off = command->cmd_size + command->addr_size - 4;
-            c_l = uaddr >> ((4 - off) * 8);
-            qspi_hal_set_cmd_c_l(&s_tkl_qspi[port].hal, c_l);
-        }
+        qspi_hal_set_cmd_c_l(&s_tkl_qspi[port].hal, c_l);
         uint32_t date_lines = line_data_get(command->cmd_lines, command->cmd_size, command->addr_lines, command->addr_size);
         qspi_hal_set_cmd_c_cfg1(&s_tkl_qspi[port].hal, date_lines); // all 0 line
 
@@ -827,21 +828,9 @@ static uint32_t line_data_get(TUYA_QSPI_WIRE_MODE_E cmdlines, uint8_t cmd_len, T
         qspi_hal_set_cmd_d_cfg1(&s_tkl_qspi[port].hal, 0);
         qspi_hal_set_cmd_d_cfg2(&s_tkl_qspi[port].hal, 0);
 
-        // bk_printf("read addr:%x, ucmd:%x, addr_size:%d, cmd_size:%d, data_size:%d \r\n", uaddr, ucmd, command->addr_size, command->cmd_size, command->data_size);
-        c_h = ucmd;
-        int8_t off = 4 - command->cmd_size;  //cmd : 0 1 2
-        if(off > 0) {
-            c_h = (uint32_t) (ucmd | (uaddr << command->cmd_size * 8));
-        }else {//command->cmd_size >= 4
-            bk_printf("cmd size is out of 4 \r\n");
-            return OPRT_INVALID_PARM;
-        }
+        qspi_pack_cmd_addr_le(command, &c_h, &c_l);
         qspi_hal_set_cmd_d_h(&s_tkl_qspi[port].hal, c_h);
-        if(command->cmd_size + command->addr_size > 4) {
-            off = command->cmd_size + command->addr_size - 4;
-            c_l = uaddr >> ((4 - off) * 8);
-            qspi_hal_set_cmd_d_l(&s_tkl_qspi[port].hal, c_l);
-        }
+        qspi_hal_set_cmd_d_l(&s_tkl_qspi[port].hal, c_l);
         uint32_t date_lines = line_data_get(command->cmd_lines, command->cmd_size, command->addr_lines, command->addr_size);
         qspi_hal_set_cmd_d_cfg1(&s_tkl_qspi[port].hal, date_lines); // all 0 line
         // data len

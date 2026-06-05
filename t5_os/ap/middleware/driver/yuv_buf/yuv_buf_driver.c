@@ -66,7 +66,8 @@ static void yuv_buf_deinit_common(void)
 	yuv_buf_hal_stop_yuv_mode(&s_yuv_buf.hal);
 	yuv_buf_hal_stop_h264_mode(&s_yuv_buf.hal);
 	// yuv_buf reset
-	yuv_buf_hal_soft_reset(&s_yuv_buf.hal);
+	yuv_buf_hal_global_soft_reset_enable(&s_yuv_buf.hal);
+	yuv_buf_hal_global_soft_reset_disable(&s_yuv_buf.hal);
 	// yuv_buf clk disable
 	sys_drv_set_yuv_buf_clk_en(0);
 	// yuv_buf system isr disable
@@ -293,16 +294,27 @@ bk_err_t bk_yuv_buf_deinit_partial_display(void)
 	return BK_OK;
 }
 
+bk_err_t bk_yuv_buf_global_soft_reset(uint8_t enable)
+{
+	YUV_BUF_RETURN_ON_DRIVER_NOT_INIT();
+	if (enable)
+	{
+		yuv_buf_hal_global_soft_reset_enable(&s_yuv_buf.hal);
+	}
+	else
+	{
+		yuv_buf_hal_global_soft_reset_disable(&s_yuv_buf.hal);
+	}
+	return BK_OK;
+}
+
 bk_err_t bk_yuv_buf_soft_reset(void)
 {
 	YUV_BUF_LOGV("yuv soft reset \r\n");
 	YUV_BUF_RETURN_ON_DRIVER_NOT_INIT();
 
-	uint32_t int_level = rtos_enter_critical();
-
-	yuv_buf_hal_soft_reset(&s_yuv_buf.hal);
-
-	rtos_exit_critical(int_level);
+	yuv_buf_hal_global_soft_reset_enable(&s_yuv_buf.hal);
+	yuv_buf_hal_global_soft_reset_disable(&s_yuv_buf.hal);
 
 	return BK_OK;
 }

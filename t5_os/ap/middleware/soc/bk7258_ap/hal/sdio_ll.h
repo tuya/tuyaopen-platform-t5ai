@@ -24,6 +24,11 @@
 extern "C" {
 #endif
 
+// Modified by TUYA Start
+// TUYA: 运行期 SDIO 线宽（1/4），替代编译期 4线开关
+extern uint8_t tuya_sdio_line_mode(void);
+// Modified by TUYA End
+
 #define SDIO_LL_REG_BASE(_sdio_host_unit_id)    (SOC_SDIO_REG_BASE)
 #define SDIO_HOST_DEFAULT_TX_FIFO_THRD      (0x01) // 16byte
 #define SDIO_HOST_DEFAULT_RX_FIFO_THRD      (0x01)
@@ -215,11 +220,17 @@ static inline void sdio_host_ll_set_write_data(sdio_hw_t *hw, uint32_t size)
 {
 	hw->sd_fifo_threshold.tx_fifo_reset = 1;
 	hw->sd_fifo_threshold.sd_state_reset = 1;
+// Modified by TUYA Start
+#if 1 /* TUYA: 运行期线宽 */
+	hw->sd_data_ctrl.sd_data_bus = (tuya_sdio_line_mode() == 4) ? 1 : 0;
+#else
 #ifdef CONFIG_SDCARD_BUSWIDTH_4LINE
 	hw->sd_data_ctrl.sd_data_bus = 1;
 #else
 	hw->sd_data_ctrl.sd_data_bus = 0;
 #endif
+#endif
+// Modified by TUYA End
 	hw->sd_data_ctrl.sd_data_mul_blk = 0;
 	hw->sd_data_ctrl.sd_data_blk = size & 0xfff;
 	hw->sd_data_ctrl.sd_byte_sel = 1;
@@ -229,11 +240,17 @@ static inline void sdio_host_ll_set_write_multi_block_data(sdio_hw_t *hw, uint32
 {
 	hw->sd_fifo_threshold.tx_fifo_reset = 1;
 	hw->sd_fifo_threshold.sd_state_reset = 1;
+// Modified by TUYA Start
+#if 1 /* TUYA: 运行期线宽 */
+	hw->sd_data_ctrl.sd_data_bus = (tuya_sdio_line_mode() == 4) ? 1 : 0;
+#else
 #ifdef CONFIG_SDCARD_BUSWIDTH_4LINE
 	hw->sd_data_ctrl.sd_data_bus = 1;
 #else
 	hw->sd_data_ctrl.sd_data_bus = 0;
 #endif
+#endif
+// Modified by TUYA End
 	hw->sd_data_ctrl.sd_data_mul_blk = 1;
 	hw->sd_data_ctrl.sd_data_blk = size & 0xfff;
 	hw->sd_data_ctrl.sd_byte_sel = 1;
@@ -243,11 +260,17 @@ static inline void sdio_host_ll_set_read_data(sdio_hw_t *hw, uint32_t block_size
 {
 	hw->sd_fifo_threshold.sd_state_reset = 1;
 	hw->sd_fifo_threshold.rx_fifo_reset = 1;
+// Modified by TUYA Start
+#if 1 /* TUYA: 运行期线宽 */
+	hw->sd_data_ctrl.sd_data_bus = (tuya_sdio_line_mode() == 4) ? 1 : 0;
+#else
 #ifdef CONFIG_SDCARD_BUSWIDTH_4LINE
 	hw->sd_data_ctrl.sd_data_bus = 1;
 #else
 	hw->sd_data_ctrl.sd_data_bus = 0;
 #endif
+#endif
+// Modified by TUYA End
 	hw->sd_data_ctrl.sd_data_mul_blk = 0;
 #if CONFIG_SOC_BK7256XX
 		hw->sd_data_ctrl.sd_data_blk = 0;
@@ -261,11 +284,17 @@ static inline void sdio_host_ll_set_read_multi_block_data(sdio_hw_t *hw, uint32_
 {
 	hw->sd_fifo_threshold.sd_state_reset = 1;
 	hw->sd_fifo_threshold.rx_fifo_reset = 1;
+// Modified by TUYA Start
+#if 1 /* TUYA: 运行期线宽 */
+	hw->sd_data_ctrl.sd_data_bus = (tuya_sdio_line_mode() == 4) ? 1 : 0;
+#else
 #ifdef CONFIG_SDCARD_BUSWIDTH_4LINE
 	hw->sd_data_ctrl.sd_data_bus = 1;
 #else
 	hw->sd_data_ctrl.sd_data_bus = 0;
 #endif
+#endif
+// Modified by TUYA End
 	hw->sd_data_ctrl.sd_data_mul_blk = 1;
 #if CONFIG_SOC_BK7256XX
 	hw->sd_data_ctrl.sd_data_blk = 0;

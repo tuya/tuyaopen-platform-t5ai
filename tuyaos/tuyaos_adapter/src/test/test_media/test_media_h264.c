@@ -16,7 +16,7 @@ static TKL_VENC_CONFIG_T test_h264_config;
 static TaskHandle_t __h264_record_thread = NULL;
 static uint32_t __test_media_h264_running = 0;
 
-static int32_t __h264_cb(TKL_VENC_FRAME_T *pframe)
+static INT_T __h264_cb(TKL_VENC_FRAME_T *pframe)
 {
     if (max_h264_frame < pframe->buf_size) {
         max_h264_frame = pframe->buf_size;

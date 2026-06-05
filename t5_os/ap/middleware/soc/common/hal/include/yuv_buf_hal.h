@@ -27,7 +27,8 @@ typedef struct {
 	yuv_buf_hw_t *hw;
 } yuv_buf_hal_t;
 
-#define yuv_buf_hal_soft_reset(hal) yuv_buf_ll_soft_reset((hal)->hw)
+#define yuv_buf_hal_global_soft_reset_enable(hal) yuv_buf_ll_global_soft_reset_enable((hal)->hw)
+#define yuv_buf_hal_global_soft_reset_disable(hal) yuv_buf_ll_global_soft_reset_disable((hal)->hw)
 #define yuv_buf_hal_set_global_ctrl(hal) yuv_buf_ll_init((hal)->hw)
 #define yuv_buf_hal_set_em_base_addr(hal, address) yuv_buf_ll_set_em_base_addr((hal)->hw, address)
 #define yuv_buf_hal_set_emr_base_addr(hal, address) yuv_buf_ll_set_emr_base_addr((hal)->hw, address)

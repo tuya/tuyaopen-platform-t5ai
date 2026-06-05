@@ -393,6 +393,8 @@ static void cc_scan_thread(beken_thread_arg_t arg)
 		cc_scan_handle = NULL;
 	}
 
+	bk_wifi_bcn_cc_rxed_cb(NULL, 0);    // Modified by TUYA
+
 	g_scan_cc_thread = NULL;
 	rtos_delete_thread(NULL);
 }

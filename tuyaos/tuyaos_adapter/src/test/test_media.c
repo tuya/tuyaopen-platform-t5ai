@@ -29,7 +29,7 @@ static volatile uint8_t rotate = 3;
 static void __test_app_lcd_component(void);
 
 /**********************************  lvgl  **********************************/
-void __attribute__((weak)) app_recv_lv_event(uint8_t *buf, uint32_t len, void *args)
+void __attribute__((weak)) app_recv_lv_event(UCHAR_T *buf, UINT_T len, VOID *args)
 {
     os_printf("%s , this function should be defined in app\r\n", __func__);
 }
@@ -69,7 +69,7 @@ static void __test_media_open_lvgl(void)
 #endif
 }
 
-extern void __tuya_lcd_test_func(void);
+extern VOID __tuya_lcd_test_func(void);
 static void __test_app_lcd_component(void)
 {
     // __tuya_lcd_test_func();

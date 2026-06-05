@@ -168,6 +168,7 @@ if (CONFIG_I2S)
 
 	list(APPEND srcs
 		i2s/i2s_driver.c
+		i2s/i2s_multi_driver.c
 	)
 endif()
 

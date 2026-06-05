@@ -59,8 +59,8 @@ bk_err_t cif_bk_cmd_confirm(struct bk_msg_hdr *rx_msg, uint8_t *cfm_data, uint16
     buf->co_hdr.length = buf_len;
     buf->co_hdr.type = RX_BK_CMD_DATA;
     buf->co_hdr.special_type = 0;
-    buf->msg_hdr.id = rx_msg->cmd_id + BK_CMD_CFM_OFFSET;
     buf->msg_hdr.cfm_sn = rx_msg ? rx_msg->cmd_sn:0;
+    buf->msg_hdr.id = rx_msg ? rx_msg->cmd_id + BK_CMD_CFM_OFFSET : 0;  // Modified by TUYA
     buf->msg_hdr.param_len = cfm_len;
 
     if (cfm_data && cfm_len)

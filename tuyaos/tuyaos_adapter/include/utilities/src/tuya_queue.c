@@ -174,7 +174,20 @@ OPERATE_RET tuya_queue_output(TUYA_QUEUE_HANDLE handle, const void *item)
 
     QUEUE_LOCK(queue);
     if(queue->queue_free < queue->queue_len) {
-        QUEUE_ITEM_T *queue_item = tuya_list_entry(queue->head.next, QUEUE_ITEM_T, node);
+        P_LIST_HEAD first_node = queue->head.next;
+        if (first_node == NULL || first_node == &queue->head) {
+            queue->queue_free = queue->queue_len;
+            QUEUE_UNLOCK(queue);
+            return OPRT_NOT_FOUND;
+        }
+        if (first_node->next == NULL || first_node->prev == NULL ||
+            ((uint32_t)first_node->next & 0x3) != 0 ||
+            ((uint32_t)first_node->prev & 0x3) != 0) {
+            queue->queue_free = queue->queue_len;
+            QUEUE_UNLOCK(queue);
+            return OPRT_COM_ERROR;
+        }
+        QUEUE_ITEM_T *queue_item = tuya_list_entry(first_node, QUEUE_ITEM_T, node);
         if(item) {
             memcpy((void *)item, queue_item->data, queue->item_size);
         }

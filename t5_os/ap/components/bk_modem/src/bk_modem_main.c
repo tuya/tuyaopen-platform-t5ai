@@ -135,13 +135,15 @@ static void bk_modem_thread_main(void *args)
             case MSG_MODEM_UART_INIT:
             {
                 // Initialize UART interface to modem
+                uint32_t baud = (bk_modem_env.comm_proto == PPP_MODE) ?
+                                BK_MODEM_UART_BAUD : BK_MODEM_UART_3M_BAUD;
                 rtos_delay_milliseconds(3000);
-                bk_modem_power_on_modem();              
+                bk_modem_power_on_modem();
 
-                if (BK_OK == bk_modem_uart_init(BK_MODEM_UART_3M_BAUD))
+                if (BK_OK == bk_modem_uart_init(baud))
                 {
                     bk_modem_set_state(MODEM_CHECK);
-                    bk_modem_send_msg(MSG_MODEM_CHECK, 0, 0, 0);                
+                    bk_modem_send_msg(MSG_MODEM_CHECK, 0, 0, 0);
                 }
                 else
                 {
@@ -308,8 +310,11 @@ bk_err_t bk_modem_init(uint8_t comm_proto, uint8_t comm_if)
         {
             bk_modem_send_msg(MSG_MODEM_USBH_POWER_ON, 0, 0, 0);
         }
-        else  
-            // PPP over UART not supported yet
+        else if (comm_if == UART_IF)
+        {
+            bk_modem_send_msg(MSG_MODEM_UART_INIT, 0, 0, 0);
+        }
+        else
             goto init_fail;
     }
     else if (comm_proto == UART_NIC_MODE)

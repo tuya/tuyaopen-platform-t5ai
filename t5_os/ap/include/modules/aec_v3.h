@@ -98,7 +98,7 @@ extern "C" {
 
 #define AsymWin                 (!SymWin)      // 6ms  delay
 
- typedef struct
+typedef struct
 {
     int32_t alpha;
     int32_t sm  [3];
@@ -108,12 +108,13 @@ extern "C" {
     int32_t pSNR[FFT_LEN_NB_HF * BD + 1];
 } NSContext;
 
+
 typedef struct _AECContext
 {
     uint8_t  flags;
     uint8_t  mic_swap;
     uint8_t  interweave;
-    uint8_t  dump;
+    uint8_t  relay;
     uint8_t  test;
     uint8_t  vol;
     uint8_t  vol_mem;
@@ -131,7 +132,6 @@ typedef struct _AECContext
     int16_t  cutbin1;
     int16_t  cutbin2;
     int16_t  hr_bin;
-    int16_t  NspCoe;
     int16_t  sbnum;
     int16_t  fftlen;
     int16_t  Flen;
@@ -157,11 +157,13 @@ typedef struct _AECContext
     int16_t  phs_s0;
     int16_t  phs_s1;
     uint16_t minG;
+    int32_t  NspCoe;
     int32_t  gainp;
     int32_t  ec_thr;
     int32_t  ec_thr2;
     int32_t  mic_bg;
     int32_t  mic_max;
+    int32_t  mic_min;
     int32_t  ref_max;
     int32_t  mic_eng;
     int32_t  ref_eng;
@@ -175,6 +177,7 @@ typedef struct _AECContext
     int32_t  drc_gain;
     int32_t  phs_min;
     int32_t  phs_old;
+    int32_t  phs_thr;
     uint32_t frame_cnt;
 
     int16_t *ana_win;
@@ -192,6 +195,8 @@ typedef struct _AECContext
     int32_t *RF;
     int32_t *AF;
     int32_t *ang;
+    int32_t *EP;
+    int32_t *EO;
 
     int16_t drc_pos[6];
     int16_t ec_coe[MaxBand];
@@ -222,10 +227,10 @@ typedef struct _AECContext
     int32_t Hold[(FFT_LEN_NB_HF + 1) * 2 * BD];
     #endif
     #if GTCRN_ENABLE
-    void (*gtcrn_proc_fp)(void *pgtcrn, int32_t *spec, uint8_t *scratch);
+    void (*gtcrn_proc_fp)(void *pgtcrn, int32_t *spec, uint8_t *scratch, uint8_t* relay);
     void  *pGTCRN;
     #endif
-    int16_t   refbuff[0];
+    int16_t refbuff[0];
 } AECContext;
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -273,13 +278,17 @@ void    data_generate(Sweep_Info * sweep, int16_t * data, int32_t framelen);
 
  
 
+
 enum AEC_CTRL_CMD
 {
     AEC_CTRL_CMD_NULL = 0,
+
     AEC_CTRL_CMD_GET_FLAGS,
     AEC_CTRL_CMD_SET_FLAGS,
+
     AEC_CTRL_CMD_GET_MIC_DELAY,
     AEC_CTRL_CMD_SET_MIC_DELAY,
+
     AEC_CTRL_CMD_SET_DRC,
     AEC_CTRL_CMD_SET_EC_DEPTH,
     AEC_CTRL_CMD_SET_NS_LEVEL,
@@ -296,6 +305,7 @@ enum AEC_CTRL_CMD
     AEC_CTRL_CMD_SET_DRC_TAB,
     AEC_CTRL_CMD_SET_EQ_TAB,
     AEC_CTRL_CMD_SET_REF_UP,
+    AEC_CTRL_CMD_SET_DUAL_PERP,
     AEC_CTRL_CMD_GET_RX_BUF,
     AEC_CTRL_CMD_GET_TX_BUF,
     AEC_CTRL_CMD_GET_OUT_BUF,
@@ -309,6 +319,10 @@ enum AEC_CTRL_CMD
     AEC_CTRL_CMD_SET_GTTEMP,
     AEC_CTRL_CMD_SET_GTBUFF,
     AEC_CTRL_CMD_SET_GTPROC,
+
+    AEC_CTRL_CMD_SET_RELAY,
+    AEC_CTRL_CMD_SET_EPBUFF,
+    AEC_CTRL_CMD_SET_EOBUFF,
 };
  
 /**
@@ -550,7 +564,7 @@ void aec_ctrl(AECContext* aec, uint32_t cmd, uint32_t arg);
 void aec_proc(AECContext* aec, int16_t* rin, int16_t* sin, int16_t* out);
 uint32_t aec_ver(void);
  
-void gtcrn_proc(void * pgtcrn, int32_t * spec, uint8_t* scratch);
+void gtcrn_proc(void * pgtcrn,int32_t * spec, uint8_t* buff,uint8_t* relay);
 /**
 
 * @}
@@ -567,4 +581,4 @@ void gtcrn_proc(void * pgtcrn, int32_t * spec, uint8_t* scratch);
 
  
 
-#endif//__AEC_H__
+#endif//__AEC__V3_H__

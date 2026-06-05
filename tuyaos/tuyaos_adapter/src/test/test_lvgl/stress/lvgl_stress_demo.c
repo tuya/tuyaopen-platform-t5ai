@@ -19,7 +19,7 @@
  **********************/
 
 /**********************
- *  static PROTOTYPES
+ *  STATIC PROTOTYPES
  **********************/
 static lv_timer_t *tuya_gui_timer = NULL;
 static void auto_del(lv_obj_t * obj, uint32_t delay);
@@ -30,7 +30,7 @@ static void arc_set_end_angle_anim(void * obj, int32_t v);
 static void obj_test_task_cb(lv_timer_t * tmr);
 
 /**********************
- *  static VARIABLES
+ *  STATIC VARIABLES
  **********************/
 static lv_obj_t * main_page;
 static lv_obj_t * ta;
@@ -41,7 +41,7 @@ static uint32_t mem_free_start = 0;
  **********************/
 
 /**********************
- *   static FUNCTIONS
+ *   STATIC FUNCTIONS
  **********************/
 
 static uint32_t cnt = 0;

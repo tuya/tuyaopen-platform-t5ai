@@ -38,6 +38,7 @@ static beken_mutex_t s_usb_drv_task_mutex = NULL;
 static bool s_usb_driver_init_flag = 0;
 static bool s_usb_power_on_flag = 0;
 static bool s_usb_open_close_flag = 0;
+static uint8_t s_usb_power_pin = 0xFF;
 
 static bk_err_t usb_driver_sw_deinit();
 
@@ -109,18 +110,43 @@ static void bk_usb_init_all_device_driver_sw(void)
 #endif
 }
 
+bk_err_t bk_usb_set_power_pin(uint32_t gpio_id)
+{
+	s_usb_power_pin = gpio_id;
+	gpio_dev_unmap(gpio_id);
+	bk_gpio_set_capacity(gpio_id, 0);
+	BK_LOG_ON_ERR(bk_gpio_disable_input(gpio_id));
+	BK_LOG_ON_ERR(bk_gpio_enable_output(gpio_id));
+	bk_gpio_set_output_low(gpio_id);
+
+	USB_DRIVER_LOGD("USB power pin set: gpio_id=%d\r\n", gpio_id);
+	
+	return BK_OK;
+}
+
 bk_err_t bk_usb_power_ops(uint32_t gpio_id, bool ops)
 {
 	if (ops)
 	{
 		USB_RETURN_NOT_POWERED_DOWN();
-		bk_gpio_ctrl_external_ldo(GPIO_CTRL_LDO_MODULE_USB, gpio_id, GPIO_OUTPUT_STATE_HIGH);
+		// Use registered callback if available, otherwise use default
+		if (s_usb_power_pin != 0xFF) {
+			bk_gpio_set_output_high(s_usb_power_pin);
+		} else {
+			bk_gpio_ctrl_external_ldo(GPIO_CTRL_LDO_MODULE_USB, gpio_id, GPIO_OUTPUT_STATE_HIGH);
+		}
 		s_usb_power_on_flag = ops;
 	}
 	else
 	{
 		USB_RETURN_NOT_POWERED_ON();
-		bk_gpio_ctrl_external_ldo(GPIO_CTRL_LDO_MODULE_USB, gpio_id, GPIO_OUTPUT_STATE_LOW);
+		// Use registered callback if available, otherwise use default
+		if (s_usb_power_pin != 0xFF) {
+			bk_gpio_set_output_low(s_usb_power_pin);
+		} else {
+			bk_gpio_ctrl_external_ldo(GPIO_CTRL_LDO_MODULE_USB, gpio_id, GPIO_OUTPUT_STATE_LOW);
+		}
+		
 		s_usb_power_on_flag = ops;
 	}
 

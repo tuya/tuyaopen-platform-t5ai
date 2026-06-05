@@ -965,6 +965,479 @@ void cli_2bd_slave_test_cmd(char *pcWriteBuffer, int xWriteBufferLen, int argc, 
 }
 
 
+// for i2s multi driver test
+static RingBufferContext *i2s0_ch1_tx_rb;
+static RingBufferContext *i2s0_ch1_rx_rb;
+static RingBufferContext *i2s1_ch1_tx_rb;
+static RingBufferContext *i2s1_ch1_rx_rb;
+static RingBufferContext *i2s2_ch1_tx_rb;
+static RingBufferContext *i2s2_ch1_rx_rb;
+
+static uint8_t *i2s0_ch1_tx_temp = NULL;
+static uint8_t *i2s0_ch1_rx_temp = NULL;
+static uint8_t *i2s1_ch1_tx_temp = NULL;
+static uint8_t *i2s1_ch1_rx_temp = NULL;
+static uint8_t *i2s2_ch1_tx_temp = NULL;
+static uint8_t *i2s2_ch1_rx_temp = NULL;
+
+static int i2s0_ch1_tx_data_handle_cb(uint32_t size)
+{
+	ring_buffer_write(i2s0_ch1_tx_rb, i2s0_ch1_tx_temp, size);
+	static uint32_t count = 1;
+	if (count++ % 50000 == 0) {
+		BK_LOGE(NULL, "%s, size: %d \n", __func__, size);
+		count = 1;
+	}	
+	return size;
+}
+
+static int i2s0_ch1_rx_data_handle_cb(uint32_t size)
+{
+	ring_buffer_read(i2s0_ch1_rx_rb, i2s0_ch1_rx_temp, size);
+	uint16_t *rx_tmp = (uint16_t *)i2s0_ch1_rx_temp;
+	static uint32_t count = 0;
+	count += 10;
+	if (count == 100) {
+		count = 0;
+	}
+	static uint32_t total_count = 0;
+	total_count++;
+	if (total_count % 1000 == 0) {
+		bk_printf("i2s0_ch1_rx_temp %d: 0x%04x 0x%04x 0x%04x \n", count, rx_tmp[count], rx_tmp[count + 1], rx_tmp[count + 2]);
+	}
+	// bk_printf("i2s0_ch1_rx_temp %d: 0x%04x 0x%04x 0x%04x \n", count, rx_tmp[count], rx_tmp[count + 1], rx_tmp[count + 2]);
+	return size;
+}
+
+static int i2s1_ch1_tx_data_handle_cb(uint32_t size)
+{
+	ring_buffer_write(i2s1_ch1_tx_rb, i2s1_ch1_tx_temp, size);
+	static uint32_t count = 1;
+	if (count++ % 50000 == 0) {
+		BK_LOGE(NULL, "%s, size: %d \n", __func__, size);
+		count = 1;
+	}		
+	return size;
+}
+
+static int i2s1_ch1_rx_data_handle_cb(uint32_t size)
+{
+	ring_buffer_read(i2s1_ch1_rx_rb, i2s1_ch1_rx_temp, size);
+	uint16_t *rx_tmp = (uint16_t *)i2s1_ch1_rx_temp;
+	static uint32_t count = 0;
+	count += 10;
+	if (count == 100) {
+		count = 0;
+	}
+
+	static uint32_t total_count = 0;
+	total_count++;
+	if (total_count % 1000 == 0) {
+		bk_printf("i2s1_ch1_rx_temp %d: 0x%04x 0x%04x 0x%04x \n", count, rx_tmp[count], rx_tmp[count + 1], rx_tmp[count + 2]);
+	}	
+	// bk_printf("i2s1_ch1_rx_tmp %d: 0x%04x 0x%04x 0x%04x \n", count, rx_tmp[count], rx_tmp[count + 1], rx_tmp[count + 2]);
+	return size;
+}
+
+static int i2s2_ch1_tx_data_handle_cb(uint32_t size)
+{
+	ring_buffer_write(i2s2_ch1_tx_rb, i2s2_ch1_tx_temp, size);
+	static uint32_t count = 1;
+	if (count++ % 50000 == 0) {
+		BK_LOGE(NULL, "%s, size: %d \n", __func__, size);
+		count = 1;
+	}		
+	return size;
+}
+
+static int i2s2_ch1_rx_data_handle_cb(uint32_t size)
+{
+	ring_buffer_read(i2s2_ch1_rx_rb, i2s2_ch1_rx_temp, size);
+	uint16_t *rx_tmp = (uint16_t *)i2s2_ch1_rx_temp;
+	static uint32_t count = 0;
+	count += 10;
+	if (count == 100) {
+		count = 0;
+	}
+
+	static uint32_t total_count = 0;
+	total_count++;
+	if (total_count % 1000 == 0) {
+		bk_printf("i2s2_ch1_rx_temp %d: 0x%04x 0x%04x 0x%04x \n", count, rx_tmp[count], rx_tmp[count + 1], rx_tmp[count + 2]);
+	}	
+	// bk_printf("i2s2_ch1_rx_tmp %d: 0x%04x 0x%04x 0x%04x \n", count, rx_tmp[count], rx_tmp[count + 1], rx_tmp[count + 2]);
+	return size;
+}
+
+void cli_i2s_multi_driver_test_cmd(char *pcWriteBuffer, int xWriteBufferLen, int argc, char **argv)
+{
+	i2s_config_t i2s_config = DEFAULT_I2S_CONFIG();
+	bk_err_t ret = BK_OK;
+	uint32_t size = 0;
+
+	if (argc != 4) {
+		cli_i2s_help();
+		return;
+	}
+
+	i2s_gpio_group_id_t i2s_id = os_strtoul(argv[2], NULL, 10);
+	uint32_t trans_type = os_strtoul(argv[3], NULL, 10); // 0: tx, 1: rx 2: tx and rx
+
+	if (os_strcmp(argv[1], "start") == 0) {
+		BK_LOGD(NULL, "i2s master test by id: %d  trans_type: %d start\r\n", i2s_id, trans_type);
+
+		//init i2s driver
+		bk_i2s_multi_driver_init();
+
+		if (trans_type == 0) { // master tx
+			if (i2s_id == 0) {
+				i2s0_ch1_tx_temp = os_malloc(320);
+				uint16_t *tx_tmp = (uint16_t *)i2s0_ch1_tx_temp;
+				for (int i = 0; i < 160; i++) {
+					tx_tmp[i] = i;
+				}
+
+				bk_printf("i2s0_ch1_tx_temp: \n");
+				for (int i = 0; i < 160; i++) {
+					bk_printf("0x%04x ", tx_tmp[i]);
+				}
+				bk_printf("\n");
+
+				//init i2s configure
+				i2s_config.samp_rate = I2S_SAMP_RATE_16000;
+				i2s_config.store_mode = I2S_LRCOM_STORE_16R16L;
+				bk_i2s_init_by_id(i2s_id, &i2s_config);
+				BK_LOGD(NULL, "init i2s tx id: %d driver and config successful \r\n", i2s_id);
+
+				ret = bk_i2s_chl_init_by_id(i2s_id, I2S_CHANNEL_1, I2S_TXRX_TYPE_TX, 640, i2s0_ch1_tx_data_handle_cb, &i2s0_ch1_tx_rb);
+				if (ret != BK_OK) {
+					BK_LOGD(NULL, "bk_i2s_chl_init_by_id id: %d fail \n", i2s_id);
+					return;
+				}
+
+				uint8_t *temp_data = (uint8_t *)os_malloc(640);
+				os_memset(temp_data, 0x00, 640);
+				size = ring_buffer_write(i2s0_ch1_tx_rb, temp_data, 640);
+				BK_LOGD(NULL, "ring_buffer_write, size: %d \n", size);
+				os_free(temp_data);
+				bk_i2s_start_by_id(i2s_id);
+			}else if (i2s_id == 1) {
+				i2s1_ch1_tx_temp = os_malloc(320);
+				uint16_t *tx_tmp = (uint16_t *)i2s1_ch1_tx_temp;
+				for (int i = 0; i < 160; i++) {
+					tx_tmp[i] = i;
+				}
+
+				bk_printf("i2s1_ch1_tx_temp: \n");
+				for (int i = 0; i < 160; i++) {
+					bk_printf("0x%04x ", tx_tmp[i]);
+				}
+				bk_printf("\n");
+
+				//init i2s configure
+				i2s_config.samp_rate = I2S_SAMP_RATE_16000;
+				i2s_config.store_mode = I2S_LRCOM_STORE_16R16L;
+				bk_i2s_init_by_id(i2s_id, &i2s_config);
+				BK_LOGD(NULL, "init i2s tx id: %d driver and config successful \r\n", i2s_id);
+
+				ret = bk_i2s_chl_init_by_id(i2s_id, I2S_CHANNEL_1, I2S_TXRX_TYPE_TX, 640, i2s1_ch1_tx_data_handle_cb, &i2s1_ch1_tx_rb);
+				if (ret != BK_OK) {
+					BK_LOGD(NULL, "bk_i2s_chl_init_by_id id: %d fail \n", i2s_id);
+					return;
+				}
+
+				uint8_t *temp_data = (uint8_t *)os_malloc(640);
+				os_memset(temp_data, 0x00, 640);
+				size = ring_buffer_write(i2s1_ch1_tx_rb, temp_data, 640);
+				BK_LOGD(NULL, "ring_buffer_write, size: %d \n", size);
+				os_free(temp_data);
+				bk_i2s_start_by_id(i2s_id);
+			}else if (i2s_id == 2) {
+				i2s2_ch1_tx_temp = os_malloc(320);
+				uint16_t *tx_tmp = (uint16_t *)i2s2_ch1_tx_temp;
+				for (int i = 0; i < 160; i++) {
+					tx_tmp[i] = i;
+				}
+
+				bk_printf("i2s2_ch1_tx_temp: \n");
+				for (int i = 0; i < 160; i++) {
+					bk_printf("0x%04x ", tx_tmp[i]);
+				}
+				bk_printf("\n");
+
+				//init i2s configure
+				i2s_config.samp_rate = I2S_SAMP_RATE_16000;
+				i2s_config.store_mode = I2S_LRCOM_STORE_16R16L;
+				bk_i2s_init_by_id(i2s_id, &i2s_config);
+				BK_LOGD(NULL, "init i2s tx id: %d driver and config successful \r\n", i2s_id);
+				ret = bk_i2s_chl_init_by_id(i2s_id, I2S_CHANNEL_1, I2S_TXRX_TYPE_TX, 640, i2s2_ch1_tx_data_handle_cb, &i2s2_ch1_tx_rb);
+				if (ret != BK_OK) {
+					BK_LOGD(NULL, "bk_i2s_chl_init_by_id id: %d fail \n", i2s_id);
+					return;
+				}
+
+				uint8_t *temp_data = (uint8_t *)os_malloc(640);
+				os_memset(temp_data, 0x00, 640);
+				size = ring_buffer_write(i2s2_ch1_tx_rb, temp_data, 640);
+				BK_LOGD(NULL, "ring_buffer_write, size: %d \n", size);
+				os_free(temp_data);
+				bk_i2s_start_by_id(i2s_id);
+			}
+		}
+		else if (trans_type == 1) { // slave rx
+			if (i2s_id == 0) {
+				i2s0_ch1_rx_temp = os_malloc(320);
+				os_memset(i2s0_ch1_rx_temp, 0x00, 320);
+
+				//init i2s configure
+				i2s_config.role = I2S_ROLE_SLAVE;
+				i2s_config.samp_rate = I2S_SAMP_RATE_16000;
+				i2s_config.store_mode = I2S_LRCOM_STORE_16R16L;
+				bk_i2s_init_by_id(i2s_id, &i2s_config);
+				BK_LOGD(NULL, "init i2s rx id: %d driver and config successful \r\n", i2s_id);
+
+				ret = bk_i2s_chl_init_by_id(i2s_id, I2S_CHANNEL_1, I2S_TXRX_TYPE_RX, 640, i2s0_ch1_rx_data_handle_cb, &i2s0_ch1_rx_rb);
+				if (ret != BK_OK) {
+					BK_LOGD(NULL, "bk_i2s_chl_init_by_id id: %d fail \n", i2s_id);
+					return;
+				}
+
+				bk_i2s_start_by_id(i2s_id);	
+			}else if (i2s_id == 1) {
+				i2s1_ch1_rx_temp = os_malloc(320);
+				os_memset(i2s1_ch1_rx_temp, 0x00, 320);
+
+				//init i2s configure
+				i2s_config.role = I2S_ROLE_SLAVE;
+				i2s_config.samp_rate = I2S_SAMP_RATE_16000;
+				i2s_config.store_mode = I2S_LRCOM_STORE_16R16L;
+				bk_i2s_init_by_id(i2s_id, &i2s_config);
+				BK_LOGD(NULL, "init i2s rx id: %d driver and config successful \r\n", i2s_id);
+
+				ret = bk_i2s_chl_init_by_id(i2s_id, I2S_CHANNEL_1, I2S_TXRX_TYPE_RX, 640, i2s1_ch1_rx_data_handle_cb, &i2s1_ch1_rx_rb);
+				if (ret != BK_OK) {
+					BK_LOGD(NULL, "bk_i2s_chl_init_by_id id: %d fail \n", i2s_id);
+					return;
+				}
+
+				bk_i2s_start_by_id(i2s_id);	
+			}else if (i2s_id == 2) {
+				i2s2_ch1_rx_temp = os_malloc(320);
+				os_memset(i2s2_ch1_rx_temp, 0x00, 320);
+
+				//init i2s configure
+				i2s_config.role = I2S_ROLE_SLAVE;
+				i2s_config.samp_rate = I2S_SAMP_RATE_16000;
+				i2s_config.store_mode = I2S_LRCOM_STORE_16R16L;
+				bk_i2s_init_by_id(i2s_id, &i2s_config);
+				BK_LOGD(NULL, "init i2s rx id: %d driver and config successful \r\n", i2s_id);
+
+				ret = bk_i2s_chl_init_by_id(i2s_id, I2S_CHANNEL_1, I2S_TXRX_TYPE_RX, 640, i2s2_ch1_rx_data_handle_cb, &i2s2_ch1_rx_rb);
+				if (ret != BK_OK) {
+					BK_LOGD(NULL, "bk_i2s_chl_init_by_id id: %d fail \n", i2s_id);
+					return;
+				}
+
+				bk_i2s_start_by_id(i2s_id);	
+			}
+		}
+		else if (trans_type == 2)  // only channel1 support tx and rx
+		{
+			if (i2s_id == 0) {
+				i2s0_ch1_tx_temp = os_malloc(320);
+				uint16_t *tx_tmp = (uint16_t *)i2s0_ch1_tx_temp;
+				for (int i = 0; i < 160; i++) {
+					tx_tmp[i] = i;
+				}
+	
+				bk_printf("i2s0_ch1_tx_temp: \n");
+				for (int i = 0; i < 160; i++) {
+					bk_printf("0x%04x ", tx_tmp[i]);
+				}
+				bk_printf("\n");
+	
+				//init i2s configure
+				i2s_config.samp_rate = I2S_SAMP_RATE_16000;
+				i2s_config.store_mode = I2S_LRCOM_STORE_16R16L;
+				bk_i2s_init_by_id(i2s_id, &i2s_config);
+				BK_LOGD(NULL, "init i2s tx id: %d driver and config successful \r\n", i2s_id);
+	
+				ret = bk_i2s_chl_init_by_id(i2s_id, I2S_CHANNEL_1, I2S_TXRX_TYPE_TX, 640, i2s0_ch1_tx_data_handle_cb, &i2s0_ch1_tx_rb);
+				if (ret != BK_OK) {
+					BK_LOGD(NULL, "bk_i2s_chl_init_by_id id: %d fail \n", i2s_id);
+					return;
+				}
+	
+				i2s0_ch1_rx_temp = os_malloc(320);
+				os_memset(i2s0_ch1_rx_temp, 0x00, 320);
+				ret = bk_i2s_chl_init_by_id(i2s_id, I2S_CHANNEL_1, I2S_TXRX_TYPE_RX, 640, i2s0_ch1_rx_data_handle_cb, &i2s0_ch1_rx_rb);
+				if (ret != BK_OK) {
+					BK_LOGD(NULL, "bk_i2s_chl_init_by_id id: %d fail \n", i2s_id);
+					return;
+				}
+	
+				uint8_t *temp_data = (uint8_t *)os_malloc(640);
+				os_memset(temp_data, 0x00, 640);
+				size = ring_buffer_write(i2s0_ch1_tx_rb, temp_data, 640);
+				BK_LOGD(NULL, "ring_buffer_write, size: %d \n", size);
+				os_free(temp_data);
+				bk_i2s_start_by_id(i2s_id);
+			}else if (i2s_id == 1) {
+				i2s1_ch1_tx_temp = os_malloc(320);
+				uint16_t *tx_tmp = (uint16_t *)i2s1_ch1_tx_temp;
+				for (int i = 0; i < 160; i++) {
+					tx_tmp[i] = i;
+				}
+
+				bk_printf("i2s1_ch1_tx_temp: \n");
+				for (int i = 0; i < 160; i++) {
+					bk_printf("0x%04x ", tx_tmp[i]);
+				}
+				bk_printf("\n");
+
+				//init i2s configure
+				i2s_config.samp_rate = I2S_SAMP_RATE_16000;
+				i2s_config.store_mode = I2S_LRCOM_STORE_16R16L;
+				i2s_config.role = I2S_ROLE_MASTER;
+				bk_i2s_init_by_id(i2s_id, &i2s_config);
+				BK_LOGD(NULL, "init i2s tx id: %d driver and config successful \r\n", i2s_id);
+				ret = bk_i2s_chl_init_by_id(i2s_id, I2S_CHANNEL_1, I2S_TXRX_TYPE_TX, 640, i2s1_ch1_tx_data_handle_cb, &i2s1_ch1_tx_rb);
+				if (ret != BK_OK) {
+					BK_LOGD(NULL, "bk_i2s_chl_init_by_id id: %d fail \n", i2s_id);
+					return;
+				}
+
+				i2s1_ch1_rx_temp = os_malloc(320);
+				os_memset(i2s1_ch1_rx_temp, 0x00, 320);
+				ret = bk_i2s_chl_init_by_id(i2s_id, I2S_CHANNEL_1, I2S_TXRX_TYPE_RX, 640, i2s1_ch1_rx_data_handle_cb, &i2s1_ch1_rx_rb);
+				if (ret != BK_OK) {
+					BK_LOGD(NULL, "bk_i2s_chl_init_by_id id: %d fail \n", i2s_id);
+					return;
+				}
+
+				uint8_t *temp_data = (uint8_t *)os_malloc(640);
+				os_memset(temp_data, 0x00, 640);
+				size = ring_buffer_write(i2s1_ch1_tx_rb, temp_data, 640);
+				BK_LOGD(NULL, "ring_buffer_write, size: %d \n", size);
+				os_free(temp_data);
+				bk_i2s_start_by_id(i2s_id);
+			}else if (i2s_id == 2) {
+				i2s2_ch1_tx_temp = os_malloc(320);
+				uint16_t *tx_tmp = (uint16_t *)i2s2_ch1_tx_temp;
+				for (int i = 0; i < 160; i++) {
+					tx_tmp[i] = i;
+				}
+
+				bk_printf("i2s2_ch1_tx_temp: \n");
+				for (int i = 0; i < 160; i++) {
+					bk_printf("0x%04x ", tx_tmp[i]);
+				}
+				bk_printf("\n");
+
+				//init i2s configure
+				i2s_config.samp_rate = I2S_SAMP_RATE_16000;
+				i2s_config.store_mode = I2S_LRCOM_STORE_16R16L;
+				i2s_config.role = I2S_ROLE_MASTER;
+				bk_i2s_init_by_id(i2s_id, &i2s_config);
+				BK_LOGD(NULL, "init i2s tx id: %d driver and config successful \r\n", i2s_id);
+				ret = bk_i2s_chl_init_by_id(i2s_id, I2S_CHANNEL_1, I2S_TXRX_TYPE_TX, 640, i2s2_ch1_tx_data_handle_cb, &i2s2_ch1_tx_rb);
+				if (ret != BK_OK) {
+					BK_LOGD(NULL, "bk_i2s_chl_init_by_id id: %d fail \n", i2s_id);
+					return;
+				}
+
+				i2s2_ch1_rx_temp = os_malloc(320);
+				os_memset(i2s2_ch1_rx_temp, 0x00, 320);
+				ret = bk_i2s_chl_init_by_id(i2s_id, I2S_CHANNEL_1, I2S_TXRX_TYPE_RX, 640, i2s2_ch1_rx_data_handle_cb, &i2s2_ch1_rx_rb);
+				if (ret != BK_OK) {
+					BK_LOGD(NULL, "bk_i2s_chl_init_by_id id: %d fail \n", i2s_id);
+					return;
+				}
+
+				uint8_t *temp_data = (uint8_t *)os_malloc(640);
+				os_memset(temp_data, 0x00, 640);
+				size = ring_buffer_write(i2s2_ch1_tx_rb, temp_data, 640);
+				BK_LOGD(NULL, "ring_buffer_write, size: %d \n", size);
+				os_free(temp_data);
+				bk_i2s_start_by_id(i2s_id);
+			}
+			
+		}
+		BK_LOGD(NULL, "i2s master test by id: %d trans_type: %d complete \r\n", i2s_id, trans_type);
+	} else if (os_strcmp(argv[1], "stop") == 0) {
+		BK_LOGD(NULL, "i2s master test by id: %d stop \r\n", i2s_id);
+		if (i2s_id == 0) {
+			bk_i2s_stop_by_id(i2s_id);
+			if (trans_type == 0) {
+				bk_i2s_chl_deinit_by_id(i2s_id, I2S_CHANNEL_1, I2S_TXRX_TYPE_TX);
+				os_free(i2s0_ch1_tx_temp);
+				i2s0_ch1_tx_temp = NULL;	
+			} else if (trans_type == 1) {
+				bk_i2s_chl_deinit_by_id(i2s_id, I2S_CHANNEL_1, I2S_TXRX_TYPE_RX);
+				os_free(i2s0_ch1_rx_temp);
+				i2s0_ch1_rx_temp = NULL;	
+			} else if (trans_type == 2) {
+				bk_i2s_chl_deinit_by_id(i2s_id, I2S_CHANNEL_1, I2S_TXRX_TYPE_TX);
+				bk_i2s_chl_deinit_by_id(i2s_id, I2S_CHANNEL_1, I2S_TXRX_TYPE_RX);
+				os_free(i2s0_ch1_tx_temp);
+				i2s0_ch1_tx_temp = NULL;
+				os_free(i2s0_ch1_rx_temp);
+				i2s0_ch1_rx_temp = NULL;
+			}
+			bk_i2s_deinit_by_id(i2s_id);
+			bk_i2s_multi_driver_deinit();
+		}
+		else if (i2s_id == 1) {
+			bk_i2s_stop_by_id(i2s_id);
+			if (trans_type == 0) {
+				bk_i2s_chl_deinit_by_id(i2s_id, I2S_CHANNEL_1, I2S_TXRX_TYPE_TX);
+				os_free(i2s1_ch1_tx_temp);
+				i2s1_ch1_tx_temp = NULL;	
+			} else if (trans_type == 1) {
+				bk_i2s_chl_deinit_by_id(i2s_id, I2S_CHANNEL_1, I2S_TXRX_TYPE_RX);
+				os_free(i2s1_ch1_rx_temp);
+				i2s1_ch1_rx_temp = NULL;	
+			} else if (trans_type == 2) {
+				bk_i2s_chl_deinit_by_id(i2s_id, I2S_CHANNEL_1, I2S_TXRX_TYPE_TX);
+				bk_i2s_chl_deinit_by_id(i2s_id, I2S_CHANNEL_1, I2S_TXRX_TYPE_RX);
+				os_free(i2s1_ch1_tx_temp);
+				i2s1_ch1_tx_temp = NULL;
+				os_free(i2s1_ch1_rx_temp);
+				i2s1_ch1_rx_temp = NULL;
+			}
+			bk_i2s_deinit_by_id(i2s_id);
+			bk_i2s_multi_driver_deinit();		
+		}
+		else if (i2s_id == 2) {
+			bk_i2s_stop_by_id(i2s_id);
+			if (trans_type == 0) {
+				bk_i2s_chl_deinit_by_id(i2s_id, I2S_CHANNEL_1, I2S_TXRX_TYPE_TX);
+				os_free(i2s2_ch1_tx_temp);
+				i2s2_ch1_tx_temp = NULL;	
+			} else if (trans_type == 1) {
+				bk_i2s_chl_deinit_by_id(i2s_id, I2S_CHANNEL_1, I2S_TXRX_TYPE_RX);
+				os_free(i2s2_ch1_rx_temp);
+				i2s2_ch1_rx_temp = NULL;	
+			} else if (trans_type == 2) {
+				bk_i2s_chl_deinit_by_id(i2s_id, I2S_CHANNEL_1, I2S_TXRX_TYPE_TX);
+				bk_i2s_chl_deinit_by_id(i2s_id, I2S_CHANNEL_1, I2S_TXRX_TYPE_RX);
+				os_free(i2s2_ch1_tx_temp);
+				i2s2_ch1_tx_temp = NULL;
+				os_free(i2s2_ch1_rx_temp);
+				i2s2_ch1_rx_temp = NULL;
+			}
+			bk_i2s_deinit_by_id(i2s_id);
+			bk_i2s_multi_driver_deinit();		
+		}
+
+		BK_LOGD(NULL, "i2s master test by id: %d stop successful \r\n", i2s_id);
+	}
+	else {
+		cli_i2s_help();
+		return;
+	}
+}
+
 #define I2S_CMD_CNT (sizeof(s_i2s_commands) / sizeof(struct cli_command))
 static const struct cli_command s_i2s_commands[] = {
 	{"i2s_master_test", "i2s_master_test {start|stop}", cli_i2s_master_test_cmd},
@@ -975,6 +1448,7 @@ static const struct cli_command s_i2s_commands[] = {
 	{"dtm_slave_test", "dtm_slave_test {start|stop}", cli_dtm_slave_test_cmd},
 	{"2bd_master_test", "2bd_master_test {start|stop}", cli_2bd_master_test_cmd},
 	{"2bd_slave_test", "2bd_slave_test {start|stop}", cli_2bd_slave_test_cmd},
+	{"i2s_multi_driver_test", "i2s_multi_driver_test {start|stop} {0|1|2} {0|1|2}", cli_i2s_multi_driver_test_cmd},
 };
 
 int cli_i2s_init(void)

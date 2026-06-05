@@ -321,7 +321,7 @@ int mb_ipc_cpu_is_power_off(u32 cpu_id)
 
 #if defined(SLAVE_HB_TASK)
 
-#define MB_IPC_HEARTBEAT_TIME		2000
+#define MB_IPC_HEARTBEAT_TIME		1000    // Modified by TUYA
 
 static void mb_ipc_task( void *para )
 {
@@ -341,7 +341,8 @@ bk_err_t mb_ipc_heartbeat_init(void)
 	bk_err_t	ret_val = BK_FAIL;
 
 #if defined(MASTER_HB_TASK) || defined(SLAVE_HB_TASK)
-	ret_val = rtos_smp_create_thread(NULL, BEKEN_DEFAULT_WORKER_PRIORITY, "heartbeat", mb_ipc_task, 1536, 0);
+	// ret_val = rtos_smp_create_thread(NULL, BEKEN_DEFAULT_WORKER_PRIORITY, "heartbeat", mb_ipc_task, 1536, 0);
+	ret_val = rtos_smp_create_thread(NULL, 1, "heartbeat", mb_ipc_task, 1536, 0);   // Modified by TUYA
 #endif
 
 	if(ret_val != BK_OK)

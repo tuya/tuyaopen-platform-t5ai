@@ -22,6 +22,7 @@ typedef enum {
     DEV_INNER_FLASH,
     DEV_EXT_FLASH,
     DEV_SDCARD,
+    DEV_USB_DISK,
 } FS_DEV_TYPE_T;
 
 /********************************************************************************

@@ -299,7 +299,11 @@ static u8_t                   dns_seqno;
 static struct dns_table_entry dns_table[DNS_TABLE_SIZE];
 static struct dns_req_entry   dns_requests[DNS_MAX_REQUESTS];
 static ip_addr_t              dns_servers[DNS_MAX_SERVERS];
-
+// Modified by TUYA Start
+#ifdef CONFIG_LWIP_PPP_SUPPORT
+static struct netif *         dns_servers_netif[DNS_MAX_SERVERS];
+#endif /* CONFIG_LWIP_PPP_SUPPORT */
+// Modified by TUYA End
 #if LWIP_IPV4
 const ip_addr_t dns_mquery_v4group = DNS_MQUERY_IPV4_GROUP_INIT;
 #endif /* LWIP_IPV4 */
@@ -357,6 +361,64 @@ dns_init(void)
  * @param numdns the index of the DNS server to set must be < DNS_MAX_SERVERS
  * @param dnsserver IP address of the DNS server to set
  */
+// Modified by TUYA Start
+#ifdef CONFIG_LWIP_PPP_SUPPORT
+void
+dns_setserver(u8_t numdns, const ip_addr_t *dnsserver, struct netif *netif)
+{
+    int i, j;
+    ip_addr_t  tmp_dns_servers[DNS_MAX_SERVERS] = { 0 };
+    struct netif * tmp_dns_servers_netif[DNS_MAX_SERVERS] = { 0 };
+
+    if (dnsserver == NULL) {
+      return;
+    }
+
+    for (i = 0; i < DNS_MAX_SERVERS; i++) {
+        if (dnsserver->addr == dns_servers[i].addr) {
+          return;
+        }
+    }
+
+    memcpy(tmp_dns_servers, dns_servers, sizeof(tmp_dns_servers));
+    memcpy(tmp_dns_servers_netif, dns_servers_netif, sizeof(dns_servers_netif));
+
+    for (i = 0, j = 1; i < (DNS_MAX_SERVERS - 1); i++, j++) {
+      dns_servers[j] = tmp_dns_servers[i];
+      dns_servers_netif[j] = tmp_dns_servers_netif[i];
+    }
+    dns_servers[0] = (*dnsserver);
+    dns_servers_netif[0] = netif;
+}
+void dns_servers_sort_by_default_netif(void)
+{
+  int i, j;
+  ip_addr_t  tmp_dns_servers[DNS_MAX_SERVERS] = { 0 };
+  struct netif * tmp_dns_servers_netif[DNS_MAX_SERVERS] = { 0 };
+
+  for (i = 0, j = 0; i < DNS_MAX_SERVERS; i++) {
+    if ((NULL != dns_servers_netif[i]) && (NULL != netif_default) && (dns_servers_netif[i] == netif_default)) {
+      tmp_dns_servers[j] = dns_servers[i];
+      tmp_dns_servers_netif[j] = dns_servers_netif[i];
+      j++;
+    }
+  }
+
+  for (i = 0; i < DNS_MAX_SERVERS && j < DNS_MAX_SERVERS; i++)
+  {
+    if ((NULL != dns_servers_netif[i]) && (NULL != netif_default) && (dns_servers_netif[i] == netif_default)) {
+      ;
+    } else {
+      tmp_dns_servers[j] = dns_servers[i];
+      tmp_dns_servers_netif[j] = dns_servers_netif[i];
+      j++;
+    }
+  }
+
+  memcpy(dns_servers, tmp_dns_servers, sizeof(tmp_dns_servers));
+  memcpy(dns_servers_netif, tmp_dns_servers_netif, sizeof(tmp_dns_servers_netif));
+}
+#else
 void
 dns_setserver(u8_t numdns, const ip_addr_t *dnsserver)
 {
@@ -368,6 +430,8 @@ dns_setserver(u8_t numdns, const ip_addr_t *dnsserver)
     }
   }
 }
+#endif /* CONFIG_LWIP_PPP_SUPPORT */
+// Modified by TUYA End
 
 /**
  * @ingroup dns
@@ -1649,10 +1713,30 @@ dns_gethostbyname_addrtype(const char *hostname, ip_addr_t *addr, dns_found_call
       return ERR_VAL;
     }
   }
-
+// Modified by TUYA Start  
+#ifdef CONFIG_LWIP_PPP_SUPPORT
+  dns_servers_sort_by_default_netif();
+#endif
+// Modified by TUYA End
   /* queue query with specified callback */
   return dns_enqueue(hostname, hostnamelen, found, callback_arg LWIP_DNS_ADDRTYPE_ARG(dns_addrtype)
                      LWIP_DNS_ISMDNS_ARG(is_mdns));
 }
+
+#ifdef CONFIG_LWIP_PPP_SUPPORT
+void
+dns_clear_all_cache(void)
+{
+  int i;
+  struct dns_table_entry *entry = NULL;
+
+  for (i = 0; i < DNS_TABLE_SIZE; ++i) {
+    entry = &dns_table[i];
+    if (entry->state == DNS_STATE_DONE) {
+      entry->state = DNS_STATE_UNUSED;
+    }
+  }
+}
+#endif /* CONFIG_LWIP_PPP_SUPPORT */
 
 #endif /* LWIP_DNS */

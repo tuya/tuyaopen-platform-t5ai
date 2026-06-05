@@ -188,7 +188,19 @@ int32_t tkl_system_get_minimum_heap_size(void)
 */
 TUYA_RESET_REASON_E tkl_system_get_reset_reason(char** describe)
 {
-    unsigned char value = bk_misc_get_reset_reason() & 0xFF;
+    unsigned char value = 0;
+
+    uint32_t cp_reason = bk_misc_get_cp_reset_reason();
+    uint32_t ap_reason = bk_misc_get_ap_reset_reason();
+
+    if ((cp_reason == 0) && (ap_reason == 0)) {
+        value = bk_misc_get_reset_reason() & 0xFF;
+    } else if ((cp_reason != 0) && (ap_reason == 0)) {
+        value = cp_reason;
+    } else {
+        value = ap_reason;
+    }
+
     TUYA_RESET_REASON_E ty_value;
 
     switch (value) {
@@ -239,7 +251,7 @@ TUYA_RESET_REASON_E tkl_system_get_reset_reason(char** describe)
             break;
     }
 
-    bk_printf("bk_value:%x, ty_value:%x\r\n", value, ty_value);
+    bk_printf("bk_value:%x / %x / %x, ty_value:%x\r\n", value, cp_reason, ap_reason, ty_value);
     return ty_value;
 
 }

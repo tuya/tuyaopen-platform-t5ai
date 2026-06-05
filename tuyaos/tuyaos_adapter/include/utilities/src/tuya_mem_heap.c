@@ -645,6 +645,7 @@ void* tuya_mem_heap_realloc(HEAP_HANDLE handle, void *ptr, unsigned int size)
 		return NULL;
 	}
 
+	memset(tmp, 0, size);
 	memcpy(tmp, ptr, old_block->size - MEM_BLOCK_HEAD_SIZE);
 	tuya_mem_heap_free(handle, ptr);
     return tmp;
@@ -705,6 +706,10 @@ void tuya_mem_heap_state(HEAP_HANDLE handle, heap_state_t *state)
             }
         }
     } else {
+		MEM_HeapStatus_t memst;
+		MEM_HeapStatus (pHeap, &memst);
+		state->free_block = memst.free_block;
+		state->used_block = memst.used_block;
         state->total_size = pHeap->size;
         state->free_size = pHeap->free;
         state->free_watermark = pHeap->free_watermark;

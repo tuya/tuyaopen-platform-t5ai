@@ -2130,7 +2130,11 @@ lwip_select(int maxfdp1, fd_set *readset, fd_set *writeset, fd_set *exceptset,
             (exceptset && FD_ISSET(i, exceptset))) {
           struct lwip_sock *sock;
           SYS_ARCH_PROTECT(lev);
-          sock = tryget_socket_unconn_locked(i);
+          // Modified by TUYA Start
+          // sock = tryget_socket_unconn_locked(i);
+          sock = tryget_socket_unconn_nouse(i);
+          LWIP_ASSERT("socket gone at the end of select", sock != NULL);
+          // Modified by TUYA End
           if (sock != NULL) {
             /* for now, handle select_waiting==0... */
             LWIP_ASSERT("sock->select_waiting > 0", sock->select_waiting > 0);
@@ -2138,7 +2142,7 @@ lwip_select(int maxfdp1, fd_set *readset, fd_set *writeset, fd_set *exceptset,
               sock->select_waiting--;
             }
             SYS_ARCH_UNPROTECT(lev);
-            done_socket(sock);
+            // done_socket(sock);       // Modified by TUYA
           } else {
             SYS_ARCH_UNPROTECT(lev);
             /* Not a valid socket */

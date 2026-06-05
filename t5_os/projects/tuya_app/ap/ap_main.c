@@ -156,8 +156,8 @@ static int user_recovery_rfcali_data(void)
 
 static void entry_app_main(void)
 {
-    bk_printf("-------- app startup, left heap: %d, reset reason: %x\r\n",
-            xPortGetFreeHeapSize(), bk_misc_get_reset_reason() & 0xFF);
+    bk_printf("-------- app startup, left sram: %d, psram: %d, reset reason: %x\r\n",
+            xPortGetFreeHeapSize(), xPortGetPsramFreeHeapSize(), bk_misc_get_reset_reason() & 0xFF);
 
     bk_pm_module_vote_cpu_freq(PM_DEV_ID_CPU1, PM_CPU_FRQ_480M);
 

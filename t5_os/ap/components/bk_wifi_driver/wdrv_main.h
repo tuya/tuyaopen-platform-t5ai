@@ -73,7 +73,7 @@ extern "C" {
 
 #if CONFIG_SOC_SMP
 #include "spinlock.h"
-static SPINLOCK_SECTION volatile spinlock_t wdrv_tx_msg_spin_lock = SPIN_LOCK_INIT;
+extern volatile spinlock_t wdrv_tx_msg_spin_lock;   // Modified by TUYA
 #endif // CONFIG_SOC_SMP
 static inline uint32_t wdrv_txmsg_enter_critical()
 {

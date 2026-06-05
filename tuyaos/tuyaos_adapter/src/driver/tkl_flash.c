@@ -204,6 +204,7 @@ OPERATE_RET tkl_flash_erase(uint32_t addr, uint32_t size)
     for (i = start_sec; i <= end_sec; i++) {
         sector_addr = PARTITION_SIZE * i;
         bk_flash_erase_sector(sector_addr);
+        tkl_system_sleep(2);
     }
     bk_flash_set_protect_type(FLASH_UNPROTECT_LAST_BLOCK);
 

@@ -104,7 +104,13 @@ typedef void (*dns_found_callback)(const char *name, const ip_addr_t *ipaddr, vo
 
 void             dns_init(void);
 void             dns_tmr(void);
+// Modified by TUYA Start
+#ifdef CONFIG_LWIP_PPP_SUPPORT
+void             dns_setserver(u8_t numdns, const ip_addr_t *dnsserver, struct netif *netif);
+#else
 void             dns_setserver(u8_t numdns, const ip_addr_t *dnsserver);
+#endif
+// Modified by TUYA End
 const ip_addr_t* dns_getserver(u8_t numdns);
 err_t            dns_gethostbyname(const char *hostname, ip_addr_t *addr,
                                    dns_found_callback found, void *callback_arg);
@@ -121,7 +127,12 @@ int            dns_local_removehost(const char *hostname, const ip_addr_t *addr)
 err_t          dns_local_addhost(const char *hostname, const ip_addr_t *addr);
 #endif /* DNS_LOCAL_HOSTLIST_IS_DYNAMIC */
 #endif /* DNS_LOCAL_HOSTLIST */
-
+// Modified by TUYA Start
+#ifdef CONFIG_LWIP_PPP_SUPPORT
+void dns_servers_sort_by_default_netif(void);
+void dns_clear_all_cache(void);
+#endif
+// Modified by TUYA End
 #ifdef __cplusplus
 }
 #endif
