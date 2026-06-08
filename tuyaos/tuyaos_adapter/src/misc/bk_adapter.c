@@ -111,6 +111,8 @@ void _fini(void) {
 #define NANOSECONDS_PER_SECOND     ( 1000000000LL )                                /**< Nanoseconds per second. */
 #define NANOSECONDS_PER_TICK       ( NANOSECONDS_PER_SECOND / configTICK_RATE_HZ ) /**< Nanoseconds per FreeRTOS tick. */
 
+// TuyaOpen for MAC
+#if 0
 static void UTILS_NanosecondsToTimespec( int64_t llSource,
                                   struct timespec * const pxDestination )
 {
@@ -160,5 +162,5 @@ int clock_gettime( clockid_t clock_id,
 
     return 0;
 }
-
+#endif // TuyaOpen for MAC
 
