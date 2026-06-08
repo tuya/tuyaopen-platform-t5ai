@@ -17,6 +17,7 @@
 #include "includes.h"
 #include "utils/os.h"
 #include <components/system.h>
+// TuyaOpen for MAC
 #include <sys/types.h>
 #ifdef IEEE8021X_EAPOL
 #include "xfile.h"
