@@ -71,7 +71,8 @@ class DeprecatedOptions(object):
 
         for rep_path in repl_paths:
             print('=======================> {}'.format(rep_path))
-            with open(rep_path) as f_rep:
+            # TuyaOpen: encoding='utf-8'
+            with open(rep_path, encoding='utf-8') as f_rep:
                 for line_number, line in enumerate(f_rep, start=1):
                     sp_line = line.split()
                     if len(sp_line) == 0 or sp_line[0].startswith('#'):
@@ -98,7 +99,8 @@ class DeprecatedOptions(object):
 
     def replace(self, sdkconfig_in, sdkconfig_out):
         replace_enabled = True
-        with open(sdkconfig_in, 'r') as f_in, open(sdkconfig_out, 'w') as f_out:
+        # TuyaOpen: encoding='utf-8'
+        with open(sdkconfig_in, 'r', encoding='utf-8') as f_in, open(sdkconfig_out, 'w', encoding='utf-8') as f_out:
             for line_num, line in enumerate(f_in, start=1):
                 if self._RE_DEP_OP_BEGIN.search(line):
                     replace_enabled = False
@@ -128,7 +130,8 @@ class DeprecatedOptions(object):
                 return any(visibility.visible(node) for node in config.syms[opt].nodes)
 
         if len(self.r_dic) > 0:
-            with open(path_output, 'a') as f_o:
+            # TuyaOpen: encoding='utf-8'
+            with open(path_output, 'a', encoding='utf-8') as f_o:
                 header = 'Deprecated options and their replacements'
                 f_o.write('.. _configuration-deprecated-options:\n\n{}\n{}\n\n'.format(header, '-' * len(header)))
                 for dep_opt in sorted(self.r_dic):
@@ -165,7 +168,8 @@ class DeprecatedOptions(object):
             append_config_node_process(n)
 
         if len(tmp_list) > 0:
-            with open(path_output, 'a') as f_o:
+            # TuyaOpen: encoding='utf-8'
+            with open(path_output, 'a', encoding='utf-8') as f_o:
                 f_o.write('\n{}\n'.format(self._DEP_OP_BEGIN))
                 f_o.writelines(tmp_list)
                 f_o.write('{}\n'.format(self._DEP_OP_END))
@@ -177,7 +181,8 @@ class DeprecatedOptions(object):
             return not (opt.orig_type in (kconfiglib.BOOL, kconfiglib.TRISTATE) and opt.str_value == "n")
 
         if len(self.r_dic) > 0:
-            with open(path_output, 'a') as f_o:
+            # TuyaOpen: encoding='utf-8'
+            with open(path_output, 'a', encoding='utf-8') as f_o:
                 f_o.write('\n/* List of deprecated options */\n')
                 for dep_opt in sorted(self.r_dic):
                     new_opt = self.r_dic[dep_opt]
@@ -235,7 +240,8 @@ def main():
     parser.add_argument('--env', action='append', default=[],
                         help='Environment to set when evaluating the config file', metavar='NAME=VAL')
 
-    parser.add_argument('--env-file', type=argparse.FileType('r'),
+    # TuyaOpen: encoding='utf-8'
+    parser.add_argument('--env-file', type=argparse.FileType('r', encoding='utf-8'),
                         help='Optional file to load environment variables from. Contents '
                              'should be a JSON object where each key/value pair is a variable.')
 
@@ -269,7 +275,8 @@ def main():
 
     if len(args.defaults) > 0:
         def _replace_empty_assignments(path_in, path_out):
-            with open(path_in, 'r') as f_in, open(path_out, 'w') as f_out:
+            # TuyaOpen: encoding='utf-8'
+            with open(path_in, 'r', encoding='utf-8') as f_in, open(path_out, 'w', encoding='utf-8') as f_out:
                 for line_num, line in enumerate(f_in, start=1):
                     line = line.strip()
                     if line.endswith('='):
@@ -350,7 +357,8 @@ def write_makefile(deprecated_options, config, filename):
 # Beken IoT Development Framework (BEKEN-ARMINO) Project Makefile Configuration
 #
 """
-    with open(filename, "w") as f:
+    # TuyaOpen: encoding='utf-8'
+    with open(filename, "w", encoding='utf-8') as f:
         tmp_dep_lines = []
         f.write(CONFIG_HEADING)
 
@@ -406,7 +414,8 @@ def write_header(deprecated_options, config, filename):
 
 
 def write_cmake(deprecated_options, config, filename):
-    with open(filename, "w") as f:
+    # TuyaOpen: encoding='utf-8'
+    with open(filename, "w", encoding='utf-8') as f:
         tmp_dep_list = []
         write = f.write
         prefix = config.config_prefix
@@ -473,7 +482,8 @@ def get_json_values(config):
 
 def write_json(deprecated_options, config, filename):
     config_dict = get_json_values(config)
-    with open(filename, "w") as f:
+    # TuyaOpen: encoding='utf-8'
+    with open(filename, "w", encoding='utf-8') as f:
         json.dump(config_dict, f, indent=4, sort_keys=True)
 
 
@@ -590,7 +600,8 @@ def write_json_menus(deprecated_options, config, filename):
 
     for n in config.node_iter():
         write_node(n)
-    with open(filename, "w") as f:
+    # TuyaOpen: encoding='utf-8'
+    with open(filename, "w", encoding='utf-8') as f:
         f.write(json.dumps(result, sort_keys=True, indent=4))
 
 
@@ -607,16 +618,19 @@ def write_docs(deprecated_options, config, filename):
 
 
 def update_if_changed(source, destination):
-    with open(source, "r") as f:
+    # TuyaOpen: encoding='utf-8'
+    with open(source, "r", encoding='utf-8') as f:
         source_contents = f.read()
 
     if os.path.exists(destination):
-        with open(destination, "r") as f:
+        # TuyaOpen: encoding='utf-8'
+        with open(destination, "r", encoding='utf-8') as f:
             dest_contents = f.read()
         if source_contents == dest_contents:
             return  # nothing to update
 
-    with open(destination, "w") as f:
+    # TuyaOpen: encoding='utf-8'
+    with open(destination, "w", encoding='utf-8') as f:
         f.write(source_contents)
 
 
