@@ -15,6 +15,16 @@
 #include "tuya_cloud_types.h"
 #include "tkl_ipc.h"
 
+#include <os/os.h>
+#include <os/mem.h>
+#include <os/str.h>
+
+
+#include <os/os.h>
+#include <os/mem.h>
+#include <os/str.h>
+
+
 #define __PRINT_MACRO(x) #x
 #define PRINT_MACRO(x) #x"="__PRINT_MACRO(x)
 //#pragma message(PRINT_MACRO(AON_RTC_DEFAULT_CLOCK_FREQ))
@@ -37,7 +47,23 @@
 extern char *__test_ic_name;
 #define TEST_SDCARD_MOUNT_POINT "/sdcard"
 
-#if (CONFIG_CPU_INDEX == 1)
+#define TEST_FS_SDCARD_MOUNT_POINT  "/sdcard"
+#define TEST_FS_UDISK_MOUNT_POINT   "/udisk"
+#define TEST_FS_LITTLEFS_MOUNT_POINT "/ext-flash"
+
+#if (CONFIG_CPU_INDEX != 0)
+/* CPU1 (AP) only: VFS / FS related headers live in bk_vfs / tkl, which are
+ * not part of the CPU0 build's include path. */
+#include "tkl_fs.h"
+#include "tkl_memory.h"
+#include "tkl_system.h"
+#include "bk_posix.h"
+
+/* Reference-counted FS mount/unmount helpers from test_common.c.
+ * Always pair test_fs_mount() with test_fs_unmount() to keep ref consistent. */
+extern int test_fs_mount(CONST CHAR_T *path, FS_DEV_TYPE_T dev_type);
+extern int test_fs_unmount(CONST CHAR_T *path);
+
 void cli_wifi_cmd(char *pcWriteBuffer, int xWriteBufferLen, int argc, char **argv);
 void cli_xlcd_cmd(char *pcWriteBuffer, int xWriteBufferLen, int argc, char **argv);
 void cli_adc_cmd(char *pcWriteBuffer, int xWriteBufferLen, int argc, char **argv);
@@ -48,8 +74,8 @@ void cli_tuya_media_cmd(char *pcWriteBuffer, int xWriteBufferLen, int argc, char
 void cli_xqspi_cmd(char *pcWriteBuffer, int xWriteBufferLen, int argc, char **argv);
 void cli_xqspi_lcd_cmd(char *pcWriteBuffer, int xWriteBufferLen, int argc, char **argv);
 void cli_littlefs_cmd(char *pcWriteBuffer, int xWriteBufferLen, int argc, char **argv);
-// void cli_tkl_timer_test(char *pcWriteBuffer, int xWriteBufferLen, int argc, char **argv);
-void cli_timer_cmd(char *pcWriteBuffer, int xWriteBufferLen, int argc, char **argv);
+void cli_tkl_timer_test(char *pcWriteBuffer, int xWriteBufferLen, int argc, char **argv);
+// void cli_timer_cmd(char *pcWriteBuffer, int xWriteBufferLen, int argc, char **argv);
 void cli_usb_cmd(char *pcWriteBuffer, int xWriteBufferLen, int argc, char **argv);
 void cli_sdcard_test_cmd(char *pcWriteBuffer, int xWriteBufferLen, int argc, char **argv);
 void cli_spi_cmd(char *pcWriteBuffer, int xWriteBufferLen, int argc, char **argv);
@@ -60,8 +86,10 @@ void cli_speaker_cmd(char *pcWriteBuffer, int xWriteBufferLen, int argc, char **
 void cli_mic_cmd(char *pcWriteBuffer, int xWriteBufferLen, int argc, char **argv);
 void cli_tuya_i2s_cmd(char *pcWriteBuffer, int xWriteBufferLen, int argc, char **argv);
 void cli_xmtd_cmd(char *pcWriteBuffer, int xWriteBufferLen, int argc, char **argv);
+void cli_lp_test_cmd(char *pcWriteBuffer, int xWriteBufferLen, int argc, char **argv);
 int cli_mp3_init(void);
 int cli_dwt_init(void);
+void cli_fs_cmd(char *pcWriteBuffer, int xWriteBufferLen, int argc, char **argv);
 #endif // CONFIG_SYS_CPU1
 
 #endif /* !CLI_TUYA_TEST_H */

@@ -37,16 +37,16 @@ typedef enum {
 extern ty_display_device_s lcd_rgb_ili9488_device;
 extern TUYA_DVP_SENSOR_CFG_T dvp_sensor_gc2145_cfg;
 
-static TUYA_DVP_DEVICE_T *cur_dvp_device = NULL;
-static TY_DISPLAY_HANDLE cur_lcd_device = NULL;
-static uint16_t *lcd_buf = NULL;
-static TKL_DMA2D_FRAME_INFO_T in_frame = {0};
-static TKL_DMA2D_FRAME_INFO_T out_frame = {0};
-static SEM_HANDLE dma2d_sem = NULL;
+STATIC TUYA_DVP_DEVICE_T *cur_dvp_device = NULL;
+STATIC TY_DISPLAY_HANDLE cur_lcd_device = NULL;
+STATIC USHORT_T *lcd_buf = NULL;
+STATIC TKL_DMA2D_FRAME_INFO_T in_frame = {0};
+STATIC TKL_DMA2D_FRAME_INFO_T out_frame = {0};
+STATIC SEM_HANDLE dma2d_sem = NULL;
 
-static void dvp_frame_handle(TUYA_DVP_FRAME_MANAGE_T *output_frame);
+STATIC VOID dvp_frame_handle(TUYA_DVP_FRAME_MANAGE_T *output_frame);
 
-static ty_frame_buffer_t lcd_frame = {
+STATIC ty_frame_buffer_t lcd_frame = {
     .type = TYPE_PSRAM, 
     .fmt = TY_PIXEL_FMT_RGB565, 
     .width =CAMERA_WIDTH, .height = CAMERA_HEIGHT, 
@@ -54,7 +54,7 @@ static ty_frame_buffer_t lcd_frame = {
     .len = CAMERA_WIDTH * CAMERA_HEIGHT * RGB565_PIXEL_SIZE
 };
 
-static ty_display_cfg cfg0 = {
+STATIC ty_display_cfg cfg0 = {
     .rgb_cfg = {
         .spi_clk = TUYA_GPIO_NUM_49,
         .spi_csx = TUYA_GPIO_NUM_48,
@@ -75,7 +75,7 @@ static ty_display_cfg cfg0 = {
     }
 };
 
-static TUYA_DVP_USR_CFG_T dvp_gc2145_usr_cfg = {
+STATIC TUYA_DVP_USR_CFG_T dvp_gc2145_usr_cfg = {
     .dvp_cfg = {
         .fps = 20,
         .width = CAMERA_WIDTH,
@@ -103,17 +103,17 @@ static TUYA_DVP_USR_CFG_T dvp_gc2145_usr_cfg = {
     .dvp_frame_handle = dvp_frame_handle,
 };
 
-static TUYA_FILE h264_file = NULL;
-static uint8_t is_first_frame = true;
-static char fp[128] = {'\0'};
+STATIC TUYA_FILE h264_file = NULL;
+STATIC UINT8_T is_first_frame = true;
+STATIC CHAR_T fp[128] = {'\0'};
 
-static volatile H264_TEST_DRIVER_STATUS h264_test_status = H264_TEST_DRIVER_TURN_OFF;
-static MUTEX_HANDLE h264_mutex = NULL;
+STATIC volatile H264_TEST_DRIVER_STATUS h264_test_status = H264_TEST_DRIVER_TURN_OFF;
+STATIC MUTEX_HANDLE h264_mutex = NULL;
 
 /***********************************************************
 ***********************function define**********************
 ***********************************************************/
-static void __dma2d_irq_cb(TUYA_DMA2D_IRQ_E type, void *args)
+STATIC VOID_T __dma2d_irq_cb(TUYA_DMA2D_IRQ_E type, VOID_T *args)
 {
     if (args)
     {
@@ -122,7 +122,7 @@ static void __dma2d_irq_cb(TUYA_DMA2D_IRQ_E type, void *args)
     }
 }
 
-static void to_lcd_func(TUYA_DVP_FRAME_MANAGE_T *output_frame)
+STATIC VOID_T to_lcd_func(TUYA_DVP_FRAME_MANAGE_T *output_frame)
 {
     if (!cur_lcd_device)
         return;
@@ -154,7 +154,7 @@ static void to_lcd_func(TUYA_DVP_FRAME_MANAGE_T *output_frame)
     tal_display_flush(cur_lcd_device, &lcd_frame);
 }
 
-void to_sdcard_func(TUYA_DVP_FRAME_MANAGE_T *output_frame)
+VOID_T to_sdcard_func(TUYA_DVP_FRAME_MANAGE_T *output_frame)
 {
     if (h264_test_status != H264_TEST_DRIVER_TURN_ON)
         return;
@@ -165,14 +165,14 @@ void to_sdcard_func(TUYA_DVP_FRAME_MANAGE_T *output_frame)
     is_first_frame = false;
     tal_mutex_lock(h264_mutex);
     tkl_fwrite(output_frame->data, output_frame->data_len, h264_file);
-    tkl_fsync((int32_t)h264_file);
+    tkl_fsync((INT_T)h264_file);
 
-    uint32_t size = tkl_ftell(h264_file) & 0xFFFFFFFF;
+    UINT32_T size = tkl_ftell(h264_file) & 0xFFFFFFFF;
     if (size > TUYA_H264_FILE_SIZE_LIMITED) {
         tkl_fclose(h264_file);
 
         memset(fp, 0, 128);
-        uint32_t tick = tkl_system_get_tick_count() & 0xffffffff;
+        UINT32_T tick = tkl_system_get_tick_count() & 0xffffffff;
         snprintf(fp, sizeof(fp), "%s/%u-%s", TUYA_MEDIA_MOUNT_POINT, tick, TUYA_H264_RECORD_FILE);
         tkl_log_output("%s, open new file\r\n", __func__);
 
@@ -186,7 +186,7 @@ void to_sdcard_func(TUYA_DVP_FRAME_MANAGE_T *output_frame)
     tal_mutex_unlock(h264_mutex);
 }
 
-static void dvp_frame_handle(TUYA_DVP_FRAME_MANAGE_T *output_frame)
+STATIC VOID dvp_frame_handle(TUYA_DVP_FRAME_MANAGE_T *output_frame)
 {
     TUYA_FRAME_FMT_E fmt = output_frame->frame_fmt;
     switch (fmt)
@@ -204,7 +204,7 @@ static void dvp_frame_handle(TUYA_DVP_FRAME_MANAGE_T *output_frame)
     }
 }
 
-static void __test_driver_dvp_release()
+STATIC VOID __test_driver_dvp_release()
 {
     if (cur_dvp_device)
     {
@@ -235,7 +235,7 @@ static void __test_driver_dvp_release()
     return;
 }
 
-void test_driver_dvp_open(void)
+VOID_T test_driver_dvp_open(VOID_T)
 {
     if (cur_dvp_device)
         return;
@@ -257,7 +257,7 @@ void test_driver_dvp_open(void)
     if (!dma2d_sem)
         goto failed;
 
-    void *tmp_arg = (void *)(&dma2d_sem);
+    VOID_T *tmp_arg = (VOID_T *)(&dma2d_sem);
     TUYA_DMA2D_BASE_CFG_T dma2d_cfg = {.cb = __dma2d_irq_cb, .arg=tmp_arg};
     tkl_dma2d_init(&dma2d_cfg);
 
@@ -272,13 +272,13 @@ failed:
     return;
 }
 
-void test_driver_dvp_close(void)
+VOID_T test_driver_dvp_close(VOID_T)
 {
     __test_driver_dvp_release();
 }
 
 
-void test_media_h264_open(void)
+VOID_T test_media_h264_open(VOID_T)
 {
     if (h264_test_status != H264_TEST_DRIVER_TURN_OFF)
     {
@@ -295,7 +295,7 @@ void test_media_h264_open(void)
     if (ret)
         goto exit;
 
-    uint32_t tick = tkl_system_get_tick_count() & 0xffffffff;
+    UINT32_T tick = tkl_system_get_tick_count() & 0xffffffff;
     snprintf(fp, sizeof(fp), "%s/%u-%s", TUYA_MEDIA_MOUNT_POINT, tick, TUYA_H264_RECORD_FILE);
 
     h264_file = tkl_fopen(fp, "w+");
@@ -319,7 +319,7 @@ exit:
     return;
 }
 
-void test_media_h264_close(void)
+VOID_T test_media_h264_close(VOID_T)
 {
     if (h264_test_status != H264_TEST_DRIVER_TURN_ON)
     {

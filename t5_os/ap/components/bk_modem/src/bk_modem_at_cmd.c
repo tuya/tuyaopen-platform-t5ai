@@ -279,6 +279,22 @@ bk_err_t bk_modem_at_ready(void)
 	}
 }
 
+bk_err_t bk_modem_at_change_baudrate(uint32_t baudrate)
+{
+	char command[AT_CMD_LEN_MAX];
+	sprintf(command, "%s%u\r\n", AT_IPR, baudrate);
+	if (BK_OK == bk_modem_at_cmd_send(command, 3, 5000))
+	{
+		BK_MODEM_LOGI("AT+IPR=%u, rsp:%s\r\n", baudrate, g_modem_at_rsp_buf);
+		return BK_OK;
+	}
+	else
+	{
+		BK_MODEM_LOGI("at_cmd_send fail!, AT+IPR=%u\r\n", baudrate);
+		return BK_FAIL;
+	}
+}
+
 /**
  * @brief Get packet service registration status
  * @return BK_OK if command succeeds, BK_FAIL otherwise
@@ -401,7 +417,7 @@ bk_err_t bk_modem_at_csq(void)
 bk_err_t bk_modem_at_cgdcont(uint8_t cid,char *type,char *apn)
 {
 	char command[AT_CMD_LEN_MAX];
-	sprintf(command,"AT+CGDCONT=%d,\"%s\",\"%s\"\r", cid, type, apn);
+	sprintf(command,"AT+CGDCONT=%d,\"%s\",\"%s\"\r\n", cid, type, apn);
 	if (BK_OK == bk_modem_at_cmd_send(command, 3, 5000))
 	{
 		BK_MODEM_LOGI("AT+CGDCONT, rsp:%s\r\n",g_modem_at_rsp_buf);
@@ -436,14 +452,22 @@ bk_err_t bk_modem_at_cgdcont_check(void)
 
 bk_err_t bk_modem_at_ccid(void)
 {
-	char *ptr;
+	char *ptr = NULL;
 
-	if (BK_OK == bk_modem_at_cmd_send(AT_CCID, 3, 5000))
+    // TODO 获取蜂窝类型，发送ECICCID 或者 CCID指令
+	if (BK_OK == bk_modem_at_cmd_send(AT_ECICCID, 3, 5000))
 	{
 		BK_MODEM_LOGI("AT+CCID, rsp:%s\r\n",g_modem_at_rsp_buf);
-		if ((ptr = os_strstr((char *)g_modem_at_rsp_buf, "\r\n+CCID: ")) != NULL)
+		if ((ptr = os_strstr((char *)g_modem_at_rsp_buf, "\r\n+ECICCID: ")) != NULL)
 		{
-			ptr += 9; // offset "\r\n+CCID: "
+			ptr += 12;
+		}
+		else if ((ptr = os_strstr((char *)g_modem_at_rsp_buf, "\r\n+CCID: ")) != NULL)
+		{
+			ptr += 9;
+		}
+		if (ptr != NULL)
+		{
 			os_strncpy((char *)dce_pdp_ctx.cid, ptr, BK_MODEM_DCE_CID_LEN);
 		}
 		return BK_OK;
@@ -934,6 +958,8 @@ bk_err_t bk_modem_ec_at_rst(void)
 
 bk_err_t bk_modem_at_get_ati(void)
 {
+	char *ptr;
+
 	if (BK_OK == bk_modem_at_cmd_send(ATI, 3, 5000))
 	{
 		BK_MODEM_LOGI("ATI, rsp:%s\r\n",g_modem_at_rsp_buf);

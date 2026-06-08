@@ -9,7 +9,14 @@
 
 struct usbh_class_info *usbh_class_info_table_begin = NULL;
 struct usbh_class_info *usbh_class_info_table_end = NULL;
-static uint8_t usbh_class_info_table[64];
+
+// Modified by TUYA Start
+// static uint8_t usbh_class_info_table[64];
+#ifndef CONFIG_USBH_CLASS_INFO_MAX
+#define CONFIG_USBH_CLASS_INFO_MAX 16
+#endif
+static struct usbh_class_info usbh_class_info_table[CONFIG_USBH_CLASS_INFO_MAX];
+// Modified by TUYA End
 
 uint32_t __usbh_class_info_start__ = (uint32_t)&usbh_class_info_table[0];
 uint32_t __usbh_class_info_end__ = (uint32_t)&usbh_class_info_table[0];
@@ -550,6 +557,11 @@ int usbh_enumerate(struct usbh_hubport *hport)
                  ((struct usb_device_descriptor *)ep0_request_buffer)->idVendor,
                  ((struct usb_device_descriptor *)ep0_request_buffer)->idProduct,
                  ((struct usb_device_descriptor *)ep0_request_buffer)->bcdDevice);
+    // Modified by TUYA Start
+    extern void tkl_mftest_usb_info(uint32_t vid, uint32_t pid);
+    tkl_mftest_usb_info(((struct usb_device_descriptor *)ep0_request_buffer)->idVendor,
+            ((struct usb_device_descriptor *)ep0_request_buffer)->idProduct);
+    // Modified by TUYA End
 
     /* Read the first 9 bytes of the config descriptor */
     setup->bmRequestType = USB_REQUEST_DIR_IN | USB_REQUEST_STANDARD | USB_REQUEST_RECIPIENT_DEVICE;
@@ -755,6 +767,7 @@ int usbh_register_class_driver(uint8_t usb_prot_mode, void *drvier_info)
 {
     USB_LOG_VBS("[+]%s start:%x end:%x\r\n", __func__, __usbh_class_info_start__, __usbh_class_info_end__);
 
+#if 0
     if(__usbh_class_info_start__ != __usbh_class_info_end__) {
         os_memcpy((void *)(__usbh_class_info_end__), (void *)(drvier_info), sizeof(struct usbh_class_info));
         __usbh_class_info_end__ += sizeof(struct usbh_class_info);
@@ -762,6 +775,25 @@ int usbh_register_class_driver(uint8_t usb_prot_mode, void *drvier_info)
         os_memcpy((void *)(__usbh_class_info_start__), (void *)(drvier_info), sizeof(struct usbh_class_info));
         __usbh_class_info_end__ += sizeof(struct usbh_class_info);
     }
+#endif
+
+    // Modified by TUYA Start
+    if (drvier_info == NULL) {
+        USB_LOG_ERR("%s: NULL drvier_info\r\n", __func__);
+        return -EINVAL;
+    }
+
+    uint32_t table_limit = (uint32_t)&usbh_class_info_table[CONFIG_USBH_CLASS_INFO_MAX];
+    if (__usbh_class_info_end__ + sizeof(struct usbh_class_info) > table_limit) {
+        USB_LOG_ERR("%s: class info table full (max %d), drop registration\r\n",
+                    __func__, CONFIG_USBH_CLASS_INFO_MAX);
+        return -ENOMEM;
+    }
+
+    os_memcpy((void *)(__usbh_class_info_end__), (void *)(drvier_info), sizeof(struct usbh_class_info));
+    __usbh_class_info_end__ += sizeof(struct usbh_class_info);
+    // Modified by TUYA End
+
     USB_LOG_VBS("[-]%s start:%x end:%x\r\n", __func__, __usbh_class_info_start__, __usbh_class_info_end__);
 
     return 0;

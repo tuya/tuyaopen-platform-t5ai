@@ -10,10 +10,9 @@
 #include <os/mem.h>
 #include <driver/i2s.h>
 #include "tkl_output.h"
-#include "tal_log.h"
+// #include "tal_log.h"
 #include "tkl_i2s.h"
 #include "i2s_hal.h"
-#include "tkl_audio.h"
 #include "tkl_semaphore.h"
 #include "tkl_queue.h"
 #include "tkl_system.h"
@@ -21,7 +20,6 @@
 #include "tkl_gpio.h"
 #include "i2s_hw.h"
 #include "tkl_thread.h"
-#include "tkl_memory.h"
 #include <driver/i2s_types.h>
 // --- END: user defines and implements ---
 
@@ -69,160 +67,173 @@ static TKL_THREAD_HANDLE i2s_handle[TUYA_I2S_NUM_MAX] = {NULL};
 ***********************function define**********************
 ************************************************************/
 
-/**
- * @brief channel 0 write calback
- *
- * @param[in] size: size of buffer one frame
- *
- * @return err or size
- */
+static inline uint32_t i2s_calc_frame_size(TUYA_I2S_NUM_E num) {
+    const TUYA_I2S_BASE_CFG_T *cfg = &m_i2s_config[num];
+    if (num >= TUYA_I2S_NUM_MAX || cfg->bits_per_sample == 0) {
+        return 0;
+    }
+    uint32_t real_sample = DEFAULT_SAMPLE;
+    switch (cfg->sample_rate) { // 与原枚举的映射保持一致
+        case 1: real_sample = 8000; break;
+        case 2: real_sample = 11025; break;
+        case 3: real_sample = 12000; break;
+        case 4: real_sample = 16000; break;
+        case 5: real_sample = 22050; break;
+        case 6: real_sample = 24000; break;
+        case 7: real_sample = 32000; break;
+        case 8: real_sample = 44100; break;
+        case 9: real_sample = 48000; break;
+        default: break;
+    }
+    /*
+     * 20ms frame_size 必须与 BK I2S DMA 实际写入/读取 ringbuffer 的“每采样点占用字节”一致。
+     *
+     * BK 驱动在 I2S/LEFTJUST/RIGHTJUST 下使用：smp_ratio = data_len - 1
+     * 在 PCM short/long 下使用：smp_ratio = data_len * pcm_chl_num - 1
+     * 即 PCM 下“每个采样点”的时隙数取决于 pcm_chl_num。
+     *
+     * 同时，store_mode 会改变内存中的打包方式：
+     * - I2S_LRCOM_STORE_16R16L：左右声道拼成 1 个 32bit word（每采样点 4 字节）
+     * - I2S_LRCOM_STORE_LRLR：按 L/R 时序交替写入（通常每时隙占用 bits_per_sample 对应字节数）
+     */
+    uint32_t bytes_per_slot = (cfg->bits_per_sample + 7) / 8;
+    uint32_t slots_per_sample = 1;
+
+    if (cfg->communication_format == I2S_COMM_FORMAT_STAND_PCM_SHORT ||
+        cfg->communication_format == I2S_COMM_FORMAT_STAND_PCM_LONG) {
+        /*
+         * TUYA 侧配置在 init 时：
+         * - RIGHT_LEFT -> pcm_chl_num = 2
+         * - ONLY/ALL   -> pcm_chl_num = 1
+         */
+        slots_per_sample = (cfg->channel_format == TUYA_I2S_CHANNEL_FMT_RIGHT_LEFT) ? 2 : 1;
+    } else {
+        slots_per_sample = (cfg->channel_format == TUYA_I2S_CHANNEL_FMT_RIGHT_LEFT) ? 2 : 1;
+    }
+
+    if (cfg->channel_format == TUYA_I2S_CHANNEL_FMT_RIGHT_LEFT) {
+        // 对齐本文件 init() 的 store_mode 选择：RIGHT_LEFT 使用 16R16L，内存每采样点固定 4 字节
+        return (real_sample * 4) / MS_20_DIV;
+    }
+
+    return (real_sample * slots_per_sample * bytes_per_slot) / MS_20_DIV;
+}
+
 static int ch0_tx_data_handle_cb(uint32_t size)
 {
     int ret = 0;
     ret = tkl_semaphore_post(m_semaphore[TUYA_I2S_NUM_0]);
     if (ret != BK_OK) {
-        bk_printf("dma tx sem fail %d\r\n", ret);
         return ret;
     }
 
 	return size;
 }
 
-/**
- * @brief channel 0 read calback
- *
- * @param[in] size: size of buffer one frame
- *
- * @return err or size
- */
 static int ch0_rx_data_handle_cb(uint32_t size)
 {
     int ret = 0;
     ret = tkl_semaphore_post(m_semaphore[TUYA_I2S_NUM_0]);
     if (ret != BK_OK) {
-        bk_printf("dma rx sem fail %d\r\n", ret);
         return ret;
     }
 	return size;
 }
-
-/**
- * @brief channel 1 write calback
- *
- * @param[in] size: size of buffer one frame
- *
- * @return err or size
- */
 static int ch1_tx_data_handle_cb(uint32_t size)
 {
     int ret = 0;
     ret = tkl_semaphore_post(m_semaphore[TUYA_I2S_NUM_1]);
     if (ret != BK_OK) {
-        bk_printf("dma tx sem fail %d\r\n", ret);
         return ret;
     }
 
 	return size;
 }
 
-/**
- * @brief channel 1 read calback
- *
- * @param[in] size: size of buffer one frame
- *
- * @return err or size
- */
 static int ch1_rx_data_handle_cb(uint32_t size)
 {
     int ret = 0;
     ret = tkl_semaphore_post(m_semaphore[TUYA_I2S_NUM_1]);
     if (ret != BK_OK) {
-        bk_printf("dma rx sem fail %d\r\n", ret);
         return ret;
     }
 	return size;
 }
-
-/**
- * @brief channel 2 write calback
- *
- * @param[in] size: size of buffer one frame
- *
- * @return err or size
- */
 static int ch2_tx_data_handle_cb(uint32_t size)
 {
     int ret = 0;
     ret = tkl_semaphore_post(m_semaphore[TUYA_I2S_NUM_2]);
     if (ret != BK_OK) {
-        bk_printf("dma tx sem fail %d\r\n", ret);
         return ret;
     }
+
 	return size;
 }
 
-/**
- * @brief channel 2 read calback
- *
- * @param[in] size: size of buffer one frame
- *
- * @return err or size
- */
 static int ch2_rx_data_handle_cb(uint32_t size)
 {
     int ret = 0;
     ret = tkl_semaphore_post(m_semaphore[TUYA_I2S_NUM_2]);
     if (ret != BK_OK) {
-        bk_printf("dma rx sem fail %d\r\n", ret);
         return ret;
     }
-    
 	return size;
+}
+// 统一“队列满时丢弃最早的数据再入队”的策略，避免保留旧数据
+static inline OPERATE_RET i2s_queue_push_latest(TKL_QUEUE_HANDLE q, void **pdata) {
+    OPERATE_RET ret = tkl_queue_post(q, pdata, 0);
+    if (ret == OPRT_OK) {
+        return ret;
+    }
+    // 队列可能已满，丢弃最早数据，再尝试入队一次
+    void *old = NULL;
+    if (tkl_queue_fetch(q, &old, 0) == OPRT_OK && old) {
+        // 释放旧帧内存
+        tkl_system_psram_free(old);
+        old = NULL;
+    }
+    return tkl_queue_post(q, pdata, 0);
 }
 
 static void i2s_handle_task(void)
 {
-    INT32 ret = 0L;
+    int32_t ret = 0L;
     uint32_t val = 0U;
     void *data = NULL;
     uint32_t frame_size = 0U;
     while (1) {
-        //20ms取一次数据到缓冲区
         for (size_t i = 0; i < TUYA_I2S_NUM_MAX; i++) {
-            frame_size = (DEFAULT_SAMPLE * DEFAULT_CHANNEL_NUM * m_i2s_config[i].bits_per_sample) / (BITS_PER_BYTE * MS_20_DIV);
-            if (m_i2s_config[i].i2s_dma_flags) {
-                ret = tkl_semaphore_wait(m_semaphore[i], 20);
-                if (ret != BK_OK) {
-		        	continue;
-		        }
-                //dma缓冲区有大于一帧数据则取出加入队列
-                while (ring_buffer_get_fill_size(m_ringbuffer[i]) >= frame_size) {
-                    data = tkl_system_psram_malloc(frame_size);
-                    if (data) {
-                        ring_buffer_read(m_ringbuffer[i], data, frame_size);
-                        ret = tkl_queue_post(m_i2s_msg_queue[i], &data, 0);
-                        if (ret != OPRT_OK) {
-	                        bk_i2s_stop();
-                            tkl_system_psram_free(data);
-                            data = NULL;
-                            continue;
-                        }
+            uint32_t frame_size = i2s_calc_frame_size(i);
+            if (frame_size == 0) {
+                continue;
+            }
+            if (m_i2s_config[i].i2s_dma_flags && (m_i2s_config[i].mode & TUYA_I2S_MODE_RX)) {
+                if (tkl_semaphore_wait(m_semaphore[i], 20) != BK_OK) {
+                    continue;
+                }
+                size_t fill = ring_buffer_get_fill_size(m_ringbuffer[i]);
+                int loop_guard = (fill / frame_size);
+                if (loop_guard > 8) loop_guard = 8;
+                if (loop_guard < 1) loop_guard = 1;
+                while (loop_guard-- > 0 && ring_buffer_get_fill_size(m_ringbuffer[i]) >= frame_size) {
+                    void *data = tkl_system_psram_malloc(frame_size);
+                    if (!data) {
+                        break;
+                    }
+                    ring_buffer_read(m_ringbuffer[i], data, frame_size);
+                    if (i2s_queue_push_latest(m_i2s_msg_queue[i], &data) != OPRT_OK) {
+                        tkl_system_psram_free(data);
+                        data = NULL;
+                        break;
                     }
                 }
             }
         }
+        // 合理让出 CPU，节省功耗
+        tkl_system_sleep(2);
     }
-
 }
 
-/**
- * @brief i2s init
- *
- * @param[in] i2c_pin: i2s pin number
- * @param[in] cfg: i2s configure
- *
- * @return OPRT_OK on success, others on error
- */
 OPERATE_RET tkl_i2s_init(TUYA_I2S_NUM_E i2s_num, const TUYA_I2S_BASE_CFG_T *cfg)
 {
     // --- BEGIN: user implements ---
@@ -320,15 +331,15 @@ OPERATE_RET tkl_i2s_init(TUYA_I2S_NUM_E i2s_num, const TUYA_I2S_BASE_CFG_T *cfg)
 			break;
 	}
 
-    ret = bk_i2s_driver_init();
+    ret = bk_i2s_multi_driver_init();
     if (ret != BK_OK) {
         return OPRT_COM_ERROR;
     }
     
     i2s_config.data_length = cfg->bits_per_sample;
-    ret = bk_i2s_init((i2s_gpio_group_id_t)i2s_num, &i2s_config);
+    ret = bk_i2s_init_by_id((i2s_gpio_group_id_t)i2s_num, &i2s_config);
     if (ret != BK_OK) {
-        bk_i2s_driver_deinit();
+        bk_i2s_multi_driver_deinit();
         return OPRT_COM_ERROR;
     }
     //配置信息前置，避免任务运行时参数不一致导致任务无法进入阻塞状态
@@ -343,39 +354,40 @@ OPERATE_RET tkl_i2s_init(TUYA_I2S_NUM_E i2s_num, const TUYA_I2S_BASE_CFG_T *cfg)
         }
         ret = tkl_semaphore_create_init(&m_semaphore[i2s_num], 0, 2);
         if (ret != BK_OK) {
-            bk_i2s_deinit();
-            bk_i2s_driver_deinit();
+            bk_i2s_deinit_by_id(i2s_num);
+            bk_i2s_multi_driver_deinit();
             bk_printf("i2s sem create failed %d\n", ret);
 			return OPRT_COM_ERROR;
 		}
-        frame_size = (DEFAULT_SAMPLE * DEFAULT_CHANNEL_NUM * cfg->bits_per_sample) / (BITS_PER_BYTE * MS_20_DIV);
-        ret = bk_i2s_chl_init(I2S_CHANNEL_1, type, frame_size * BUFFER_NUM, i2s_cb, &m_ringbuffer[i2s_num]);
+        frame_size = i2s_calc_frame_size(i2s_num);
+        ret = bk_i2s_chl_init_by_id(i2s_num, I2S_CHANNEL_1, type, frame_size * BUFFER_NUM, i2s_cb, &m_ringbuffer[i2s_num]);
 		if (ret != BK_OK) {
-            bk_i2s_deinit();
-            bk_i2s_driver_deinit();
+            bk_i2s_deinit_by_id(i2s_num);
+            bk_i2s_multi_driver_deinit();
             tkl_semaphore_release(m_semaphore[i2s_num]);
             m_semaphore[i2s_num] = NULL;
 			return OPRT_COM_ERROR;
 		}
         ret = tkl_queue_create_init(&m_i2s_msg_queue[i2s_num], sizeof(void *), 10);
 		if (ret != BK_OK) {
-            bk_i2s_chl_deinit(I2S_CHANNEL_1, type);
+            bk_i2s_chl_deinit_by_id(i2s_num, I2S_CHANNEL_1, type);
             tkl_semaphore_release(m_semaphore[i2s_num]);
             m_semaphore[i2s_num] = NULL;
-            bk_i2s_deinit();
-            bk_i2s_driver_deinit();
+            bk_i2s_deinit_by_id(i2s_num);
+            bk_i2s_multi_driver_deinit();
 			return OPRT_COM_ERROR;
 		}
+
         if (type == I2S_TXRX_TYPE_RX) {
-            ret = tkl_thread_create_in_psram(&i2s_handle[i2s_num], "i2s_handle", 1024 * 2, 4, i2s_handle_task, NULL);
+            ret = tkl_thread_create_in_psram(&i2s_handle[i2s_num], "i2s_handle", 1024 * 2, 7, i2s_handle_task, NULL);
 	        if (ret != BK_OK) {
                 tkl_queue_free(m_i2s_msg_queue[i2s_num]);
                 m_i2s_msg_queue[i2s_num] = NULL;
-                bk_i2s_chl_deinit(I2S_CHANNEL_1, type);
+                bk_i2s_chl_deinit_by_id(i2s_num, I2S_CHANNEL_1, type);
                 tkl_semaphore_release(m_semaphore[i2s_num]);
                 m_semaphore[i2s_num] = NULL;
-                bk_i2s_deinit();
-                bk_i2s_driver_deinit();
+                bk_i2s_deinit_by_id(i2s_num);
+                bk_i2s_multi_driver_deinit();
 	        	return OPRT_COM_ERROR;
 	        }
         }
@@ -408,7 +420,7 @@ OPERATE_RET tkl_i2s_deinit(TUYA_I2S_NUM_E i2s_num)
         bk_printf("i2s port %d is invalid\n", i2s_num);
         return OPRT_INVALID_PARM;
     }
-    bk_i2s_stop();
+    bk_i2s_stop_by_id(i2s_num);
 
     if (m_i2s_config[i2s_num].i2s_dma_flags) {
         tkl_thread_release(i2s_handle[i2s_num]);
@@ -420,12 +432,12 @@ OPERATE_RET tkl_i2s_deinit(TUYA_I2S_NUM_E i2s_num)
         }
         tkl_queue_free(m_i2s_msg_queue[i2s_num]);
         m_i2s_msg_queue[i2s_num] = NULL;
-        bk_i2s_chl_deinit(I2S_CHANNEL_1, type);
+        bk_i2s_chl_deinit_by_id(i2s_num, I2S_CHANNEL_1, type);
         tkl_semaphore_release(m_semaphore[i2s_num]);
         m_semaphore[i2s_num] = NULL;
     }
-    bk_i2s_deinit();
-    bk_i2s_driver_deinit();
+    bk_i2s_deinit_by_id(i2s_num);
+    bk_i2s_multi_driver_deinit();
 
     os_memset(&m_i2s_config[i2s_num], 0, sizeof(TUYA_I2S_BASE_CFG_T));
     return OPRT_OK;
@@ -448,35 +460,40 @@ OPERATE_RET tkl_i2s_send(TUYA_I2S_NUM_E i2s_num, void *buff, uint32_t len)
     int32_t ret = 0;
     uint32_t write_flag = 0U;
     uint32_t size = 0;
-    int32_t really_size = 0U;
-    uint32_t frame_size = (DEFAULT_SAMPLE * DEFAULT_CHANNEL_NUM * m_i2s_config[i2s_num].bits_per_sample) / (BITS_PER_BYTE * MS_20_DIV);
+    int really_size = 0U;
+    uint32_t frame_size = i2s_calc_frame_size(i2s_num);
     if ((i2s_num >= TUYA_I2S_NUM_MAX) || (len == 0) || ((m_i2s_config[i2s_num].i2s_dma_flags) && (len % frame_size != 0)) || (buff == NULL)) {
         bk_printf("i2s port %d is invalid\n", i2s_num);
         return OPRT_INVALID_PARM;
     }
+    if (!(m_i2s_config[i2s_num].mode & TUYA_I2S_MODE_TX)) {
+        return OPRT_COM_ERROR;
+    }
+
     if ((m_i2s_config[i2s_num].i2s_dma_flags) && (m_i2s_config[i2s_num].mode & TUYA_I2S_MODE_TX)) {
+        // 确保 DMA 已经启动，否则 ringbuffer 永远不会被消费，导致永久阻塞
+	    bk_i2s_start_by_id(i2s_num);
         while (1) {
-            if(ring_buffer_get_free_size(m_ringbuffer[i2s_num]) >= frame_size) {
-                ring_buffer_write(m_ringbuffer[i2s_num], buff + really_size, frame_size);
+            if (ring_buffer_get_free_size(m_ringbuffer[i2s_num]) >= frame_size) {
+                ring_buffer_write(m_ringbuffer[i2s_num], ((uint8_t*)buff) + really_size, frame_size);
                 really_size += frame_size;
-		        bk_i2s_start();
             } else {
+                // 不使用永久等待：如果 DMA 未运行/回调未触发，会导致线程死等
                 ret = tkl_semaphore_wait(m_semaphore[i2s_num], TKL_SEM_WAIT_FOREVER);
                 if (ret != BK_OK) {
-                    bk_printf("i2s sem wait failed %d\n", ret);
-		        }
+                    // 尝试重新启动一次，避免异常情况下 TX 无法恢复
+		            bk_i2s_start_by_id(i2s_num);
+                }
             }
-            if ((len - really_size) <= 0) {
+            if (really_size >= len) {
                 break;
             }
-            
         }
-        
         return really_size;
     } else {
-        bk_i2s_get_write_ready(&write_flag);
+        bk_i2s_get_write_ready_by_id(I2S_CHANNEL_1, &write_flag);
         if (write_flag) {
-            BK_RETURN_ON_ERR(bk_i2s_write_data(i2s_num, buff, (uint32_t)len));
+            BK_RETURN_ON_ERR(bk_i2s_write_data_by_id(i2s_num, buff, (uint32_t)len));
             return len;
         } else {
             return OPRT_COM_ERROR;
@@ -503,19 +520,21 @@ int32_t tkl_i2s_recv(TUYA_I2S_NUM_E i2s_num, void *buff, uint32_t len)
     uint32_t val = 0U;
     void *data = NULL;
     uint32_t read_flag = 0U;
-    uint32_t frame_size = (DEFAULT_SAMPLE * DEFAULT_CHANNEL_NUM * m_i2s_config[i2s_num].bits_per_sample) / (BITS_PER_BYTE * MS_20_DIV);
+    uint32_t frame_size = i2s_calc_frame_size(i2s_num);
     if ((i2s_num >= TUYA_I2S_NUM_MAX) || (len == 0) || ((m_i2s_config[i2s_num].i2s_dma_flags) && (len % frame_size != 0)) || (buff == NULL)) {
         bk_printf("i2s port %d is invalid\n", i2s_num);
         return OPRT_INVALID_PARM;
     }
-    if ((m_i2s_config[i2s_num].i2s_dma_flags) && (m_i2s_config[i2s_num].mode & TUYA_I2S_MODE_RX)) {
+    if (!(m_i2s_config[i2s_num].mode & TUYA_I2S_MODE_RX)) {
+        return OPRT_COM_ERROR;
+    }
+    if (m_i2s_config[i2s_num].i2s_dma_flags) {
         // 先非阻塞读取所有可读的数据
         while (really_size < len) {
             ret = tkl_queue_fetch(m_i2s_msg_queue[i2s_num], &data, 0);
             if (ret != OPRT_OK) {
-                break; // 队列为空，退出非阻塞读取
+                break;
             }
-
             if (data) {
                 uint32_t copy_size = (len - really_size) < frame_size ? (len - really_size) : frame_size;
                 memcpy((uint8_t*)buff + really_size, data, copy_size);
@@ -527,12 +546,11 @@ int32_t tkl_i2s_recv(TUYA_I2S_NUM_E i2s_num, void *buff, uint32_t len)
         if (really_size == 0) {
             // 阻塞读取剩余可读的数据
             if (really_size < len) {
-	            bk_i2s_start();
+	            bk_i2s_start_by_id(i2s_num);
                 ret = tkl_queue_fetch(m_i2s_msg_queue[i2s_num], &data, TKL_SEM_WAIT_FOREVER);
                 if (ret != OPRT_OK) {
                     return OPRT_COM_ERROR;
                 }
-
                 if (data) {
                     uint32_t copy_size = (len - really_size) < frame_size ? (len - really_size) : frame_size;
                     memcpy((uint8_t*)buff + really_size, data, copy_size);
@@ -541,12 +559,11 @@ int32_t tkl_i2s_recv(TUYA_I2S_NUM_E i2s_num, void *buff, uint32_t len)
                 }
             }
         }
-
         return really_size;
     } else {
-        bk_i2s_get_read_ready(&read_flag);
+        bk_i2s_get_read_ready_by_id(I2S_CHANNEL_1, &read_flag);
         if (read_flag) {
-            BK_RETURN_ON_ERR(bk_i2s_read_data(buff, (uint32_t)len));
+            BK_RETURN_ON_ERR(bk_i2s_read_data_by_id((i2s_gpio_group_id_t)i2s_num, buff, (uint32_t)len));
             return len;
         } else {
             return OPRT_COM_ERROR;
@@ -571,7 +588,7 @@ OPERATE_RET tkl_i2s_send_stop(TUYA_I2S_NUM_E i2s_num)
         bk_printf("i2s port %d is invalid\n", i2s_num);
         return OPRT_INVALID_PARM;
     }
-    BK_RETURN_ON_ERR(bk_i2s_stop());
+    BK_RETURN_ON_ERR(bk_i2s_stop_by_id(i2s_num));
     return OPRT_OK;
     // --- END: user implements ---
 }
@@ -590,7 +607,7 @@ OPERATE_RET tkl_i2s_recv_stop(TUYA_I2S_NUM_E i2s_num)
         bk_printf("i2s port %d is invalid\n", i2s_num);
         return OPRT_INVALID_PARM;
     }
-    BK_RETURN_ON_ERR(bk_i2s_stop());
+    BK_RETURN_ON_ERR(bk_i2s_stop_by_id(i2s_num));
     return OPRT_OK;
     // --- END: user implements ---
 }

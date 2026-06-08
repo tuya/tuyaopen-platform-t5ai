@@ -7,11 +7,11 @@
 
 #include "cli.h"
 #include "cli_tuya_test.h"
+#include "sdkconfig.h"
 #include "tuya_cloud_types.h"
+
+#if CONFIG_SOC_SMP
 #include "tkl_wifi.h"
-
-
-#if CONFIG_SYS_CPU0 && CONFIG_SOC_BK7258
 #include "modules/pm.h"
 #include "tkl_wakeup.h"
 #include "tkl_semaphore.h"
@@ -60,11 +60,11 @@ static void __set_test_wakeup_source(uint32_t type, uint32_t param)
         cfg.wakeup_para.gpio_param.gpio_num = 12;
         cfg.wakeup_para.gpio_param.level = TUYA_GPIO_WAKEUP_RISE;
     } else if (type == 1) {
-        bk_printf("wakeup rtc mode\r\n");
         uint32_t t = (param == 0)? 5: param;
+        bk_printf("wakeup rtc mode, time: %d\r\n", t*1000);
         cfg.source = TUYA_WAKEUP_SOURCE_RTC;
-        cfg.wakeup_para.timer_param.timer_num = TUYA_TIMER_NUM_5;
-        cfg.wakeup_para.timer_param.mode = TUYA_TIMER_MODE_ONCE;
+        // cfg.wakeup_para.timer_param.timer_num = TUYA_TIMER_NUM_5;
+        // cfg.wakeup_para.timer_param.mode = TUYA_TIMER_MODE_ONCE;
         cfg.wakeup_para.timer_param.ms = t * 1000;
     }
 
@@ -86,7 +86,7 @@ void cli_lp_test_cmd(char *pcWriteBuffer, int xWriteBufferLen, int argc, char **
     if (!os_strcmp(argv[2], "rtc")) {
         uint32_t t = 12;
         if (argv[3] != NULL) {
-            uint32_t t = os_strtoul(argv[3], NULL, 10);
+            t = os_strtoul(argv[3], NULL, 10);
         }
         __set_test_wakeup_source(1, t);
     } else if (!os_strcmp(argv[2], "gpio")) {
@@ -102,10 +102,15 @@ void cli_lp_test_cmd(char *pcWriteBuffer, int xWriteBufferLen, int argc, char **
     tkl_wifi_set_lp_mode(1, 10);
     tkl_hci_deinit();
 
+    extern uint32_t is_prepare_deepsleep;
     if (!os_strcmp(argv[1], "deepsleep")) {
+        is_prepare_deepsleep = 1;
         tkl_cpu_sleep_mode_set(1, TUYA_CPU_DEEP_SLEEP);
     } else if (!os_strcmp(argv[1], "sleep")) {
         tkl_cpu_sleep_mode_set(1, TUYA_CPU_SLEEP);
+    } else if (!os_strcmp(argv[1], "dds")) {
+        is_prepare_deepsleep = 1;
+        bk_pm_ap_sleep_mode_set(PM_MODE_DEEP_SLEEP);
     }
 
     return;

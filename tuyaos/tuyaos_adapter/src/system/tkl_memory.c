@@ -42,19 +42,24 @@ BOOL_T tkl_system_psram_malloc_force_get(void)
 */
 void* tkl_system_malloc(const size_t size)
 {
-    if (size > 4096) {
-        //bk_printf("tkl_system_malloc big memory, size(%d), caller %p\r\n", size, __builtin_return_address(0));
+    // if (size > 4096) {
+    //     bk_printf("tkl_system_malloc big memory, size(%d), caller %p\r\n", size, __builtin_return_address(0));
+    // }
+
+    void* ptr = NULL;
+    if (s_psram_malloc_force) {
+        ptr = tkl_system_psram_malloc(size);
+    } else {
+        ptr = os_malloc(size);
     }
 
-    if (s_psram_malloc_force) {
-        return tkl_system_psram_malloc(size);
-    } else {
-        void* ptr = os_malloc(size);
-        if(NULL == ptr) {
-            bk_printf("tkl_system_malloc failed, size(%d)!\r\n", size);
-        }
-        return ptr;
+    if(NULL == ptr) {
+        bk_printf("tkl_system_malloc failed, size(%d),remain %d,%d\r\n",
+                size,
+                tkl_system_get_free_heap_size(),
+                tkl_system_psram_get_free_heap_size());
     }
+    return ptr;
 }
 
 /**
@@ -111,25 +116,26 @@ void *tkl_system_memcpy(void* src, const void* dst, const size_t n)
  */
 void *tkl_system_calloc(size_t nitems, size_t size)
 {
+    void *ptr = NULL;
+
     if (s_psram_malloc_force) {
         if (size && nitems > (~(size_t) 0) / size)
             return NULL;
 
-        void *ptr = psram_zalloc(nitems * size);
+        ptr = psram_zalloc(nitems * size);
         if (ptr == NULL) {
             bk_printf("tkl_system_calloc failed, total_size(%d)! nitems = %d size = %d\r\n", nitems * size,nitems,size);
         }
-        return ptr;
     } else {
         if (size && nitems > (~(size_t) 0) / size)
             return NULL;
 
-        void *ptr =  os_zalloc(nitems * size);
+        ptr =  os_zalloc(nitems * size);
         if (ptr == NULL) {
             bk_printf("tkl_system_calloc failed, total_size(%d)! nitems = %d size = %d\r\n", nitems * size,nitems,size);
         }
-        return ptr;
     }
+    return ptr;
 }
 
 /**
@@ -159,9 +165,14 @@ void *tkl_system_realloc(void* ptr, size_t size)
 void* tkl_system_psram_malloc(const size_t size)
 {
 #if CONFIG_HAVE_PSRAM
+
+    // if (size > 20480) {
+    //     bk_printf("tkl_system_psram_malloc big memory, size(%d), caller %p\r\n", size, __builtin_return_address(0));
+    // }
+
     void* ptr = psram_malloc(size);
     if(NULL == ptr) {
-        bk_printf("tkl_psram_malloc failed, size(%d)!\r\n", size);
+        bk_printf("tkl_psram_malloc failed, size(%d), remain %d\r\n", size, tkl_system_psram_get_free_heap_size());
     }
     return ptr;
 #else

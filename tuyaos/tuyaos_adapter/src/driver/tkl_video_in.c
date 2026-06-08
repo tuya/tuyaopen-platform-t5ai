@@ -65,6 +65,9 @@ uint8_t tkl_vi_get_status(uint8_t device_type)
 
 OPERATE_RET tkl_vi_get_power_info(uint8_t device_type, uint8_t *io, uint8_t *active)
 {
+    bk_printf("API %s is deprecated and no longer in use. Please use the component-related APIs in the future \r\n", __func__);
+    return OPRT_INVALID_PARM;
+
     if (device_type == UVC_CAMERA) {
         *io = camera_conf[TKL_VI_SENSOR_UVC].camera.power_pin;
         *active = camera_conf[TKL_VI_SENSOR_UVC].camera.active_level;
@@ -78,6 +81,9 @@ OPERATE_RET tkl_vi_get_power_info(uint8_t device_type, uint8_t *io, uint8_t *act
 
 int tkl_vi_set_dvp_i2c_pin(uint8_t clk, uint8_t sda)
 {
+    bk_printf("API %s is deprecated and no longer in use. Please use the component-related APIs in the future \r\n", __func__);
+    return OPRT_INVALID_PARM;
+
     camera_conf[TKL_VI_SENSOR_DVP].camera.i2c.clk = clk;
     camera_conf[TKL_VI_SENSOR_DVP].camera.i2c.sda = sda;
     bk_printf("set dvp i2c, clk: %d sda: %d\r\n", clk, sda);
@@ -112,6 +118,9 @@ int tkl_vi_get_dvp_i2c_idx(uint8_t *clk, uint8_t *sda)
 OPERATE_RET tkl_vi_init(TKL_VI_CONFIG_T *pconfig, int32_t count)
 {
     OPERATE_RET ret;
+
+    bk_printf("API %s is deprecated and no longer in use. Please use the component-related APIs in the future \r\n", __func__);
+    return OPRT_INVALID_PARM;
 
     if ((pconfig == NULL) || (pconfig->pdata == NULL)) {
         bk_printf("parameter error\r\n");
@@ -187,8 +196,14 @@ OPERATE_RET tkl_vi_init(TKL_VI_CONFIG_T *pconfig, int32_t count)
 */
 OPERATE_RET tkl_vi_uninit(TKL_VI_CAMERA_TYPE_E device_type)
 {
+    bk_printf("API %s is deprecated and no longer in use. Please use the component-related APIs in the future \r\n", __func__);
+    return OPRT_INVALID_PARM;
+
     OPERATE_RET ret;
+    // TKL_DISP_BLEND_INFO_S cfg;
     camera_handle_t handle = NULL;
+    cfg.type = TKL_DISP_BLEND_ALL;
+    // tkl_disp_cancel_blend_info(NULL, &cfg);
 
     camera_type_t type;
     if (device_type == TKL_VI_CAMERA_TYPE_UVC) {

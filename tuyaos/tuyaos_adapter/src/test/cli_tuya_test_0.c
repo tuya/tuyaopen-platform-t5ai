@@ -15,7 +15,7 @@
 //#pragma message(PRINT_MACRO(AON_RTC_DEFAULT_CLOCK_FREQ))
 
 
-extern void tkl_system_sleep(const uint32_t num_ms);
+extern VOID_T tkl_system_sleep(CONST UINT_T num_ms);
 
 static void cli_rf_set_cali_cmd(char *pcWriteBuffer, int xWriteBufferLen, int argc, char **argv)
 {
@@ -140,16 +140,14 @@ static void cli_system_info_cmd(char *pcWriteBuffer, int xWriteBufferLen, int ar
     }
 
 #if defined(ENABLE_IPv6) && (ENABLE_IPv6 == 1)
-    if (ip.type == TY_AF_INET) {
-        bk_printf("ip: %s mask: %s gw: %s\r\n",
-                ip.addr.ip4.ip, ip.addr.ip4.mask, ip.addr.ip4.gw);
-    } else if (ip.type == TY_AF_INET6) {
+    if (ip.type == TY_AF_INET6) {
         bk_printf("ip: %s\r\n", ip.addr.ip6.ip);
-    }
-#else
-    bk_printf("ip: %s mask: %s gw: %s\r\n",
-            ip.ip, ip.mask, ip.gw);
+    } else
 #endif
+    {
+        bk_printf("ip: %s mask: %s gw: %s\r\n",
+                ip.nwipstr, ip.nwmaskstr, ip.nwgwstr);
+    }
     bk_printf("mac: %02x:%02x:%02x:%02x:%02x:%02x\r\n",
             mac.mac[0], mac.mac[1], mac.mac[2], mac.mac[3], mac.mac[4], mac.mac[5]);
 #endif

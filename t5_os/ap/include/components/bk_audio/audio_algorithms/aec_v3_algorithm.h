@@ -99,6 +99,14 @@ typedef enum
     VAD_SILENCE           = (0x03),
 }vad_state_t;
 
+// Modified by TUYA Start
+typedef enum 
+{
+    DUAL_CH_0_DEGREE   = (0x00),
+    DUAL_CH_90_DEGREE  = (0x01),
+}dual_ch_dir_t;
+// Modified by TUYA End
+
 typedef struct 
 {
     aec_v3_mode_t mode;        /*!< aec work mode: hardware mode or software mode */
@@ -120,7 +128,14 @@ typedef struct
     /* drc */
     uint8_t drc;            /*!< recommended value range:0x10~0x1f, the greater the value, the greater the volume */
     
-    uint8_t ec_filter;      /*!< 0x01/0x03/0x07 */ 
+// Modified by TUYA Start
+    uint8_t ec_filter;      /*!< 0x01/0x03/0x07,output echo cancellation data |= 1<<5 */
+    uint8_t interweave;     /*!< 0/1 */
+    int16_t dist;           /*!< 0:DUAL_CH_90_DEGREE,1:DUAL_CH_0_DEGREE dual mic distance is within 3cm;2: DUAL_CH_0_DEGREE dual mic distance is in the range of 3~4cm*/
+    uint8_t mic_swap;       /*!< 0:default/1:swap dual channel data */
+    uint8_t ec_only_output; /*!< 0:disable,1:enable */
+    uint8_t dual_perp;      /*!< dual channel direction,0:0 degree,1:90 degree*/
+// Modified by TUYA End
 } aec_v3_cfg_t;
 
 typedef struct {
@@ -134,6 +149,10 @@ typedef struct {
     uint32_t vad_frame_size;
 } vad_cfg_t;
 
+// Modified by TUYA Start
+typedef int (*ec_out_callback)(int32_t *buffer, uint16_t len);
+typedef int (*vad_state_callback)(int32_t state);
+// Modified by TUYA End
 
 /**
  * @brief      AEC algorithm configurations
@@ -149,27 +168,37 @@ typedef struct
     int                     out_block_num;      /*!< Number of output block*/
     int                     multi_out_port_num; /*!< The number of multiple output audio port */
     int                     dual_ch;            /*!< Enable dual channel input(1)/Disable dual channel input(0)*/
+// Modified by TUYA Start
+    ec_out_callback         ec_out_cb;          /*!< echo cancellation output callback function */
+    vad_state_callback      vad_state_cb;       /*!< VAD state callback function */
+// Modified by TUYA End
 } aec_v3_algorithm_cfg_t;
 
 #define AEC_V3_DELAY_SAMPLE_POINTS_MAX           (1000)
-    
-#define AEC_V3_ALGORITHM_TASK_STACK          (10 * 1024)
+
+// Modified by TUYA Start
+#define AEC_V3_ALGORITHM_TASK_STACK          (4 * 1024)
 #define AEC_V3_ALGORITHM_TASK_CORE           (1)
-#define AEC_V3_ALGORITHM_TASK_PRIO           (5)
+#define AEC_V3_ALGORITHM_TASK_PRIO           (4)
 #define AEC_V3_ALGORITHM_OUT_BLOCK_NUM       (2)
-    
+
 #define AEC_V3_ALGORITHM_FS                  (16000)
-#define AEC_V3_DELAY_POINTS                  (211)
+#define AEC_V3_DELAY_POINTS                  (16)
 #define AEC_V3_ALGORITHM_EC_DEPTH            (0xa)
 #define AEC_V3_ALGORITHM_REF_SCALE           (0)
-#define AEC_V3_ALGORITHM_NS_LEVEL            (5)
+#define AEC_V3_ALGORITHM_NS_LEVEL            (7)
 #define AEC_V3_ALGORITHM_NS_PARA             (2)
 #define AEC_V3_ALGORITHM_INIT_FLAG           (0x1f)
 #define AEC_V3_ALGORITHM_NS_FILTER           (0x7)
 #define AEC_V3_ALGORITHM_VOL                 (0xd)
 #define AEC_V3_ALGORITHM_EC_FILTER           (0x7)
 #define AEC_V3_ALGORITHM_DRC                 (0x0)
+#define AEC_V3_ALGORITHM_INTERWEAVE          (0x1)
+#define AEC_V3_ALGORITHM_MIC_SWAP            (0x0)
+#define AEC_V3_ALGORITHM_MIC_DIST            (0x2)
+#define AEC_V3_ALGORITHM_EC_ONLY_OUTPUT      (0x1)
 #define AEC_V3_VAD_BAD_FRAME_NUM             (16)
+// Modified by TUYA End
 
 
 #define DEFAULT_AEC_V3_ALGORITHM_CONFIG() {                 \
@@ -184,12 +213,17 @@ typedef struct
         .ec_depth = AEC_V3_ALGORITHM_EC_DEPTH,              \
         .ref_scale = AEC_V3_ALGORITHM_REF_SCALE,            \
         .voice_vol = AEC_V3_ALGORITHM_VOL,                  \
-        .ns_type = NS_AI,                                   \
+        .ns_type = NS_TRADITION,                                   \
         .ns_filter = AEC_V3_ALGORITHM_NS_FILTER,            \
         .ns_level = AEC_V3_ALGORITHM_NS_LEVEL,              \
         .ns_para = AEC_V3_ALGORITHM_NS_PARA,                \
         .drc = AEC_V3_ALGORITHM_DRC,                        \
         .ec_filter = AEC_V3_ALGORITHM_EC_FILTER,            \
+        .interweave = AEC_V3_ALGORITHM_INTERWEAVE,          \
+        .dist = AEC_V3_ALGORITHM_MIC_DIST,                  \
+        .mic_swap = AEC_V3_ALGORITHM_MIC_SWAP,              \
+        .ec_only_output = AEC_V3_ALGORITHM_EC_ONLY_OUTPUT,  \
+        .dual_perp = DUAL_CH_0_DEGREE,                      \
     },                                                      \
     .vad_cfg = {                                            \
         .vad_enable = 1,                                    \
@@ -242,6 +276,22 @@ bk_err_t aec_v3_algorithm_set_config(audio_element_handle_t aec_algorithm, void 
  */
 bk_err_t aec_v3_algorithm_get_config(audio_element_handle_t aec_algorithm, void *aec_config);
 
+// Modified by TUYA Start
+/**
+ * @brief      Get current VAD state of AEC V3 algorithm
+ *
+ * @param[in]  aec_algorithm  The aec algorithm handle
+ *
+ * @return     The current VAD state
+ *                 - VAD_NONE: no valid VAD state
+ *                 - VAD_SPEECH_START: speech start detected
+ *                 - VAD_SPEECH_END: speech end detected
+ *                 - VAD_SILENCE: silence detected
+ */
+int aec_v3_algorithm_get_vad_state(audio_element_handle_t aec_algorithm);
+
+
+// Modified by TUYA End
 typedef int (*aec_vad_process_fun)(short *mic_data, short *ref_data, short *out_data); 
 bk_err_t aec_v3_algorithm_set_user_process(aec_vad_process_fun user_process_fun);
 

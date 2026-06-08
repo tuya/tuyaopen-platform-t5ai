@@ -538,7 +538,13 @@ dhcp6_handle_config_reply(struct netif *netif, struct pbuf *p_msg_in)
       }
       ip6_addr_assign_zone(dns_addr6, IP6_UNKNOWN, netif);
       /* @todo: do we need a different offset than DHCP(v4)? */
+// Modified by TUYA Start	  
+#ifdef CONFIG_LWIP_PPP_SUPPORT
+      dns_setserver(n, &dns_addr, netif);
+#else
       dns_setserver(n, &dns_addr);
+#endif
+// Modified by TUYA End    
     }
   }
   /* @ todo: parse and set Domain Search List */

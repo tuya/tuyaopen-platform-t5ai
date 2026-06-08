@@ -78,6 +78,9 @@ uint32_t spinlock_acquire(volatile spinlock_t *slock, int32_t timeout)
 		&& lock_core_id != 0
 		&& lock_core_id != 1
 	) {
+        bk_printf("Error, lock core id %d\r\n", lock_core_id);
+        bk_printf("Error, lock core id %d\r\n", lock_core_id);
+        bk_printf("Error, lock core id %d\r\n", lock_core_id);
 		BK_ASSERT(0);
 		arch_int_restore(flag);
 		return flag;
@@ -108,12 +111,18 @@ void spinlock_release(volatile spinlock_t *slock, uint32_t flag2)
 
 	if(core_id != slock->core_id)
 	{
+        bk_printf("Error, core id not match, %d %d\r\n");
+        bk_printf("Error, core id not match, %d %d\r\n");
+        bk_printf("Error, core id not match, %d %d\r\n");
 		BK_ASSERT(0);
 		return;
 	}
 
 	if(slock->count == 0)
 	{
+        bk_printf("Error, spin lock count == 0\r\n");
+        bk_printf("Error, spin lock count == 0\r\n");
+        bk_printf("Error, spin lock count == 0\r\n");
 		BK_ASSERT(0);
 		return;
 	}

@@ -795,6 +795,7 @@ static bk_err_t _onboard_dual_dmic_mic_destroy(audio_element_handle_t self)
 
 audio_element_handle_t onboard_dual_dmic_mic_stream_init(onboard_dual_dmic_mic_stream_cfg_t *config)
 {
+
     audio_element_handle_t el;
     bk_err_t ret = BK_OK;
     gl_onboard_mic = audio_calloc(1, sizeof(onboard_dual_dmic_mic_stream_t));

@@ -401,7 +401,7 @@ void cli_littlefs_cmd(char *pcWriteBuffer, int xWriteBufferLen, int argc, char *
             wbuf[i] = i;
         }
 
-        extern SYS_TIME_T tkl_system_get_millisecond(void);
+        extern SYS_TIME_T tkl_system_get_millisecond(VOID_T);
         do {
             bk_printf("============> test start, %d\r\n", test_cnt++);
 

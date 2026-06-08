@@ -29,7 +29,7 @@ typedef enum {
 } disp_size_t;
 
 /**********************
- *  static PROTOTYPES
+ *  STATIC PROTOTYPES
  **********************/
 static void profile_create(lv_obj_t * parent);
 static void analytics_create(lv_obj_t * parent);
@@ -56,7 +56,7 @@ static void meter2_timer_cb(lv_timer_t * timer);
 static void meter3_anim_cb(void * var, int32_t v);
 
 /**********************
- *  static VARIABLES
+ *  STATIC VARIABLES
  **********************/
 static disp_size_t disp_size;
 
@@ -199,7 +199,7 @@ void lv_demo_widgets(void)
 }
 
 /**********************
- *   static FUNCTIONS
+ *   STATIC FUNCTIONS
  **********************/
 
 static void profile_create(lv_obj_t * parent)

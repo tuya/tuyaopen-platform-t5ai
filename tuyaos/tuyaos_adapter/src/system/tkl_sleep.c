@@ -107,35 +107,34 @@ static int tkl_sleep_param_save(void)
 
     tkl_flash_read(DEEPSLEEP_PARAMETER_ADDRESS, &ds, sizeof(TKL_DS_PARAM_T));
 
-    if ((ds.magic == DS_INVALID_VALUE) &&
-        (ds.entry_flag == DS_INVALID_VALUE)) {
-        // get and write parameter, then reboot
-        uint32_t status = 0;
-
-        bk_printf("get ds cfg\r\n");
-
-        tkl_wakeup_source_get(ds.cfg, DS_MAX_CFG_ITEM, &status);
-
-        ds.magic = DEEPSLEEP_MAGIC;
-        ds.entry_flag = DS_ENTRY_FLAG;
-        ds.sum = 0;
-
-        uint8_t *tmp = (uint8_t *)&ds;
-        for (i = 0; i < sizeof(TKL_DS_PARAM_T) - 4; i++) {
-            ds.sum += tmp[i];
-        }
-
-        tkl_flash_erase(DEEPSLEEP_PARAMETER_ADDRESS, 4096);
-        tkl_flash_write(DEEPSLEEP_PARAMETER_ADDRESS, &ds, sizeof(TKL_DS_PARAM_T));
-        bk_delay_us(2000000);
-
-        tkl_sleep_param_dump("save config && reboot", &ds);
-        tkl_system_reset();
-
-    } else {
-        bk_printf("wrong parameter: 0x%x, 0x%x\r\n", ds.magic, ds.entry_flag);
-        return -1;
+    if ((ds.magic != DS_INVALID_VALUE) || (ds.entry_flag != DS_INVALID_VALUE)) {
+        bk_printf("%d has dirty data, 0x%x, 0x%x\r\n", DEEPSLEEP_PARAMETER_ADDRESS, ds.magic, ds.entry_flag);
     }
+
+    bk_printf("get ds cfg\r\n");
+
+    // get and write parameter, then reboot
+    uint32_t status = 0;
+
+    tkl_wakeup_source_get(ds.cfg, DS_MAX_CFG_ITEM, &status);
+
+    ds.magic = DEEPSLEEP_MAGIC;
+    ds.entry_flag = DS_ENTRY_FLAG;
+    ds.sum = 0;
+
+    uint8_t *tmp = (uint8_t *)&ds;
+    for (i = 0; i < sizeof(TKL_DS_PARAM_T) - 4; i++) {
+        ds.sum += tmp[i];
+    }
+
+    tkl_flash_erase(DEEPSLEEP_PARAMETER_ADDRESS, 4096);
+    tkl_flash_write(DEEPSLEEP_PARAMETER_ADDRESS, &ds, sizeof(TKL_DS_PARAM_T));
+    bk_delay_us(2000000);
+
+    tkl_sleep_param_dump("save config && reboot", &ds);
+    tkl_system_reset();
+
+    return 0;
 }
 
 int tkl_sleep_param_check_and_set(void)
@@ -165,6 +164,7 @@ int tkl_sleep_param_check_and_set(void)
         __asm volatile ( "dsb" ::: "memory" );
         __asm volatile ( "isb" );
         bk_pm_ap_sleep_mode_set(PM_MODE_DEEP_SLEEP);
+        tkl_system_sleep(10);
     } else {
         bk_printf("parameter: 0x%x, 0x%x\r\n", ds.magic, ds.entry_flag);
         return -1;
@@ -199,14 +199,21 @@ OPERATE_RET tkl_cpu_sleep_mode_set(BOOL_T enable, TUYA_CPU_SLEEP_MODE_E mode)
                 bk_pm_module_vote_sleep_ctrl(PM_SLEEP_MODULE_NAME_APP,0x0,0);
                 // bk7236 连上路由后，cpu 一直保持在睡眠状态，唤醒周期由wifi唤醒决定
                 // bk_printf("bk_pm_module_vote_sleep_ctrl disable !!!\r\n");
+                bk_pm_module_vote_cpu_freq(PM_DEV_ID_CPU1, PM_CPU_FRQ_240M);
             }
         } else {
             //默认cpu就是睡眠模式（调度和中断能自己唤醒），不需要设置
+            if(enable) {
+                bk_pm_module_vote_cpu_freq(PM_DEV_ID_CPU1, PM_CPU_FRQ_120M);
+            } else {
+                bk_pm_module_vote_cpu_freq(PM_DEV_ID_CPU1, PM_CPU_FRQ_480M);
+            }
         }
     } else if (mode == TUYA_CPU_DEEP_SLEEP) {
         if(enable) {
             // PM_MODE_DEEP_SLEEP
             bk_printf("prepare to deepsleep\r\n");
+            is_prepare_deepsleep = 1;
             tkl_sleep_param_save();
         }
     } else {

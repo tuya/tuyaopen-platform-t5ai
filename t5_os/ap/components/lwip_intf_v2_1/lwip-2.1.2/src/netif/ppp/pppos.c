@@ -425,7 +425,13 @@ pppos_input_tcpip(ppp_pcb *ppp, u8_t *s, int l)
   struct pbuf *p;
   err_t err;
 
+// Modified by TUYA Start
+#if MEM_TRX_DYNAMIC_EN
+  p = pbuf_alloc(PBUF_RAW, l, PBUF_RAM_RX);
+#else
   p = pbuf_alloc(PBUF_RAW, l, PBUF_POOL);
+#endif
+// Modified by TUYA End
   if (!p) {
     return ERR_MEM;
   }

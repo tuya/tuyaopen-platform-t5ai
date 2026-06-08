@@ -119,6 +119,35 @@ bk_err_t i2s_hal_sck_ratio_set(uint32_t value);
 bk_err_t i2s_hal_sample_ratio_h2b_set(uint32_t value);
 bk_err_t i2s_hal_sck_ratio_h4b_set(uint32_t value);
 
+bk_err_t i2s_hal_soft_reset_by_id(i2s_gpio_group_id_t id);
+bk_err_t i2s_hal_config_by_id(i2s_gpio_group_id_t id, const i2s_cfg_t *config);
+bk_err_t i2s_hal_deconfig_by_id(i2s_gpio_group_id_t id);
+bk_err_t i2s_hal_int_status_get_by_id(i2s_gpio_group_id_t id, i2s_int_status_t *int_status);
+bk_err_t i2s_hal_read_ready_get_by_id(i2s_channel_id_t id, uint32_t *read_flag);
+bk_err_t i2s_hal_write_ready_get_by_id(i2s_channel_id_t id, uint32_t *write_flag);
+bk_err_t i2s_hal_en_set_by_id(i2s_gpio_group_id_t id, uint32_t value);
+bk_err_t i2s_hal_int_set_by_id(i2s_gpio_group_id_t id, i2s_isr_id_t int_id, uint32_t value);
+bk_err_t i2s_hal_role_set_by_id(i2s_gpio_group_id_t id, uint32_t value);
+bk_err_t i2s_hal_work_mode_set_by_id(i2s_gpio_group_id_t id, uint32_t value);
+bk_err_t i2s_hal_lrck_invert_set_by_id(i2s_gpio_group_id_t id, uint32_t value);
+bk_err_t i2s_hal_sck_invert_set_by_id(i2s_gpio_group_id_t id, uint32_t value);
+bk_err_t i2s_hal_lsb_first_set_by_id(i2s_gpio_group_id_t id, uint32_t value);
+bk_err_t i2s_hal_sync_len_set_by_id(i2s_gpio_group_id_t id, uint32_t value);
+bk_err_t i2s_hal_data_len_set_by_id(i2s_gpio_group_id_t id, uint32_t value);
+bk_err_t i2s_hal_pcm_dlen_set_by_id(i2s_gpio_group_id_t id, uint32_t value);
+bk_err_t i2s_hal_store_mode_set_by_id(i2s_gpio_group_id_t id, uint32_t value);
+bk_err_t i2s_hal_rxfifo_clear_by_id(i2s_gpio_group_id_t id);
+bk_err_t i2s_hal_txfifo_clear_by_id(i2s_gpio_group_id_t id);
+bk_err_t i2s_hal_txudf_int_clear_by_id(i2s_gpio_group_id_t id, i2s_channel_id_t channel_id);
+bk_err_t i2s_hal_rxovf_int_clear_by_id(i2s_gpio_group_id_t id, i2s_channel_id_t channel_id);
+bk_err_t i2s_hal_txint_level_set_by_id(i2s_gpio_group_id_t id, uint32_t value);
+bk_err_t i2s_hal_rxint_level_set_by_id(i2s_gpio_group_id_t id, uint32_t value);
+bk_err_t i2s_hal_data_write_by_id(i2s_gpio_group_id_t id, uint32_t channel_id, uint32_t value);
+bk_err_t i2s_hal_data_read_by_id(i2s_gpio_group_id_t id, uint32_t *value);
+bk_err_t i2s_hal_sample_ratio_set_by_id(i2s_gpio_group_id_t id, uint32_t value);
+bk_err_t i2s_hal_sck_ratio_set_by_id(i2s_gpio_group_id_t id, uint32_t value);
+bk_err_t i2s_hal_sample_ratio_h2b_set_by_id(i2s_gpio_group_id_t id, uint32_t value);
+bk_err_t i2s_hal_sck_ratio_h4b_set_by_id(i2s_gpio_group_id_t id, uint32_t value);
 #if CFG_HAL_DEBUG_I2S
 void i2s_struct_dump(void);
 #else

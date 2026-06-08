@@ -15,7 +15,7 @@
 /**********************
  *   GLOBAL FUNCTIONS
  **********************/
-static void __lv_cb(void *buf, uint32_t len, void *args)
+static VOID_T __lv_cb(void *buf, UINT_T len, VOID *args)
 {
     bk_printf("-------[%s %d] \r\n", __func__, __LINE__);
 }

@@ -35,6 +35,11 @@
 
 #define TAG "wdrv_cntrl"
 
+// Modified by TUYA
+#if CONFIG_SOC_SMP
+SPINLOCK_SECTION volatile spinlock_t wdrv_tx_msg_spin_lock = SPIN_LOCK_INIT;
+#endif
+
 wdrv_wlan wdrv_host_env;
 
 wifi_linkstate_reason_t connect_flag = {WIFI_LINKSTATE_STA_IDLE, WIFI_REASON_MAX};
@@ -136,9 +141,16 @@ int wdrv_get_mac_addr()
 void wdrv_notify_scan_done(void *data, uint16_t len)
 {
     wifi_event_scan_done_t event_data = {0};
-    /* post event scan done*/
-    os_memset(&event_data, 0, sizeof(event_data));
-    os_memcpy(&event_data, data, len);
+    // Modified by TUYA Start
+    uint16_t copy_len = len;
+
+    if (copy_len > sizeof(event_data)) {
+        WDRV_LOGW("scan_done: param_len %d > sizeof(event_data) %d, clamped\n",
+                  len, sizeof(event_data));
+        copy_len = sizeof(event_data);
+    }
+    os_memcpy(&event_data, data, copy_len);
+    // Modified by TUYA End
     bk_event_post(EVENT_MOD_WIFI, EVENT_WIFI_SCAN_DONE, &event_data,
     sizeof(event_data), BEKEN_NEVER_TIMEOUT);
 }
@@ -157,7 +169,11 @@ void wdrv_notify_sta_connected(void)
 void wdrv_notify_sta_disconnected(void *data, uint16_t len)
 {
     wifi_event_sta_disconnected_t sta_disconnected = {0};
-    os_memcpy(&sta_disconnected, data, len);
+
+    // Modified by TUYA Start
+    uint16_t copy_len = (len > sizeof(sta_disconnected)) ? sizeof(sta_disconnected) : len;
+    os_memcpy(&sta_disconnected, data, copy_len);
+    // Modified by TUYA End
 
     /* post event */
     WDRV_LOGV("sta disconnect reason %d,local %d\n",
@@ -442,6 +458,7 @@ void wdrv_rx_handle_wifi_cntrl_event(wdrv_rx_msg *msg)
             break;
         case BK_EVT_BCN_CC_RXED:
             bk_wifi_bcn_cc_rxed_cb(msg->param, msg->param_len);
+            break; // Modified by TUYA
         case BK_EVT_CSI_INFO_IND:
             bk_wifi_csi_info_cb(msg->param);
             break;

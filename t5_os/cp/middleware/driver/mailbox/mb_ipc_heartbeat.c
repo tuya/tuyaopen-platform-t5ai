@@ -105,10 +105,10 @@ static int ipc_heartbeat_timeout(void)
 	}
 	else
 	{
-		cur_time += (~(cpu_x_heartbeat_timestamp)) + 1;  // wrap around. 
+		cur_time += (~(cpu_x_heartbeat_timestamp)) + 1;  // wrap around.
 	}
-	
-	if(cur_time < CONFIG_INT_WDT_PERIOD_MS)
+
+	if(cur_time < (CONFIG_INT_WDT_PERIOD_MS * 2))             // Modified by TUYA
 	{
 		cpu_x_heartbeat_timestamp = (u32)rtos_get_time();
 		return 0;
@@ -139,7 +139,7 @@ static void restart_cpu_x(void)
 		start_cpu1_core();
 		return;
 	}
-	
+
 	if(cpu_x_id == 2)
 	{
 		stop_cpu2_core();
@@ -221,7 +221,7 @@ static void mb_ipc_task( void *para )
 				events = 0;  // clear all events.
 			}
 		}
-		
+
 		if(events & MB_IPC_START_CORE_FLAG)
 		{
 			u8   retry_cnt = 0;
@@ -229,13 +229,13 @@ static void mb_ipc_task( void *para )
 			while(cpu_x_state == CORE_STARTING)
 			{
 				ipc_heartbeat_timeout();
-				
+
 				if(events & MB_IPC_POWER_UP_FLAG)
 				{
 					if(cpu_x_state == CORE_STARTING)
 					{
 						cpu_x_state = CORE_POWER_ON;
-						break;  // cpu1 power on. 
+						break;  // cpu1 power on.
 					}
 				}
 				else
@@ -257,14 +257,15 @@ static void mb_ipc_task( void *para )
 
 			// discard this event when not in CORE_STARTING state.
 		}
-		
+
 		if(events & MB_IPC_HEARTBEAT_FLAG)
 		{
 			if(ipc_heartbeat_timeout())
 			{
 				BK_LOGE(MOD_TAG, "IPC[%d]heartbeat timeout %d,%d\r\n",cpu_x_id,cpu_x_heartbeat_timestamp,(u32)rtos_get_time());
 				/*when cpu1 heartbeat timeout, then system reboot*/
-				BK_ASSERT(false);
+				// rtos_regist_plat_dump_hook(CONFIG_AP_PSRAM_HEAP_ADDR, CONFIG_AP_PSRAM_HEAP_SIZE);
+				BK_ASSERT(false);        // Modified by TUYA
 			}
 		}
 
@@ -285,7 +286,7 @@ void mb_ipc_reset_notify(u32 cpu_id, u32 power_on)
 	{
 		return;
 	}
-	
+
 	if(power_on)
 	{
 		if(cpu_x_state != CORE_POWER_ON)
@@ -327,7 +328,7 @@ void mb_ipc_dump_notify(u32 cpu_id, u32 dump)
 	{
 		return;
 	}
-	
+
 	cpu_x_dump = (dump != 0);
 }
 
@@ -337,7 +338,7 @@ int mb_ipc_cpu_is_power_on(u32 cpu_id)
 	{
 		return 0;
 	}
-	
+
 	if(cpu_x_state == CORE_POWER_ON)
 	{
 		return 1;
@@ -352,7 +353,7 @@ int mb_ipc_cpu_is_power_off(u32 cpu_id)
 	{
 		return 1;
 	}
-	
+
 	if(cpu_x_state == CORE_POWER_OFF)
 	{
 		return 1;
@@ -393,7 +394,7 @@ bk_err_t mb_ipc_heartbeat_init(void)
 		BK_LOGE(MOD_TAG, "heartbeat task failed at line %d: %d\r\n", __LINE__, ret_val);
 	}
 
-	return ret_val;	
+	return ret_val;
 }
 
 #endif

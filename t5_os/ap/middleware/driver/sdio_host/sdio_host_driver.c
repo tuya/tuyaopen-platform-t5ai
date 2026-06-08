@@ -140,65 +140,6 @@ static void sdio_host_init_gpio(void)
 }
 #endif
 
-extern gpio_id_t ty_get_dev_io(gpio_dev_t dev);
-
-#define SDIO_HOST_GPIO_MAP_TUYA \
-{\
-	{ty_get_dev_io(GPIO_DEV_SDIO_HOST_CLK), GPIO_DEV_SDIO_HOST_CLK},\
-	{ty_get_dev_io(GPIO_DEV_SDIO_HOST_CMD), GPIO_DEV_SDIO_HOST_CMD},\
-	{ty_get_dev_io(GPIO_DEV_SDIO_HOST_DATA0), GPIO_DEV_SDIO_HOST_DATA0},\
-	{ty_get_dev_io(GPIO_DEV_SDIO_HOST_DATA1), GPIO_DEV_SDIO_HOST_DATA1},\
-	{ty_get_dev_io(GPIO_DEV_SDIO_HOST_DATA2), GPIO_DEV_SDIO_HOST_DATA2},\
-	{ty_get_dev_io(GPIO_DEV_SDIO_HOST_DATA3), GPIO_DEV_SDIO_HOST_DATA3},\
-}
-
-static void sdio_host_init_gpio_tuya(void)
-{
-	const sdio_host_gpio_map_t sdio_host_gpio_map_table[] = SDIO_HOST_GPIO_MAP_TUYA;
-
-	/* set gpio sdio host map: clk,cmd,data0 */
-	for (uint32_t i = SDIO_HOST_GPIO_CLK_INDEX; i < SDIO_HOST_GPIO_PIN_NUMBER; i++) {
-		gpio_dev_unmap(sdio_host_gpio_map_table[i].gpio_id);
-	}
-
-#if defined(CONFIG_SDIO_4LINES_EN) && (CONFIG_SDIO_4LINES_EN)
-	if(GPIO_14 == sdio_host_gpio_map_table[SDIO_HOST_GPIO_CLK_INDEX].gpio_id) {
-		gpio_sdio_sel(GPIO_SDIO_MAP_MODE1);
-	}else {
-		gpio_sdio_sel(GPIO_SDIO_MAP_MODE0);
-	}
-#else
-	if(GPIO_14 == sdio_host_gpio_map_table[SDIO_HOST_GPIO_CLK_INDEX].gpio_id) {
-		bk_printf("GPIO_SDIO_MAP_MODE1\r\n");
-		gpio_sdio_one_line_sel(GPIO_SDIO_MAP_MODE1);
-	}else {
-		bk_printf("GPIO_SDIO_MAP_MODE0\r\n");	
-		gpio_sdio_one_line_sel(GPIO_SDIO_MAP_MODE0);
-	}
-#endif
-
-	/* sdio host clk */
-	bk_gpio_pull_up(sdio_host_gpio_map_table[SDIO_HOST_GPIO_CLK_INDEX].gpio_id);
-	bk_gpio_set_capacity(sdio_host_gpio_map_table[SDIO_HOST_GPIO_CLK_INDEX].gpio_id, 3);
-	bk_printf("GPIO_SDIO_CKL_PUIN :%d\r\n", sdio_host_gpio_map_table[SDIO_HOST_GPIO_CLK_INDEX].gpio_id);
-	/* sdio host cmd */
-	bk_gpio_pull_up(sdio_host_gpio_map_table[SDIO_HOST_GPIO_CMD_INDEX].gpio_id);
-	bk_gpio_set_capacity(sdio_host_gpio_map_table[SDIO_HOST_GPIO_CMD_INDEX].gpio_id, 3);
-	bk_printf("GPIO_SDIO_CMD_PUIN :%d\r\n", sdio_host_gpio_map_table[SDIO_HOST_GPIO_CMD_INDEX].gpio_id);
-	/* sdio host data0 */
-	bk_gpio_pull_up(sdio_host_gpio_map_table[SDIO_HOST_GPIO_DATA0_INDEX].gpio_id);
-	bk_gpio_set_capacity(sdio_host_gpio_map_table[SDIO_HOST_GPIO_DATA0_INDEX].gpio_id, 3);
-	bk_printf("GPIO_SDIO_DATA0_PUIN :%d\r\n", sdio_host_gpio_map_table[SDIO_HOST_GPIO_DATA0_INDEX].gpio_id);
-
-#if CONFIG_SDIO_4LINES_EN
-	/* sdio host data1,data2,data3 */
-	for (uint32_t i = SDIO_HOST_GPIO_DATA1_INDEX; i < SDIO_HOST_GPIO_PIN_NUMBER; i++) {
-		bk_gpio_pull_up(sdio_host_gpio_map_table[i].gpio_id);
-		bk_gpio_set_capacity(sdio_host_gpio_map_table[i].gpio_id, 3);
-	}
-#endif
-}
-
 #if CONFIG_SDIO_GDMA_EN
 static uint32_t s_dma_transfer_size_check = 0;
 static void sdio_dma_tx_start(dma_id_t id)
@@ -411,8 +352,6 @@ static void sdio_host_init_common(void)
 	 * GPIO info is setted in GPIO_DEFAULT_DEV_CONFIG and inited in bk_gpio_driver_init->gpio_hal_default_map_init.
 	 * If needs to re-config GPIO, can deal it here.
 	 */
-
-	sdio_host_init_gpio_tuya();
 #else
 	/* config sdio host gpio */
 	sdio_host_init_gpio();

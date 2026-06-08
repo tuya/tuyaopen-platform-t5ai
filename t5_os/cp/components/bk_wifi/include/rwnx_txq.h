@@ -114,6 +114,7 @@
 //#define RWNX_TXQ_MAX_QUEUE_JIFFIES (20 * FCLK_SECOND)
 #define RWNX_TXQ_MAX_QUEUE_JIFFIES (20 * bk_get_ticks_per_second())
 
+#define RWNX_MGMT_TXQ_MAX_QUEUE_JIFFIES (2 * bk_get_ticks_per_second())
 
 /**
  * TXQ tid sorted by decreasing priority

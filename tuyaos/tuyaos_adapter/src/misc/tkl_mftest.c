@@ -85,6 +85,29 @@ static OPERATE_RET __pt_stop_audio_test(uint16_t cmd, uint8_t *data, uint32_t le
     return OPRT_OK;
 }
 
+static uint32_t mf_test_idVendor = 0xFFFFFFFF;
+static uint32_t mf_test_idProduct = 0xFFFFFFFF;
+void tkl_mftest_usb_info(uint32_t vid, uint32_t pid)
+{
+    mf_test_idVendor = vid;
+    mf_test_idProduct = pid;
+}
+
+bool tkl_mftest_is_usb_ready(void)
+{
+    int cnt = 0;
+    do {
+        if ((mf_test_idVendor != 0xFFFFFFFF) &&
+           ((mf_test_idProduct != 0xFFFFFFFF))) {
+            // got, next
+            return true;
+        }
+        tkl_system_sleep(50);
+    } while (cnt++ < 20);
+
+    return false;
+}
+
 static OPERATE_RET __pt_mcu_get_usb_info(uint16_t cmd, uint8_t *data, uint32_t len, uint8_t **ret_data, uint16_t *ret_len)
 {
     char *ret_buf = tkl_system_malloc(128);
@@ -94,10 +117,26 @@ static OPERATE_RET __pt_mcu_get_usb_info(uint16_t cmd, uint8_t *data, uint32_t l
     }
     memset(ret_buf, 0, 128);
 
-    uint32_t idVendor = 0xFFFFFFFF, idProduct = 0xFFFFFFFF;
-    tuya_get_usb_dev(&idVendor, &idProduct);
-    bk_printf("usb device: 0x%04x 0x%04x\r\n");
-    if ((idVendor != 0xFFFFFFFF) && (idProduct != 0xFFFFFFFF)) {
+    mf_test_idVendor = 0xFFFFFFFF;
+    mf_test_idProduct = 0xFFFFFFFF;
+
+    // power on, T5 测架P28使能usb电源
+    TUYA_GPIO_BASE_CFG_T cfg;
+    cfg.mode = TUYA_GPIO_PULLUP;
+    cfg.direct = TUYA_GPIO_OUTPUT;
+    cfg.level = TUYA_GPIO_LEVEL_HIGH;
+    tkl_gpio_init(TUYA_GPIO_NUM_28, &cfg);
+    tkl_gpio_write(TUYA_GPIO_NUM_28, TUYA_GPIO_LEVEL_HIGH);
+
+    // open usb
+    bk_usb_open(0);
+
+    // get value, wait max 500ms
+    tkl_mftest_is_usb_ready();
+
+    bk_printf("usb device: 0x%04x 0x%04x\r\n", mf_test_idVendor, mf_test_idProduct);
+
+    if ((mf_test_idVendor != 0xFFFFFFFF) && (mf_test_idProduct != 0xFFFFFFFF)) {
         bk_printf("get usb info success\r\n");
         char *usb_succ_str = "{\"ret\":true}";
         memcpy(ret_buf, usb_succ_str, strlen(usb_succ_str));
@@ -110,6 +149,9 @@ static OPERATE_RET __pt_mcu_get_usb_info(uint16_t cmd, uint8_t *data, uint32_t l
     *ret_data = (uint8_t *)ret_buf;
     *ret_len = strlen(ret_buf);
 
+    bk_usb_close();
+    tkl_gpio_write(TUYA_GPIO_NUM_28, TUYA_GPIO_LEVEL_LOW);
+    tkl_system_sleep(100);
     return OPRT_OK;
 }
 

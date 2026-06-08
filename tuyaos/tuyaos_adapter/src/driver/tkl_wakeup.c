@@ -100,23 +100,15 @@ static void __gpio_wakeup_source_set(gpio_id_t gpio_id, TUYA_GPIO_WAKE_TYPE_E le
 
 #if CONFIG_AON_RTC
 static pm_ap_rtc_info_t low_power_info = {0};
-static bk_err_t tkl_pm_rtc_sleep_wakeup_callback(pm_sleep_mode_e sleep_mode,pm_wakeup_source_e wake_source,void* param_p)
-{
-    bk_printf("%s %d\r\n", __func__, __LINE__);
-    return 0;
-}
-
 static void __rtc_wakeup_source_set(uint32_t ms)
 {
-    // TODO
-    bk_printf("TODO RTC WAKEUP\r\n");
-
-    low_power_info.period_tick  = ms;
-    low_power_info.period_cnt   = 1;
-    low_power_info.callback     = tkl_pm_rtc_sleep_wakeup_callback;
-    low_power_info.param_p      = NULL;
-    bk_printf("---trace %s %d, wakeup data:%p\r\n", __func__, __LINE__, &low_power_info);
-    bk_pm_ap_rtc_regsiter_wakeup(PM_MODE_LOW_VOLTAGE, &low_power_info);
+    bk_printf("rtc wakeup, %d ms\r\n", ms);
+    low_power_info.period_tick                = ms;
+    low_power_info.period_cnt                 = 1;
+    low_power_info.callback                   = NULL;
+    low_power_info.param_p                    = NULL;
+    // only support PM_MODE_DEEP_SLEEP
+    bk_pm_ap_rtc_regsiter_wakeup(PM_MODE_DEEP_SLEEP,&low_power_info);
 }
 #endif // CONFIG_AON_RTC
 
@@ -181,7 +173,7 @@ OPERATE_RET tkl_wakeup_source_set(const TUYA_WAKEUP_SOURCE_BASE_CFG_T  *param)
     //wakeup_source_init_status |= (1 << param->source);
 
     tkl_set_ll_wakeup_source();
-    bk_printf("wakeup source: %d %x\r\n", param->source, wakeup_source_init_status);
+    // bk_printf("wakeup source: %d %x\r\n", param->source, wakeup_source_init_status);
 
     return OPRT_OK;
 }

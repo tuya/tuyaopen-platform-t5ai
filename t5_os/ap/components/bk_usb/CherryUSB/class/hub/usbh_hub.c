@@ -948,7 +948,7 @@ int usbh_hub_initialize(void)
             hub_thread = NULL;
         }
     }
-
+    USB_LOG_VBS("[-]%s\r\n", __func__); // Modified by TUYA
     return 0;
 }
 

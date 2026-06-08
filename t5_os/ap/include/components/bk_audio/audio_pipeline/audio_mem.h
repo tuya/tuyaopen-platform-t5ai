@@ -102,6 +102,10 @@ void audio_dma_mem_free(void *ptr);
  */
 void *audio_dma_mem_calloc(uint32_t nmemb, uint32_t size);
 
+// Modified by TUYA Start
+void *audio_dma_mem_calloc_on_sram(uint32_t nmemb, uint32_t size);
+// Modified by TUYA End
+
 #define AUDIO_MEM_SHOW(x)  audio_mem_print(x, __LINE__, __func__)
 
 #ifdef __cplusplus

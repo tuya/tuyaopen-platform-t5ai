@@ -51,9 +51,12 @@ OPERATE_RET tkl_gpio_init(TUYA_GPIO_NUM_E pin_id, const TUYA_GPIO_BASE_CFG_T *cf
 {
     OPERATE_RET ret = OPRT_OK;
     // TODO
-    PIN_DEV_CHECK_ERROR_RETURN(pin_id, OPRT_INVALID_PARM);
+    // PIN_DEV_CHECK_ERROR_RETURN(pin_id, OPRT_INVALID_PARM);
     if (pin_id == TUYA_GPIO_NUM_0) {
         bk_printf("WARNING: Init gpio0, LOG will be disabled\r\n");
+    } else if (pin_id >= GPIO_NUM) {
+        bk_printf("ERROR: GPIO %d not support\r\n", pin_id);
+        return OPRT_NOT_SUPPORTED;
     }
 
     bk_gpio_driver_init();

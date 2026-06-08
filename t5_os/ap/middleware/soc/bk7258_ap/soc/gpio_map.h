@@ -175,16 +175,15 @@ extern "C" {
 #define UART1_TX_PIN  GPIO_0
 #define UART1_RX_PIN  GPIO_1
 
-#if 1
-extern gpio_id_t ty_get_dev_io(gpio_dev_t dev);
-#define UART2_TX_PIN  ty_get_dev_io(GPIO_DEV_UART2_TXD);
-#define UART2_RX_PIN  ty_get_dev_io(GPIO_DEV_UART2_RXD);
-#else
-#define UART2_TX_PIN  GPIO_31
-#define UART2_RX_PIN  GPIO_30
-#endif
+// Modified by TUYA Start
+// #define UART2_TX_PIN  GPIO_31
+// #define UART2_RX_PIN  GPIO_30
 
-
+extern gpio_id_t __tkl_uart2_get_tx_pin(void);
+extern gpio_id_t __tkl_uart2_get_rx_pin(void);
+#define UART2_TX_PIN  __tkl_uart2_get_tx_pin()
+#define UART2_RX_PIN  __tkl_uart2_get_rx_pin()
+// Modified by TUYA End
 
 /* sdio host */
 #if CONFIG_SDCARD_BUSWIDTH_4LINE

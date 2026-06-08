@@ -64,6 +64,7 @@ list(APPEND srcs
 	"hal/sys_clock_hal_debug.c"
 	"hal/qspi_hal_debug.c"
 	"hal/i2s_hal.c"
+	"hal/i2s_multi_hal.c"
 	"hal/sdmadc_hal_debug.c"
 	"hal/ckmn_ll.c"
 	"hal/ckmn_hal_debug.c"

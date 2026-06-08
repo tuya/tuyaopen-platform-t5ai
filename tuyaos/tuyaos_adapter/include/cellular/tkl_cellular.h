@@ -38,6 +38,8 @@ typedef struct
 //  char username[TKL_CELLULAR_USER_NAME_LEN+1];                    ///< User Name
 //  char password[TKL_CELLULAR_USER_PASSWD_LEN+1];                  ///< User Password
 //  char dial_up_phone_num[TKL_CELLULAR_DIAL_UP_CMD_LEN+1];         ///< dial-up phone number
+    TUYA_CELLULAR_IF_E iface;
+    TUYA_CELLULAR_PROTOCOL_E protocol;
 }TKL_CELLULAR_BASE_CFG_T;
 
 /**

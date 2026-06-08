@@ -7,6 +7,8 @@
 #include "lwip/dns.h"
 #include "lwip/netdb.h"
 #include "lwip/inet.h"
+#include "lwip/netif.h"
+#include "lwip/netifapi.h"
 
 typedef struct NETWORK_ERRNO_TRANS {
     int sys_err;
@@ -16,34 +18,34 @@ typedef struct NETWORK_ERRNO_TRANS {
 #define UNW_TO_SYS_FD_SET(fds)  ((fd_set*)fds)
 
 const NETWORK_ERRNO_TRANS_S TKL_ERRNOrans[] = {
-    {EINTR, EINTR},
-    {EBADF, EBADF},
-    {EAGAIN, EAGAIN},
-    {EFAULT, EFAULT},
-    {EBUSY, EBUSY},
-    {EINVAL, EINVAL},
-    {ENFILE, ENFILE},
-    {EMFILE, EMFILE},
-    {ENOSPC, ENOSPC},
-    {EPIPE, EPIPE},
-    {EWOULDBLOCK, EWOULDBLOCK},
-    {ENOTSOCK, ENOTSOCK},
-    {ENOPROTOOPT, ENOPROTOOPT},
-    {EADDRINUSE, EADDRINUSE},
-    {EADDRNOTAVAIL, EADDRNOTAVAIL},
-    {ENETDOWN, ENETDOWN},
-    {ENETUNREACH, ENETUNREACH},
-    {ENETRESET, ENETRESET},
-    {ECONNRESET, ECONNRESET},
-    {ENOBUFS, ENOBUFS},
-    {EISCONN, EISCONN},
-    {ENOTCONN, ENOTCONN},
-    {ETIMEDOUT, ETIMEDOUT},
-    {ECONNREFUSED, ECONNREFUSED},
-    {EHOSTDOWN, EHOSTDOWN},
-    {EHOSTUNREACH, EHOSTUNREACH},
-    {ENOMEM, ENOMEM},
-    {EMSGSIZE, EMSGSIZE}
+    {EINTR,UNW_EINTR},
+    {EBADF,UNW_EBADF},
+    {EAGAIN,UNW_EAGAIN},
+    {EFAULT,UNW_EFAULT},
+    {EBUSY,UNW_EBUSY},
+    {EINVAL,UNW_EINVAL},
+    {ENFILE,UNW_ENFILE},
+    {EMFILE,UNW_EMFILE},
+    {ENOSPC,UNW_ENOSPC},
+    {EPIPE,UNW_EPIPE},
+    {EWOULDBLOCK,UNW_EWOULDBLOCK},
+    {ENOTSOCK,UNW_ENOTSOCK},
+    {ENOPROTOOPT,UNW_ENOPROTOOPT},
+    {EADDRINUSE,UNW_EADDRINUSE},
+    {EADDRNOTAVAIL,UNW_EADDRNOTAVAIL},
+    {ENETDOWN,UNW_ENETDOWN},
+    {ENETUNREACH,UNW_ENETUNREACH},
+    {ENETRESET,UNW_ENETRESET},
+    {ECONNRESET,UNW_ECONNRESET},
+    {ENOBUFS,UNW_ENOBUFS},
+    {EISCONN,UNW_EISCONN},
+    {ENOTCONN,UNW_ENOTCONN},
+    {ETIMEDOUT,UNW_ETIMEDOUT},
+    {ECONNREFUSED,UNW_ECONNREFUSED},
+    {EHOSTDOWN,UNW_EHOSTDOWN},
+    {EHOSTUNREACH,UNW_EHOSTUNREACH},
+    {ENOMEM ,UNW_ENOMEM},
+    {EMSGSIZE,UNW_EMSGSIZE}
 };
 
 extern void bk_printf(const char *fmt, ...);
@@ -90,13 +92,13 @@ TUYA_ERRNO tkl_net_get_errno(void)
 TUYA_IP_ADDR_T tkl_net_str2addr(const char *ip)
 {
     if (ip == NULL) {
-        return 0xFFFFFFFF;
+        return TUYA_IP_ADDR_MAKE_IP4(0xFFFFFFFF);
     }
 
-    TUYA_IP_ADDR_T addr1 = inet_addr((char *)ip);
-    TUYA_IP_ADDR_T addr2 = ntohl(addr1);
+    uint32_t addr1 = inet_addr((char *)ip);
+    uint32_t addr2 = ntohl(addr1);
 
-    return addr2;
+    return TUYA_IP_ADDR_MAKE_IP4(addr2);
 }
 
 /**
@@ -257,7 +259,7 @@ TUYA_ERRNO tkl_net_connect(const int fd, const TUYA_IP_ADDR_T addr, const unsign
 
     struct sockaddr_in sock_addr;
     unsigned short tmp_port = port;
-    TUYA_IP_ADDR_T tmp_addr = addr;
+    uint32_t tmp_addr = TUYA_IP_ADDR_GET_IP4(addr);
 
     sock_addr.sin_family = AF_INET;
     sock_addr.sin_port = htons(tmp_port);
@@ -296,7 +298,7 @@ TUYA_ERRNO tkl_net_bind(const int fd, const TUYA_IP_ADDR_T addr, const unsigned 
     }
 
     unsigned short tmp_port = port;
-    TUYA_IP_ADDR_T tmp_addr = addr;
+    uint32_t tmp_addr = TUYA_IP_ADDR_GET_IP4(addr);
 
     struct sockaddr_in sock_addr;
     sock_addr.sin_family = AF_INET;
@@ -367,7 +369,7 @@ TUYA_ERRNO tkl_net_accept(const int fd, TUYA_IP_ADDR_T *addr, unsigned short *po
     }
 
     if (addr) {
-        *addr = ntohl((sock_addr.sin_addr.s_addr));
+        *addr = TUYA_IP_ADDR_MAKE_IP4(ntohl(sock_addr.sin_addr.s_addr));
     }
 
     if (port) {
@@ -410,7 +412,7 @@ TUYA_ERRNO tkl_net_send_to(const int fd, const void *buf, const uint32_t nbytes,
     }
 
     unsigned short tmp_port = port;
-    TUYA_IP_ADDR_T tmp_addr = addr;
+    uint32_t tmp_addr = TUYA_IP_ADDR_GET_IP4(addr);
 
     struct sockaddr_in sock_addr;
     sock_addr.sin_family = AF_INET;
@@ -449,9 +451,9 @@ TUYA_ERRNO tkl_net_recv(const int fd, void *buf, const uint32_t nbytes)
     ret = recv(fd,buf,nbytes,0);
     if (ret <= 0) {
         TUYA_ERRNO err = tkl_net_get_errno();
-        if (EWOULDBLOCK == err || \
-                EINTR == err || \
-                EAGAIN == err) {
+        if (UNW_EWOULDBLOCK == err || \
+                UNW_EINTR == err || \
+                UNW_EAGAIN == err) {
             tkl_system_sleep(10);
             ret = recv(fd,buf,nbytes,0);
         }
@@ -481,22 +483,25 @@ int tkl_net_recv_nd_size(const int fd, \
 
     unsigned int rd_size = 0;
     int ret = 0;
+    int retry_cnt = 0;
 
     while (rd_size < nd_size) {
         ret = recv(fd, ((uint8_t *)buf + rd_size), nd_size - rd_size, 0);
-        if (ret <= 0) {
+        if (ret > 0) {
+            rd_size += ret;
+            continue;
+        }
+        if (ret < 0 && retry_cnt < 1000) {
             TUYA_ERRNO err = tkl_net_get_errno();
-            if (EWOULDBLOCK == err || \
-                    EINTR == err || \
-                    EAGAIN == err) {
+            if (UNW_EWOULDBLOCK == err || \
+                    UNW_EINTR == err || \
+                    UNW_EAGAIN == err) {
+                retry_cnt++;
                 tkl_system_sleep(10);
                 continue;
             }
-
-            break;
         }
-
-        rd_size += ret;
+        break;
     }
 
     if (rd_size < nd_size) {
@@ -531,9 +536,9 @@ TUYA_ERRNO tkl_net_recvfrom(const int fd, \
     int ret = recvfrom(fd, buf, nbytes, 0, (struct sockaddr *)&sock_addr, &addr_len);
     if (ret <= 0) {
         TUYA_ERRNO err = tkl_net_get_errno();
-        if (EWOULDBLOCK == err || \
-                EINTR == err || \
-                EAGAIN == err) {
+        if (UNW_EWOULDBLOCK == err || \
+                UNW_EINTR == err || \
+                UNW_EAGAIN == err) {
             tkl_system_sleep(10);
             ret = recvfrom(fd, buf, nbytes, 0, (struct sockaddr *)&sock_addr, &addr_len);
         }
@@ -544,7 +549,7 @@ TUYA_ERRNO tkl_net_recvfrom(const int fd, \
     }
 
     if (addr) {
-        *addr = ntohl(sock_addr.sin_addr.s_addr);
+        *addr = TUYA_IP_ADDR_MAKE_IP4(ntohl(sock_addr.sin_addr.s_addr));
     }
 
     if (port) {
@@ -760,7 +765,7 @@ OPERATE_RET tkl_net_gethostbyname(const char *domain, TUYA_IP_ADDR_T *addr)
         return OPRT_COM_ERROR;
     }
 
-    *addr = ntohl(((struct in_addr *)(h->h_addr_list[0]))->s_addr);
+    *addr = TUYA_IP_ADDR_MAKE_IP4(ntohl(((struct in_addr *)(h->h_addr_list[0]))->s_addr));
 
     return OPRT_OK;
 }
@@ -777,21 +782,20 @@ OPERATE_RET tkl_net_gethostbyname(const char *domain, TUYA_IP_ADDR_T *addr)
 
 char* tkl_net_addr2str(const TUYA_IP_ADDR_T ipaddr)
 {
+    uint32_t ip_v4 = TUYA_IP_ADDR_GET_IP4(ipaddr);
 #if defined(ENABLE_LWIP) && (ENABLE_LWIP == 1)
-    unsigned int addr = lwip_htonl(ipaddr);
+    unsigned int addr = lwip_htonl(ip_v4);
     return ip_ntoa((ip_addr_t *) &addr);
 #else
-    if(ipaddr == 0) {
-        return 0xFFFFFFFF;
+    if (ip_v4 == 0) {
+        return NULL;
     }
 
     struct in_addr ip_addr;
-    ip_addr.s_addr = htonl(ipaddr);
+    ip_addr.s_addr = htonl(ip_v4);
     char* addr1 = inet_ntoa(ip_addr);
     return addr1;
-
 #endif
-
 }
 
 OPERATE_RET tkl_net_setsockopt(const int fd, const TUYA_OPT_LEVEL level, const TUYA_OPT_NAME optname, const void *optval, const int optlen)
@@ -903,4 +907,36 @@ OPERATE_RET tkl_net_sethostname(const char *hostname)
     return 0;
 }
 
+/**
+* @brief Set the default route by IP address
+*
+* @param[in] addr: IP address to set
+*
+* @note This API is used to set the default route by IP address.
+*
+* @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
+*/
+OPERATE_RET tkl_net_set_default_netif_by_ip(const TUYA_IP_ADDR_T addr)
+{
+    int ret;
+    ip_addr_t ip; 
+    struct netif *netif;
+    uint32_t addr_v4 = TUYA_IP_ADDR_GET_IP4(addr);
 
+    if (TUYA_IP_ADDR_IS_ANY(addr)) {
+        return OPRT_INVALID_PARM;
+    }
+
+    ip.addr = htonl(addr_v4);
+    netif = netif_get_by_ipaddr(ip);
+    if (NULL == netif) {
+        return OPRT_COM_ERROR;
+    }
+    ret = netifapi_netif_set_default(netif);
+    if (ERR_OK != ret) {
+        bk_printf("set IP addres 0x%x as default route failed(err=%d)\r\n", addr_v4, ret);
+        return OPRT_COM_ERROR;
+    }
+
+    return OPRT_OK;
+}

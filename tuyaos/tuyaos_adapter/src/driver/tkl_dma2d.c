@@ -47,7 +47,7 @@ OPERATE_RET tkl_dma2d_init(const TUYA_DMA2D_BASE_CFG_T *cfg)
     bk_dma2d_register_int_callback_isr(DMA2D_TRANS_COMPLETE_ISR, tkl_dma2d_transfer_complete);
     bk_dma2d_int_enable(DMA2D_CFG_ERROR | DMA2D_TRANS_ERROR | DMA2D_TRANS_COMPLETE, 1);
 
-    if (cfg->cb)
+    if (cfg && cfg->cb)
     {
         g_dma2d_manage.dma2d_isr_cb = cfg->cb;
         g_dma2d_manage.arg = cfg->arg;
@@ -70,8 +70,10 @@ OPERATE_RET tkl_dma2d_deinit()
 
 static OPERATE_RET __dma2d_cfg_init(TKL_DMA2D_FRAME_INFO_T *in_frame, TKL_DMA2D_FRAME_INFO_T *out_frame, dma2d_memcpy_pfc_t *dma2d_cfg)
 {
-    if (in_frame->axis.x_axis >= in_frame->width || in_frame->axis.y_axis >= in_frame->height
-        || in_frame->axis.x_axis >= out_frame->width || in_frame->axis.y_axis >= out_frame->height)
+    if (in_frame->pbuf == NULL || out_frame->pbuf == NULL)
+        return OPRT_INVALID_PARM;
+
+    if (in_frame->axis.x_axis >= in_frame->width || in_frame->axis.y_axis >= in_frame->height)
         return OPRT_INVALID_PARM;
 
     if (out_frame->axis.x_axis >= out_frame->width || out_frame->axis.y_axis >= out_frame->height)
@@ -146,7 +148,7 @@ static OPERATE_RET __dma2d_cfg_init(TKL_DMA2D_FRAME_INFO_T *in_frame, TKL_DMA2D_
 
     uint16_t dst_frame_ypos_eof = dma2d_cfg->dst_frame_ypos + in_frame->height_cp;
     if (dst_frame_ypos_eof > out_frame->height)
-        dma2d_cfg->dma2d_height = out_frame->height - dma2d_cfg->dst_frame_xpos;
+        dma2d_cfg->dma2d_height = out_frame->height - dma2d_cfg->dst_frame_ypos;
     else
         dma2d_cfg->dma2d_height = in_frame->height_cp;
 
@@ -171,7 +173,7 @@ OPERATE_RET tkl_dma2d_convert(TKL_DMA2D_FRAME_INFO_T *src, TKL_DMA2D_FRAME_INFO_
     dma2d_convert_pfc.mode = DMA2D_M2M_PFC;
     ret = __dma2d_cfg_init(src, dst, &dma2d_convert_pfc);
     if (ret)
-        OPRT_INVALID_PARM;
+        return OPRT_INVALID_PARM;
 
 	bk_dma2d_memcpy_or_pixel_convert(&dma2d_convert_pfc);
     bk_dma2d_start_transfer();

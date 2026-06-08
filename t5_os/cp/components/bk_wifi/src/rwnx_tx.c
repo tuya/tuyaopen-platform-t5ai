@@ -135,6 +135,23 @@ struct pbuf *macif_get_txdesc_pbuf(struct txdesc *txdesc)
     return node ? node->p : NULL;
 }
 
+// Modified by TUYA Start
+/**
+ * @return true if mgmt frame is still within retry lifetime
+ */
+static bool rwnx_mgmt_retry_tx_check(struct sk_buff *skb)
+{
+	unsigned long jiffies_now;
+	unsigned long skb_timeout = RWNX_MGMT_TXQ_MAX_QUEUE_JIFFIES;
+
+	jiffies_now = bk_get_tick();
+	if (!time_after(jiffies_now, skb->jiffies + skb_timeout))
+		return true;
+
+	return false;
+}
+// Modified by TUYA End
+
 static void rwnx_tx_confirm(void *param)
 {
 	struct txdesc *txdesc = (struct txdesc *)param;
@@ -973,6 +990,10 @@ void fhost_tx_cfm_push(uint8_t queue_idx, struct txdesc *txdesc)
 			if (txq->idx == TXQ_INACTIVE)
 				goto err_tx;
 
+            // Modified by TUYA
+			if ((txdesc->host.flags & TXU_CNTRL_MGMT) && !rwnx_mgmt_retry_tx_check(skb))
+				goto err_tx;
+
 			txq->credits++;
 			if (txq->credits > 0)
 				rwnx_txq_start(txq, RWNX_TXQ_STOP_FULL);
@@ -1015,6 +1036,10 @@ void fhost_tx_cfm_push(uint8_t queue_idx, struct txdesc *txdesc)
 			 * 3. confirm cb called
 			 */
 			if (txq->idx == TXQ_INACTIVE)
+				goto err_tx;
+
+            // Modified by TUYA
+			if ((txdesc->host.flags & TXU_CNTRL_MGMT) && !rwnx_mgmt_retry_tx_check(skb))
 				goto err_tx;
 
 			//Do NOT re-transmit the packet if retry count has reached the limit

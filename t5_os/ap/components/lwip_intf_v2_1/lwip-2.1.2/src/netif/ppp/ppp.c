@@ -1109,9 +1109,19 @@ int sdns(ppp_pcb *pcb, u32_t ns1, u32_t ns2) {
   LWIP_UNUSED_ARG(pcb);
 
   ip_addr_set_ip4_u32_val(ns, ns1);
+// Modified by TUYA Start  
+#ifdef CONFIG_LWIP_PPP_SUPPORT
+  dns_setserver(0, &ns, pcb->netif);
+#else
   dns_setserver(0, &ns);
+#endif  
   ip_addr_set_ip4_u32_val(ns, ns2);
+#ifdef CONFIG_LWIP_PPP_SUPPORT
+  dns_setserver(1, &ns, pcb->netif);
+#else
   dns_setserver(1, &ns);
+#endif 
+// Modified by TUYA End
   return 1;
 }
 
@@ -1127,12 +1137,24 @@ int cdns(ppp_pcb *pcb, u32_t ns1, u32_t ns2) {
   nsa = dns_getserver(0);
   ip_addr_set_ip4_u32_val(nsb, ns1);
   if (ip_addr_cmp(nsa, &nsb)) {
+// Modified by TUYA Start  
+#ifdef CONFIG_LWIP_PPP_SUPPORT
+    dns_setserver(0, IP_ADDR_ANY, pcb->netif);
+#else
     dns_setserver(0, IP_ADDR_ANY);
+#endif
+// Modified by TUYA End    
   }
   nsa = dns_getserver(1);
   ip_addr_set_ip4_u32_val(nsb, ns2);
   if (ip_addr_cmp(nsa, &nsb)) {
+// Modified by TUYA Start  
+#ifdef CONFIG_LWIP_PPP_SUPPORT
+    dns_setserver(1, IP_ADDR_ANY, pcb->netif);
+#else
     dns_setserver(1, IP_ADDR_ANY);
+#endif
+// Modified by TUYA End
   }
   return 1;
 }

@@ -638,7 +638,7 @@ enum csi_msg_tag
     CSI_RESET_ALGO_STATIC_IND,
     /// CSI_RESET_ALGO_STATIC_IND
     CSI_ALG_CONFIG_IND,
-    
+
     CSI_MESSAGE_MAX
 };
 
@@ -671,7 +671,7 @@ struct csi_start_req
     // count of get csi continuous
     uint8_t csi_gap_num;
     // value 1 -- NULL frame;
-    // value 2 -- ; 
+    // value 2 -- ;
     uint8_t csi_tx_type;
     // value 1 -- csi data get opportunity at frame ACK, type 1;
     // value 2 -- csi data get opportunity at rx frame, type 2;
@@ -715,14 +715,14 @@ struct csi_sta_connect_ind
 
 
 /// Structure containing the parameters of the @ref CSI_DHCP_DONE_IND and messages
-struct csi_dhcp_done_ind 
+struct csi_dhcp_done_ind
 {
     uint8_t vif_idx;
     uint8_t mac[MAC_ADDR_LEN];
 };
 
 /// Structure containing the parameters of the @ref CSI_ALGO_IND and messages
-struct csi_alg_ind 
+struct csi_alg_ind
 {
     double move_change_rate;
     double state_change_rate;
@@ -730,7 +730,7 @@ struct csi_alg_ind
 
 
 /// Structure containing the parameters of the @ref CSI_RESET_ALGO_STATIC_IND and messages
-struct csi_static_reset_ind 
+struct csi_static_reset_ind
 {
     uint8_t vif_idx;
     uint8_t cali_mode;
@@ -3335,6 +3335,8 @@ enum sm_msg_tag
     SM_CONNCTION_START_IND,
     // Indicats that the beacon is lost
     SM_BEACON_LOSE_IND,
+    // Indicates conn delay time    // Modified by TUYA, 6203
+    SM_CONN_DELAY_TIME_IND,
 #endif
     // Section of internal SM messages. No SM API messages should be defined below this point
     /// Timeout message for procedures requiring a response from peer
@@ -3474,6 +3476,16 @@ struct sm_ft_auth_ind
     uint16_t ft_ie_len;
     /// Fast Transition elements in the authentication
     uint32_t ft_ie_buf[0];
+};
+
+// Modified by TUYA 6203
+/// Structure containing the parameters of the @ref SM_DISCONNECT_REQ message.
+struct sm_conn_delay_time_ind
+{
+    /// connect delay time(ms).
+    uint8_t conn_delay_time;
+    /// Index of the VIF.
+    uint8_t vif_idx;
 };
 /*
  * ENUMERATIONS
