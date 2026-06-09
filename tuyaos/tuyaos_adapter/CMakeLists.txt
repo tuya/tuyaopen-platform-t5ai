@@ -79,14 +79,12 @@ set(srcs
     src/driver/tkl_watchdog.c
     src/driver/tkl_ipc.c
     src/misc/tuya_tkl_ipc.c
-    include/init/src/tkl_init_cellular.c
     include/init/src/tkl_init_system.c
 )
 
 if ("${CONFIG_CPU_INDEX}" STREQUAL "0")
     list(APPEND srcs src/driver/tkl_hci_0.c)
     if (CONFIG_TUYA_TEST_CLI)
-        list(APPEND incs src/test/test_media)
         list(APPEND srcs src/test/cli_tuya_test_0.c)
     endif() # CONFIG_TUYA_TEST_CLI
 else()
@@ -122,6 +120,7 @@ else()
         src/driver/tkl_dvp.c
         src/driver/tkl_jpeg_codec.c
 
+        src/misc/tuya_sdio.c
         src/misc/encrypt.c
         src/misc/fs_init.c
         src/misc/dhcpserver.c
@@ -130,7 +129,7 @@ else()
         src/misc/bk_adapter.c
         src/misc/tuya_dma.c
         src/misc/tkl_mftest.c
-
+        src/misc/mftest/mt_audio.c
 
         src/system/tkl_fs.c
         src/system/tkl_ota.c
@@ -138,6 +137,21 @@ else()
         src/system/ota_head.c
 
         src/driver/tkl_wakeup.c
+        # src/driver/tkl_asr.c
+        # src/misc/ty_vad_app.c
+
+        include/init/src/tkl_init_common.c
+        include/init/src/tkl_init_network.c
+        # include/init/src/tkl_init_wifi.c
+        include/init/src/tkl_init_wired.c
+        include/init/src/tkl_init_cellular.c
+        include/utilities/src/tuya_hashmap.c
+        include/utilities/src/tuya_ringbuf.c
+        include/utilities/src/tuya_smartpointer.c
+        include/utilities/src/tuya_queue.c
+        include/utilities/src/tuya_mem_heap.c
+        include/utilities/src/tuya_list.c
+        include/utilities/src/tuya_tools.c
     )
 
     file(GLOB_RECURSE utilities_srcs "$ENV{ARMINO_PATH}/../../tuyaos/tuyaos_adapter/include/utilities/src/*.c")
@@ -160,7 +174,6 @@ else()
             # src/test/test_usb.c
             # src/test/test_spi.c
             # src/test/test_ringbuffer/rb.c
-            src/test/test_common.c
             # src/test/test_media.c
             # src/test/test_mic.c
             # src/test/test_speaker.c
@@ -172,7 +185,6 @@ else()
             # src/test/test_media/test_media_camera.c
             # src/test/test_media/test_media_h264.c
             # src/test/test_media/test_media_lcd.c
-            # src/test/test_lp.c
             # src/test/test_eth.c
             # src/test/test_iperf.c
             # src/test/test_mem.c
@@ -186,9 +198,13 @@ else()
             # src/test/coremark/core_state.c
             # src/test/coremark/core_util.c
             # src/test/coremark/posix/core_portme.c
-            # src/test/test_gpio.c
-            # src/test/test_sdcard.c
-            # src/test/test_littlefs.c
+            src/test/test_common.c
+            src/test/test_lp.c
+            src/test/test_gpio.c
+            src/test/test_sdcard.c
+            src/test/test_littlefs.c
+            # src/test/audio_input.c
+            src/test/test_fs.c
             src/test/cli_tuya_test_1.c
         )
     endif() # CONFIG_TUYA_TEST_CLI

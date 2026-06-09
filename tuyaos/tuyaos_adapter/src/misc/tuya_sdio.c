@@ -191,7 +191,7 @@ void user_sdio_gpio_init(void)
  * @note 目前该接口仅用于配置gpio模式，sdio驱动后续待接口完善后再适配,GPIO驱动能力
  *      非通用能力，T5依赖json配置获取
  */
-OPERATE_RET tkl_sdio_init(int port, CONST TUYA_SDIO_BASE_CFG_T *cfg)
+OPERATE_RET tkl_sdio_init(int port, const TUYA_SDIO_BASE_CFG_T *cfg)
 {
     if (cfg == NULL) {
         return OPRT_INVALID_PARM;
