@@ -246,10 +246,3 @@ OPERATE_RET tkl_gpio_irq_disable(TUYA_GPIO_NUM_E pin_id)
     bk_gpio_disable_interrupt(pinmap[pin_id].gpio);
     return OPRT_OK;
 }
-
-gpio_id_t tkl_gpio_get_bk_gpio_id(TUYA_GPIO_NUM_E pin_id)
-{
-    PIN_DEV_CHECK_ERROR_RETURN(pin_id, GPIO_NUM);
-    
-    return pinmap[pin_id].gpio;
-}
