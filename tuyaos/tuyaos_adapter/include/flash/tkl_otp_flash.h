@@ -67,6 +67,17 @@ OPERATE_RET tkl_otp_flash_erase(uint8_t type, uint32_t size);
  */
 OPERATE_RET tkl_otp_flash_lock(void);
 
+/*
+ * @brief check if otp flash is locked
+ *
+ * @param[in] none
+ *
+ * @note This API is used for checking the lock status of otp flash.
+ *
+ * @return 1 if locked, 0 if not locked
+ */
+uint8_t tkl_otp_flash_is_locked(void);
+
 #ifdef __cplusplus
 }
 #endif /* __cplusplus */

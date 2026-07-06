@@ -186,3 +186,25 @@ OPERATE_RET tkl_otp_flash_lock(void)
     return OPRT_OK;
     // --- END: user implements ---
 }
+
+/*
+ * @brief check if otp flash is locked
+ *
+ * @param[in] none
+ *
+ * @note This API is used for checking the lock status of otp flash.
+ *
+ * @return 1 if locked, 0 if not locked
+ */
+uint8_t tkl_otp_flash_is_locked(void)
+{
+    extern uint16_t bk_flash_read_status_reg(void);
+
+    uint16_t sts_val = bk_flash_read_status_reg();
+    bk_printf("read sts_val = 0x%x\n", sts_val);
+    if (0xa38 == sts_val) {
+        return 1; // locked
+    }
+
+    return 0;
+}
