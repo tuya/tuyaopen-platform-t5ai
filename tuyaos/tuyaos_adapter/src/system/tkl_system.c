@@ -39,6 +39,24 @@ static void __get_info_func(void *arg)
 }
 #endif
 
+#if CONFIG_CPU_INDEX == 0
+OPERATE_RET __tkl_otp_flash_is_locked(struct ipc_msg_s *msg) // cp get otp flash info
+{
+    if (NULL == msg) {
+        return OPRT_INVALID_PARM;
+    }
+
+    extern uint16_t bk_flash_read_status_reg(void);
+    uint16_t sts_val = bk_flash_read_status_reg();
+
+    bk_printf("bk_flash_read_status_reg: 0x%x\r\n", sts_val);
+
+    memcpy(msg->res_param, &sts_val, msg->res_len);
+
+    return OPRT_OK;
+}
+#endif
+
 void tkl_sys_ipc_func(struct ipc_msg_s *msg)
 {
     switch(msg->subtype) {
@@ -55,6 +73,13 @@ void tkl_sys_ipc_func(struct ipc_msg_s *msg)
             xTaskCreate(__get_info_func, "get_info", 1024, msg, 6, (TaskHandle_t * const )&__gi_thread_handle);
             msg->ret_value = 0;
             tuya_ipc_send_no_sync(msg);
+        }
+            break;
+
+        case TKL_IPC_TYPE_SYS_OTP_REG_GET:
+        {
+            msg->ret_value = 0;
+            __tkl_otp_flash_is_locked(msg);
         }
             break;
 #endif

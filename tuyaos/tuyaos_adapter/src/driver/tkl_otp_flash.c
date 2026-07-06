@@ -11,8 +11,11 @@
 
 // --- BEGIN: user defines and implements ---
 #include "tkl_otp_flash.h"
+#include "tuya_cloud_types.h"
 #include "tuya_error_code.h"
 #include "flash_bypass.h"
+#include "tkl_ipc.h"
+#include "tkl_memory.h"
 
 #define OTP_FLASH_SIZE 1024
 
@@ -190,21 +193,44 @@ OPERATE_RET tkl_otp_flash_lock(void)
 /*
  * @brief check if otp flash is locked
  *
- * @param[in] none
+ * @param[in] is_locked: pointer of lock status
  *
  * @note This API is used for checking the lock status of otp flash.
  *
- * @return 1 if locked, 0 if not locked
+ * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
  */
-uint8_t tkl_otp_flash_is_locked(void)
+OPERATE_RET tkl_otp_flash_is_locked(uint8_t *is_locked)
 {
-    extern uint16_t bk_flash_read_status_reg(void);
-
-    uint16_t sts_val = bk_flash_read_status_reg();
-    bk_printf("read sts_val = 0x%x\n", sts_val);
-    if (0xa38 == sts_val) {
-        return 1; // locked
+    if (NULL == is_locked) {
+        return OPRT_INVALID_PARM;
     }
+    *is_locked = 0;
+
+    uint8_t *res_buf = tkl_system_malloc(sizeof(uint16_t));
+    if (NULL == res_buf){
+        return OPRT_MALLOC_FAILED;
+    }
+    memset(res_buf, 0, sizeof(uint16_t));
+
+    struct ipc_msg_s msg = {0};
+    msg.type = TKL_IPC_TYPE_SYS;
+    msg.subtype = TKL_IPC_TYPE_SYS_OTP_REG_GET;
+    msg.res_param = res_buf;
+    msg.res_len = sizeof(uint16_t);
+
+    tuya_ipc_send_sync(&msg);
+
+    uint16_t *p_sts_val = msg.res_param;
+    bk_printf("ap sts_val : 0x%x\r\n", *p_sts_val);
+
+    if (*p_sts_val == 0xa38) {
+        *is_locked = 1;
+    } else {
+        *is_locked = 0;
+    }
+
+    tkl_system_free(res_buf);
+    res_buf = NULL;
 
     return 0;
 }

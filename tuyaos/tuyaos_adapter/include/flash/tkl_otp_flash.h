@@ -70,13 +70,13 @@ OPERATE_RET tkl_otp_flash_lock(void);
 /*
  * @brief check if otp flash is locked
  *
- * @param[in] none
+ * @param[in] is_locked: pointer of lock status
  *
  * @note This API is used for checking the lock status of otp flash.
  *
- * @return 1 if locked, 0 if not locked
+ * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
  */
-uint8_t tkl_otp_flash_is_locked(void);
+OPERATE_RET tkl_otp_flash_is_locked(uint8_t *is_locked);
 
 #ifdef __cplusplus
 }
