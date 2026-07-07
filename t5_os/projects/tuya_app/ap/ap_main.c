@@ -60,7 +60,7 @@ static int __check_otp_flash_rfcali_data(uint8_t *otp_data, uint16_t len)
     return 0;
 }
 
-void backup_rfcali_data(void)
+int backup_rfcali_data(void)
 {
     uint32_t addr;
     uint8_t *dst;
@@ -69,7 +69,7 @@ void backup_rfcali_data(void)
     dst = os_malloc(OTP_FLASH_DATA_SIZE);
     if (dst == NULL) {
         bk_printf("malloc rfcali data failed\n");
-        return;
+        return -1;
     }
 
     memset(dst, 0, OTP_FLASH_DATA_SIZE);
@@ -84,10 +84,12 @@ void backup_rfcali_data(void)
     int ret = flash_bypass_otp_operation(FLASH_BYPASS_OTP_READ, &otp_op);
 	if (ret != BK_OK) {
         bk_printf("read otp flash failed\n");
-		if (dst)
+		if (dst){
 			os_free(dst);
+            dst = NULL;
+        }
 
-		return ;
+		return -1;
 	}
 
 	bk_logic_partition_t *pt = bk_flash_partition_get_info(BK_PARTITION_SYS_RF);
@@ -104,11 +106,23 @@ void backup_rfcali_data(void)
     otp_op.read_buf		= NULL;
 
     ret = flash_bypass_otp_operation(FLASH_BYPASS_OTP_WRITE, &otp_op);
-	if (ret != BK_OK)
+	if (ret != BK_OK) {
         bk_printf("write otp flash failed\n");
 
-    if (dst)
+        if (dst) {
+            os_free(dst);
+            dst = NULL;
+        }
+
+        return -1;
+    }
+
+    if (dst) {
         os_free(dst);
+        dst = NULL;
+    }
+
+    return 0;
 }
 
 static void __recovery_rfcali_data(uint8_t *otp_data, uint16_t len)

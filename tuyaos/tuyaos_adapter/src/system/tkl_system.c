@@ -53,6 +53,9 @@ OPERATE_RET __tkl_otp_flash_is_locked(struct ipc_msg_s *msg) // cp get otp flash
 
     memcpy(msg->res_param, &sts_val, msg->res_len);
 
+    msg->ret_value = 0;
+    tuya_ipc_send_no_sync(msg);
+
     return OPRT_OK;
 }
 #endif

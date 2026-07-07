@@ -170,9 +170,14 @@ OPERATE_RET tkl_otp_flash_lock(void)
 {
     // --- BEGIN: user implements ---
     int ret = 0;
-    extern void backup_rfcali_data(void);
+    int rfcali_backup_rslt = 0;
+    extern int backup_rfcali_data(void);
     // backup rf calibration data
-    backup_rfcali_data();
+    rfcali_backup_rslt = backup_rfcali_data();
+    if (rfcali_backup_rslt != 0) {
+        bk_printf("backup rfcali data failed\n");
+        return OPRT_COM_ERROR;
+    }
 
     flash_bypass_otp_ctrl_t otp_op = {0};
     otp_op.otp_idx = 1; // "1 or 2 or 3"
@@ -182,9 +187,14 @@ OPERATE_RET tkl_otp_flash_lock(void)
     otp_op.read_len = 0;
     otp_op.read_buf = NULL;
 
-    ret = flash_bypass_otp_operation(FLASH_BYPASS_OTP_LOCK, &otp_op);
-    if (ret != BK_OK)
+    // TODO: debug
+    // ret = flash_bypass_otp_operation(FLASH_BYPASS_OTP_LOCK, &otp_op);
+    if (ret != BK_OK){
+        bk_printf("lock otp flash failed\n");
         return OPRT_COM_ERROR;
+    }
+
+    bk_printf("lock otp flash success\r\n");
 
     return OPRT_OK;
     // --- END: user implements ---
