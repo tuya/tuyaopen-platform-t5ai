@@ -56,7 +56,7 @@ set(incs
     "include/dvp"
     "include/dma2d"
     "include/jpeg_codec"
-
+    "tuyaopen"
 )
 
 string(REPLACE " " ";" TUYA_HEADER_DIR_LIST $ENV{TUYA_HEADER_DIR})
@@ -106,7 +106,8 @@ else()
         src/driver/tkl_pwm.c
         src/driver/tkl_uart.c
         src/driver/tkl_flash.c
-        src/driver/tkl_otp_flash.c
+        # src/driver/tkl_otp_flash.c
+        tuyaopen/tuyaopen_license.c
         src/driver/tkl_rtc.c
         src/driver/tkl_spi.c
         src/driver/tkl_qspi.c
@@ -214,7 +215,7 @@ endif()
 if ("$ENV{ARMINO_SOC}" STREQUAL "bk7258")
     set(priv_requires_list bk_common bk_log bk_cli lwip_intf_v2_1 os_source)
 elseif ("$ENV{ARMINO_SOC}" STREQUAL "bk7258_ap")
-    set(priv_requires_list bk_common bk_modem bk_log bk_cli lwip_intf_v2_1 os_source lvgl display_service bk_vfs multimedia media_service bk_draw_blend bk_usb audio_record audio_play)
+    set(priv_requires_list bk_common bk_system bk_modem bk_log bk_cli lwip_intf_v2_1 os_source lvgl display_service bk_vfs multimedia media_service bk_draw_blend bk_usb audio_record audio_play)
 else()
     message(FATAL_ERROR soc:"$ENV{ARMINO_SOC}" is not valid!)
 endif() # CONFIG_CPU_INDEX
