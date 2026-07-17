@@ -223,148 +223,148 @@ static int __flash_otp_license_read(uint8_t **data, uint32_t *data_len)
 }
 
 // Back up RF calibration data to OTP
-static int __chip_otp_rf_cali_backup(void)
-{
-    int rt = OPRT_OK;
-    bk_err_t bk_ret = BK_OK;
+// static int __chip_otp_rf_cali_backup(void)
+// {
+//     int rt = OPRT_OK;
+//     bk_err_t bk_ret = BK_OK;
 
-    uint32_t addr;
-    uint8_t *dst = NULL;
-    uint32_t size;
+//     uint32_t addr;
+//     uint8_t *dst = NULL;
+//     uint32_t size;
 
-    // RF cali data magic header: ASCII "TLV\0" (0x54 0x4C 0x56 0x00)
-    static const uint8_t rf_cali_magic[4] = {0x54, 0x4C, 0x56, 0x00};
+//     // RF cali data magic header: ASCII "TLV\0" (0x54 0x4C 0x56 0x00)
+//     static const uint8_t rf_cali_magic[4] = {0x54, 0x4C, 0x56, 0x00};
 
-    int rfcali_stat = bk_wifi_manual_cal_rfcali_status();
-    if (rfcali_stat != BK_OK) {
-        bk_printf("RF calibration status check failed, status: %d\n", rfcali_stat);
-        return OPRT_COM_ERROR;
-    }
+//     int rfcali_stat = bk_wifi_manual_cal_rfcali_status();
+//     if (rfcali_stat != BK_OK) {
+//         bk_printf("RF calibration status check failed, status: %d\n", rfcali_stat);
+//         return OPRT_COM_ERROR;
+//     }
 
-    // Why flash is 512 bytes but OTP_RFCALI1~4 are only 256 bytes each:
-    //
-    // - Flash RF partition (OTP_FLASH_RF_SIZE = 512B) holds the FULL RF cali
-    //   data as a nested TLV (magic 0x00564C54, ~504 bytes): it keeps every
-    //   band/mode calibration entry plus its descriptive structure, in the raw
-    //   uncompressed form produced by the calibration tool.
-    //
-    // - OTP_RFCALI1~4 are 256 bytes because 256B is the OTP physical layout
-    //   granularity (see otp2.csv: offsets 0x40/0x140/0x240/0x340, all 256B
-    //   aligned). But the closed CP library that owns these slots only consumes
-    //   a 140-byte COMPACT format out of each one: a flat power-table array
-    //   with a trailing CRC8 (poly 0x31). The 140-byte form is a lossy,
-    //   converted/compressed private format, NOT the raw flash TLV.
-    //
-    // - Consequence: you cannot copy the 504-byte flash TLV into a 140-byte
-    //   compact slot -- it would overflow and the CRC8 check would fail. That
-    //   is why the backup is written to the dedicated 512-byte archive slot
-    //   OTP_TUYAOPEN_RFCALI, which fits the full flash TLV with no conversion.
-    //
-    // OTP_RFCALI1 ~ OTP_RFCALI4 are owned by that closed CP library, which
-    // auto-iterates them at boot to restore RF data. We only READ them here to
-    // decide whether to skip the backup: a slot counts as "already backed up"
-    // only when it is BOTH locked (read-only) AND holds valid RF cali data
-    // (TLV magic). Permission alone is insufficient -- a slot may be locked
-    // with non-RF content. This read-only probe also replaces the standalone
-    // permission check done below for the archive slot.
-    for (int i = 0; i < OTP_CHIP_RF_NUM; i++) {
-        // otp_privilege_t permission = bk_otp_ahb_read_permission(sg_otp_rf_id[i]);
-        // if (permission == OTP_READ_WRITE) {
-        //     continue; // writable -> nothing backed up in this slot yet
-        // }
+//     // Why flash is 512 bytes but OTP_RFCALI1~4 are only 256 bytes each:
+//     //
+//     // - Flash RF partition (OTP_FLASH_RF_SIZE = 512B) holds the FULL RF cali
+//     //   data as a nested TLV (magic 0x00564C54, ~504 bytes): it keeps every
+//     //   band/mode calibration entry plus its descriptive structure, in the raw
+//     //   uncompressed form produced by the calibration tool.
+//     //
+//     // - OTP_RFCALI1~4 are 256 bytes because 256B is the OTP physical layout
+//     //   granularity (see otp2.csv: offsets 0x40/0x140/0x240/0x340, all 256B
+//     //   aligned). But the closed CP library that owns these slots only consumes
+//     //   a 140-byte COMPACT format out of each one: a flat power-table array
+//     //   with a trailing CRC8 (poly 0x31). The 140-byte form is a lossy,
+//     //   converted/compressed private format, NOT the raw flash TLV.
+//     //
+//     // - Consequence: you cannot copy the 504-byte flash TLV into a 140-byte
+//     //   compact slot -- it would overflow and the CRC8 check would fail. That
+//     //   is why the backup is written to the dedicated 512-byte archive slot
+//     //   OTP_TUYAOPEN_RFCALI, which fits the full flash TLV with no conversion.
+//     //
+//     // OTP_RFCALI1 ~ OTP_RFCALI4 are owned by that closed CP library, which
+//     // auto-iterates them at boot to restore RF data. We only READ them here to
+//     // decide whether to skip the backup: a slot counts as "already backed up"
+//     // only when it is BOTH locked (read-only) AND holds valid RF cali data
+//     // (TLV magic). Permission alone is insufficient -- a slot may be locked
+//     // with non-RF content. This read-only probe also replaces the standalone
+//     // permission check done below for the archive slot.
+//     for (int i = 0; i < OTP_CHIP_RF_NUM; i++) {
+//         // otp_privilege_t permission = bk_otp_ahb_read_permission(sg_otp_rf_id[i]);
+//         // if (permission == OTP_READ_WRITE) {
+//         //     continue; // writable -> nothing backed up in this slot yet
+//         // }
 
-        // slot is locked (read-only). A locked permission alone is not enough
-        // to treat it as "backed up" -- it may have been locked with non-RF
-        // data. Verify the content actually starts with the RF cali magic
-        // header before deciding to skip.
-        uint8_t otp_head[4] = {0};
-        bk_ret = bk_otp_ahb_read(sg_otp_rf_id[i], otp_head, sizeof(otp_head));
-        if (bk_ret != BK_OK) {
-            bk_printf("read rf cali otp slot %d failed, ret: %d\n", i, bk_ret);
-            continue; // unreadable, try next slot
-        }
+//         // slot is locked (read-only). A locked permission alone is not enough
+//         // to treat it as "backed up" -- it may have been locked with non-RF
+//         // data. Verify the content actually starts with the RF cali magic
+//         // header before deciding to skip.
+//         uint8_t otp_head[4] = {0};
+//         bk_ret = bk_otp_ahb_read(sg_otp_rf_id[i], otp_head, sizeof(otp_head));
+//         if (bk_ret != BK_OK) {
+//             bk_printf("read rf cali otp slot %d failed, ret: %d\n", i, bk_ret);
+//             continue; // unreadable, try next slot
+//         }
 
-        if (memcmp(otp_head, rf_cali_magic, sizeof(rf_cali_magic)) == 0) {
-            bk_printf("rf cali otp slot %d already locked with valid data, skip backup\n", i);
-            return OPRT_OK; // not error, already backed up
-        }
+//         if (memcmp(otp_head, rf_cali_magic, sizeof(rf_cali_magic)) == 0) {
+//             bk_printf("rf cali otp slot %d already locked with valid data, skip backup\n", i);
+//             return OPRT_OK; // not error, already backed up
+//         }
 
-        // locked but not valid RF cali data -> keep checking remaining slots
-    }
+//         // locked but not valid RF cali data -> keep checking remaining slots
+//     }
 
-    dst = tkl_system_malloc(OTP_FLASH_RFDATA_SIZE);
-    if (NULL == dst) {
-        return OPRT_MALLOC_FAILED;
-    }
-    memset(dst, 0, OTP_FLASH_RFDATA_SIZE);
+//     dst = tkl_system_malloc(OTP_FLASH_RFDATA_SIZE);
+//     if (NULL == dst) {
+//         return OPRT_MALLOC_FAILED;
+//     }
+//     memset(dst, 0, OTP_FLASH_RFDATA_SIZE);
 
-    bk_logic_partition_t *pt = bk_flash_partition_get_info(BK_PARTITION_SYS_RF);
-    addr = pt->partition_start_addr;
-    size = OTP_FLASH_RFDATA_SIZE;
-    bk_ret = bk_flash_read_bytes(addr, (uint8_t *)dst, size);
-    if (bk_ret != BK_OK) {
-        bk_printf("read rf cali data from flash failed, ret: %d\n", bk_ret);
-        rt = OPRT_COM_ERROR;
-        goto __EXIT;
-    }
+//     bk_logic_partition_t *pt = bk_flash_partition_get_info(BK_PARTITION_SYS_RF);
+//     addr = pt->partition_start_addr;
+//     size = OTP_FLASH_RFDATA_SIZE;
+//     bk_ret = bk_flash_read_bytes(addr, (uint8_t *)dst, size);
+//     if (bk_ret != BK_OK) {
+//         bk_printf("read rf cali data from flash failed, ret: %d\n", bk_ret);
+//         rt = OPRT_COM_ERROR;
+//         goto __EXIT;
+//     }
 
-    // verify the flash RF cali data header: must be 0x54 0x4C 0x56 0x00 (ASCII "TLV\0")
-    if (memcmp(dst, rf_cali_magic, sizeof(rf_cali_magic)) != 0) {
-        bk_printf("invalid rf cali data header, skip backup\n");
-        rt = OPRT_COM_ERROR;
-        goto __EXIT;
-    }
+//     // verify the flash RF cali data header: must be 0x54 0x4C 0x56 0x00 (ASCII "TLV\0")
+//     if (memcmp(dst, rf_cali_magic, sizeof(rf_cali_magic)) != 0) {
+//         bk_printf("invalid rf cali data header, skip backup\n");
+//         rt = OPRT_COM_ERROR;
+//         goto __EXIT;
+//     }
 
-    // Debug print the RF calibration data
-    bk_printf("RF calibration data read from flash:\n");
-    for (uint32_t i = 0; i < size; i++) {
-        bk_printf("%02X ", dst[i]);
-        if ((i + 1) % 16 == 0) {
-            bk_printf("\n");
-        }
-    }
-    if (size % 16 != 0) {
-        bk_printf("\n");
-    }
+//     // Debug print the RF calibration data
+//     bk_printf("RF calibration data read from flash:\n");
+//     for (uint32_t i = 0; i < size; i++) {
+//         bk_printf("%02X ", dst[i]);
+//         if ((i + 1) % 16 == 0) {
+//             bk_printf("\n");
+//         }
+//     }
+//     if (size % 16 != 0) {
+//         bk_printf("\n");
+//     }
 
-    // check OTP_TUYAOPEN_RFCALI permission (archive slot, 512 bytes)
-    otp_privilege_t permission = bk_otp_ahb_read_permission(OTP_CHIP_OPENSDK_RFCALI_ITEM);
-    if (permission != OTP_READ_WRITE) {
-        // chip otp is locked, skip backup
-        bk_printf("chip otp is locked, skip backup rf cali data\n");
-        rt = OPRT_OK; // not error, just skip
-        goto __EXIT;
-    }
+//     // check OTP_TUYAOPEN_RFCALI permission (archive slot, 512 bytes)
+//     otp_privilege_t permission = bk_otp_ahb_read_permission(OTP_CHIP_OPENSDK_RFCALI_ITEM);
+//     if (permission != OTP_READ_WRITE) {
+//         // chip otp is locked, skip backup
+//         bk_printf("chip otp is locked, skip backup rf cali data\n");
+//         rt = OPRT_OK; // not error, just skip
+//         goto __EXIT;
+//     }
 
-#if (ENABLE_TUYAOPEN_LICENSE_DEBUG == 0)
-    // write the full flash TLV to the archive slot, no format conversion
-    bk_ret = bk_otp_ahb_update(OTP_CHIP_OPENSDK_RFCALI_ITEM, dst, size);
-    if (bk_ret != BK_OK) {
-        bk_printf("write rf cali data to chip otp failed, ret: %d\n", bk_ret);
-        rt = OPRT_COM_ERROR;
-        goto __EXIT;
-    }
+// #if (ENABLE_TUYAOPEN_LICENSE_DEBUG == 0)
+//     // write the full flash TLV to the archive slot, no format conversion
+//     bk_ret = bk_otp_ahb_update(OTP_CHIP_OPENSDK_RFCALI_ITEM, dst, size);
+//     if (bk_ret != BK_OK) {
+//         bk_printf("write rf cali data to chip otp failed, ret: %d\n", bk_ret);
+//         rt = OPRT_COM_ERROR;
+//         goto __EXIT;
+//     }
 
-    // NOTE: do NOT lock OTP permission. Same reason as __chip_otp_write: the
-    // rolck register is shared across 32-word groups, locking OTP_TUYAOPEN_RFCALI
-    // would affect neighboring slots. The official CP RF-calibration path does
-    // not lock either, so we follow the same convention.
-    // bk_ret = bk_otp_ahb_write_permission(OTP_CHIP_OPENSDK_RFCALI_ITEM, OTP_READ_ONLY);
-    // if (bk_ret != BK_OK) {
-    //     bk_printf("lock rf cali data in chip otp failed, ret: %d\n", bk_ret);
-    //     rt = OPRT_COM_ERROR;
-    //     goto __EXIT;
-    // }
-#endif // ENABLE_TUYAOPEN_LICENSE_DEBUG
+//     // NOTE: do NOT lock OTP permission. Same reason as __chip_otp_write: the
+//     // rolck register is shared across 32-word groups, locking OTP_TUYAOPEN_RFCALI
+//     // would affect neighboring slots. The official CP RF-calibration path does
+//     // not lock either, so we follow the same convention.
+//     // bk_ret = bk_otp_ahb_write_permission(OTP_CHIP_OPENSDK_RFCALI_ITEM, OTP_READ_ONLY);
+//     // if (bk_ret != BK_OK) {
+//     //     bk_printf("lock rf cali data in chip otp failed, ret: %d\n", bk_ret);
+//     //     rt = OPRT_COM_ERROR;
+//     //     goto __EXIT;
+//     // }
+// #endif // ENABLE_TUYAOPEN_LICENSE_DEBUG
 
-__EXIT:
-    if (dst) {
-        tkl_system_free(dst);
-        dst = NULL;
-    }
+// __EXIT:
+//     if (dst) {
+//         tkl_system_free(dst);
+//         dst = NULL;
+//     }
 
-    return rt;
-}
+//     return rt;
+// }
 
 int tuyaopen_license_write(const char *data, const uint32_t data_len)
 {
@@ -423,12 +423,13 @@ int tuyaopen_license_write(const char *data, const uint32_t data_len)
     }
 
     // backup RF calibration data to OTP
-    rt = __chip_otp_rf_cali_backup();
-    if (OPRT_OK != rt) {
-        bk_printf("Chip OTP RF calibration backup failed, rt:%d\r\n", rt);
-        rt = OPRT_COM_ERROR;
-        goto __EXIT;
-    }
+    // Wait beken support flash rf cali data to otp
+    // rt = __chip_otp_rf_cali_backup();
+    // if (OPRT_OK != rt) {
+    //     bk_printf("Chip OTP RF calibration backup failed, rt:%d\r\n", rt);
+    //     rt = OPRT_COM_ERROR;
+    //     goto __EXIT;
+    // }
 
 __EXIT:
     // free enc_data after write to OTP
