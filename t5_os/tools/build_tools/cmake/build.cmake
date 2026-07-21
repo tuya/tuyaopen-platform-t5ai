@@ -735,6 +735,13 @@ function(armino_build_parse_config_file_list)
         set(_sdkconfig_defaults_soc "")
     endif()
 
+    # TUYA: allow the TuyaOpen build (build_example.py) to append a board-specific
+    # config override that wins over the project defaults (confgen applies defaults
+    # in order, last one wins). Used e.g. by single-UART boards to move the log port.
+    if(DEFINED ENV{TUYA_APP_SDKCONFIG_APPEND} AND EXISTS "$ENV{TUYA_APP_SDKCONFIG_APPEND}")
+        list(APPEND _sdkconfig_defaults "$ENV{TUYA_APP_SDKCONFIG_APPEND}")
+    endif()
+
     foreach(sdkconfig_default ${_sdkconfig_defaults})
         get_filename_component(sdkconfig_default "${sdkconfig_default}" ABSOLUTE)
         if(NOT EXISTS "${sdkconfig_default}")
