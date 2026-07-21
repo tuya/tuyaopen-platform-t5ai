@@ -61,6 +61,73 @@ def set_environment(root, build_param_path, param_data):
     pass
 
 
+def _board_log_uart_intent(param_data):
+    '''"0"/"1"/... for a board that sets CONFIG_BOARD_LOG_UART_PORT, else "default".'''
+    p = param_data.get("CONFIG_BOARD_LOG_UART_PORT")
+    return (str(p) if p is not None else "default"), p
+
+
+def set_board_log_uart_env(build_param_path, param_data):
+    '''
+    TuyaOpen: let a board move the CP-core log UART. Single-UART boards set
+    CONFIG_BOARD_LOG_UART_PORT (e.g. 0) in their Kconfig; write it as a config
+    fragment that build.cmake appends last so it overrides the project default
+    (CP CONFIG_UART_PRINT_PORT). Boards that do not set it keep the UART1 default.
+    '''
+    _, port = _board_log_uart_intent(param_data)
+    if port is not None:
+        frag = os.path.join(build_param_path, "tuya_logport.config")
+        with open(frag, "w", encoding="utf-8") as f:
+            f.write(f"CONFIG_UART_PRINT_PORT={port}\n")
+        os.environ["TUYA_APP_SDKCONFIG_APPEND"] = frag
+    else:
+        os.environ.pop("TUYA_APP_SDKCONFIG_APPEND", None)
+
+
+def sync_board_log_uart(build_root, param_data):
+    '''
+    armino intentionally preserves the generated sdkconfig.h across `make clean`
+    (build_main.mk saves/restores it): a fresh env must not compile with a missing
+    sdkconfig.h, because lwip pulls it in as a build-env header. confgen also lets an
+    existing sdkconfig override the defaults. So when the log-port intent CHANGES
+    (board switch), the fragment alone can't win — wipe the generated config so it
+    regenerates from the defaults.
+
+    Safety wrt the sdkconfig.h-must-exist rule:
+      - We only wipe on an ACTUAL intent change, so same-board / normal-board builds
+        never touch the preserved sdkconfig.h.
+      - Wiping build/bk7258 leaves the tree equal to a fresh clone (dir absent),
+        which `tos build` handles: it re-runs prepare_platform and confgen writes a
+        new sdkconfig.h before the compile step. The isdir() guard also skips the
+        wipe when the dir does not exist yet.
+
+    Must run AFTER any make-clean (clean cp's sdkconfig.h out of build/bk7258) and
+    BEFORE the build, so it is called from do_with_compile, not setup_build.
+    '''
+    intent, port = _board_log_uart_intent(param_data)
+    gen_dir = os.path.join(build_root, "build", "bk7258")
+    stamp = os.path.join(build_root, "build", ".tuya_logport_intent")
+
+    prev = None
+    if os.path.isfile(stamp):
+        with open(stamp, "r", encoding="utf-8") as f:
+            prev = f.read().strip()
+
+    # prev is None => fresh build tree (or right after clean): only force a regen
+    # for single-UART boards, which need the non-default port baked in.
+    need_wipe = (port is not None) if prev is None else (prev != intent)
+
+    if need_wipe and os.path.isdir(gen_dir):
+        import shutil
+        print(f"[tuya] log-uart intent changed ({prev} -> {intent}), "
+              f"wiping generated config: {gen_dir}")
+        shutil.rmtree(gen_dir, ignore_errors=True)
+
+    os.makedirs(os.path.dirname(stamp), exist_ok=True)
+    with open(stamp, "w", encoding="utf-8") as f:
+        f.write(intent)
+
+
 def check_bootloader_bin(build_root) -> bool:
     boot_file = os.path.join(build_root, "cp",
                              "components", "bk_libs",
@@ -78,6 +145,7 @@ def check_bootloader_bin(build_root) -> bool:
 
 def setup_build(root, build_root, build_param_path, param_data):
     set_environment(root, build_param_path, param_data)
+    set_board_log_uart_env(build_param_path, param_data)
 
     if not check_bootloader_bin(build_root):
         print("Error: check bootloader bin failed.")
@@ -236,6 +304,10 @@ def do_with_compile(root, build_root, user_cmd,
         clean(build_root, toolchain_folder_path, bash_path)
         if "clean" == user_cmd:
             sys.exit(0)
+
+    # Force a config regen if the board's log-UART intent changed (after any clean,
+    # before the build). See sync_board_log_uart() for why this is necessary.
+    sync_board_log_uart(build_root, param_data)
 
     # build project
     record_target(app_target_file, app_name)
