@@ -32,7 +32,7 @@ if(CONFIG_MPU)
 	)
 endif()
 
-if(CONFIG_CACHE_ENABLE)
+if(CONFIG_DCACHE)
 	list(APPEND srcs
 		cache.c
 	)

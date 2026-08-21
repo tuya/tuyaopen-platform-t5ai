@@ -27,10 +27,62 @@ int show_cache_config_info(void)
 	return 0;
 }
 
+/* Redmine #8131: only the PSRAM task-stack heap (Write-Back) - and, when
+ * CONFIG_SRAM_CACHE_ENABLE is set, the shared SRAM - are mapped cacheable in the
+ * MPU. The broad flush/invalidate call sites (DMA, mailbox, IPC) also pass
+ * non-cacheable SRAM/device/PSRAM-heap addresses; restrict the maintenance to
+ * addresses that actually back cache lines so those calls are safe no-ops. */
+__attribute__((section(".iram"))) static int dcache_range_cacheable(const void *va, long size)
+{
+    uint32_t start;
+    uint32_t end;
+
+    if ((va == (void *)0) || (size <= 0)) {
+        return 0;
+    }
+    start = (uint32_t)va;
+    end = start + (uint32_t)size;
+
+    /* Write-Back cacheable PSRAM task-stack heap. */
+    {
+        uint32_t sh = (uint32_t)CONFIG_AP_PSRAM_STACK_HEAP_ADDR;
+        uint32_t she = sh + (uint32_t)CONFIG_AP_PSRAM_STACK_HEAP_SIZE;
+        if ((start < she) && (end > sh)) {
+            return 1;
+        }
+    }
+
+#if CONFIG_SRAM_CACHE_ENABLE
+    /* Shared SRAM is cacheable only when explicitly enabled. */
+    if ((start < 0x28100000UL) && (end > 0x28000000UL)) {
+        return 1;
+    }
+#endif
+
+    return 0;
+}
+
 __attribute__((section(".iram"))) void flush_dcache(void *va, long size)
 {
+    if (!dcache_range_cacheable(va, size)) {
+        return;
+    }
     if (SCB->CLIDR & SCB_CLIDR_DC_Msk) {
-        SCB_CleanInvalidateDCache_by_Addr(va, size);
+        SCB_CleanDCache_by_Addr(va, size);
+        __DSB();
+        SCB_InvalidateDCache_by_Addr(va, size);
+    }
+}
+
+/* Discard stale consumer-side lines without writing them back over the
+ * producer's latest physical-memory contents. */
+__attribute__((section(".iram"))) void invalidate_dcache(void *va, long size)
+{
+    if (!dcache_range_cacheable(va, size)) {
+        return;
+    }
+    if (SCB->CLIDR & SCB_CLIDR_DC_Msk) {
+        SCB_InvalidateDCache_by_Addr(va, size);
     }
 }
 

@@ -27,8 +27,23 @@
 #define AT_CGSN                 "AT+CGSN?\r\n"
 #define AT_CFSN                 "AT+CFSN?\r\n"
 #define AT_CFUN                 "AT+CFUN?\r\n"
-#define AT_CGMR                 "AT+CGMR?\r\n"
+#define AT_CGMR                 "AT+CGMR\r\n"
 #define AT_IPR                  "AT+IPR="
+
+/* CAT1 (e.g. Luat L511) DTR-controlled Sleep1 low-power.
+ * When enabled, AT&D0 + AT+ECPMUCFG=1,2 + AT+QSCLK=1 are sent in command mode
+ * during the dial flow (before ATD*99#), so the host can drive the DTR pin to
+ * sleep/wake the module while keeping the PPP link alive (AT&D0).
+ * These are module-proprietary commands; guard them so other modems are unaffected. */
+#ifndef BK_MODEM_CAT1_LP_DTR_SLEEP
+#define BK_MODEM_CAT1_LP_DTR_SLEEP 1
+#endif
+
+#if BK_MODEM_CAT1_LP_DTR_SLEEP
+#define AT_AND_D0               "AT&D0\r\n"
+#define AT_ECPMUCFG_SLEEP1      "AT+ECPMUCFG=1,2\r\n"
+#define AT_QSCLK_DTR            "AT+QSCLK=1\r\n"
+#endif
 
 #define AT_RSP_OK				"OK"
 #define AT_RSP_ERROR			"ERROR"
@@ -107,4 +122,7 @@ bk_err_t bk_modem_ec_at_set_nat(void);
 bk_err_t bk_modem_ec_at_close_rndis(void);
 bk_err_t bk_modem_ec_at_open_datapath(void);
 bk_err_t bk_modem_ec_at_rst(void);
+#if BK_MODEM_CAT1_LP_DTR_SLEEP
+bk_err_t bk_modem_at_lp_config(void);
+#endif
 #endif

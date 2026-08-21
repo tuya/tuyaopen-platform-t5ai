@@ -98,6 +98,14 @@ static void tkl_sleep_param_dump(const char *tag, TKL_DS_PARAM_T *ds)
     bk_printf("sum: 0x%x\r\n", ds->sum);
 }
 
+static ds_user_cb user_callback_before_ds = NULL;
+OPERATE_RET tkl_sleep_register_ds_user_cb(ds_user_cb fn)
+{
+    user_callback_before_ds = fn;
+    bk_printf("cb %p\r\n", user_callback_before_ds);
+    return 0;
+}
+
 static int tkl_sleep_param_save(void)
 {
     int i;
@@ -121,6 +129,7 @@ static int tkl_sleep_param_save(void)
     ds.magic = DEEPSLEEP_MAGIC;
     ds.entry_flag = DS_ENTRY_FLAG;
     ds.sum = 0;
+    ds.cb = user_callback_before_ds;
 
     uint8_t *tmp = (uint8_t *)&ds;
     for (i = 0; i < sizeof(TKL_DS_PARAM_T) - 4; i++) {
@@ -142,6 +151,7 @@ int tkl_sleep_param_check_and_set(void)
     int i;
     TKL_DS_PARAM_T ds;
 
+    bk_printf("ds param check\r\n");
     memset(&ds, 0, sizeof(TKL_DS_PARAM_T));
 
     tkl_flash_read(DEEPSLEEP_PARAMETER_ADDRESS, &ds, sizeof(TKL_DS_PARAM_T));
@@ -153,6 +163,11 @@ int tkl_sleep_param_check_and_set(void)
             if ((ds.cfg[i].source == TUYA_WAKEUP_SOURCE_GPIO) || (ds.cfg[i].source == TUYA_WAKEUP_SOURCE_RTC)) {
                 tkl_wakeup_source_set(&ds.cfg[i]);
             }
+        }
+
+        if (ds.cb) {
+            bk_printf("call deepsleep cb\r\n");
+            ds.cb();
         }
 
         // clean
@@ -230,5 +245,10 @@ OPERATE_RET tkl_get_cpu_sleep_param(uint32_t* ap_conn_power_ratio, uint32_t* net
     *ap_conn_power_ratio = AP_CONNECT_POWER_RATIO;
     *net_conn_power_ratio = NET_CONNECT_POWER_RATIO;
     return OPRT_OK;
+}
+
+OPERATE_RET tkl_cpu_sleep_time_set(const uint32_t sleep_ms)
+{
+    return OPRT_NOT_SUPPORTED;
 }
 

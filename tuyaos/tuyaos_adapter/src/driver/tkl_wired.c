@@ -30,8 +30,10 @@ OPERATE_RET tkl_wired_init(TKL_WIRED_BASE_CFG_T *cfg)
 {
 #ifdef CONFIG_ETH
 	net_eth_start();
-#endif
     return OPRT_OK;
+#else
+    return OPRT_NOT_SUPPORTED;
+#endif
 }
 
 /**
@@ -43,11 +45,11 @@ OPERATE_RET tkl_wired_init(TKL_WIRED_BASE_CFG_T *cfg)
  */
 OPERATE_RET tkl_wired_get_status(TKL_WIRED_STAT_E *status)
 {
+#ifdef CONFIG_ETH
     struct netif *netif;
     uint32_t ip;
     uint32_t mask;
     uint32_t gw;
-#ifdef CONFIG_ETH
     netif = (struct netif *)net_get_eth_handle();
     if (NULL == netif) {
          return OPRT_COM_ERROR;
@@ -62,8 +64,10 @@ OPERATE_RET tkl_wired_get_status(TKL_WIRED_STAT_E *status)
     } else {
          *status = TKL_WIRED_LINK_DOWN;
     }
-#endif
     return OPRT_OK;
+#else
+    return OPRT_NOT_SUPPORTED;
+#endif
 }
 
 /**
@@ -75,8 +79,12 @@ OPERATE_RET tkl_wired_get_status(TKL_WIRED_STAT_E *status)
  */
 OPERATE_RET tkl_wired_set_status_cb(TKL_WIRED_STATUS_CHANGE_CB cb)
 {
+#ifdef CONFIG_ETH
     netif_link_chg_cb = cb;
     return OPRT_OK;
+#else
+    return OPRT_NOT_SUPPORTED;
+#endif
 }
 
 /**
@@ -88,8 +96,8 @@ OPERATE_RET tkl_wired_set_status_cb(TKL_WIRED_STATUS_CHANGE_CB cb)
  */
 OPERATE_RET tkl_wired_get_ip(NW_IP_S *ip)
 {
-    unsigned int ip_addr;
 #ifdef CONFIG_ETH
+    unsigned int ip_addr;
     struct netif * netif = net_get_eth_handle();
     if (NULL == netif) {
          return OPRT_COM_ERROR;
@@ -102,8 +110,10 @@ OPERATE_RET tkl_wired_get_ip(NW_IP_S *ip)
 
     ip_addr = netif->netmask.addr;
     sprintf(ip->mask, "%d.%d.%d.%d", IPADDR2STR(ip_addr));
-#endif
     return OPRT_OK;
+#else
+    return OPRT_NOT_SUPPORTED;
+#endif
 }
 
 /**
@@ -133,8 +143,10 @@ OPERATE_RET tkl_wired_get_mac(NW_MAC_S *mac)
          return OPRT_COM_ERROR;
     }
     memcpy(mac->mac, netif->hwaddr, 6);
-#endif
     return OPRT_OK;
+#else
+    return OPRT_NOT_SUPPORTED;
+#endif
 }
 
 /**

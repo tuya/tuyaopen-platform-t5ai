@@ -48,6 +48,26 @@ static void __ralay_test_func(void *arg)
     }
 }
 
+static void gpio_status_keep_before_ds(void *args)
+{
+    TUYA_GPIO_NUM_E pin = TUYA_GPIO_NUM_MAX;
+    TUYA_GPIO_BASE_CFG_T cfg = {
+        .mode = TUYA_GPIO_PULLUP,
+        .direct = TUYA_GPIO_OUTPUT,
+        .level = TUYA_GPIO_LEVEL_HIGH,
+        .status_keep = TUYA_GPIO_STATUS_KEEP,
+    };
+
+    pin = TUYA_GPIO_NUM_45;
+    tkl_gpio_init(pin, &cfg);
+
+    pin = TUYA_GPIO_NUM_46;
+    tkl_gpio_init(pin, &cfg);
+
+    pin = TUYA_GPIO_NUM_47;
+    tkl_gpio_init(pin, &cfg);
+}
+
 void cli_gpio_cmd(char *pcWriteBuffer, int xWriteBufferLen, int argc, char **argv)
 {
     if (argc == 1) {
@@ -61,7 +81,7 @@ void cli_gpio_cmd(char *pcWriteBuffer, int xWriteBufferLen, int argc, char **arg
 
     TUYA_GPIO_NUM_E pin_id = os_strtoul(argv[1], NULL, 10);
     TUYA_GPIO_BASE_CFG_T cfg;
-    int irq = 0;
+    int irq = 0, keep = 0;
 
     if (!strcmp("input", argv[2]))
         cfg.direct = TUYA_GPIO_INPUT;
@@ -69,6 +89,8 @@ void cli_gpio_cmd(char *pcWriteBuffer, int xWriteBufferLen, int argc, char **arg
         cfg.direct = TUYA_GPIO_OUTPUT;
     else if (!strcmp("irq", argv[2]))
         irq = 1;
+    else if (!strcmp("keep", argv[2]))
+        keep = 1;
     else if (!strcmp("relay", argv[2])) {
         __relay_pin = pin_id;
         xTaskCreate(__ralay_test_func, "relay", 4096, NULL, 5, &__relay_test_thread);
@@ -101,6 +123,8 @@ void cli_gpio_cmd(char *pcWriteBuffer, int xWriteBufferLen, int argc, char **arg
             bk_printf("invalid parameter\r\n");
         }
         tkl_gpio_irq_init(pin_id, &cfg);
+    } else if (keep) {
+        tkl_sleep_register_ds_user_cb(gpio_status_keep_before_ds);
     } else {
         uint32_t argv3 = os_strtoul(argv[3], NULL, 10);
         if (argv3 == 0) {
@@ -118,6 +142,5 @@ void cli_gpio_cmd(char *pcWriteBuffer, int xWriteBufferLen, int argc, char **arg
 
     return;
 }
-
 
 

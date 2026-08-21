@@ -72,7 +72,7 @@ ARM_MPU_Region_t mpu_regions[] = {
         shared memory(smem4) 0x2806 0000-----------0x2807 FFFF   0x3806 0000-----------0x3807 FFFF
         shared memory(smem4) 0x2808 0000-----------0x2809 FFFF   0x3808 0000-----------0x3809 FFFF
      */
-#if CONFIG_CACHE_ENABLE
+#if CONFIG_SRAM_CACHE_ENABLE
     #if CONFIG_LVGL_SRAM_MAPPING
         { ARM_MPU_RBAR(0x28000000UL, ARM_MPU_SH_NON, 0, 1, 0),
           ARM_MPU_RLAR(0x2807FFE0UL, 0) },

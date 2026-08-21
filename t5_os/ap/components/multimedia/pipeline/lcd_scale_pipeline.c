@@ -918,7 +918,8 @@ static void scale_main_entry(beken_thread_arg_t data)
 				{
 					LOGD("%s exit\n", __func__);
 					scale_config->task_running = 0;
-					beken_semaphore_t *beken_semaphore = (beken_semaphore_t*)msg.param;
+					/* Redmine #8131: handle passed by value (see scale_task_stop). */
+					beken_semaphore_t beken_semaphore = (beken_semaphore_t)msg.param;
 
 					bk_hw_scale_driver_deinit(HW_SCALE);
 					//bk_hw_scale_mem_free();
@@ -951,7 +952,7 @@ static void scale_main_entry(beken_thread_arg_t data)
 					rtos_deinit_queue(&scale_config->scale_queue);
 					scale_config->scale_queue = NULL;
 					scale_config->scale_thread = NULL;
-					rtos_set_semaphore(beken_semaphore);
+					rtos_set_semaphore(&beken_semaphore);
 					rtos_delete_thread(NULL);
 				}
 				return;
@@ -1121,8 +1122,6 @@ void scale_task_stop(void)
 {
 	beken_semaphore_t sem;
 	media_msg_t msg;
-	msg.event = SCALE_STOP;
-	msg.param = (uint32_t)&sem;
 
 	int ret = rtos_init_semaphore(&sem, 1);
 
@@ -1131,6 +1130,14 @@ void scale_task_stop(void)
 		LOGE("%s, init sem faild, %d\n", __func__, ret);
 		return;
 	}
+
+	msg.event = SCALE_STOP;
+	/* Redmine #8131: pass the semaphore HANDLE by value, not &sem. 'sem' is on
+	 * this producer's cacheable PSRAM stack; the stop task may run on the other
+	 * AP core and would otherwise dereference a stale cache line for &sem. The
+	 * handle points to a non-cacheable sem object, so the value travels
+	 * coherently through the (non-cacheable) queue storage. */
+	msg.param = (uint32_t)sem;
 
 	ret = rtos_push_to_queue(&scale_config->scale_queue, &msg, BEKEN_WAIT_FOREVER);
 

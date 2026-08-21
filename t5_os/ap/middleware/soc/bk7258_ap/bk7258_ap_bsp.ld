@@ -77,6 +77,7 @@ MEMORY
   PSRAM_SLAB_ENCODE (rwx)      : ORIGIN = CONFIG_PSRAM_MEM_SLAB_ENCODE_ADDR, LENGTH = CONFIG_PSRAM_MEM_SLAB_ENCODE_SIZE
   PSRAM_SLAB_DISPLAY (rwx)     : ORIGIN = CONFIG_PSRAM_MEM_SLAB_DISPLAY_ADDR, LENGTH = CONFIG_PSRAM_MEM_SLAB_DISPLAY_SIZE
 #if (CONFIG_PSRAM_AS_SYS_MEMORY)
+  PSRAM_STACK_HEAP (rwx): ORIGIN = CONFIG_AP_PSRAM_STACK_HEAP_ADDR, LENGTH = CONFIG_AP_PSRAM_STACK_HEAP_SIZE
   PSRAM_HEAP (rwx)      : ORIGIN = CONFIG_AP_PSRAM_HEAP_ADDR, LENGTH = CONFIG_AP_PSRAM_HEAP_SIZE
 #endif
   PSRAM_SECTION (rwx)   : ORIGIN = CONFIG_AP_PSRAM_SECTION_ADDR, LENGTH = CONFIG_AP_PSRAM_SECTION_SIZE
@@ -633,9 +634,18 @@ SECTIONS
     PROVIDE(__ty_null_text_section = LOADADDR(.ty_null_text_section));
     . = __ty_null_text_section + SIZEOF(.ty_null_text_section);
     . = ALIGN(0x10000);
-    .ty_text_section ALIGN(0x1000) :
+
+    .ty_fw_sign_info ALIGN(0x1000) :
     {
         _ty_section_start = .;
+        FILL(0xFF)
+        PROVIDE(__ty_fw_sign_start = .);
+        . += 0x1000;
+        PROVIDE(__ty_fw_sign_end = .);
+    } > FLASH
+
+    .ty_text_section ALIGN(0x1000) :
+    {
 
         /* this is for c++ global constructor init */
         PROVIDE_HIDDEN (__init_array_start = .);

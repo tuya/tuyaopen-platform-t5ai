@@ -8,7 +8,7 @@
 #include <driver/mb_chnl_buff.h>
 #include <arch_interrupt.h>
 
-#if CONFIG_CACHE_ENABLE
+#if CONFIG_DCACHE
 #include "cache.h"
 #endif
 
@@ -146,8 +146,9 @@ static void shell_mb_rx_isr(shell_mb_ext_t *mb_ext, mb_chnl_cmd_t *cmd_buf)
 	{
 		user_cmd_t * user_cmd = (user_cmd_t *)cmd_buf;
 
-#if CONFIG_CACHE_ENABLE
-		flush_dcache((void *)user_cmd->buf, user_cmd->len);
+		/* Redmine #8131: consumer of the peer's buffer - invalidate only. */
+#if CONFIG_DCACHE
+		invalidate_dcache((void *)user_cmd->buf, user_cmd->len);
 #endif
 
 		if((user_cmd->len >= RX_BUFF_SIZE) || (mb_ext->rx_buff_wr_idx != mb_ext->rx_buff_rd_idx))
@@ -319,9 +320,11 @@ static bk_err_t write_sync(shell_mb_ext_t *mb_ext, u8 * p_buf, u16 buf_len)
 		{
 			while(*buff_busy)
 			{
-				/* wait buffer to be free (*buff_busy == 0). */
-				#if CONFIG_CACHE_ENABLE
-				flush_dcache((void *)buff_busy, 1);
+				/* Redmine #8131: poll a flag the peer core clears - invalidate before
+				 * each read so we never clean our stale copy back over the peer's
+				 * update, and gate on the real D-cache switch. */
+				#if CONFIG_DCACHE
+				invalidate_dcache((void *)buff_busy, 1);
 				#endif
 			}
 		}

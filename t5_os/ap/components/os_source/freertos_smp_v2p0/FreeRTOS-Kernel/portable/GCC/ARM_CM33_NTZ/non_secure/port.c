@@ -805,6 +805,18 @@ void vPortSVCHandler_C( uint32_t * pulCallerStackAddress ) /* PRIVILEGED_FUNCTIO
                 }
             #endif /* configENABLE_FPU */
 
+            #if ( configFLUSH_DCACHE_ON_TASK_SWITCH_OUT == 1 )
+            {
+                /* Redmine #8131: invalidate the incoming first task's cacheable
+                 * PSRAM stack before restoring its initial frame. The first-task
+                 * restore below bypasses vTaskSwitchContext's switch-in
+                 * invalidate, so a secondary core may otherwise pop a torn frame
+                 * from stale cache lines. */
+                extern void vTaskCacheInvalidateFirstStack( void );
+                vTaskCacheInvalidateFirstStack();
+            }
+            #endif
+
             /* Setup the context of the first task so that the first task starts
              * executing. */
             vRestoreContextOfFirstTask();

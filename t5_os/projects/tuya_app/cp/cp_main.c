@@ -19,12 +19,12 @@ void user_app_main(void)
         bk_printf_raw(BK_LOG_INFO, NULL, "-------- co-procresser startup, left heap: %d, reset reason: %x\r\n",
                 xPortGetFreeHeapSize(), bk_misc_get_reset_reason() & 0xFF);
 
-        cifd_cust_msg_init();
+        // cifd_cust_msg_init();
         // doorbell_core_init();
         bk_printf_raw(BK_LOG_INFO, NULL, "start cp1\r\n");
         bk_pm_module_vote_boot_cp1_ctrl(PM_BOOT_CP1_MODULE_NAME_APP,PM_POWER_MODULE_STATE_ON);
 
-        tuya_ipc_init();
+        // tuya_ipc_init();
 
 #if (CONFIG_TUYA_TEST_CLI)
         extern int cp_cli_tuya_test_init(void);

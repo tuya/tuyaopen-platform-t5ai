@@ -56,6 +56,7 @@ set(incs
     "include/dvp"
     "include/dma2d"
     "include/jpeg_codec"
+    "include/audio"
     "tuyaopen"
 )
 
@@ -77,13 +78,13 @@ set(srcs
     src/system/tkl_atomic.c
     src/system/tkl_task_notify.c
     src/driver/tkl_watchdog.c
-    src/driver/tkl_ipc.c
-    src/misc/tuya_tkl_ipc.c
+    # src/driver/tkl_ipc.c
+    # src/misc/tuya_tkl_ipc.c
     include/init/src/tkl_init_system.c
 )
 
 if ("${CONFIG_CPU_INDEX}" STREQUAL "0")
-    list(APPEND srcs src/driver/tkl_hci_0.c)
+    # list(APPEND srcs src/driver/tkl_hci_0.c)
     if (CONFIG_TUYA_TEST_CLI)
         list(APPEND srcs src/test/cli_tuya_test_0.c)
     endif() # CONFIG_TUYA_TEST_CLI
@@ -91,11 +92,10 @@ else()
     list(APPEND srcs
         src/driver/tkl_wifi.c
         src/driver/tkl_wired.c
-        src/driver/tkl_hci_1.c
+        # src/driver/tkl_hci_1.c
+        src/driver/tkl_hci.c
         src/driver/tkl_video_enc.c
-        src/driver/tkl_mic.c
-        src/driver/tkl_speaker.c
-        src/driver/tkl_audio.c
+        src/driver/tkl_video_in.c
         src/driver/tkl_cellular.c
         src/driver/tkl_vad.c
         src/driver/tkl_kws.c
@@ -116,21 +116,28 @@ else()
         src/driver/tkl_timer.c
         src/driver/tkl_touch.c
         # src/driver/tkl_wired.c
-        src/driver/tkl_i2s.c
+        # src/driver/tkl_i2s.c
+        src/driver/tkl_i2s_v2.c
         src/driver/tkl_dma2d.c
         src/driver/tkl_dvp.c
         src/driver/tkl_jpeg_codec.c
 
         src/misc/tuya_sdio.c
+        src/driver/tkl_audio.c
+        src/driver/tkl_aud_adc.c
+        src/driver/tkl_aud_dac.c
+        src/driver/tkl_aud_dmic.c
         src/misc/encrypt.c
         src/misc/fs_init.c
         src/misc/dhcpserver.c
         src/misc/qflash.c
         src/misc/sflash.c
+        src/misc/tkl_aud_pm.c
         src/misc/bk_adapter.c
         src/misc/tuya_dma.c
-        src/misc/tkl_mftest.c
-        src/misc/mftest/mt_audio.c
+        # src/misc/tkl_mftest.c
+        # src/misc/mftest/mt_audio.c
+        # src/misc/mftest/mt_fft.c
 
         src/system/tkl_fs.c
         src/system/tkl_ota.c
@@ -143,9 +150,9 @@ else()
 
         include/init/src/tkl_init_common.c
         include/init/src/tkl_init_network.c
-        # include/init/src/tkl_init_wifi.c
+        include/init/src/tkl_init_wifi.c
         include/init/src/tkl_init_wired.c
-        include/init/src/tkl_init_cellular.c
+	include/init/src/tkl_init_cellular.c
         include/utilities/src/tuya_hashmap.c
         include/utilities/src/tuya_ringbuf.c
         include/utilities/src/tuya_smartpointer.c
@@ -199,12 +206,12 @@ else()
             # src/test/coremark/core_state.c
             # src/test/coremark/core_util.c
             # src/test/coremark/posix/core_portme.c
+            # src/test/test_sdcard.c
+            # src/test/audio_input.c
             src/test/test_common.c
             src/test/test_lp.c
             src/test/test_gpio.c
-            src/test/test_sdcard.c
             src/test/test_littlefs.c
-            # src/test/audio_input.c
             src/test/test_fs.c
             src/test/cli_tuya_test_1.c
         )

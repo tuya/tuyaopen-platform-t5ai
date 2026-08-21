@@ -8,32 +8,36 @@ void __asm_flush_dcache_range(void* begin, void* end);
 
 void wdrv_rx_confirm_tx_msg(wdrv_rx_msg *msg)
 {
-    wdrv_cmd_cfm *cmd_cfm = NULL;
+    /* Redmine #8131 (B): the pending list now holds coherent descriptors, not
+     * caller-stack wdrv_cmd_cfm objects. Stage the result into the descriptor;
+     * the producer copies it back to the caller buffer on its own core. */
+    wdrv_cfm_desc_t *desc = NULL;
     uint32_t int_level = 0;
-    
+
     rtos_lock_mutex(&wdrv_host_env.cfm_lock);
 
-    cmd_cfm = (wdrv_cmd_cfm *)wdrv_host_env.cfm_pending_list.first;
+    desc = (wdrv_cfm_desc_t *)wdrv_host_env.cfm_pending_list.first;
 
-    while(cmd_cfm) {
-        // cppcheck-suppress oppositeInnerCondition
-//        if (!cmd_cfm)
-//            break;
-        if ((msg->id == cmd_cfm->cfm_id) && (msg->cfm_sn == cmd_cfm->cfm_sn)) {
+    while(desc) {
+        if ((msg->id == desc->cfm_id) && (msg->cfm_sn == desc->cfm_sn)) {
 
-            if (cmd_cfm->cfm_buf && msg->param_len) 
-                memcpy(cmd_cfm->cfm_buf, msg->param, msg->param_len);
+            uint16_t copy_len = msg->param_len;
+            if (copy_len > WDRV_CFM_STAGING_SIZE)
+                copy_len = WDRV_CFM_STAGING_SIZE;
 
-            cmd_cfm->cfm_len = msg->param_len;
-            
+            if (desc->has_buf && copy_len)
+                memcpy(desc->staging, msg->param, copy_len);
+
+            desc->cfm_len = msg->param_len;
+
             WDRV_ENTER_TXMSG_CRITICAL(int_level);
-            co_list_extract((struct co_list *)&wdrv_host_env.cfm_pending_list,(struct co_list_hdr *)&cmd_cfm->list);
+            co_list_extract((struct co_list *)&wdrv_host_env.cfm_pending_list,(struct co_list_hdr *)&desc->list);
             WDRV_EXIT_TXMSG_CRITICAL(int_level);
 
-            rtos_set_semaphore(&cmd_cfm->sema);
+            rtos_set_semaphore(&desc->sema);
             break;
         }
-        cmd_cfm = (wdrv_cmd_cfm *)cmd_cfm->list.next;
+        desc = (wdrv_cfm_desc_t *)desc->list.next;
     }
     rtos_unlock_mutex(&wdrv_host_env.cfm_lock);
 }

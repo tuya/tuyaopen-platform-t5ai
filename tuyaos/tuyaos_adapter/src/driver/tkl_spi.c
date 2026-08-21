@@ -58,6 +58,41 @@ struct spi_irq_config {
 };
 static struct spi_irq_config spi_irq[TUYA_SPI_NUM_MAX] = {0};
 
+#if (CONFIG_PSRAM_AS_SYS_MEMORY && CONFIG_FREERTOS_SMP && CONFIG_DCACHE)
+/* Redmine #8131: SPI DMA shares a bare physical buffer with the DMA engine while
+ * the AP cores run private, non-coherent D-caches and task stacks live in the
+ * Cacheable PSRAM stack heap. For a DMA-from-memory (TX) transfer the source is
+ * cleaned to physical PSRAM before the engine reads it - clean+invalidate is safe
+ * even on a partially-owned cache line because the dirty data is written back
+ * first. For a DMA-to-memory (RX) transfer a post-completion invalidate would
+ * discard live neighbouring stack data on a shared line, so a Cacheable-stack RX
+ * buffer is bounced through a non-cacheable heap buffer instead. Buffers outside
+ * the stack heap (frame/heap buffers) are untouched (no-op). */
+extern void flush_dcache(void *va, long size);
+#define SPI_DCACHE_LINE_SIZE 32U
+
+static inline int spi_addr_in_cacheable_stack(const void *p)
+{
+    uint32_t a = (uint32_t)p;
+    return (p != NULL) &&
+           (a >= (uint32_t)CONFIG_AP_PSRAM_STACK_HEAP_ADDR) &&
+           (a <  (uint32_t)(CONFIG_AP_PSRAM_STACK_HEAP_ADDR + CONFIG_AP_PSRAM_STACK_HEAP_SIZE));
+}
+
+static inline void spi_cacheable_stack_clean(const void *p, uint32_t len)
+{
+    if (spi_addr_in_cacheable_stack(p) && (len != 0U)) {
+        uint32_t s = (uint32_t)p & ~(SPI_DCACHE_LINE_SIZE - 1U);
+        uint32_t e = ((uint32_t)p + len + SPI_DCACHE_LINE_SIZE - 1U) &
+                     ~(SPI_DCACHE_LINE_SIZE - 1U);
+        flush_dcache((void *)s, (long)(e - s));
+    }
+}
+#else
+#define spi_addr_in_cacheable_stack(p)   (0)
+#define spi_cacheable_stack_clean(p, l)  ((void)0)
+#endif
+
 typedef struct {
 	spi_hal_t hal;
 	uint8_t id_init_bits;
@@ -1054,6 +1089,8 @@ static OPERATE_RET spi_dma_write_bytes(spi_id_t id, const void *data, uint32_t s
 	spi_hal_disable_tx_fifo_int(&spi[id].hal);
 	spi_hal_disable_tx_underflow_int(&spi[id].hal);
 	spi_exit_critical(int_level);
+	/* Redmine #8131: clean a Cacheable PSRAM stack source before the DMA reads it. */
+	spi_cacheable_stack_clean(data, size);
 	tkl_dma_write(spi[id].spi_tx_dma_chan, (uint32_t)data, size);
 
 	spi_hal_enable_tx(&spi[id].hal);
@@ -1075,6 +1112,18 @@ static OPERATE_RET spi_dma_read_bytes(spi_id_t id, void *data, uint32_t size)
 	uint32_t rx_len = 0;
 	uint32_t buf_offset = 0;
 
+	/* Redmine #8131: bounce a Cacheable PSRAM stack destination through a
+	 * non-cacheable heap buffer so the post-DMA read never has to invalidate a
+	 * cache line shared with live neighbouring stack data. */
+	void *xfer = data;
+	void *bounce = NULL;
+	if (spi_addr_in_cacheable_stack(data) && (size != 0)) {
+		bounce = os_malloc(size);
+		if (bounce == NULL) {
+			return OPRT_MALLOC_FAILED;
+		}
+		xfer = bounce;
+	}
 	uint32_t int_level = spi_enter_critical();
 	spi[id].is_rx_blocked = true;
 	//set spi trans_len as 0, to increase max trans_len from 4096(spi max length) to 65536(dma max length).
@@ -1288,6 +1337,9 @@ OPERATE_RET tuya_spi_dma_write_bytes_async(spi_id_t id, const void *data, uint32
 	spi_hal_set_tx_trans_len(&spi[id].hal, 0);
 	spi_exit_critical(int_level);
 
+	/* Redmine #8131: clean a Cacheable PSRAM stack source before the DMA reads it.
+	 * TX only needs a write-back, so this is safe even for the async path. */
+	spi_cacheable_stack_clean(data, size);
 	tkl_dma_write(spi[id].spi_tx_dma_chan, (uint32_t)data, size);
 
 	spi_hal_enable_tx(&spi[id].hal);
@@ -1311,6 +1363,20 @@ static OPERATE_RET spi_dma_duplex_xfer(spi_id_t id, const void *tx_data, uint32_
 	uint32_t len = rx_size > 0 ? rx_size : tx_size;
 	uint32_t offset = 0;
 	uint32_t int_level = 0;
+
+	/* Redmine #8131: clean a Cacheable PSRAM stack TX source and bounce a
+	 * Cacheable PSRAM stack RX destination (blocking path, safe to copy back
+	 * after completion). */
+	void *rx_xfer = rx_data;
+	void *rx_bounce = NULL;
+	if (rx_data && spi_addr_in_cacheable_stack(rx_data) && (rx_size != 0)) {
+		rx_bounce = os_malloc(rx_size);
+		if (rx_bounce == NULL) {
+			return OPRT_MALLOC_FAILED;
+		}
+		rx_xfer = rx_bounce;
+	}
+
 	int_level = spi_enter_critical();
 	if(rx_data) {
 		spi_hal_clear_rx_fifo(&spi[id].hal);
@@ -1324,6 +1390,7 @@ static OPERATE_RET spi_dma_duplex_xfer(spi_id_t id, const void *tx_data, uint32_
 		spi_hal_set_tx_trans_len(&spi[id].hal, 0);
 		spi_hal_disable_tx_fifo_int(&spi[id].hal);
 		spi_hal_disable_tx_underflow_int(&spi[id].hal);
+		spi_cacheable_stack_clean(tx_data, tx_size);
 		tkl_dma_write(spi[id].spi_tx_dma_chan, (uint32_t)tx_data, tx_size);
 	}
 	if(rx_data) {

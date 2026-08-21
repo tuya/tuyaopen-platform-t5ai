@@ -20,7 +20,9 @@ const TKL_OS_T TKL_OS  = {
     .get_reset_reason       = tkl_system_get_reset_reason,
     .sleep                  = tkl_system_sleep,
     .get_cpu_info           = tkl_system_get_cpu_info,
+    .get_hw_unique_id       = tkl_system_get_hw_unique_id,
     .cpu_sleep_mode_set     = tkl_cpu_sleep_mode_set,
+    .cpu_sleep_time_set     = tkl_cpu_sleep_time_set,
     //! log output
     .log_output             = tkl_log_output,
     .log_close              = tkl_log_close,

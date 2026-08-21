@@ -73,6 +73,11 @@ bk_err_t bk_aud_dac_init(aud_dac_config_t *dac_config)
 	/* select audio clock */
 	bk_aud_clk_config(dac_config->clk_src);
 
+	// Modified by TUYA
+	if (dac_config->clk_src == AUD_CLK_APLL) {
+		sys_drv_dmic_clk_div_set(0x1);
+	}
+
 	/*active dac*/
 	sys_drv_aud_dac_bias_en(1);
 	sys_drv_aud_dac_drv_en(1);
@@ -163,6 +168,8 @@ bk_err_t bk_aud_dac_deinit(void)
 	aud_hal_set_dac_config0_dac_hpf2_bypass(0);
 
 	bk_aud_dac_set_samp_rate(8000);
+
+	sys_drv_dmic_clk_div_set(0x0); 	// Modified by TUYA
 
 	bk_err_t ret = bk_aud_set_module_init_sta(AUD_MODULE_DAC, false);
 
@@ -433,4 +440,3 @@ bk_err_t bk_aud_dac_set_dwa_bypass(uint8_t value)
 
 	return sys_drv_aud_dac_bypass_dwa_en(value);
 }
-

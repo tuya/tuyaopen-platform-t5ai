@@ -260,6 +260,43 @@ int wdrv_tx_msg_send(uint8_t *msg, uint16_t msg_len,uint8_t waitcfm)
 }
 
 static uint16_t s_wdrv_cmd_sn = 0;  // Modified by TUYA
+
+/* Redmine #8131 (B) - coherent confirm descriptor pool. Plain AP .bss, i.e. the
+ * same cross-core-coherent domain as wdrv_host_env.cfm_pending_list. Alloc/free
+ * are serialized by the wdrv txmsg critical section (local IRQ off + cross-core
+ * spinlock), the same primitive already guarding the pending list. */
+static wdrv_cfm_desc_t s_wdrv_cfm_desc[WDRV_CFM_DESC_NUM];
+
+static wdrv_cfm_desc_t *wdrv_cfm_desc_alloc(void)
+{
+    uint32_t int_level = 0;
+    wdrv_cfm_desc_t *desc = NULL;
+    int i;
+
+    WDRV_ENTER_TXMSG_CRITICAL(int_level);
+    for (i = 0; i < WDRV_CFM_DESC_NUM; i++) {
+        if (!s_wdrv_cfm_desc[i].in_use) {
+            s_wdrv_cfm_desc[i].in_use = 1;
+            desc = &s_wdrv_cfm_desc[i];
+            break;
+        }
+    }
+    WDRV_EXIT_TXMSG_CRITICAL(int_level);
+    return desc;
+}
+
+static void wdrv_cfm_desc_free(wdrv_cfm_desc_t *desc)
+{
+    uint32_t int_level = 0;
+
+    if (!desc)
+        return;
+
+    WDRV_ENTER_TXMSG_CRITICAL(int_level);
+    desc->in_use = 0;
+    WDRV_EXIT_TXMSG_CRITICAL(int_level);
+}
+
 int wdrv_tx_msg(uint8_t *msg, uint16_t msg_len, wdrv_cmd_cfm *cfm, uint8_t *result)
 {
     int ret = 0;
@@ -281,31 +318,47 @@ int wdrv_tx_msg(uint8_t *msg, uint16_t msg_len, wdrv_cmd_cfm *cfm, uint8_t *resu
 
     if (cfm->waitcfm == WDRV_CMD_WAITCFM) {
 
-        ret = rtos_init_semaphore(&cfm->sema, 1);
+        /* Redmine #8131 (B): route the shared confirm state through a coherent
+         * descriptor instead of the caller's cacheable PSRAM stack object. */
+        wdrv_cfm_desc_t *desc = wdrv_cfm_desc_alloc();
+
+        if (desc == NULL) {
+            WDRV_LOGE("%s: no free cfm desc, id:0x%x\n", __func__, hdr->cmd_id);
+            ret = -4;
+            return ret;
+        }
+
+        ret = rtos_init_semaphore(&desc->sema, 1);
         if(ret == BK_OK) 
         {
             // Modified by TUYA Start
+            desc->cfm_id  = hdr->cmd_id + WDRV_CMD_CFM_OFFSET;
+            desc->cfm_sn  = hdr->cmd_sn;
+            desc->cfm_len = 0;
+            desc->has_buf = (result != NULL) ? 1 : 0;
+
+            /* keep caller-visible fields in sync for debug/compat */
             cfm->cfm_buf = (uint8_t *)result;
-            cfm->cfm_id  = hdr->cmd_id + WDRV_CMD_CFM_OFFSET;
-            cfm->cfm_sn  = hdr->cmd_sn;
+            cfm->cfm_id  = desc->cfm_id;
+            cfm->cfm_sn  = desc->cfm_sn;
 
             __asm__ volatile("" ::: "memory");
 
             WDRV_ENTER_TXMSG_CRITICAL(int_level);
-            co_list_push_back((struct co_list *)&wdrv_host_env.cfm_pending_list,(struct co_list_hdr *)&cfm->list);
+            co_list_push_back((struct co_list *)&wdrv_host_env.cfm_pending_list,(struct co_list_hdr *)&desc->list);
             WDRV_EXIT_TXMSG_CRITICAL(int_level);
 
             wdrv_tx_msg_send(msg, msg_len, WDRV_CMD_WAITCFM);
 
             {
                 uint32_t t_start = rtos_get_time();
-                int sema_ret = rtos_get_semaphore(&cfm->sema, WDRV_CMDCFM_TIMEOUT);
+                int sema_ret = rtos_get_semaphore(&desc->sema, WDRV_CMDCFM_TIMEOUT);
                 uint32_t t_elapsed = rtos_get_time() - t_start;
 
                 if (sema_ret != 0) {
                     rtos_lock_mutex(&wdrv_host_env.cfm_lock);
                     WDRV_ENTER_TXMSG_CRITICAL(int_level);
-                    co_list_extract((struct co_list *)&wdrv_host_env.cfm_pending_list,(struct co_list_hdr *)&cfm->list);
+                    co_list_extract((struct co_list *)&wdrv_host_env.cfm_pending_list,(struct co_list_hdr *)&desc->list);
                     WDRV_EXIT_TXMSG_CRITICAL(int_level);
                     rtos_unlock_mutex(&wdrv_host_env.cfm_lock);
 
@@ -313,16 +366,28 @@ int wdrv_tx_msg(uint8_t *msg, uint16_t msg_len, wdrv_cmd_cfm *cfm, uint8_t *resu
                               __func__, hdr->cmd_id, hdr->cmd_sn, t_elapsed);
                     ret = -3;
                 } else {
-                    ret = cfm->cfm_len;
+                    /* consumer has already extracted the desc and filled staging
+                     * (coherent). Copy the result back on THIS core so the caller
+                     * buffer is written by the same core that later reads it. */
+                    uint16_t len = desc->cfm_len;
+                    if (result && len) {
+                        if (len > WDRV_CFM_STAGING_SIZE)
+                            len = WDRV_CFM_STAGING_SIZE;
+                        memcpy(result, desc->staging, len);
+                    }
+                    cfm->cfm_len = desc->cfm_len;
+                    ret = desc->cfm_len;
                 }
             }
 
-            rtos_deinit_semaphore(&cfm->sema);
+            rtos_deinit_semaphore(&desc->sema);
         }
         else
         {
             BK_LOGD(NULL, "%s,%d,sema_init fail,send msg fail\n",__func__,__LINE__);
         }
+
+        wdrv_cfm_desc_free(desc);
     } else if (cfm->waitcfm == WDRV_CMD_NOWAITCFM) {
         // cmd send direct.
         wdrv_tx_msg_send(msg, msg_len, WDRV_CMD_NOWAITCFM);

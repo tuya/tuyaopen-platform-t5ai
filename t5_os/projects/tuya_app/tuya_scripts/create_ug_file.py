@@ -12,6 +12,52 @@ import lzma
 import os
 
 
+# Modified by TuyaOpen Start
+# OTA 余量告警水位（百分比）。压缩包占用 ota 分区超过该比例时打印警告，
+# 仅提示，不影响返回码。可通过环境变量 TUYA_OTA_WARN_PERCENT 覆盖。
+OTA_WARN_PERCENT = 85
+
+
+def _size_str(size):
+    """字节数转 'N B (X.XK)' 形式"""
+    return "%d B (%.1fK)" % (size, size / 1024)
+
+
+def report_ota_usage(input_size, package_size, ota_size):
+    """打印 OTA 包体积与 ota 分区余量。无条件输出，不受 -v 控制。
+
+    click 在输出非终端（重定向到构建日志）时会自动去掉 ANSI 颜色码。
+    """
+    ratio = package_size / input_size if input_size else 0
+    percent = package_size / ota_size * 100 if ota_size else 0
+    remain = ota_size - package_size
+    warn_percent = float(os.environ.get("TUYA_OTA_WARN_PERCENT", OTA_WARN_PERCENT))
+    low_headroom = percent >= warn_percent
+
+    click.secho("OTA 占用: %.1fK / %.1fK (%.1f%%), 剩余 %.1fK"
+                % (package_size / 1024, ota_size / 1024, percent, remain / 1024),
+                fg="yellow" if low_headroom else "cyan", bold=low_headroom)
+    click.secho("压缩率:   %.3f (输入 %.1fK -> 输出 %.1fK)"
+                % (ratio, input_size / 1024, package_size / 1024), fg="cyan")
+
+    if low_headroom:
+        click.secho("警告: OTA 余量偏低, 已占用 %.1f%% (阈值 %.0f%%), 剩余 %.1fK"
+                    % (percent, warn_percent, remain / 1024), fg="yellow", bold=True)
+
+
+def oversize_message(input_size, package_size, ota_size):
+    """压缩包放不下时的错误说明，附上需要减少的固件体积估算。"""
+    over = package_size - ota_size
+    ratio = package_size / input_size if input_size else 0
+    msg = ("压缩包过大,无法生成OTA包. 压缩后 %s, ota 分区 %s, 超出 %.1fK"
+           % (_size_str(package_size), _size_str(ota_size), over / 1024))
+    if ratio:
+        msg += (", 按当前压缩率 %.3f 需减少约 %.1fK 固件体积"
+                % (ratio, over / ratio / 1024))
+    return click.style(msg, fg="red", bold=True)
+# Modified by TuyaOpen End
+
+
 def add_package_header(original_data, compress_data, ota_type, mode, verbose=False):
     """
     UINT_T magic_ver;               // 0x4D4D4D:固定64字节
@@ -125,10 +171,16 @@ def main(input_file, output_file, total_size, ota_size, a_size, gap_size, mode, 
             compress_ug = add_package_header(all_app, all_app_compress, 0x4C5A4350, mode, verbose)
             if len(compress_ug) < ota_size:
                 click.echo("使用全量压缩升级 (0x4C5A4350)")
+                # Modified by TUYA Start
+                report_ota_usage(len(all_app), len(compress_ug), ota_size)
+                # Modified by TUYA End
                 with open(output_file, 'wb') as out_file:
                     out_file.write(compress_ug)
             else:
-                raise click.ClickException(f"压缩包过大,无法生成OTA包. 压缩后大小: {len(compress_ug)}, 可用: {ota_size}")
+                # Modified by TUYA Start
+                raise click.ClickException(
+                    oversize_message(len(all_app), len(compress_ug), ota_size))
+                # Modified by TUYA End
         elif mode == 2:
             # a: SMP 可覆盖分段压缩升级
             # b: 从 AMP 升级到 SMP，必须使用可覆盖分段压缩升级

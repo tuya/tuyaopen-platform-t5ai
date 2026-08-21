@@ -251,6 +251,76 @@ __attribute__((section(".iram")))void CheckFreeList(void);
 block must by correctly byte aligned. */
 static const size_t xHeapStructSize	= ( sizeof( BlockLink_t ) + ( ( size_t ) ( portBYTE_ALIGNMENT - 1 ) ) ) & ~( ( size_t ) portBYTE_ALIGNMENT_MASK );
 
+/* Redmine #8131 (item 4): only the Cacheable PSRAM task-stack heap is aligned to
+ * the 32-byte D-cache line. This guarantees each stack block's header and its
+ * trailing debug guard own their cache line(s), so the cross-core cache
+ * maintenance added for #8131 never disturbs a neighbouring allocation. The SRAM
+ * and general (non-cacheable) PSRAM heaps keep the original portBYTE_ALIGNMENT
+ * (see xHeapStructSize above) and therefore avoid the 32-byte padding waste that
+ * a global alignment bump would impose on every small allocation. */
+#define PSRAM_STACK_BYTE_ALIGNMENT       ( 32U )
+#define PSRAM_STACK_BYTE_ALIGNMENT_MASK  ( PSRAM_STACK_BYTE_ALIGNMENT - 1U )
+static const size_t xPsramStackHeapStructSize =
+	( sizeof( BlockLink_t ) + ( ( size_t ) ( PSRAM_STACK_BYTE_ALIGNMENT - 1 ) ) ) &
+	~( ( size_t ) PSRAM_STACK_BYTE_ALIGNMENT_MASK );
+#define psramStackHeapMINIMUM_BLOCK_SIZE ( ( size_t ) ( xPsramStackHeapStructSize << 1 ) )
+
+#if ( CONFIG_PSRAM_AS_SYS_MEMORY )
+static inline int addr_in_psram_stack_heap( const void *p )
+{
+	uint32_t a = ( uint32_t ) p;
+	return ( a >= ( uint32_t ) CONFIG_AP_PSRAM_STACK_HEAP_ADDR ) &&
+	       ( a <  ( uint32_t ) ( CONFIG_AP_PSRAM_STACK_HEAP_ADDR + CONFIG_AP_PSRAM_STACK_HEAP_SIZE ) );
+}
+/* Return the block-header size for the heap that owns 'pv'. Only the stack heap
+ * uses the enlarged 32-byte-aligned header; every other heap uses xHeapStructSize.
+ * Callers on the shared free/size paths must use this instead of xHeapStructSize. */
+static inline size_t heap_struct_size_of( const void *pv )
+{
+	return addr_in_psram_stack_heap( pv ) ? xPsramStackHeapStructSize : xHeapStructSize;
+}
+#else
+#define addr_in_psram_stack_heap( p )   ( 0 )
+#define heap_struct_size_of( pv )       ( xHeapStructSize )
+#endif
+
+#if ( CONFIG_PSRAM_AS_SYS_MEMORY && CONFIG_FREERTOS_SMP && CONFIG_DCACHE )
+extern void flush_dcache( void *va, long size );      /* clean + invalidate */
+extern void invalidate_dcache( void *va, long size ); /* invalidate only    */
+/* Redmine #8131 (item 1): D-cache-line maintenance for the trailing debug guard
+ * of a Cacheable PSRAM task-stack block. The guard is written by the allocating
+ * core but is covered by neither the task-stack payload clean (tasks.c) nor the
+ * block-header clean, so a cross-core consumer (e.g. IDLE freeing a self-deleted
+ * task) may otherwise compare it against a stale local cache line and report a
+ * false "Mem Overflow". The producer cleans it to physical PSRAM; the consumer
+ * invalidates it before reading. The range is expanded to whole 32-byte lines and
+ * always stays inside the stack block (block start/end are 32-byte aligned and the
+ * header occupies a whole number of lines), so it never touches another block. */
+static inline void psram_stack_guard_clean( const void *p, size_t len )
+{
+	if( addr_in_psram_stack_heap( p ) && ( len != 0U ) )
+	{
+		uint32_t s = ( uint32_t ) p & ~( ( uint32_t ) PSRAM_STACK_BYTE_ALIGNMENT_MASK );
+		uint32_t e = ( ( uint32_t ) p + ( uint32_t ) len + PSRAM_STACK_BYTE_ALIGNMENT_MASK ) &
+		             ~( ( uint32_t ) PSRAM_STACK_BYTE_ALIGNMENT_MASK );
+		flush_dcache( ( void * ) s, ( long ) ( e - s ) );
+	}
+}
+static inline void psram_stack_guard_inv( const void *p, size_t len )
+{
+	if( addr_in_psram_stack_heap( p ) && ( len != 0U ) )
+	{
+		uint32_t s = ( uint32_t ) p & ~( ( uint32_t ) PSRAM_STACK_BYTE_ALIGNMENT_MASK );
+		uint32_t e = ( ( uint32_t ) p + ( uint32_t ) len + PSRAM_STACK_BYTE_ALIGNMENT_MASK ) &
+		             ~( ( uint32_t ) PSRAM_STACK_BYTE_ALIGNMENT_MASK );
+		invalidate_dcache( ( void * ) s, ( long ) ( e - s ) );
+	}
+}
+#else
+#define psram_stack_guard_clean( p, l )  ( ( void ) 0 )
+#define psram_stack_guard_inv( p, l )    ( ( void ) 0 )
+#endif
+
 /* Create a couple of list links to mark the start and end of the list. */
 static BlockLink_t xStart, *pxEnd = NULL;
 #if CONFIG_MEM_DEBUG
@@ -273,6 +343,15 @@ application.  When the bit is free the block is still part of the free heap
 space. */
 static size_t xBlockAllocatedBit = 0;
 
+static inline void prvInitialiseBlockAllocatedBit( void )
+{
+	if( xBlockAllocatedBit == 0U )
+	{
+		xBlockAllocatedBit = ( ( size_t ) 1 ) <<
+		                    ( ( sizeof( size_t ) * heapBITS_PER_BYTE ) - 1 );
+	}
+}
+
 #if (CONFIG_PSRAM_AS_SYS_MEMORY)
 uint8_t *psram_ucHeap;
 /* Create a couple of list links to mark the start and end of the list. */
@@ -282,6 +361,11 @@ static BlockLink_t psram_xStart, *psram_pxEnd = NULL;
 fragmentation. */
 static size_t psram_xFreeBytesRemaining = 0U;
 static size_t psram_xMinimumEverFreeBytesRemaining = 0U;
+
+/* Dedicated cacheable task-stack heap. TCBs use the non-cacheable PSRAM heap. */
+static BlockLink_t psram_stack_xStart, *psram_stack_pxEnd = NULL;
+static size_t psram_stack_xFreeBytesRemaining = 0U;
+static size_t psram_stack_xMinimumEverFreeBytesRemaining = 0U;
 
 static volatile uint32_t s_psram_used_count = 0;
 
@@ -294,10 +378,110 @@ void rtos_regist_plat_dump_hook(uint32_t reg_base_addr, uint32_t reg_size);
 #define PSRAM_START_ADDRESS    (void*)(CONFIG_AP_PSRAM_HEAP_ADDR)
 #endif
 #define PSRAM_HEAP_SIZE        CONFIG_AP_PSRAM_HEAP_SIZE
+#if CONFIG_TZ
+#define PSRAM_STACK_START_ADDRESS (void*)(CONFIG_AP_PSRAM_STACK_HEAP_ADDR + SOC_ADDR_OFFSET)
+#else
+#define PSRAM_STACK_START_ADDRESS (void*)(CONFIG_AP_PSRAM_STACK_HEAP_ADDR)
+#endif
+#define PSRAM_STACK_HEAP_SIZE CONFIG_AP_PSRAM_STACK_HEAP_SIZE
 #endif
 
 
 /*-----------------------------------------------------------*/
+
+#if ( CONFIG_PSRAM_AS_SYS_MEMORY && CONFIG_FREERTOS_SMP && CONFIG_DCACHE )
+/* Keep cacheable stack-heap metadata coherent across the AP cores.
+ * Invalidate before reading a node and clean+invalidate after modifying it.
+ * Stack block headers occupy complete cache lines because the stack heap is
+ * aligned to PSRAM_STACK_BYTE_ALIGNMENT (32) and xPsramStackHeapStructSize is a
+ * whole number of 32-byte lines (Redmine #8131 item 4). */
+static inline int psram_meta_in_heap( const void *p )
+{
+	return addr_in_psram_stack_heap( p );
+}
+
+static inline void psram_meta_inv( const void *p )
+{
+	if( psram_meta_in_heap( p ) )
+	{
+		invalidate_dcache( ( void * ) p, ( long ) xPsramStackHeapStructSize );
+	}
+}
+
+static inline void psram_meta_clean( const void *p )
+{
+	if( psram_meta_in_heap( p ) )
+	{
+		flush_dcache( ( void * ) p, ( long ) xPsramStackHeapStructSize );
+	}
+}
+#else
+/* Consume the argument so a pointer kept solely for a metadata publish (e.g.
+ * pxFreed in the free-list insert helpers) does not warn as unused here. */
+#define psram_meta_inv( p )      ( ( void ) ( p ) )
+#define psram_meta_clean( p )    ( ( void ) ( p ) )
+#endif
+static void bk_psram_stack_heap_init( void )
+{
+	BlockLink_t *pxFirstFreeBlock;
+	uint8_t *pucAlignedHeap;
+	size_t uxAddress;
+	size_t xTotalHeapSize = PSRAM_STACK_HEAP_SIZE;
+	uint8_t *ucHeap = PSRAM_STACK_START_ADDRESS;
+
+	MEM_STATIC_LOGD(TAG, "psram stack:0x%x,size:%d\r\n", ucHeap, xTotalHeapSize);
+	uxAddress = ( size_t ) ucHeap;
+	if( ( uxAddress & PSRAM_STACK_BYTE_ALIGNMENT_MASK ) != 0 )
+	{
+		uxAddress += ( PSRAM_STACK_BYTE_ALIGNMENT - 1 );
+		uxAddress &= ~( ( size_t ) PSRAM_STACK_BYTE_ALIGNMENT_MASK );
+		xTotalHeapSize -= uxAddress - ( size_t ) ucHeap;
+	}
+	pucAlignedHeap = ( uint8_t * ) uxAddress;
+	psram_stack_xStart.pxNextFreeBlock = ( void * ) pucAlignedHeap;
+	psram_stack_xStart.xBlockSize = 0;
+#if CONFIG_MEM_DEBUG_OVERFLOW
+	psram_stack_xStart.head_magic_num = MEM_HEAD_WORD_TAG;
+	psram_stack_xStart.pxNextFreeBlock->head_magic_num = MEM_HEAD_WORD_TAG;
+#endif
+
+	uxAddress = ( ( size_t ) pucAlignedHeap ) + xTotalHeapSize;
+	uxAddress -= xPsramStackHeapStructSize;
+	uxAddress &= ~( ( size_t ) PSRAM_STACK_BYTE_ALIGNMENT_MASK );
+	psram_stack_pxEnd = ( void * ) uxAddress;
+	psram_stack_pxEnd->xBlockSize = 0;
+	psram_stack_pxEnd->pxNextFreeBlock = NULL;
+
+	pxFirstFreeBlock = ( void * ) pucAlignedHeap;
+	pxFirstFreeBlock->xBlockSize = uxAddress - ( size_t ) pxFirstFreeBlock;
+	pxFirstFreeBlock->pxNextFreeBlock = psram_stack_pxEnd;
+	psram_meta_clean( psram_stack_pxEnd );
+	psram_meta_clean( pxFirstFreeBlock );
+
+	psram_stack_xMinimumEverFreeBytesRemaining = pxFirstFreeBlock->xBlockSize;
+	psram_stack_xFreeBytesRemaining = pxFirstFreeBlock->xBlockSize;
+}
+
+static void prvResetPsramHeapsAfterPowerDown( void )
+{
+	if( FIXED_ADDR_PSRAM_POWER_DOWN == PM_PSRAM_POWER_DOWN_MAGIC )
+	{
+		BK_ASSERT( s_psram_used_count == 0U );
+		BK_ASSERT( FIXED_ADDR_PSRAM_USDE_COUNT == 0U );
+
+		bk_psram_heap_init_flag_set( false );
+		psram_pxEnd = NULL;
+		psram_stack_pxEnd = NULL;
+		psram_xFreeBytesRemaining = 0U;
+		psram_xMinimumEverFreeBytesRemaining = 0U;
+		psram_stack_xFreeBytesRemaining = 0U;
+		psram_stack_xMinimumEverFreeBytesRemaining = 0U;
+		s_psram_used_count = 0U;
+		FIXED_ADDR_PSRAM_USDE_COUNT = 0U;
+		FIXED_ADDR_PSRAM_POWER_DOWN = 0U;
+	}
+}
+
 #if (CONFIG_LV_ATTRIBUTE_FAST_MEM) && (CONFIG_SOC_BK7258)
 void bk_psram_heap_init(void) {
 #elif CONFIG_SOC_BK7236XX
@@ -358,6 +542,10 @@ __attribute__((section(".itcm_sec_code"))) void bk_psram_heap_init(void) {
 	pxFirstFreeBlock->xBlockSize = uxAddress - ( size_t ) pxFirstFreeBlock;
 	pxFirstFreeBlock->pxNextFreeBlock = psram_pxEnd;
 
+	/* Publish the initial free-list nodes to physical PSRAM. */
+	psram_meta_clean( psram_pxEnd );
+	psram_meta_clean( pxFirstFreeBlock );
+
 	/* Only one block exists - and it covers the entire usable heap space. */
 	psram_xMinimumEverFreeBytesRemaining = pxFirstFreeBlock->xBlockSize;
 	psram_xFreeBytesRemaining = pxFirstFreeBlock->xBlockSize;
@@ -366,20 +554,25 @@ __attribute__((section(".itcm_sec_code"))) void bk_psram_heap_init(void) {
 	INIT_LIST_HEAD(&xPsramUsed);
 	#endif
 
-	s_psram_used_count = 0;
-	FIXED_ADDR_PSRAM_USDE_COUNT = 0;
 }
 
 static void psram_prvInsertBlockIntoFreeList( BlockLink_t *pxBlockToInsert )
 {
 BlockLink_t *pxIterator;
+BlockLink_t *pxNext;
+BlockLink_t *pxFreed = pxBlockToInsert;
 uint8_t *puc;
 
 	/* Iterate through the list until a block is found that has a higher address
 	than the block being inserted. */
-	for( pxIterator = &psram_xStart; pxIterator->pxNextFreeBlock < pxBlockToInsert; pxIterator = pxIterator->pxNextFreeBlock )
+	for( pxIterator = &psram_xStart; ; pxIterator = pxIterator->pxNextFreeBlock )
 	{
-		/* Nothing to do here, just iterate to the right position. */
+		/* Read the latest node written by either core. */
+		psram_meta_inv( pxIterator );
+		if( pxIterator->pxNextFreeBlock >= pxBlockToInsert )
+		{
+			break;
+		}
 	}
 
 	/* Do the block being inserted, and the block it is being inserted after
@@ -398,13 +591,16 @@ uint8_t *puc;
 	/* Do the block being inserted, and the block it is being inserted before
 	make a contiguous block of memory? */
 	puc = ( uint8_t * ) pxBlockToInsert;
-	if( ( puc + pxBlockToInsert->xBlockSize ) == ( uint8_t * ) pxIterator->pxNextFreeBlock )
+	pxNext = pxIterator->pxNextFreeBlock;
+	/* Refresh the successor before coalescing. */
+	psram_meta_inv( pxNext );
+	if( ( puc + pxBlockToInsert->xBlockSize ) == ( uint8_t * ) pxNext )
 	{
-		if( pxIterator->pxNextFreeBlock != psram_pxEnd )
+		if( pxNext != psram_pxEnd )
 		{
 			/* Form one big block from the two blocks. */
-			pxBlockToInsert->xBlockSize += pxIterator->pxNextFreeBlock->xBlockSize;
-			pxBlockToInsert->pxNextFreeBlock = pxIterator->pxNextFreeBlock->pxNextFreeBlock;
+			pxBlockToInsert->xBlockSize += pxNext->xBlockSize;
+			pxBlockToInsert->pxNextFreeBlock = pxNext->pxNextFreeBlock;
 		}
 		else
 		{
@@ -413,7 +609,7 @@ uint8_t *puc;
 	}
 	else
 	{
-		pxBlockToInsert->pxNextFreeBlock = pxIterator->pxNextFreeBlock;
+		pxBlockToInsert->pxNextFreeBlock = pxNext;
 	}
 
 	/* If the block being inserted plugged a gab, so was merged with the block
@@ -428,6 +624,15 @@ uint8_t *puc;
 	{
 		mtCOVERAGE_TEST_MARKER();
 	}
+
+	/* Publish the modified free-list nodes. */
+	psram_meta_clean( pxIterator );
+	psram_meta_clean( pxBlockToInsert );
+	/* Kept in step with psram_stack_prvInsertBlockIntoFreeList(): publish the
+	freed block's own header line, which the two cleans above miss once it has
+	been absorbed by its predecessor. A no-op while this heap stays
+	non-cacheable (psram_meta_clean() filters on addr_in_psram_stack_heap()). */
+	psram_meta_clean( pxFreed );
 }
 
 /*-----------------------------------------------------------*/
@@ -438,6 +643,8 @@ BlockLink_t *pxBlock, *pxPreviousBlock, *pxNewBlockLink;
 void *pvReturn = NULL;
 
 	{
+		prvInitialiseBlockAllocatedBit();
+
 		/* If this is the first call to malloc then the heap will require
 		initialisation to setup the list of free blocks. */
 		if( psram_pxEnd == NULL || !bk_psram_heap_init_flag_get())
@@ -486,10 +693,13 @@ void *pvReturn = NULL;
 				one	of adequate size is found. */
 				pxPreviousBlock = &psram_xStart;
 				pxBlock = psram_xStart.pxNextFreeBlock;
+				/* Read the latest node written by either core. */
+				psram_meta_inv( pxBlock );
 				while( ( pxBlock->xBlockSize < xWantedSize ) && ( pxBlock->pxNextFreeBlock != NULL ) )
 				{
 					pxPreviousBlock = pxBlock;
 					pxBlock = pxBlock->pxNextFreeBlock;
+					psram_meta_inv( pxBlock );
 				}
 
 				/* If the end marker was reached then a block of adequate size
@@ -503,6 +713,8 @@ void *pvReturn = NULL;
 					/* This block is being returned for use so must be taken out
 					of the list of free blocks. */
 					pxPreviousBlock->pxNextFreeBlock = pxBlock->pxNextFreeBlock;
+					/* Publish the updated predecessor. */
+					psram_meta_clean( pxPreviousBlock );
 
 					/* If the block is larger than required it can be split into
 					two. */
@@ -524,6 +736,8 @@ void *pvReturn = NULL;
                 #if CONFIG_MEM_DEBUG_OVERFLOW
 						pxNewBlockLink->head_magic_num = MEM_HEAD_WORD_TAG;
                 #endif
+						/* Publish the new free block before insertion. */
+						psram_meta_clean( pxNewBlockLink );
 						psram_prvInsertBlockIntoFreeList( pxNewBlockLink );
 					}
 					else
@@ -546,10 +760,264 @@ void *pvReturn = NULL;
 					by the application and has no "next" block. */
 					pxBlock->xBlockSize |= xBlockAllocatedBit;
 					pxBlock->pxNextFreeBlock = NULL;
+					/* Publish the allocated block header. */
+					psram_meta_clean( pxBlock );
 
 #if CONFIG_MEM_DEBUG
 					list_add_tail(&pxBlock->node, &xPsramUsed);
 #endif
+
+				}
+				else
+				{
+					mtCOVERAGE_TEST_MARKER();
+				}
+			}
+			else
+			{
+				mtCOVERAGE_TEST_MARKER();
+			}
+		}
+		else
+		{
+			mtCOVERAGE_TEST_MARKER();
+		}
+
+		traceMALLOC( pvReturn, xWantedSize );
+	}
+
+	#if( configUSE_MALLOC_FAILED_HOOK == 1 )
+	{
+		if( pvReturn == NULL )
+		{
+			extern void vApplicationMallocFailedHook( void );
+			vApplicationMallocFailedHook();
+		}
+		else
+		{
+			mtCOVERAGE_TEST_MARKER();
+		}
+	}
+	#endif
+
+	configASSERT( ( ( ( size_t ) pvReturn ) & ( size_t ) portBYTE_ALIGNMENT_MASK ) == 0 );
+	return pvReturn;
+}
+
+static void psram_stack_prvInsertBlockIntoFreeList( BlockLink_t *pxBlockToInsert )
+{
+BlockLink_t *pxIterator;
+BlockLink_t *pxNext;
+BlockLink_t *pxFreed = pxBlockToInsert;
+uint8_t *puc;
+
+	/* Iterate through the list until a block is found that has a higher address
+	than the block being inserted. */
+	for( pxIterator = &psram_stack_xStart; ; pxIterator = pxIterator->pxNextFreeBlock )
+	{
+		/* Read the latest node written by either core. */
+		psram_meta_inv( pxIterator );
+		if( pxIterator->pxNextFreeBlock >= pxBlockToInsert )
+		{
+			break;
+		}
+	}
+
+	/* Do the block being inserted, and the block it is being inserted after
+	make a contiguous block of memory? */
+	puc = ( uint8_t * ) pxIterator;
+	if( ( puc + pxIterator->xBlockSize ) == ( uint8_t * ) pxBlockToInsert )
+	{
+		pxIterator->xBlockSize += pxBlockToInsert->xBlockSize;
+		pxBlockToInsert = pxIterator;
+	}
+	else
+	{
+		mtCOVERAGE_TEST_MARKER();
+	}
+
+	/* Do the block being inserted, and the block it is being inserted before
+	make a contiguous block of memory? */
+	puc = ( uint8_t * ) pxBlockToInsert;
+	pxNext = pxIterator->pxNextFreeBlock;
+	/* Refresh the successor before coalescing. */
+	psram_meta_inv( pxNext );
+	if( ( puc + pxBlockToInsert->xBlockSize ) == ( uint8_t * ) pxNext )
+	{
+		if( pxNext != psram_stack_pxEnd )
+		{
+			/* Form one big block from the two blocks. */
+			pxBlockToInsert->xBlockSize += pxNext->xBlockSize;
+			pxBlockToInsert->pxNextFreeBlock = pxNext->pxNextFreeBlock;
+		}
+		else
+		{
+			pxBlockToInsert->pxNextFreeBlock = psram_stack_pxEnd;
+		}
+	}
+	else
+	{
+		pxBlockToInsert->pxNextFreeBlock = pxNext;
+	}
+
+	/* If the block being inserted plugged a gab, so was merged with the block
+	before and the block after, then it's pxNextFreeBlock pointer will have
+	already been set, and should not be set here as that would make it point
+	to itself. */
+	if( pxIterator != pxBlockToInsert )
+	{
+		pxIterator->pxNextFreeBlock = pxBlockToInsert;
+	}
+	else
+	{
+		mtCOVERAGE_TEST_MARKER();
+	}
+
+	/* Publish the modified free-list nodes. */
+	psram_meta_clean( pxIterator );
+	psram_meta_clean( pxBlockToInsert );
+	/* Redmine #8131: when the freed block was absorbed by its predecessor,
+	pxBlockToInsert was re-pointed at that predecessor above, so neither clean
+	covers the freed block's OWN header line - and vPortFree_cm() has just
+	dirtied it (allocated bit cleared, debug fields zeroed). Left dirty in this
+	core's D-cache it is written back at an arbitrary later time, silently
+	overwriting the header the OTHER core wrote when it re-allocated the same
+	address. The next free of that block then reads a stale "already free"
+	header and trips configASSERT() below at the "block is actually allocated"
+	check. Publish it too; psram_meta_clean() is idempotent, so the non-merged
+	case simply cleans the same line twice. */
+	psram_meta_clean( pxFreed );
+}
+
+/*-----------------------------------------------------------*/
+
+static void *psram_stack_malloc_without_lock( size_t xWantedSize )
+{
+BlockLink_t *pxBlock, *pxPreviousBlock, *pxNewBlockLink;
+void *pvReturn = NULL;
+
+	{
+		prvInitialiseBlockAllocatedBit();
+
+		/* If this is the first call to malloc then the heap will require
+		initialisation to setup the list of free blocks. */
+		if( psram_stack_pxEnd == NULL )
+		{
+			bk_psram_stack_heap_init();
+		}
+		else
+		{
+			mtCOVERAGE_TEST_MARKER();
+		}
+
+		/* Check the requested block size is not so large that the top bit is
+		set.  The top bit of the block size member of the BlockLink_t structure
+		is used to determine who owns the block - the application or the
+		kernel, so it must be free. */
+		if( ( xWantedSize & xBlockAllocatedBit ) == 0 )
+		{
+			/* The wanted size is increased so it can contain a BlockLink_t
+			structure in addition to the requested amount of bytes. */
+			if( xWantedSize > 0 )
+			{
+				xWantedSize += xPsramStackHeapStructSize;
+
+				/* Ensure that blocks are always aligned to the 32-byte cache line
+				(Redmine #8131 item 4). */
+				if( ( xWantedSize & PSRAM_STACK_BYTE_ALIGNMENT_MASK ) != 0x00 )
+				{
+					/* Byte alignment required. */
+					xWantedSize += ( PSRAM_STACK_BYTE_ALIGNMENT - ( xWantedSize & PSRAM_STACK_BYTE_ALIGNMENT_MASK ) );
+					configASSERT( ( xWantedSize & PSRAM_STACK_BYTE_ALIGNMENT_MASK ) == 0 );
+				}
+				else
+				{
+					mtCOVERAGE_TEST_MARKER();
+				}
+			}
+			else
+			{
+				mtCOVERAGE_TEST_MARKER();
+			}
+
+			if( ( xWantedSize > 0 ) && ( xWantedSize <= psram_stack_xFreeBytesRemaining ) )
+			{
+				/* Traverse the list from the start	(lowest address) block until
+				one	of adequate size is found. */
+				pxPreviousBlock = &psram_stack_xStart;
+				pxBlock = psram_stack_xStart.pxNextFreeBlock;
+				/* Read the latest node written by either core. */
+				psram_meta_inv( pxBlock );
+				while( ( pxBlock->xBlockSize < xWantedSize ) && ( pxBlock->pxNextFreeBlock != NULL ) )
+				{
+					pxPreviousBlock = pxBlock;
+					pxBlock = pxBlock->pxNextFreeBlock;
+					psram_meta_inv( pxBlock );
+				}
+
+				/* If the end marker was reached then a block of adequate size
+				was	not found. */
+				if( pxBlock != psram_stack_pxEnd )
+				{
+					/* Return the memory space pointed to - jumping over the
+					BlockLink_t structure at its start. */
+					pvReturn = ( void * ) ( ( ( uint8_t * ) pxPreviousBlock->pxNextFreeBlock ) + xPsramStackHeapStructSize );
+
+					/* This block is being returned for use so must be taken out
+					of the list of free blocks. */
+					pxPreviousBlock->pxNextFreeBlock = pxBlock->pxNextFreeBlock;
+					/* Publish the updated predecessor. */
+					psram_meta_clean( pxPreviousBlock );
+
+					/* If the block is larger than required it can be split into
+					two. */
+					if( ( pxBlock->xBlockSize - xWantedSize ) > psramStackHeapMINIMUM_BLOCK_SIZE )
+					{
+						/* This block is to be split into two.  Create a new
+						block following the number of bytes requested. The void
+						cast is used to prevent byte alignment warnings from the
+						compiler. */
+						pxNewBlockLink = ( void * ) ( ( ( uint8_t * ) pxBlock ) + xWantedSize );
+						configASSERT( ( ( ( size_t ) pxNewBlockLink ) & PSRAM_STACK_BYTE_ALIGNMENT_MASK ) == 0 );
+
+						/* Calculate the sizes of two blocks split from the
+						single block. */
+						pxNewBlockLink->xBlockSize = pxBlock->xBlockSize - xWantedSize;
+						pxBlock->xBlockSize = xWantedSize;
+
+						/* Insert the new block into the list of free blocks. */
+                #if CONFIG_MEM_DEBUG_OVERFLOW
+						pxNewBlockLink->head_magic_num = MEM_HEAD_WORD_TAG;
+                #endif
+						/* Publish the new free block before insertion. */
+						psram_meta_clean( pxNewBlockLink );
+						psram_stack_prvInsertBlockIntoFreeList( pxNewBlockLink );
+					}
+					else
+					{
+						mtCOVERAGE_TEST_MARKER();
+					}
+
+					psram_stack_xFreeBytesRemaining -= pxBlock->xBlockSize;
+
+					if( psram_stack_xFreeBytesRemaining < psram_stack_xMinimumEverFreeBytesRemaining )
+					{
+						psram_stack_xMinimumEverFreeBytesRemaining = psram_stack_xFreeBytesRemaining;
+					}
+					else
+					{
+						mtCOVERAGE_TEST_MARKER();
+					}
+
+					/* The block is being returned - it is allocated and owned
+					by the application and has no "next" block. */
+					pxBlock->xBlockSize |= xBlockAllocatedBit;
+					pxBlock->pxNextFreeBlock = NULL;
+					/* Publish the allocated block header. */
+					psram_meta_clean( pxBlock );
+
+/* Stack-heap blocks are intentionally excluded from xPsramUsed: the
+					 * debug list node itself is in non-coherent cacheable PSRAM. */
 
 				}
 				else
@@ -622,13 +1090,9 @@ void *psram_malloc( size_t xWantedSize )
 		/* 4 Byte alignment required for psram. */
 		xWantedSize += ( 0x4 - ( xWantedSize & 0x3 ) );
 	}
-	if(FIXED_ADDR_PSRAM_POWER_DOWN == PM_PSRAM_POWER_DOWN_MAGIC)
-	{
-		bk_psram_heap_init_flag_set(false);
-		FIXED_ADDR_PSRAM_POWER_DOWN = 0x0;
-	}
-
-	if( psram_pxEnd == NULL || !bk_psram_heap_init_flag_get())
+	if( ( psram_pxEnd == NULL ) ||
+	    !bk_psram_heap_init_flag_get() ||
+	    ( FIXED_ADDR_PSRAM_POWER_DOWN == PM_PSRAM_POWER_DOWN_MAGIC ) )
 	{
 		bk_pm_module_vote_psram_ctrl(PM_POWER_PSRAM_MODULE_NAME_AS_MEM,PM_POWER_MODULE_STATE_ON);
 	}
@@ -636,6 +1100,7 @@ void *psram_malloc( size_t xWantedSize )
 #if CONFIG_FREERTOS_SMP
 	HeapEnterCritical();
 #endif
+	prvResetPsramHeapsAfterPowerDown();
 	pvReturn = psram_malloc_without_lock(xWantedSize  + MEM_CHECK_TAG_LEN);
 	if(pvReturn)
 	{
@@ -665,9 +1130,9 @@ void *psram_malloc( size_t xWantedSize )
 
 		pxLink->wantedSize = xWantedSize;
 
- 		mem_end = pvReturn + xWantedSize;
- 		mem_end_len = (pxLink->xBlockSize & ~xBlockAllocatedBit) - xHeapStructSize - xWantedSize;
- 		os_memset_word((uint32_t *)mem_end, MEM_OVERFLOW_WORD_TAG, mem_end_len);
+		mem_end = pvReturn + xWantedSize;
+		mem_end_len = (pxLink->xBlockSize & ~xBlockAllocatedBit) - xHeapStructSize - xWantedSize;
+		os_memset_word((uint32_t *)mem_end, MEM_OVERFLOW_WORD_TAG, mem_end_len);
 
     #if CONFIG_MEM_DEBUG_OVERFLOW
 		pxLink->head_magic_num = MEM_HEAD_WORD_TAG;
@@ -682,6 +1147,120 @@ void *psram_malloc( size_t xWantedSize )
 		}
 #endif
 #endif //#if CONFIG_MALLOC_STATIS || CONFIG_MEM_DEBUG
+	}
+
+#if CONFIG_MEM_DEBUG_OVERFLOW
+	CheckFreeList();
+#endif
+
+	//( void ) xTaskResumeAll();
+#if CONFIG_FREERTOS_SMP
+	HeapExitCritical();
+#endif
+
+	#if CONFIG_MALLOC_STATIS || CONFIG_MEM_DEBUG
+	if(pvReturn && need_zero)
+		os_memset_word(pvReturn, 0, xWantedSize);
+
+	#endif
+
+#if CONFIG_DEBUG_VERSION
+	if (pvReturn == NULL)
+		BK_ASSERT(0);
+#endif
+
+	return pvReturn;
+}
+
+#if CONFIG_MALLOC_STATIS || CONFIG_MEM_DEBUG
+void *psram_stack_malloc_cm(const char *call_func_name, int line, size_t xWantedSize, int need_zero )
+#else
+void *psram_stack_malloc( size_t xWantedSize )
+#endif
+{
+	void *pvReturn = NULL;
+#if CONFIG_MEM_DEBUG
+	uint8_t *mem_end = NULL;
+	uint32_t mem_end_len = 0;
+
+    if (platform_is_in_interrupt_context() && (arch_is_enter_exception() == 0)) {
+		BK_LOGD(NULL, "malloc_risk\r\n");
+		BK_ASSERT(false);
+	}
+#endif
+
+	if (xWantedSize == 0)
+		xWantedSize = 4;
+
+	if(( xWantedSize & 0x3 ) != 0x00)
+	{
+		/* 4 Byte alignment required for psram. */
+		xWantedSize += ( 0x4 - ( xWantedSize & 0x3 ) );
+	}
+	if( ( psram_stack_pxEnd == NULL ) ||
+	    ( FIXED_ADDR_PSRAM_POWER_DOWN == PM_PSRAM_POWER_DOWN_MAGIC ) )
+	{
+		bk_pm_module_vote_psram_ctrl(PM_POWER_PSRAM_MODULE_NAME_AS_MEM,PM_POWER_MODULE_STATE_ON);
+	}
+	//vTaskSuspendAll();
+#if CONFIG_FREERTOS_SMP
+	HeapEnterCritical();
+#endif
+	prvResetPsramHeapsAfterPowerDown();
+	pvReturn = psram_stack_malloc_without_lock(xWantedSize  + MEM_CHECK_TAG_LEN);
+	if(pvReturn)
+	{
+		s_psram_used_count++;
+		FIXED_ADDR_PSRAM_USDE_COUNT += 1;
+#if CONFIG_MALLOC_STATIS || CONFIG_MEM_DEBUG
+		BlockLink_t *pxLink = (BlockLink_t *)((u8*)pvReturn - xPsramStackHeapStructSize);
+		if(pvReturn && call_func_name) {
+#if CONFIG_MALLOC_STATIS
+			MEM_STATIC_LOGD(TAG, "m:%p,%d|%s,%d\r\n", pxLink, (pxLink->xBlockSize & ~xBlockAllocatedBit), call_func_name, line);
+#endif
+		}
+#if CONFIG_MEM_DEBUG
+		pxLink->time_line = ((xTaskGetTickCount()/configTICK_RATE_HZ) & 0xffff) | ((line & 0xffff) << 16);
+
+#if CONFIG_MEM_DEBUG_FUNC_NAME
+		pxLink->funcName = (char *)call_func_name;
+#endif
+#if CONFIG_MEM_DEBUG_TASK_NAME
+		//malloc can only be called in Task context!
+		if (rtos_is_scheduler_started()) {
+			pxLink->taskName = pcTaskGetName(NULL);
+		}
+		else
+			pxLink->taskName = "NA";
+#endif
+
+		pxLink->wantedSize = xWantedSize;
+
+		mem_end = pvReturn + xWantedSize;
+		mem_end_len = (pxLink->xBlockSize & ~xBlockAllocatedBit) - xPsramStackHeapStructSize - xWantedSize;
+		os_memset_word((uint32_t *)mem_end, MEM_OVERFLOW_WORD_TAG, mem_end_len);
+
+		/* Redmine #8131 (item 1): publish the trailing debug guard to physical
+		 * PSRAM. The task-stack payload clean (tasks.c) and the header clean
+		 * below do not cover it, so a cross-core consumer would otherwise read a
+		 * stale line and report a false "Mem Overflow". No-op for non-cacheable
+		 * heaps and non-DCACHE builds. */
+		psram_stack_guard_clean( mem_end, mem_end_len );
+
+    #if CONFIG_MEM_DEBUG_OVERFLOW
+		pxLink->head_magic_num = MEM_HEAD_WORD_TAG;
+    #endif
+
+		if(psram_used_area_begin == 0 || (uint32_t)pxLink < psram_used_area_begin) {
+			psram_used_area_begin = (uint32_t)pxLink;
+		}
+		psram_memory_end = get_memory_end(pxLink);
+		if(psram_used_area_end == 0 || psram_memory_end > psram_used_area_end) {
+			psram_used_area_end = psram_memory_end;
+		}
+#endif
+#endif //#if CONFIG_MALLOC_STATIS || CONFIG_MEM_DEBUG
+		psram_meta_clean( ( BlockLink_t * ) ( ( uint8_t * ) pvReturn - xPsramStackHeapStructSize ) );
 	}
 
 #if CONFIG_MEM_DEBUG_OVERFLOW
@@ -798,8 +1377,15 @@ static inline void show_mem_info(BlockLink_t *pxLink)
 
 static inline void mem_overflow_check(BlockLink_t *pxLink)
 {
-	uint8_t *mem_end = (uint8_t *)pxLink + xHeapStructSize + pxLink->wantedSize;
-	uint32_t mem_end_len = (pxLink->xBlockSize & ~xBlockAllocatedBit) - xHeapStructSize - pxLink->wantedSize;
+	size_t xStructSize = heap_struct_size_of( pxLink );
+	uint8_t *mem_end = (uint8_t *)pxLink + xStructSize + pxLink->wantedSize;
+	uint32_t mem_end_len = (pxLink->xBlockSize & ~xBlockAllocatedBit) - xStructSize - pxLink->wantedSize;
+
+	/* Redmine #8131 (item 1): for a Cacheable PSRAM task-stack block, invalidate
+	 * the trailing guard cache lines so we compare against the value in physical
+	 * PSRAM (published by the allocating core) rather than a stale local copy.
+	 * No-op for non-cacheable heaps and non-DCACHE builds. */
+	psram_stack_guard_inv( mem_end, mem_end_len );
 
 	for ( int i = 0; i < mem_end_len; i++) {
 	#if CONFIG_MEM_DEBUG_OVERFLOW
@@ -811,7 +1397,7 @@ static inline void mem_overflow_check(BlockLink_t *pxLink)
 		{
 			BK_DUMP_OUT("Mem Overflow ......mem_end[%p + %d]=[0x%02x].....\r\n", mem_end, i, mem_end[i]);
 			show_mem_info(pxLink);
-			stack_mem_dump((uint32_t)pxLink - 64, (uint32_t)pxLink + xHeapStructSize + pxLink->wantedSize + 64);
+			stack_mem_dump((uint32_t)pxLink - 64, (uint32_t)pxLink + xStructSize + pxLink->wantedSize + 64);
 			if (0 == arch_is_enter_exception()) {
 				configASSERT( false );
 			}
@@ -1139,11 +1725,15 @@ void vPortFree( void *pv )
 	if( pv != NULL )
 	{
 		/* The memory being freed will have an BlockLink_t structure immediately
-		before it. */
-		puc -= xHeapStructSize;
+		before it. The Cacheable PSRAM task-stack heap uses an enlarged, 32-byte
+		aligned header (Redmine #8131 item 4), so select the offset per-heap. */
+		puc -= heap_struct_size_of( pv );
 
 		/* This casting is to keep the compiler from issuing warnings. */
 		pxLink = ( void * ) puc;
+
+		/* Read the latest block header before validating it. */
+		psram_meta_inv( pxLink );
 
 		/* Check the block is actually allocated. */
 		configASSERT( ( pxLink->xBlockSize & xBlockAllocatedBit ) != 0 );
@@ -1185,7 +1775,11 @@ void vPortFree( void *pv )
                 }
 #endif
 #if CONFIG_MEM_DEBUG
-				list_del(&pxLink->node);
+				if( ( uint32_t ) puc < ( uint32_t ) CONFIG_AP_PSRAM_STACK_HEAP_ADDR ||
+				    ( uint32_t ) puc >= ( uint32_t ) ( CONFIG_AP_PSRAM_STACK_HEAP_ADDR + CONFIG_AP_PSRAM_STACK_HEAP_SIZE ) )
+				{
+					list_del( &pxLink->node );
+				}
 				pxLink->allocTime = 0;
 #if CONFIG_MEM_DEBUG_FUNC_NAME
 				pxLink->funcName = 0;
@@ -1196,13 +1790,22 @@ void vPortFree( void *pv )
 				pxLink->line = 0;
 #endif
 #if (CONFIG_PSRAM_AS_SYS_MEMORY)
-				if ((uint32_t)puc >= (uint32_t)CONFIG_AP_PSRAM_HEAP_ADDR
+				if ((uint32_t)puc >= (uint32_t)CONFIG_AP_PSRAM_STACK_HEAP_ADDR
+				&& (uint32_t)puc < (uint32_t)(CONFIG_AP_PSRAM_STACK_HEAP_ADDR + CONFIG_AP_PSRAM_STACK_HEAP_SIZE))
+				{
+					psram_stack_xFreeBytesRemaining += pxLink->xBlockSize;
+					traceFREE( pv, pxLink->xBlockSize );
+					psram_stack_prvInsertBlockIntoFreeList( pxLink );
+					s_psram_used_count--;
+					FIXED_ADDR_PSRAM_USDE_COUNT -= 1;
+				}
+				else if ((uint32_t)puc >= (uint32_t)CONFIG_AP_PSRAM_HEAP_ADDR
 				&& (uint32_t)puc < (uint32_t)(CONFIG_AP_PSRAM_HEAP_ADDR + CONFIG_AP_PSRAM_HEAP_SIZE))
 				{
 					/* Add this block to the list of psram free blocks. */
 					psram_xFreeBytesRemaining += pxLink->xBlockSize;
 					traceFREE( pv, pxLink->xBlockSize );
-					psram_prvInsertBlockIntoFreeList( ( ( BlockLink_t * ) pxLink ) );
+					psram_prvInsertBlockIntoFreeList( pxLink );
 					s_psram_used_count--;
 					FIXED_ADDR_PSRAM_USDE_COUNT -= 1;
 				}
@@ -1476,6 +2079,33 @@ size_t xPortGetPsramMinimumFreeHeapSize( void )
     return 0x0;
 #endif
 }
+
+size_t xPortGetPsramStackTotalHeapSize( void )
+{
+#if (CONFIG_PSRAM_AS_SYS_MEMORY)
+    return PSRAM_STACK_HEAP_SIZE;
+#else
+    return 0x0;
+#endif
+}
+
+size_t xPortGetPsramStackFreeHeapSize( void )
+{
+#if (CONFIG_PSRAM_AS_SYS_MEMORY)
+    return psram_stack_xFreeBytesRemaining;
+#else
+    return 0x0;
+#endif
+}
+
+size_t xPortGetPsramStackMinimumFreeHeapSize( void )
+{
+#if (CONFIG_PSRAM_AS_SYS_MEMORY)
+    return psram_stack_xMinimumEverFreeBytesRemaining;
+#else
+    return 0x0;
+#endif
+}
 /*-----------------------------------------------------------*/
 
 void vPortInitialiseBlocks( void )
@@ -1582,7 +2212,7 @@ static void prvHeapInit( void )
 #endif
 
 	/* Work out the position of the top bit in a size_t variable. */
-	xBlockAllocatedBit = ( ( size_t ) 1 ) << ( ( sizeof( size_t ) * heapBITS_PER_BYTE ) - 1 );
+	prvInitialiseBlockAllocatedBit();
 }
 /*-----------------------------------------------------------*/
 
@@ -1682,12 +2312,21 @@ size_t xPortPointerSize(void * pv)
 
         {
             /* The memory being checked will have an BlockLink_t structure immediately
-            before it. */
-            puc -= xHeapStructSize;
+            before it. The Cacheable PSRAM task-stack heap uses an enlarged header
+            (Redmine #8131 item 4), so select the offset per-heap. */
+            size_t xStructSize = heap_struct_size_of( pv );
+            puc -= xStructSize;
 
             /* This casting is to keep the compiler from issuing warnings. */
             voidp  = (void *) puc;
             pxLink = (BlockLink_t *) voidp;
+
+            /* Redmine #8131: for a Cacheable PSRAM task-stack block the header may
+             * have been (re)written by another core (alloc/free/coalesce). Invalidate
+             * our local copy before reading xBlockSize/wantedSize, otherwise a stale
+             * line can yield a wrong size or trip the allocated-bit assert. Symmetric
+             * with the vPortFree() path. No-op for non-cacheable heaps / non-DCACHE. */
+            psram_meta_inv( pxLink );
 
             /* Check if the block is actually allocated. */
             configASSERT((pxLink->xBlockSize & xBlockAllocatedBit) != 0);
@@ -1696,7 +2335,7 @@ size_t xPortPointerSize(void * pv)
             #if CONFIG_MEM_DEBUG
             sz = pxLink->wantedSize;
             #else
-            sz = (pxLink->xBlockSize & ~xBlockAllocatedBit) - xHeapStructSize;
+            sz = (pxLink->xBlockSize & ~xBlockAllocatedBit) - xStructSize;
             #endif
         }
 		//( void ) xTaskResumeAll();

@@ -21,6 +21,7 @@
 #include "psram_driver.h"
 #include <driver/psram.h>
 #include "ram_regions.h"
+#include "common/bk_assert.h"
 #include <modules/pm.h>
 #if (CONFIG_PSRAM_AUTO_DETECT)
 #include "bk_ef.h"
@@ -286,15 +287,24 @@ start_init:
 	switch (actual_id) {
 		case PSRAM_W955D8MKY_5J_ID:
 			if (CONFIG_PSRAM_CAPACITY != PSRAM_4M_SIZE)
+			{
 				MEM_STATIC_LOGW("psram type(4MB) not match CONFIG_PSRAM_CAPACITY 0X%08X\r\n", CONFIG_PSRAM_CAPACITY);
+				BK_ASSERT(CONFIG_PSRAM_CAPACITY == PSRAM_4M_SIZE);
+			}
 			break;
 		case PSRAM_APS6408L_ID:
 			if (CONFIG_PSRAM_CAPACITY != PSRAM_8M_SIZE)
+			{
 				MEM_STATIC_LOGW("psram type(8MB) not match CONFIG_PSRAM_CAPACITY 0X%08X\r\n", CONFIG_PSRAM_CAPACITY);
+				BK_ASSERT(CONFIG_PSRAM_CAPACITY == PSRAM_8M_SIZE);
+			}
 			break;
 		case PSRAM_APS128XXO_OB9_ID:
 			if (CONFIG_PSRAM_CAPACITY != PSRAM_16M_SIZE)
+			{
 				MEM_STATIC_LOGW("psram type(16MB) not match CONFIG_PSRAM_CAPACITY 0X%08X\r\n", CONFIG_PSRAM_CAPACITY);
+				BK_ASSERT(CONFIG_PSRAM_CAPACITY == PSRAM_16M_SIZE);
+			}
 			break;
 		default:
 			MEM_STATIC_LOGW("Unknown PSRAM type, please check!\r\n");

@@ -33,6 +33,7 @@ static void fill_addr_le(uint8_t *out, uint32_t addr, uint32_t addr_size)
     if (addr_size >= 3) out[2] = (addr >> 8) & 0xff;
     if (addr_size >= 4) out[3] = addr & 0xff;
 }
+
 /***********************************************************************
  ** STRUCT                                                            **
  **********************************************************************/

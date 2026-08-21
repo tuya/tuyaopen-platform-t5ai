@@ -1585,7 +1585,7 @@ static void pm_low_voltage_resource_set()
 	pm_lv_enter_time_out_clear();
 	#if CONFIG_PM_LV_WDT_PROTECTION
 		#if CONFIG_AON_WDT
-		if(bk_pm_wifi_event_state() == EVENT_WIFI_STA_CONNECTED)
+		// if(bk_pm_wifi_event_state() == EVENT_WIFI_STA_CONNECTED)         // Modified by TUYA
 		{
 			bk_aon_wdt_feed();
 		}

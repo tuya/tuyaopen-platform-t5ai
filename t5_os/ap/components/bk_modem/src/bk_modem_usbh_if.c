@@ -40,14 +40,14 @@ void bk_modem_usbh_close(void)
 	g_modem_usb_state = MODEM_USB_IDLE;
 }
 
-void bk_modem_usbh_bulkout_ind(char *p_tx, uint32_t l_tx)
+int32_t bk_modem_usbh_bulkout_ind(char *p_tx, uint32_t l_tx)
 {
-	bk_cdc_acm_modem_write(p_tx, l_tx);
+	return bk_cdc_acm_modem_write(p_tx, l_tx);
 }
 
-void bk_modem_usbh_bulkin_ind(uint8_t *p_rx, uint32_t l_rx)
+bk_err_t bk_modem_usbh_bulkin_ind(uint8_t *p_rx, uint32_t l_rx)
 {
-	bk_modem_dte_recv_data(l_rx, (uint8_t *)p_rx);
+	return bk_modem_dte_recv_data(l_rx, (uint8_t *)p_rx);
 }
 
 

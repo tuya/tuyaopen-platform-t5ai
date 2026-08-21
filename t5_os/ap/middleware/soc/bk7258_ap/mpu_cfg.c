@@ -72,36 +72,9 @@ ARM_MPU_Region_t mpu_regions[] = {
         shared memory(smem4) 0x2806 0000-----------0x2807 FFFF   0x3806 0000-----------0x3807 FFFF
         shared memory(smem4) 0x2808 0000-----------0x2809 FFFF   0x3808 0000-----------0x3809 FFFF
      */
-#if CONFIG_CACHE_ENABLE
-    #if CONFIG_LVGL_SRAM_MAPPING
-        { ARM_MPU_RBAR(0x28000000UL, ARM_MPU_SH_NON, 0, 1, 0),
-          ARM_MPU_RLAR(0x2807FFE0UL, 0) },
-        #if CONFIG_LV_ATTRIBUTE_FAST_MEM_L2
-            #if CONFIG_LVGL_V8
-                { ARM_MPU_RBAR(0x28080000UL, ARM_MPU_SH_NON, 1, 1, 0),
-                  ARM_MPU_RLAR(0x28080FE0UL, 4) },
-
-                { ARM_MPU_RBAR(0x28081000UL, ARM_MPU_SH_INNER, 0, 1, 0),
-                  ARM_MPU_RLAR(0x3FFFFFE0UL, 1) },
-            #else //#if CONFIG_LVGL_V8
-                { ARM_MPU_RBAR(0x28080000UL, ARM_MPU_SH_NON, 1, 1, 0),
-                  ARM_MPU_RLAR(0x28082FE0UL, 4) },
-
-                { ARM_MPU_RBAR(0x28083000UL, ARM_MPU_SH_INNER, 0, 1, 0),
-                  ARM_MPU_RLAR(0x3FFFFFE0UL, 1) },
-            #endif
-        #else //#if CONFIG_LV_ATTRIBUTE_FAST_MEM_L2
-            { ARM_MPU_RBAR(0x28080000UL, ARM_MPU_SH_INNER, 0, 1, 0),
-              ARM_MPU_RLAR(0x3FFFFFE0UL, 1) },
-        #endif
-    #else //#if CONFIG_LVGL_SRAM_MAPPING
-        { ARM_MPU_RBAR(0x28000000UL, ARM_MPU_SH_NON, 0, 1, 0),
-          ARM_MPU_RLAR(0x3FFFFFE0UL, 0) },
-    #endif //#if CONFIG_LVGL_SRAM_MAPPING
-#else
+    /* Shared SRAM remains non-cacheable independently of the LVGL mapping. */
     { ARM_MPU_RBAR(0x28000000UL, ARM_MPU_SH_INNER, 0, 1, 0),
       ARM_MPU_RLAR(0x3FFFFFE0UL, 1) },
-#endif
 
     /* MPU region 5 periphral, device memory
         device memory is shareable, and must not be cached.
@@ -109,20 +82,29 @@ ARM_MPU_Region_t mpu_regions[] = {
 	 */
     { ARM_MPU_RBAR(0x40000000UL, ARM_MPU_SH_INNER, 0, 1, 1),
       ARM_MPU_RLAR(0x5FFFFFE0UL, 2) },
-#if CONFIG_LV_CODE_LOAD_PSRAM
     { ARM_MPU_RBAR(0x60000000UL, ARM_MPU_SH_NON, 0, 1, 1),
-      ARM_MPU_RLAR(0x608FFFE0UL, 1) },
+      ARM_MPU_RLAR(CONFIG_AP_PSRAM_STACK_HEAP_ADDR - 0x20UL, 1) },
 
-    { ARM_MPU_RBAR(0x60900000UL, ARM_MPU_SH_NON, 1, 1, 0),
-      ARM_MPU_RLAR(0x6094FFE0UL, 4) },
-
-    { ARM_MPU_RBAR(0x60950000UL, ARM_MPU_SH_NON, 0, 1, 1),
-      ARM_MPU_RLAR(0x63FFFFE0UL, 1) },
+    /* Only task stacks are cacheable.  TCBs and all other PSRAM allocations
+     * remain non-cacheable so shared scheduler/heap metadata stays coherent.
+     * The cacheable attribute is bound to CONFIG_DCACHE: every D-cache
+     * maintenance path (task-switch clean/invalidate, heap metadata, flash/IPC)
+     * is compiled only when CONFIG_DCACHE is set. If D-cache is disabled the
+     * stack heap must stay non-cacheable, otherwise task stacks would be cached
+     * with no maintenance and silently corrupt across cores/DMA. */
+#if CONFIG_DCACHE
+    { ARM_MPU_RBAR(CONFIG_AP_PSRAM_STACK_HEAP_ADDR, ARM_MPU_SH_NON, 0, 1, 1),
+      ARM_MPU_RLAR(CONFIG_AP_PSRAM_STACK_HEAP_ADDR + CONFIG_AP_PSRAM_STACK_HEAP_SIZE - 0x20UL, 3) },
 #else
-    /* MPU region 6 psram */
-    { ARM_MPU_RBAR(0x60000000UL, ARM_MPU_SH_NON, 0, 1, 1),
-      ARM_MPU_RLAR(0x63FFFFE0UL, 1) },
+    { ARM_MPU_RBAR(CONFIG_AP_PSRAM_STACK_HEAP_ADDR, ARM_MPU_SH_NON, 0, 1, 1),
+      ARM_MPU_RLAR(CONFIG_AP_PSRAM_STACK_HEAP_ADDR + CONFIG_AP_PSRAM_STACK_HEAP_SIZE - 0x20UL, 1) },
 #endif
+
+    { ARM_MPU_RBAR(CONFIG_AP_PSRAM_HEAP_ADDR, ARM_MPU_SH_NON, 0, 1, 1),
+      ARM_MPU_RLAR(CONFIG_AP_PSRAM_HEAP_ADDR + CONFIG_AP_PSRAM_HEAP_SIZE - 0x20UL, 1) },
+
+    { ARM_MPU_RBAR(CONFIG_AP_PSRAM_SECTION_ADDR, ARM_MPU_SH_NON, 0, 1, 1),
+      ARM_MPU_RLAR(CONFIG_PSRAM_BASE + CONFIG_PSRAM_CAPACITY - 0x20UL, 1) },
     /* MPU region 7 qspi0 */
     { ARM_MPU_RBAR(0x64000000UL, ARM_MPU_SH_NON, 0, 1, 1),
       ARM_MPU_RLAR(0x67FFFFE0UL, 1) },

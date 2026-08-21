@@ -240,12 +240,13 @@ _Static_assert( offsetof( StaticTask_t, pxDummy8 ) == offsetof( TCB_t, pxEndOfSt
                         StackType_t * pxStack;
 
                         /* Allocate space for the stack used by the task being created. */
-                        pxStack = psram_malloc( ( ( ( size_t ) usStackDepth ) * sizeof( StackType_t ) ) ); /*lint !e9079 All values returned by pvPortMalloc() have at least the alignment required by the MCU's stack and this allocation is the stack. */
+                        pxStack = psram_stack_malloc( ( ( ( size_t ) usStackDepth ) * sizeof( StackType_t ) ) ); /*lint !e9079 All values returned by pvPortMalloc() have at least the alignment required by the MCU's stack and this allocation is the stack. */
 
                         if( pxStack != NULL )
                         {
-                            /* Allocate space for the TCB. */
-                            pxNewTCB = ( TCB_t * ) psram_malloc( sizeof( TCB_t ) ); /*lint !e9087 !e9079 All values returned by pvPortMalloc() have at least the alignment required by the MCU's stack, and the first member of TCB_t is always a pointer to the task's stack. */
+                            /* Keep the TCB in the non-cacheable PSRAM heap because both
+                             * SMP cores update its scheduler list items. */
+                            pxNewTCB = ( TCB_t * ) psram_malloc( sizeof( TCB_t ) );
 
                             if( pxNewTCB != NULL )
                             {

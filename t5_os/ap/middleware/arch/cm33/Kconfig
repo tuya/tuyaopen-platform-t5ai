@@ -44,6 +44,17 @@ menu "Arch::Cm33"
 			help
 				Custom enable heap in Cache
 
+		config SRAM_CACHE_ENABLE
+			depends on CACHE_ENABLE
+			bool "Map shared SRAM as cacheable in the MPU"
+			default n
+			help
+				Configure the shared SRAM region as cacheable in the MPU.
+				Keep disabled: enabling CACHE_ENABLE only turns on the
+				cache-maintenance layer and must not, by itself, change
+				the shared-SRAM cacheability (cross-core coherency relies
+				on it staying non-cacheable).
+
 		config SWD_DEBUG_MODE
 			bool "Enable SWD Debug Mode"
 			default n

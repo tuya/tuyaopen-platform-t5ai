@@ -13,7 +13,8 @@ if(CONFIG_FREERTOS)
 			freertos_smp_v2p0/FreeRTOS-Kernel/tasks.c
 			freertos_smp_v2p0/FreeRTOS-Kernel/stream_buffer.c
 			freertos_smp_v2p0/FreeRTOS-Kernel/timers.c
-			freertos_smp_v2p0/FreeRTOS-Kernel/portable/MemMang/heap_6.c
+            # freertos_smp_v2p0/FreeRTOS-Kernel/portable/MemMang/heap_6.c
+			freertos_smp_v2p0/FreeRTOS-Kernel/portable/MemMang/heap_4.c
 			)
 
 		if(CONFIG_ARCH_CM33)
@@ -29,7 +30,8 @@ if(CONFIG_FREERTOS)
 		endif()
 
 		if(CONFIG_FULLY_HOSTED OR CONFIG_MEM_MGMT)
-			list(REMOVE_ITEM srcs freertos_smp_v2p0/FreeRTOS-Kernel/portable/MemMang/heap_6.c)
+            # list(REMOVE_ITEM srcs freertos_smp_v2p0/FreeRTOS-Kernel/portable/MemMang/heap_6.c)
+			list(REMOVE_ITEM srcs freertos_smp_v2p0/FreeRTOS-Kernel/portable/MemMang/heap_4.c)
 		endif()
 
 	endif()

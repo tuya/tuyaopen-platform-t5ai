@@ -226,9 +226,9 @@ static dynamic_log_node *s_dym_tail_node = &s_dynamic_header;
 static int s_block_mode = LOG_COMMON_MODE;
 
 static u16 s_dynamic_log_num = 0;   // dynamic log in send queue
-static u16 s_dynamic_log_total_len = 0;  // total consumption of dynamic log memory
+static u32 s_dynamic_log_total_len = 0;  // total consumption of dynamic log memory         // Modified by TUYA
 static u16 s_dynamic_log_num_in_mem = 0;  // number of dynamic log in memory, including no free log.
-static u16 s_dynamic_log_mem_max = 0;  // maximum of consumption
+static u32 s_dynamic_log_mem_max = 0;  // maximum of consumption                            // Modified by TUYA
 
 static u16 s_insert_log_cnt = 0;
 
@@ -2624,11 +2624,15 @@ static void dynamic_list_push_back(dynamic_log_node *dym_node)
 	s_dym_tail_node->next = dym_node;
 	s_dym_tail_node = dym_node;
 
+    // Modified by TUYA Start
+	uint32_t int_mask = shell_task_enter_critical();
 	s_dynamic_log_total_len += dym_node->len;
 	if (s_dynamic_log_total_len > s_dynamic_log_mem_max) {
 		s_dynamic_log_mem_max = s_dynamic_log_total_len;
 	}
 	s_dynamic_log_num++;
+	shell_task_exit_critical(int_mask);
+    // Modified by TUYA End
 }
 
 static dynamic_log_node *dynamic_list_pop_front(void)

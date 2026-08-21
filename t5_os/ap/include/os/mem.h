@@ -151,6 +151,7 @@ void *psram_realloc(void *ptr, size_t size);
 #if (CONFIG_MALLOC_STATIS || CONFIG_MEM_DEBUG)
 void *os_malloc_debug(const char *func_name, int line, size_t size, int need_zero);
 void *psram_malloc_debug(const char *func_name, int line, size_t size, int need_zero);
+void *psram_stack_malloc_cm(const char *func_name, int line, size_t size, int need_zero);
 void *os_free_debug(const char *func_name, int line, void *pv);
 void os_dump_memory_stats(uint32_t start_tick, uint32_t ticks_since_malloc, const char* task);
 
@@ -158,6 +159,7 @@ void os_dump_memory_stats(uint32_t start_tick, uint32_t ticks_since_malloc, cons
 #define os_free(p)        os_free_debug((const char*)__FUNCTION__,__LINE__, p)
 #define os_zalloc(size)   os_malloc_debug((const char*)__FUNCTION__,__LINE__,size, 1)
 #define psram_malloc(size)   psram_malloc_debug((const char*)__FUNCTION__,__LINE__,size, 0)
+#define psram_stack_malloc(size) psram_stack_malloc_cm((const char*)__FUNCTION__,__LINE__,size, 0)
 #define psram_zalloc(size)   psram_malloc_debug((const char*)__FUNCTION__,__LINE__,size, 1)
 #else
 /** @brief   request memory according to the specified size
@@ -209,6 +211,7 @@ void *os_zalloc(size_t size);
   *
   */
 void *psram_malloc(size_t size);
+void *psram_stack_malloc(size_t size);
 
 /** @brief   request memory in psram of a specified size and auotmatically initializes
   *          the allocated memory to zero

@@ -27,6 +27,13 @@
 
 #define FRAME_SIZE_PER_20MS(x)  (x * CHANNEL_NUM * TIME_SAMPLE_MS / MS_PER_SEC)
 
+// speaker ring buffer 写满时的重试间隔与累计超时。
+// ring buffer 仅 DRIVER_SPEAK_FIFO_FRAME_NUM*20ms=40ms, 正常播放时"满"最多等约 40ms 即被 DAC 排空,
+// 故 1s 超时不会误伤正常播放; 一旦 DAC 不消费(如待机唤醒后未真正恢复)即可在 1s 内丢帧退出,
+// 避免播放线程被无限重试永久 wedge 住。
+#define SPK_WRITE_RETRY_INTERVAL_MS  (20)
+#define SPK_WRITE_TIMEOUT_MS         (1000)
+
 #define TKL_AUDIO_CONFIG_DUMP   0
 
 extern void tuya_multimedia_power_on(void);
@@ -875,12 +882,23 @@ OPERATE_RET tkl_ao_put_frame(int32_t card, TKL_AO_CHN_E chn, void *handle,
         // 计算当前要写入的数据大小
         chunk_size = (remaining_size > spk_ringbuf_size) ? spk_ringbuf_size : remaining_size;
 
-write_spk_retry:
-        ret = bk_voice_write_frame_data(g_voice_write_handle, (char *)(pframe->pbuf + offset), chunk_size);
-        // ret = bk_voice_write_spk_data(g_voice_handle, (char *)(pframe->pbuf + offset), chunk_size);
+        // ring buffer 满时 bk_voice_write_frame_data 返回 0, 这里带累计超时重试,
+        // 防止 DAC 不消费(如待机唤醒后未真正恢复)导致播放线程永久 wedge。
+        uint32_t waited_ms = 0;
+        do {
+            ret = bk_voice_write_frame_data(g_voice_write_handle, (char *)(pframe->pbuf + offset), chunk_size);
+            // ret = bk_voice_write_spk_data(g_voice_handle, (char *)(pframe->pbuf + offset), chunk_size);
+            if (ret != 0) {
+                break;
+            }
+            tkl_system_sleep(SPK_WRITE_RETRY_INTERVAL_MS);
+            waited_ms += SPK_WRITE_RETRY_INTERVAL_MS;
+        } while (waited_ms < SPK_WRITE_TIMEOUT_MS);
+
         if (ret == 0) {
-            tkl_system_sleep(20);
-            goto write_spk_retry;
+            // 超时仍写不进, 判定为底层未在消费, 丢弃本帧并返回, 让上层 player 线程得以 stop+恢复
+            os_printf("audio spk write timeout(%u ms), drop frame, chunk:%d \r\n", waited_ms, chunk_size);
+            return OPRT_TIMEOUT;
         }
 
         if (ret < 0) {

@@ -157,16 +157,31 @@ bk_err_t bk_sw_jpegdec_start(frame_buffer_t *frame, frame_buffer_t *dst_frame)
     bk_err_t ret =  BK_OK;
 
 #if CONFIG_MEDIA_PIPELINE
-    media_software_decode_info_t info = {0};
-    info.in_frame = frame;
-    info.out_frame = dst_frame;
-    info.cb = &bk_sw_jpegdec_callback;
-    software_decode_task_send_msg(JPEGDEC_START, (uint32_t)&info);
+    media_software_decode_info_t *info = os_zalloc(sizeof(*info));
+    if (info == NULL)
+    {
+        return BK_ERR_NO_MEM;
+    }
+
+    info->in_frame = frame;
+    info->out_frame = dst_frame;
+    info->cb = &bk_sw_jpegdec_callback;
+
+    ret = software_decode_task_send_msg(JPEGDEC_START, (uint32_t)info);
+    if (ret != BK_OK)
+    {
+        os_free(info);
+        return ret;
+    }
 
     ret = rtos_get_semaphore(&s_decode.sw_dec_sem, BEKEN_NEVER_TIMEOUT);
     if (ret != BK_OK)
     {
         LOGE("%s semaphore get failed: %d\n", __func__, ret);
+    }
+    else
+    {
+        os_free(info);
     }
 #else
     jd_output_format format = {0};

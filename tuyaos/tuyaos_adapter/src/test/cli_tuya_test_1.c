@@ -18,6 +18,8 @@ extern void port_check_isr_stack(void);
 
 #include "sdkconfig.h"
 
+#include "tkl_cellular.h"
+
 static void cli_system_info_cmd(char *pcWriteBuffer, int xWriteBufferLen, int argc, char **argv)
 {
     if (argc > 1) {
@@ -72,6 +74,8 @@ static void cli_system_info_cmd(char *pcWriteBuffer, int xWriteBufferLen, int ar
 
 extern void smp_arch_dwt_trap_write(uint32_t addr, uint32_t data);
 static uint32_t g_dwt_test = 1234;
+extern OPERATE_RET tkl_mftest_ctrl(USHORT_T cmd, UCHAR_T *in, UINT_T inlen, UCHAR_T **out, USHORT_T *outlen);
+extern OPERATE_RET tkl_cellular_init(TKL_CELLULAR_BASE_CFG_T *cfg);
 
 static void cli_test_cmd(char *pcWriteBuffer, int xWriteBufferLen, int argc, char **argv)
 {
@@ -94,6 +98,15 @@ static void cli_test_cmd(char *pcWriteBuffer, int xWriteBufferLen, int argc, cha
     }
 #endif
 
+    if (!os_strcmp(argv[1], "4g")) {
+        TKL_CELLULAR_BASE_CFG_T cfg = {
+            .iface = TUYA_CELLULAR_IF_USB,
+            .protocol = TUYA_CELLULAR_PROTOCOL_PPP,
+        };
+        #define PROXY_STR_4G    "linksnet"
+        memcpy(cfg.apn, PROXY_STR_4G, strlen(PROXY_STR_4G));
+        tkl_cellular_init(&cfg);
+    }
 
 #if 0
     if (!os_strcmp(argv[1], "mic")) {
@@ -120,16 +133,63 @@ static void cli_test_cmd(char *pcWriteBuffer, int xWriteBufferLen, int argc, cha
         bk_printf_raw(0, NULL, "------------------------------------------- i2s test: port=%d %s %s\r\n",
                       port, is_master ? "master" : "slave", dir_str);
         tal_audio_i2s_test(port, is_master, direction);
-    } else if (!os_strcmp(argv[1], "usb")) {
+    }
+#endif
+
+#if 0
+    if (!os_strcmp(argv[1], "usb")) {
         uint8_t *out = NULL;
         uint16_t out_len = 0;
-        extern OPERATE_RET tkl_mftest_ctrl(USHORT_T cmd, UCHAR_T *in, UINT_T inlen, UCHAR_T **out, USHORT_T *outlen);
         tkl_mftest_ctrl(3, NULL, 0, &out, &out_len);
+        if(out) tkl_system_free(out); out = NULL;
+    } else if (!os_strcmp(argv[1], "c_aec")) {
+        extern uint16_t *aec_temp;
+        extern void tkl_mf_aec_notify(void);
+
+        uint8_t *out = NULL;
+        uint16_t out_len = 0;
+        uint32_t freq = 2000;
+        double pi = 3.14159265358979f;
+
+        // start
+        tkl_mftest_ctrl(4, NULL, 0, &out, &out_len);
+        if(out) tkl_system_free(out); out = NULL;
+
+        tkl_system_sleep(50);
+        if (aec_temp == NULL) {
+            bk_printf_raw(0, NULL, "aec buffer is NULL\r\n");
+            return;
+        }
+
+        if (argv[2] != NULL)
+            freq = (uint32_t)os_strtoul(argv[2], NULL, 10);
+
+        // fill data
+        bk_printf_raw(0, NULL, "freq: %d, sample: 16k\r\n", freq);
+        for (int i=0; i<320; i++) {
+            // 必须与产测检测器 func_calc_freq(mt_fft.c) 传入的采样率保持一致：
+            // 采样率 16000 + 无符号 PCM(中心值 32768)，否则频率检测错误
+            aec_temp[i] = (uint16_t)((sin(2*pi*freq*i*1.0/16000) + 1.0) * 32767.5);
+        }
+
+        // trig
+        tkl_mf_aec_notify();
+        tkl_system_sleep(200);
+
+        // get result
+        tkl_mftest_ctrl(5, NULL, 0, &out, &out_len);
+        if(out) tkl_system_free(out); out = NULL;
+    } else if (!os_strcmp(argv[1], "aec")) {
+        uint8_t *out = NULL;
+        uint16_t out_len = 0;
+        tkl_mftest_ctrl(4, NULL, 0, &out, &out_len);
         if(out) tkl_system_free(out); out = NULL;
     }
 
     bk_printf_raw(0, NULL, "------------------------------------------- end\r\n");
+#endif
 
+#if 0
     if (!os_strcmp(argv[1], "init")) {
         smp_arch_dwt_trap_write(&g_dwt_test, 0);
         bk_printf_raw(0, NULL, "init\r\n");

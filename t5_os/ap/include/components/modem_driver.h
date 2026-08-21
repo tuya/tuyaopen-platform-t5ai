@@ -18,8 +18,9 @@ extern "C" {
  *    - BK_OK: succeed
  *    - others: other errors.
  */
+// Modified by TUYA Start 
 bk_err_t bk_modem_init(uint8_t comm_proto, uint8_t comm_if);
-
+// Modified by TUYA End
 /**
  * @brief     Modem Driver uninstallation
  *

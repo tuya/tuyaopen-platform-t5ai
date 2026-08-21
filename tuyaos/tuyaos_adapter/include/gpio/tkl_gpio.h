@@ -84,6 +84,22 @@ OPERATE_RET tkl_gpio_irq_enable(TUYA_GPIO_NUM_E pin_id);
  */
 OPERATE_RET tkl_gpio_irq_disable(TUYA_GPIO_NUM_E pin_id);
 
+OPERATE_RET tkl_gpio_set_drive_capability(TUYA_GPIO_NUM_E pin_id, const TUYA_GPIO_DRIVE_CAP_E strength);
+
+/**
+ * @brief Get GPIO drive capability (drive strength)
+ * @param[in] pin_id GPIO pin id, id index starts at 0
+ * @param[out] strength Pointer to receive the current drive capability level;
+ *                      must not be NULL
+ * @return OPRT_OK on success, OPRT_INVALID_PARM if pin_id or strength is invalid,
+ *         OPRT_NOT_SUPPORTED if drive-strength readback is unavailable on this
+ *         pin/platform
+ * @note On success *strength is set to one of TUYA_GPIO_DRIVE_CAP_0 ..
+ *       TUYA_GPIO_DRIVE_CAP_4. As with tkl_gpio_set_drive_capability(), the
+ *       value is an abstract ordinal level, NOT an mA figure; the mA-per-level
+ *       mapping is SoC/pad specific (see the pinmap in tkl_gpio.c).
+ */
+OPERATE_RET tkl_gpio_get_drive_capability(TUYA_GPIO_NUM_E pin_id, TUYA_GPIO_DRIVE_CAP_E *strength);
 
 #ifdef __cplusplus
 }

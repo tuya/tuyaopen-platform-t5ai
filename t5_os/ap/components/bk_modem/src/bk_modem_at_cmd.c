@@ -24,6 +24,9 @@
 #include "bk_modem_dte.h"
 #include "bk_modem_dce.h"
 
+/* Provided by tuyaos_adapter tkl_cellular.c; 0=skip ECPMUCFG, non-zero=send */
+extern int tkl_cellular_get_sleep_mode(void);
+
 /* Maximum length definitions for AT command and response buffers */
 #define AT_CMD_LEN_MAX (128)        /* Maximum length of AT command buffer */
 #define AT_RSP_LEN_MAX (256)        /* Maximum length of AT response buffer */
@@ -545,6 +548,56 @@ bk_err_t bk_modem_at_ppp_connect(void)
 	}
 }
 
+#if BK_MODEM_CAT1_LP_DTR_SLEEP
+/**
+ * @brief Configure CAT1 module for DTR-controlled Sleep1 low power
+ * @return BK_OK if all AT commands succeed, BK_FAIL otherwise
+ * @note Call in command mode before ATD*99# (PPP dial). AT&D0 keeps PPP alive
+ *       when DTR is asserted; AT+ECPMUCFG/AT+QSCLK enable Sleep1 via DTR.
+ */
+bk_err_t bk_modem_at_lp_config(void)
+{
+	bk_err_t ret = BK_OK;
+
+	/* 0: NO_SLEEP/IDLE skip; non-zero: MODE1/MODE2/HIBERNATE send Sleep1 */
+	if (tkl_cellular_get_sleep_mode()) {
+		if (BK_OK != bk_modem_at_cmd_send(AT_AND_D0, 3, 5000)) {
+			BK_MODEM_LOGI("at_cmd_send fail!, AT&D0\r\n");
+			ret = BK_FAIL;
+		} else {
+			BK_MODEM_LOGI("AT&D0, rsp:%s\r\n", g_modem_at_rsp_buf);
+		}
+
+		if (BK_OK != bk_modem_at_cmd_send(AT_ECPMUCFG_SLEEP1, 3, 5000)) {
+			BK_MODEM_LOGI("at_cmd_send fail!, AT+ECPMUCFG=1,2\r\n");
+			ret = BK_FAIL;
+		} else {
+			BK_MODEM_LOGI("AT+ECPMUCFG=1,2, rsp:%s\r\n", g_modem_at_rsp_buf);
+		}
+
+		if (BK_OK != bk_modem_at_cmd_send(AT_QSCLK_DTR, 3, 5000)) {
+			BK_MODEM_LOGI("at_cmd_send fail!, AT+QSCLK=1\r\n");
+			ret = BK_FAIL;
+		} else {
+			BK_MODEM_LOGI("AT+QSCLK=1, rsp:%s\r\n", g_modem_at_rsp_buf);
+		}
+	} else {
+		BK_MODEM_LOGI("skip modem lp config\r\n");
+
+        #define AT_ECPMUCFG_SLEEP_ACTIVE      "AT+ECPMUCFG=0\r\n"
+		if (BK_OK != bk_modem_at_cmd_send(AT_ECPMUCFG_SLEEP_ACTIVE, 3, 5000)) {
+			BK_MODEM_LOGI("at_cmd_send fail!, AT+ECPMUCFG=0\r\n");
+			ret = BK_FAIL;
+		} else {
+			BK_MODEM_LOGI("AT+ECPMUCFG=0, rsp:%s\r\n", g_modem_at_rsp_buf);
+		}
+
+	}
+
+	return ret;
+}
+#endif /* BK_MODEM_CAT1_LP_DTR_SLEEP */
+
 #if 0
 // Set command is used to set plat configure, if set parameter error, +CME ERROR: <err> is returned.
 // Read command returns the current plat configure setting.
@@ -1031,15 +1084,24 @@ bk_err_t bk_modem_at_get_cfun(void)
 bk_err_t bk_modem_at_get_cgmr(void)
 {
 	char *ptr;
+	int i;
 
 	if (BK_OK == bk_modem_at_cmd_send(AT_CGMR, 3, 5000))
 	{
 		BK_MODEM_LOGI("AT+CGMR, rsp:%s\r\n",g_modem_at_rsp_buf);
-		if ((ptr = os_strstr((char *)g_modem_at_rsp_buf, "\r\n+CGMR: ")) != NULL)
-		{
-			ptr += 10; // offset "\r\n+CGMR: "
-			os_strncpy((char *)dce_pdp_ctx.sw_ver, ptr, BK_MODEM_DCE_SVER_LEN);
+		/* Prefixed form: "\r\n+CGMR: <ver>"; bare form (e.g. LYNQ L511E): "\r\n<ver>" */
+		ptr = os_strstr((char *)g_modem_at_rsp_buf, "+CGMR: ");
+		if (ptr != NULL) {
+			ptr += 7;
+		} else {
+			ptr = (char *)g_modem_at_rsp_buf;
+			while (*ptr == '\r' || *ptr == '\n' || *ptr == ' ') ptr++;
 		}
+		for (i = 0; i < BK_MODEM_DCE_SVER_LEN; i++) {
+			if (ptr[i] == '\r' || ptr[i] == '\n' || ptr[i] == '\0') break;
+			dce_pdp_ctx.sw_ver[i] = ptr[i];
+		}
+		dce_pdp_ctx.sw_ver[i] = '\0';
 		return BK_OK;
 	}
 	else

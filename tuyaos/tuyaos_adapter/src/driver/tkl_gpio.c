@@ -33,7 +33,7 @@ static pin_dev_map_t pinmap[] = {
 };
 
 #define PIN_DEV_CHECK_ERROR_RETURN(__PIN, __ERROR)                          \
-    if (__PIN >= sizeof(pinmap)/sizeof(pinmap[0]) || (__PIN == TUYA_GPIO_NUM_10) || (__PIN == TUYA_GPIO_NUM_11)) {                        \
+    if (__PIN >= sizeof(pinmap)/sizeof(pinmap[0])) {                        \
         return __ERROR;                                                     \
     }
 
@@ -83,11 +83,23 @@ OPERATE_RET tkl_gpio_init(TUYA_GPIO_NUM_E pin_id, const TUYA_GPIO_BASE_CFG_T *cf
         case TUYA_GPIO_OUTPUT:
             bk_gpio_disable_input(pinmap[pin_id].gpio);
             bk_gpio_enable_output(pinmap[pin_id].gpio);
+
+            gpio_config_t c = {
+                .io_mode = GPIO_OUTPUT_ENABLE,
+                .pull_mode = GPIO_PULL_UP_EN,
+                .func_mode = GPIO_SECOND_FUNC_DISABLE,
+            };
+            bk_gpio_set_config(pin_id, &c);
+
             //! set pin init level
             if(TUYA_GPIO_LEVEL_LOW == cfg->level) {
                 bk_gpio_set_output_low(pinmap[pin_id].gpio);
             } else {
                 bk_gpio_set_output_high(pinmap[pin_id].gpio);
+            }
+
+            if (cfg->status_keep) {
+                bk_gpio_register_lowpower_keep_status(pin_id, &c);
             }
             break;
         default:
@@ -245,4 +257,40 @@ OPERATE_RET tkl_gpio_irq_disable(TUYA_GPIO_NUM_E pin_id)
     PIN_DEV_CHECK_ERROR_RETURN(pin_id, OPRT_INVALID_PARM);
     bk_gpio_disable_interrupt(pinmap[pin_id].gpio);
     return OPRT_OK;
+}
+
+OPERATE_RET tkl_gpio_set_drive_capability(TUYA_GPIO_NUM_E pin_id, const TUYA_GPIO_DRIVE_CAP_E strength)
+{
+    PIN_DEV_CHECK_ERROR_RETURN(pin_id, OPRT_INVALID_PARM);
+    uint32_t capacity = 0;
+
+    switch (strength) {
+        case TUYA_GPIO_DRIVE_CAP_0: capacity = GPIO_DRIVER_CAPACITY_0; break;
+        case TUYA_GPIO_DRIVE_CAP_1: capacity = GPIO_DRIVER_CAPACITY_1; break;
+        case TUYA_GPIO_DRIVE_CAP_2: capacity = GPIO_DRIVER_CAPACITY_2; break;
+        case TUYA_GPIO_DRIVE_CAP_3: capacity = GPIO_DRIVER_CAPACITY_3; break;
+        default:
+            return OPRT_INVALID_PARM;
+    }
+
+    bk_gpio_set_capacity(pin_id, capacity);
+    return OPRT_OK;
+}
+
+/**
+ * @brief Get GPIO drive capability (drive strength)
+ * @param[in] pin_id GPIO pin id, id index starts at 0
+ * @param[out] strength Pointer to receive the current drive capability level;
+ *                      must not be NULL
+ * @return OPRT_OK on success, OPRT_INVALID_PARM if pin_id or strength is invalid,
+ *         OPRT_NOT_SUPPORTED if drive-strength readback is unavailable on this
+ *         pin/platform
+ * @note On success *strength is set to one of TUYA_GPIO_DRIVE_CAP_0 ..
+ *       TUYA_GPIO_DRIVE_CAP_4. As with tkl_gpio_set_drive_capability(), the
+ *       value is an abstract ordinal level, NOT an mA figure; the mA-per-level
+ *       mapping is SoC/pad specific (see the pinmap in tkl_gpio.c).
+ */
+OPERATE_RET tkl_gpio_get_drive_capability(TUYA_GPIO_NUM_E pin_id, TUYA_GPIO_DRIVE_CAP_E *strength)
+{
+    return OPRT_NOT_SUPPORTED;
 }

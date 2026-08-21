@@ -22,7 +22,7 @@
 #include "driver/dma.h"
 #include "driver/flash.h"
 
-#if CONFIG_CACHE_ENABLE
+#if (CONFIG_CACHE_ENABLE || CONFIG_DCACHE)
 #include "cache.h"
 #endif
 
@@ -132,8 +132,11 @@ static void ipc_cmd_rx_isr(ipc_chnl_cb_t *chnl_cb, mb_chnl_cmd_t *cmd_buf)
 			   so must copy data from cmd_buff in case that the buffer is released. */
 			if((ipc_cmd->cmd_buff != NULL) && (ipc_cmd->cmd_data_len > 0))
 			{
-				#if CONFIG_CACHE_ENABLE
-				flush_dcache(ipc_cmd->cmd_buff, ipc_cmd->cmd_data_len);
+				/* Redmine #8131: consumer of the peer's buffer - invalidate (never
+				 * clean+invalidate, which could evict the peer's newer data) and gate
+				 * on the real D-cache switch, not the stale CONFIG_CACHE_ENABLE. */
+				#if CONFIG_DCACHE
+				invalidate_dcache(ipc_cmd->cmd_buff, ipc_cmd->cmd_data_len);
 				#endif
 				
 				memcpy(chnl_cb->rsp_buf, ipc_cmd->cmd_buff, ipc_cmd->cmd_data_len);
@@ -175,8 +178,9 @@ static void ipc_cmd_rx_isr(ipc_chnl_cb_t *chnl_cb, mb_chnl_cmd_t *cmd_buf)
 			   so must copy data from cmd_buff in case that the buffer is released. */
 			if((ipc_cmd->cmd_buff != NULL) && (ipc_cmd->cmd_data_len > 0))
 			{
-				#if CONFIG_CACHE_ENABLE
-				flush_dcache(ipc_cmd->cmd_buff, ipc_cmd->cmd_data_len);
+				/* Redmine #8131: consumer of the peer's buffer - invalidate only. */
+				#if CONFIG_DCACHE
+				invalidate_dcache(ipc_cmd->cmd_buff, ipc_cmd->cmd_data_len);
 				#endif
 				
 				memcpy(chnl_cb->cmd_buf, ipc_cmd->cmd_buff, ipc_cmd->cmd_data_len);
@@ -245,8 +249,9 @@ static void ipc_cmd_tx_cmpl_isr(ipc_chnl_cb_t *chnl_cb, mb_chnl_ack_t *ack_buf) 
 			{
 				if((ipc_rsp->rsp_buff != NULL) && (ipc_rsp->rsp_data_len > 0))
 				{
-					#if CONFIG_CACHE_ENABLE
-					flush_dcache(ipc_rsp->rsp_buff, ipc_rsp->rsp_data_len);;
+					/* Redmine #8131: consumer of the peer's rsp buffer - invalidate only. */
+					#if CONFIG_DCACHE
+					invalidate_dcache(ipc_rsp->rsp_buff, ipc_rsp->rsp_data_len);
 					#endif
 
 					memcpy(chnl_cb->rsp_buf, ipc_rsp->rsp_buff, ipc_rsp->rsp_data_len);

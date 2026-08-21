@@ -27,6 +27,13 @@ static beken_thread_t bk_usb_cdc_modem_rx_thread = NULL;
 static beken_queue_t bk_usb_cdc_modem_msg_tx_queue = NULL;
 static beken_thread_t bk_usb_cdc_modem_tx_thread = NULL;
 
+#define CDC_MODEM_CTRL_QUEUE_DEPTH      64
+#define CDC_MODEM_RX_QUEUE_DEPTH        16
+#define CDC_MODEM_TX_QUEUE_DEPTH        16
+#define CDC_MODEM_TX_QUEUE_WAIT_MS      20
+#define CDC_MODEM_RX_RETRY_COUNT        3
+#define CDC_MODEM_RX_RETRY_DELAY_MS     100
+
 static uint8_t g_usb_cdc_modem_close = 0;
 
 static uint8_t g_rx_buf[512] = {0};
@@ -67,7 +74,7 @@ static bk_err_t cdc_send_rxmsg(uint8_t type, uint32_t data_len, uint32_t *p)
 		msg.data = data_len;
 		msg.param = p;        
 
-		ret = rtos_push_to_queue(&bk_usb_cdc_modem_msg_rx_queue, &msg, 100);//BEKEN_NO_WAIT);
+		ret = rtos_push_to_queue(&bk_usb_cdc_modem_msg_rx_queue, &msg, BEKEN_NO_WAIT);
 		if (kNoErr != ret)
 		{
 			return kNoResourcesErr;
@@ -107,7 +114,7 @@ static bk_err_t cdc_send_txmsg(uint8_t type, uint32_t data_len, uint32_t* p)
         		msg.param = (void *)p;                
         	}
              
-		ret = rtos_push_to_queue(&bk_usb_cdc_modem_msg_tx_queue, &msg, BEKEN_NO_WAIT);//BEKEN_NO_WAIT);
+		ret = rtos_push_to_queue(&bk_usb_cdc_modem_msg_tx_queue, &msg, CDC_MODEM_TX_QUEUE_WAIT_MS);
 		if (kNoErr != ret)
 		{
           		if (data_len)
@@ -121,9 +128,9 @@ static bk_err_t cdc_send_txmsg(uint8_t type, uint32_t data_len, uint32_t* p)
 	return kGeneralErr;
 }
 
-void bk_cdc_acm_bulkin_data(uint8_t *pbuf, uint16_t len)
+bk_err_t bk_cdc_acm_bulkin_data(uint8_t *pbuf, uint16_t len)
 {
-	cdc_send_rxmsg(CDC_STATUS_BULKIN_DATA, len, (uint32_t *)pbuf);
+	return cdc_send_rxmsg(CDC_STATUS_BULKIN_DATA, len, (uint32_t *)pbuf);
 }
 
 void bk_cdc_acm_state_notify(CDC_STATUS_t * dev_state)
@@ -156,17 +163,21 @@ void bk_usb_cdc_close(void)
 
 int32_t bk_cdc_acm_modem_write(char *p_tx, uint32_t l_tx)
 {
-    cdc_send_txmsg(CDC_STATUS_BULKOUT_DATA, l_tx, (uint32_t*)p_tx);
-    return 0;
+	if (cdc_send_txmsg(CDC_STATUS_BULKOUT_DATA, l_tx, (uint32_t*)p_tx) == kNoErr)
+	{
+		return l_tx;
+	}
+
+	return 0;
 }
 
 static int32_t bk_cdc_acm_modem_write_handle(char *p_tx, uint32_t l_tx)
 {
-	int32  ret = 0;
+	int32_t ret = 0;
 	if (l_tx > CDC_EXTX_MAX_SIZE) 
 	{
 		LOGE("[+]%s, Transbuf overflow!\r\n", __func__);
-		return ret;
+		return -1;
 	}
 
 	uint8_t segment_cnt = (l_tx + CDC_TX_MAX_SIZE - 1)/CDC_TX_MAX_SIZE;
@@ -178,10 +189,10 @@ static int32_t bk_cdc_acm_modem_write_handle(char *p_tx, uint32_t l_tx)
 	{
 		data_len = (l_tx-ops > CDC_TX_MAX_SIZE)? CDC_TX_MAX_SIZE: (l_tx-ops);
 
-                ret = bk_cdc_acm_io_write_data(p_tx+ops, data_len);
-		if (ret < 0)
+		ret = bk_cdc_acm_io_write_data(p_tx+ops, data_len);
+		if (ret != data_len)
 		{
-                       /// need reconnect
+			return (ret > 0) ? (ops + ret) : ret;
 		}
 
 		ops += data_len;
@@ -192,15 +203,36 @@ static int32_t bk_cdc_acm_modem_write_handle(char *p_tx, uint32_t l_tx)
 		}
 	}
 	
-	return 0;
+	return ops;
 }
 
 static void bk_cdc_usbh_upload_ind(uint32_t data_len, uint32_t *p_buf)
 {
-	uint8_t rx_buf[512] = {0};   
+	uint8_t rx_buf[CDC_RX_MAX_SIZE] = {0};
+	uint32_t retry_count = 0;
+	bk_err_t ret = BK_OK;
+
+	if (data_len > CDC_RX_MAX_SIZE)
+	{
+		LOGE("%s: rx len overflow, len:%u\n", __func__, data_len);
+		bk_cdc_acm_io_read();
+		return;
+	}
+
 	os_memcpy(&rx_buf[0], p_buf, data_len);
+	do
+	{
+		ret = bk_modem_usbh_if.bk_modem_usbh_bulkin_ind(&rx_buf[0], data_len);
+		if (ret == BK_OK)
+		{
+			break;
+		}
+
+		retry_count++;
+		rtos_delay_milliseconds(CDC_MODEM_RX_RETRY_DELAY_MS);
+	} while (retry_count < CDC_MODEM_RX_RETRY_COUNT);
+
 	bk_cdc_acm_io_read();
-	bk_modem_usbh_if.bk_modem_usbh_bulkin_ind(&rx_buf[0], data_len);
 }
 
 static void bk_usb_cdc_modem_thread_main(beken_thread_arg_t arg)
@@ -297,7 +329,7 @@ void bk_usb_cdc_modem(void)
 
 	if (bk_usb_cdc_modem_msg_queue == NULL)
 	{
-		ret = rtos_init_queue(&bk_usb_cdc_modem_msg_queue, "bk_usb_cdc_modem_msg_queue", sizeof(BK_USB_MODEM_CDC_MSG_T), 64);
+		ret = rtos_init_queue(&bk_usb_cdc_modem_msg_queue, "bk_usb_cdc_modem_msg_queue", sizeof(BK_USB_MODEM_CDC_MSG_T), CDC_MODEM_CTRL_QUEUE_DEPTH);
 		if (ret != kNoErr)
 		{
 			LOGE("init bk_usb_cdc_modem_msg_queue failed\r\n");
@@ -320,7 +352,7 @@ void bk_usb_cdc_modem(void)
 	}
 	if (bk_usb_cdc_modem_msg_rx_queue == NULL)
 	{
-		ret = rtos_init_queue(&bk_usb_cdc_modem_msg_rx_queue, "bk_usb_cdc_modem_msg_rx_queue", sizeof(BK_USB_MODEM_CDC_MSG_T), 64);
+		ret = rtos_init_queue(&bk_usb_cdc_modem_msg_rx_queue, "bk_usb_cdc_modem_msg_rx_queue", sizeof(BK_USB_MODEM_CDC_MSG_T), CDC_MODEM_RX_QUEUE_DEPTH);
 		if (ret != kNoErr)
 		{
 			LOGE("init cdc_msg_queue failed\r\n");
@@ -344,7 +376,7 @@ void bk_usb_cdc_modem(void)
 
 	if (bk_usb_cdc_modem_msg_tx_queue == NULL)
 	{
-		ret = rtos_init_queue(&bk_usb_cdc_modem_msg_tx_queue, "bk_usb_cdc_modem_msg_tx_queue", sizeof(BK_USB_MODEM_CDC_MSG_T), 64);
+		ret = rtos_init_queue(&bk_usb_cdc_modem_msg_tx_queue, "bk_usb_cdc_modem_msg_tx_queue", sizeof(BK_USB_MODEM_CDC_MSG_T), CDC_MODEM_TX_QUEUE_DEPTH);
 		if (ret != kNoErr)
 		{
 			LOGE("init bk_usb_cdc_modem_msg_tx_queue failed\r\n");

@@ -486,6 +486,72 @@ TimerHandle_t xCpupTimer;
  * kernel's data structures such as various tasks lists, flags, and tick counts. */
 PRIVILEGED_DATA static SPINLOCK_SECTION portMUX_TYPE xKernelLock = portMUX_INITIALIZER_UNLOCKED;
 
+#if ( configFLUSH_DCACHE_ON_TASK_SWITCH_OUT == 1 )
+    static BaseType_t prvTaskUsesCacheablePsramStack( const TCB_t * pxTCB )
+    {
+        uint32_t stackAddress;
+
+        if( ( pxTCB == NULL ) || ( pxTCB->pxStack == NULL ) )
+        {
+            return pdFALSE;
+        }
+
+        stackAddress = ( uint32_t ) pxTCB->pxStack;
+        return ( ( stackAddress >= ( uint32_t ) CONFIG_AP_PSRAM_STACK_HEAP_ADDR ) &&
+                 ( stackAddress < ( uint32_t ) ( CONFIG_AP_PSRAM_STACK_HEAP_ADDR +
+                                                 CONFIG_AP_PSRAM_STACK_HEAP_SIZE ) ) ) ?
+               pdTRUE : pdFALSE;
+    }
+
+/* SMP D-cache coherency for cacheable PSRAM task stacks (Redmine #8131) - the
+ * first-run half of the switch-in invalidate. vRestoreContextOfFirstTask()
+ * (portasm.c) reads pxTopOfStack from pxCurrentTCBs[coreID] and pops the initial
+ * exception frame straight off the task stack WITHOUT any cache maintenance.
+ * When a secondary core starts its very first task - a task that was created
+ * (and had its initial frame cleaned to PSRAM) by the OTHER core - this core may
+ * still hold stale/garbage lines for those stack addresses left from early boot.
+ * Restoring from them yields a torn first frame (bad PC / lost xPSR.T -> IACCVIOL)
+ * or a clobbered stack sentinel (false "stack overflow" assert). This path is NOT
+ * covered by the vTaskSwitchContext switch-in invalidate. Invalidate (NOT clean)
+ * the incoming first task's cacheable stack so physical PSRAM (already cleaned by
+ * the creating core) is the source of truth. Called from vPortSVCHandler_C()
+ * (port.c) on the target core right before vRestoreContextOfFirstTask(). */
+    void vTaskCacheInvalidateFirstStack( void )
+    {
+        extern void invalidate_dcache( void * va, long size );
+        const BaseType_t xCoreID = portGET_CORE_ID();
+        TCB_t * const pxTCB = pxCurrentTCBs[ xCoreID ];
+
+        if( prvTaskUsesCacheablePsramStack( pxTCB ) == pdTRUE )
+        {
+            invalidate_dcache( ( void * ) pxTCB->pxStack, ( long ) pxTCB->ulStackSize );
+        }
+    }
+
+/* Redmine #8131: diagnostic reads of a task's stack contents from another
+ * context (stack high-water scan, task-list dump) hit the Cacheable PSRAM stack
+ * heap. If the reader core holds a stale local copy it will mis-report the free
+ * stack / high-water mark. Invalidate our local copy so the read comes from
+ * physical PSRAM - but ONLY when the target task is not the one running on THIS
+ * core, otherwise we would discard this core's live (dirty, uncommitted) stack
+ * lines. For a task last run on the other core this reads physical PSRAM; it is
+ * still best-effort because that core may hold newer dirty lines (acceptable for
+ * a diagnostic-only value). No-op for non-cacheable heaps / non-DCACHE builds. */
+    static void prvInvalidateCacheableStackForRead( const TCB_t * pxTCB )
+    {
+        extern void invalidate_dcache( void * va, long size );
+
+        if( ( prvTaskUsesCacheablePsramStack( pxTCB ) == pdTRUE ) &&
+            ( pxTCB != pxCurrentTCBs[ portGET_CORE_ID() ] ) )
+        {
+            invalidate_dcache( ( void * ) pxTCB->pxStack, ( long ) pxTCB->ulStackSize );
+        }
+    }
+
+#else
+    #define prvInvalidateCacheableStackForRead( pxTCB )    ( ( void ) 0 )
+#endif
+
 /*lint -restore */
 
 /*-----------------------------------------------------------*/
@@ -937,6 +1003,26 @@ static void prvInitialiseNewTask( TaskFunction_t pxTaskCode,
         uxPriority &= ~portPRIVILEGE_BIT;
     #endif /* portUSING_MPU_WRAPPERS == 1 */
 
+    #if ( configFLUSH_DCACHE_ON_TASK_SWITCH_OUT == 1 )
+    /* SMP D-cache coherency for cacheable PSRAM (Redmine #8131) - create window.
+     * The stack fill below and pxPortInitialiseStack() dirty the NEW task's stack
+     * lines in THIS (creator) core's D-cache; the clean-on-create at the end of
+     * this function must run on the SAME core to write them back. The creator
+     * runs with tskNO_AFFINITY, so without protection it can be preempted and
+     * migrated between the writes and the clean. The switch-out writeback only
+     * covers the creator's OWN stack, not pxNewTCB->pxStack, so the new stack's
+     * dirty lines would be stranded on the origin core and physical PSRAM keeps
+     * garbage -> corrupted first frame when the task is first scheduled. Enter a
+     * critical section so the current task cannot be switched out (hence cannot
+     * migrate) across the write+clean window. Only for cacheable PSRAM stacks. */
+    const BaseType_t xCacheCreateCritical = prvTaskUsesCacheablePsramStack( pxNewTCB );
+
+    if( xCacheCreateCritical == pdTRUE )
+    {
+        taskENTER_CRITICAL( &xKernelLock );
+    }
+    #endif /* configFLUSH_DCACHE_ON_TASK_SWITCH_OUT */
+
     /* Avoid dependency on memset() if it is not required. */
     #if ( tskSET_NEW_STACKS_TO_KNOWN_VALUE == 1 )
     {
@@ -1118,6 +1204,36 @@ static void prvInitialiseNewTask( TaskFunction_t pxTaskCode,
         pxNewTCB->ulStackSize = ulStackDepth * sizeof( StackType_t );
     #endif
 
+    #if ( configFLUSH_DCACHE_ON_TASK_SWITCH_OUT == 1 )
+    {
+        /* SMP D-cache coherency for cacheable PSRAM (Redmine #8131) - creation half.
+         * pxPortInitialiseStack() above just wrote the task's initial exception frame
+         * into THIS (creator) core's D-cache; those lines are dirty and have never
+         * been written back. A freshly created task is never "switched out", so
+         * without a writeback here the physical PSRAM still holds garbage. When the
+         * task is first scheduled on the OTHER core, the switch-in invalidate there
+         * discards that core's lines and reads physical PSRAM -> it would read the
+         * un-written-back garbage and restore a corrupted first frame (smear / bad
+         * PC -> IACCVIOL). Clean the initial stack to physical PSRAM now on the
+         * core that owns the dirty lines. */
+        extern void flush_dcache( void * va, long size );
+
+        if( prvTaskUsesCacheablePsramStack( pxNewTCB ) == pdTRUE )
+        {
+            flush_dcache( ( void * ) pxNewTCB->pxStack, ( long ) pxNewTCB->ulStackSize );
+        }
+    }
+    #endif /* configFLUSH_DCACHE_ON_TASK_SWITCH_OUT */
+
+    #if ( configFLUSH_DCACHE_ON_TASK_SWITCH_OUT == 1 )
+    /* Close the create window opened before the stack fill: the new stack has
+     * now been written and cleaned to physical PSRAM on this same core. */
+    if( xCacheCreateCritical == pdTRUE )
+    {
+        taskEXIT_CRITICAL( &xKernelLock );
+    }
+    #endif /* configFLUSH_DCACHE_ON_TASK_SWITCH_OUT */
+
     if( pxCreatedTask != NULL )
     {
         /* Pass the handle out in an anonymous way.  The handle can be used to
@@ -1240,6 +1356,14 @@ static void prvAddNewTaskToReadyList( TCB_t * pxNewTCB )
         BaseType_t xSelfDelete;
         BaseType_t xIsCurRunning;
 
+        // Modified by TUYA Start
+#if (1 == LWIP_NETCONN_SEM_PER_THREAD)
+        extern int8_t lwip_socket_thread_cleanup(void *task);
+        pxTCB = (xTaskToDelete == NULL)? prvGetTCBFromHandle(xTaskToDelete): xTaskToDelete;
+        lwip_socket_thread_cleanup(pxTCB);
+#endif // LWIP_NETCONN_SEM_PER_THREAD == 1
+       // Modified by TUYA End
+
         taskENTER_CRITICAL( &xKernelLock );
         {
             extern void pthread_internal_local_storage_destructor_callback(TaskHandle_t handle);
@@ -1251,13 +1375,6 @@ static void prvAddNewTaskToReadyList( TCB_t * pxNewTCB )
             /* If null is passed in here then it is the calling task that is
              * being deleted. */
             pxTCB = prvGetTCBFromHandle( xTaskToDelete );
-
-            // Modified by TUYA Start
-            #if (1 == LWIP_NETCONN_SEM_PER_THREAD)
-            extern int8_t lwip_socket_thread_cleanup(void *task);
-            lwip_socket_thread_cleanup(pxTCB);
-            #endif // LWIP_NETCONN_SEM_PER_THREAD == 1
-            // Modified by TUYA End
 
             /* Remove task from the ready/delayed list. */
             if( uxListRemove( &( pxTCB->xStateListItem ) ) == ( UBaseType_t ) 0 )
@@ -3718,9 +3835,62 @@ void vTaskSwitchContext( void )
             }
             #endif
 
+            #if ( configFLUSH_DCACHE_ON_TASK_SWITCH_OUT == 1 )
+            {
+                /* SMP D-cache coherency for cacheable PSRAM (Redmine #8131).
+                 *
+                 * Each AP core has a private, non-coherent L1 D-cache and tasks
+                 * run with tskNO_AFFINITY, so a task using the cacheable PSRAM stack
+                 * heap can be resumed on the other core. Its exception frame was
+                 * saved by PendSV before this function ran. Without a writeback its
+                 * dirty lines stay in this core's cache while the resuming core reads
+                 * stale physical PSRAM and restores a corrupted frame. This runs
+                 * before a new task is selected, so clean + invalidate the outgoing
+                 * cacheable stack. Physical PSRAM is made current and no stale line
+                 * survives the migration. flush_dcache() is
+                 * SCB_CleanInvalidateDCache_by_Addr(). */
+                extern void flush_dcache( void * va, long size );
+                TCB_t * const pxOutgoingTCB = pxCurrentTCBs[ xCurCoreID ];
+
+                if( prvTaskUsesCacheablePsramStack( pxOutgoingTCB ) == pdTRUE )
+                {
+                    flush_dcache( ( void * ) pxOutgoingTCB->pxStack,
+                                  ( long ) pxOutgoingTCB->ulStackSize );
+                }
+            }
+            #endif /* configFLUSH_DCACHE_ON_TASK_SWITCH_OUT */
+
             /* Select a new task to run using either the generic C or port
              * optimised asm code. */
             taskSELECT_HIGHEST_PRIORITY_TASK(); /*lint !e9079 void * is used as this macro is used with timers and co-routines too.  Alignment is known to be fine as the type of the pointer stored and retrieved is the same. */
+
+            #if ( configFLUSH_DCACHE_ON_TASK_SWITCH_OUT == 1 )
+            {
+                /* SMP D-cache coherency for cacheable PSRAM (Redmine #8131) -
+                 * the "consumer" half, symmetric to the switch-out writeback above.
+                 *
+                 * taskSELECT_HIGHEST_PRIORITY_TASK() has just made the incoming
+                 * task current for this core. That task may have last run on the
+                 * other core, so this core can still hold stale cache lines for the
+                 * incoming stack. Right after this returns, PendSV reads
+                 * pxTopOfStack from the non-cacheable TCB and pops the saved
+                 * exception frame from the stack; if it reads stale lines it restores
+                 * a corrupted frame (xPSR T-bit loss / bad PC -> IACCVIOL).
+                 *
+                 * Pure invalidate (NOT clean+invalidate): the authoritative copy is
+                 * the physical PSRAM the producing core already cleaned; a clean here
+                 * could write this core's stale dirty lines back over it. */
+                extern void invalidate_dcache( void * va, long size );
+                TCB_t * const pxIncomingTCB = pxCurrentTCBs[ xCurCoreID ];
+
+                if( prvTaskUsesCacheablePsramStack( pxIncomingTCB ) == pdTRUE )
+                {
+                    invalidate_dcache( ( void * ) pxIncomingTCB->pxStack,
+                                       ( long ) pxIncomingTCB->ulStackSize );
+                }
+            }
+            #endif /* configFLUSH_DCACHE_ON_TASK_SWITCH_OUT */
+
             traceTASK_SWITCHED_IN();
         #if FREERTOS_TASK_RECORDER
              if (xCurCoreID == 0)
@@ -4674,6 +4844,9 @@ static void prvCheckTasksWaitingTermination( void )
              * parameter is provided to allow it to be skipped. */
             if( xGetFreeStackSpace != pdFALSE )
             {
+                /* Redmine #8131: pull the fill pattern from physical PSRAM for a
+                 * cacheable stack owned by another core before scanning it. */
+                prvInvalidateCacheableStackForRead( pxTCB );
                 #if ( portSTACK_GROWTH > 0 )
                 {
                     pxTaskStatus->usStackHighWaterMark = prvTaskCheckFreeStackSpace( ( uint8_t * ) pxTCB->pxEndOfStack );
@@ -4774,6 +4947,9 @@ static void prvCheckTasksWaitingTermination( void )
 
         pxTCB = prvGetTCBFromHandle( xTask );
 
+        /* Redmine #8131: see prvInvalidateCacheableStackForRead(). */
+        prvInvalidateCacheableStackForRead( pxTCB );
+
         #if portSTACK_GROWTH < 0
         {
             pucEndOfStack = ( uint8_t * ) pxTCB->pxStack;
@@ -4801,6 +4977,9 @@ static void prvCheckTasksWaitingTermination( void )
         UBaseType_t uxReturn;
 
         pxTCB = prvGetTCBFromHandle( xTask );
+
+        /* Redmine #8131: see prvInvalidateCacheableStackForRead(). */
+        prvInvalidateCacheableStackForRead( pxTCB );
 
         #if portSTACK_GROWTH < 0
         {

@@ -22,7 +22,7 @@
 #include <driver/int.h>
 #include "sys_driver.h"
 
-#if CONFIG_CACHE_ENABLE
+#if (CONFIG_CACHE_ENABLE || CONFIG_DCACHE)
 #include "cache.h"
 #endif
 

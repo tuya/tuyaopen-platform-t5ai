@@ -273,8 +273,6 @@ static void flash_read_handler(u32 handle, flash_cmd_t *cmd_buff, u8 connect_id)
 	os_free(read_buff);
 	#endif
 
-	TRACE_I(TAG, "0x%x read done %d.\r\n", handle, user_cmd);
-
 	return;
 }
 
@@ -779,6 +777,10 @@ bk_err_t bk_flash_svr_init(void)
 
 	ret_val = rtos_create_thread(NULL, FLASH_SVR_PRIORITY, "flash_svr",
 					flash_server_task, FLASH_SVR_STACK_SIZE, NULL);
+	if(ret_val != BK_OK)
+	{
+		s_flash_svr_init = 0;
+	}
 
 	return ret_val;
 

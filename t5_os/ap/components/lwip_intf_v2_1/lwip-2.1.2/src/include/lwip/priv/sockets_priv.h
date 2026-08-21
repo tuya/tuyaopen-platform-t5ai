@@ -156,6 +156,14 @@ struct lwip_select_cb {
   fd_set *writeset;
   /** unimplemented: exceptset passed to select */
   fd_set *exceptset;
+  /* Redmine #8131 (A): coherent copies of the caller's fd_sets. The select_cb
+   * lives in the non-cacheable MEMP_SELECT_CB pool; readset/writeset/exceptset
+   * point at these embedded copies instead of the caller's cacheable PSRAM
+   * stack fd_sets, so the cross-core tcpip-thread read in select_check_waiters()
+   * always sees coherent data. */
+  fd_set sel_readset;
+  fd_set sel_writeset;
+  fd_set sel_exceptset;
 #endif /* LWIP_SOCKET_SELECT */
 #if LWIP_SOCKET_POLL
   /** fds passed to poll; NULL if select */

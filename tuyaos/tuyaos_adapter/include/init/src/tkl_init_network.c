@@ -49,6 +49,7 @@ const TKL_NETWORK_DESC_T c_network_desc = {
     .tkl_getsockname        = tkl_net_getsockname,
     .tkl_getpeername        = tkl_net_getpeername,
     .tkl_sethostname        = tkl_net_sethostname,
+    .tkl_set_default_netif_by_ip  = tkl_net_set_default_netif_by_ip,
 };
 
 /**
