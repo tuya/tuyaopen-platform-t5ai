@@ -32,6 +32,15 @@ static pin_dev_map_t pinmap[] = {
 #endif // CONFIG_SOC_BK7258
 };
 
+//! Pins configured as TUYA_GPIO_OPENDRAIN[_PULLUP]. This chip has no open-drain
+//! pad (the AON GPIO register has no such bit), so "release the line" has to be
+//! emulated by switching the output driver off -- which means tkl_gpio_write()
+//! cannot tell whether a HIGH should drive the pin or release it without knowing
+//! the mode. Kept separate from pinmap[] on purpose: adding a field there would
+//! make all 57 of its {GPIO_n, NULL, NULL} initialisers trip
+//! -Wmissing-field-initializers, and this platform builds with -Werror.
+static uint8_t sg_pin_opendrain[sizeof(pinmap) / sizeof(pinmap[0])] = {0};
+
 #define PIN_DEV_CHECK_ERROR_RETURN(__PIN, __ERROR)                          \
     if (__PIN >= sizeof(pinmap)/sizeof(pinmap[0]) || (__PIN == TUYA_GPIO_NUM_10) || (__PIN == TUYA_GPIO_NUM_11)) {                        \
         return __ERROR;                                                     \
@@ -64,6 +73,7 @@ OPERATE_RET tkl_gpio_init(TUYA_GPIO_NUM_E pin_id, const TUYA_GPIO_BASE_CFG_T *cf
     //! set pin direction
     switch (cfg->direct) {
         case TUYA_GPIO_INPUT:
+            sg_pin_opendrain[pin_id] = 0;
             bk_gpio_disable_output(pinmap[pin_id].gpio);
             bk_gpio_enable_input(pinmap[pin_id].gpio);
 
@@ -81,13 +91,39 @@ OPERATE_RET tkl_gpio_init(TUYA_GPIO_NUM_E pin_id, const TUYA_GPIO_BASE_CFG_T *cf
             }
             break;
         case TUYA_GPIO_OUTPUT:
-            bk_gpio_disable_input(pinmap[pin_id].gpio);
-            bk_gpio_enable_output(pinmap[pin_id].gpio);
-            //! set pin init level
-            if(TUYA_GPIO_LEVEL_LOW == cfg->level) {
+            if (cfg->mode == TUYA_GPIO_OPENDRAIN || cfg->mode == TUYA_GPIO_OPENDRAIN_PULLUP) {
+                //! open drain: only ever driven LOW. A "high" is the output
+                //! driver switched off, leaving the pull-up (internal, or the
+                //! bus's own) to hold the line. The input buffer is left ENABLED
+                //! so the released line can be read back -- I2C reads ACK,
+                //! incoming data and clock-stretch that way, and a released
+                //! open-drain pin is electrically just an input with a pull-up.
+                sg_pin_opendrain[pin_id] = 1;
+                bk_gpio_enable_input(pinmap[pin_id].gpio);
+                if (cfg->mode == TUYA_GPIO_OPENDRAIN_PULLUP) {
+                    bk_gpio_enable_pull(pinmap[pin_id].gpio);
+                    bk_gpio_pull_up(pinmap[pin_id].gpio);
+                } else {
+                    bk_gpio_disable_pull(pinmap[pin_id].gpio);
+                }
+                //! the output VALUE stays 0 for the pin's whole life; only the
+                //! output ENABLE is toggled from here on (see tkl_gpio_write)
                 bk_gpio_set_output_low(pinmap[pin_id].gpio);
+                if (TUYA_GPIO_LEVEL_LOW == cfg->level) {
+                    bk_gpio_enable_output(pinmap[pin_id].gpio);
+                } else {
+                    bk_gpio_disable_output(pinmap[pin_id].gpio);
+                }
             } else {
-                bk_gpio_set_output_high(pinmap[pin_id].gpio);
+                sg_pin_opendrain[pin_id] = 0;
+                bk_gpio_disable_input(pinmap[pin_id].gpio);
+                bk_gpio_enable_output(pinmap[pin_id].gpio);
+                //! set pin init level
+                if(TUYA_GPIO_LEVEL_LOW == cfg->level) {
+                    bk_gpio_set_output_low(pinmap[pin_id].gpio);
+                } else {
+                    bk_gpio_set_output_high(pinmap[pin_id].gpio);
+                }
             }
             break;
         default:
@@ -107,6 +143,7 @@ OPERATE_RET tkl_gpio_deinit(TUYA_GPIO_NUM_E pin_id)
 {
     PIN_DEV_CHECK_ERROR_RETURN(pin_id, OPRT_INVALID_PARM);
 
+    sg_pin_opendrain[pin_id] = 0;
     gpio_dev_unmap(pinmap[pin_id].gpio);
     //Set gpio to input floating mode
     bk_gpio_disable_interrupt(pinmap[pin_id].gpio);
@@ -128,6 +165,20 @@ OPERATE_RET tkl_gpio_deinit(TUYA_GPIO_NUM_E pin_id)
 OPERATE_RET tkl_gpio_write(TUYA_GPIO_NUM_E pin_id, TUYA_GPIO_LEVEL_E level)
 {
     PIN_DEV_CHECK_ERROR_RETURN(pin_id, OPRT_INVALID_PARM);
+
+    if (sg_pin_opendrain[pin_id]) {
+        //! open drain: HIGH releases the line (output driver off -> the pull-up
+        //! holds it), LOW drives it. The output value bit was set to 0 at init
+        //! and is never touched again. bk_gpio_enable_output()/disable_output()
+        //! only write the output-enable bit, so the input buffer stays on and
+        //! the line remains readable in both states.
+        if (level == TUYA_GPIO_LEVEL_HIGH) {
+            bk_gpio_disable_output(pinmap[pin_id].gpio);
+        } else {
+            bk_gpio_enable_output(pinmap[pin_id].gpio);
+        }
+        return OPRT_OK;
+    }
 
     if (level == TUYA_GPIO_LEVEL_HIGH) {
         bk_gpio_set_output_high(pinmap[pin_id].gpio);
