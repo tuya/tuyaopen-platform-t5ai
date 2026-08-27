@@ -34,6 +34,7 @@ static adc_config_t g_config[ADC_DEV_CHANNEL_SUM] = {0};
 static TUYA_ADC_NUM_E adc[ADC_DEV_NUM] = {TUYA_ADC_NUM_MAX};
 
 extern void bk_printf(const char *fmt, ...);
+extern bk_err_t bk_saradc_driver_init(void);
 
 /**
  * @brief tuya kernel platform_adc_init,must be called before adc function enable
@@ -379,32 +380,35 @@ OPERATE_RET tkl_adc_read_voltage(TUYA_ADC_NUM_E port_num, int32_t *buff, uint16_
 
 OPERATE_RET tkl_adc_ioctl(ADC_IOCTL_CMD_E cmd,  void *args)
 {
-    uint8_t ch_id = ADC_MAX;
-
-    if(NULL != args) {
-        ch_id = (uint8_t)*(uint8_t *)args;
-    }
-
-    if(ch_id >= ADC_MAX) {
+    if(NULL == args) {
         return OPRT_INVALID_PARM;
     }
 
-
     switch (cmd)
     {
-    case ADC_DIV_RESIS_CLOSE:
-        //bk_printf("tkl_adc_ioctl :%d\r\n", ch_id);
-        g_channel_id_div[ch_id] = 1;
-        break;
+    case ADC_DIV_RESIS: {
+        //! args points to ADC_IOCTL_DIV_RESIS_T. The command no longer
+        //! carries the on/off state -- data does -- so port and channel are
+        //! both taken from the struct, and both are checked. port used to be
+        //! ignored entirely.
+        const ADC_IOCTL_DIV_RESIS_T *div = (const ADC_IOCTL_DIV_RESIS_T *)args;
 
-    case ADC_DIV_RESIS_OPEN:
-        //bk_printf("tkl_adc_ioctl :%d\r\n", ch_id);
-        g_channel_id_div[ch_id] = 0;
+        if((div->port >= ADC_DEV_NUM) || (div->channel >= ADC_MAX)) {
+            return OPRT_INVALID_PARM;
+        }
+        //! data != 0 means the divider is IN CIRCUIT. Confirmed with the
+        //! platform side; tkl_adc.h itself still documents the struct only
+        //! as "ADC_DIV_RESIS struct define, ref", so the polarity is not
+        //! written down anywhere in the contract yet.
+        g_channel_id_div[div->channel] = (div->data ? 1 : 0);
         break;
+    }
 
     default:
-        bk_printf("tkl_adc_ioctl not support\r\n", cmd);
-        break;
+        //! Falling through to OPRT_OK here reported an unsupported command
+        //! as carried out.
+        bk_printf("tkl_adc_ioctl cmd %d not support\r\n", (int)cmd);
+        return OPRT_NOT_SUPPORTED;
     }
 
     return OPRT_OK;
