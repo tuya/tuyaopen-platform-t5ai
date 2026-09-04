@@ -183,6 +183,25 @@ void cli_psram_free_cmd(char *pcWriteBuffer, int xWriteBufferLen, int argc, char
 
 	start = strtoul(argv[1], NULL, 0);
 	pstart = (uint8_t *)start;
+
+	if (pstart == NULL) {
+		cmd_printf("psram_free: NULL addr rejected.\r\n");
+		return;
+	}
+
+#ifdef CONFIG_AP_PSRAM_STACK_HEAP_ADDR
+	/* Redmine #8131: the Cacheable PSRAM task-stack heap holds live, scheduler-
+	 * owned task stacks. Freeing one of those blocks by hand corrupts a running
+	 * task and, because the block is cacheable and shared cross-core, leaves
+	 * stale/torn cache lines behind. This debug command must never touch that
+	 * heap; task stacks are released by the kernel on task delete. */
+	if ((start >= (uint32_t)CONFIG_AP_PSRAM_STACK_HEAP_ADDR) &&
+	    (start <  (uint32_t)(CONFIG_AP_PSRAM_STACK_HEAP_ADDR + CONFIG_AP_PSRAM_STACK_HEAP_SIZE))) {
+		cmd_printf("psram_free: addr(%p) is inside the task-stack heap, rejected.\r\n", pstart);
+		return;
+	}
+#endif
+
 	cmd_printf("psram_free addr(%p).\r\n", pstart);
 	os_free(pstart);
 

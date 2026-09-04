@@ -56,7 +56,11 @@ void bk_cdc_acm_bulkin_callback(void *arg, int nbytes)
 	if (nbytes > 0)
 	{
 		uint8_t *p_buf = bk_usb_cdc_modem_get_rxpuf();
-		bk_cdc_acm_bulkin_data(p_buf, nbytes);
+		if (bk_cdc_acm_bulkin_data(p_buf, nbytes) != BK_OK)
+		{
+			USB_CDC_LOGE("modem rx queue full, hold bulkin\n");
+			return;
+		}
 
 		acm_device->bulkin_urb.transfer_buffer_length = 0;
 	}

@@ -832,7 +832,9 @@ static void h264_encode_main(beken_thread_arg_t data)
 
 				case H264_ENCODE_STOP:
 				{
-					beken_semaphore_t *beken_semaphore = (beken_semaphore_t*)msg.param;
+					/* Redmine #8131: handle passed by value (see h264_encode_task_stop).
+					 * Captured here before the drain loop below overwrites msg. */
+					beken_semaphore_t beken_semaphore = (beken_semaphore_t)msg.param;
 
 					LOGD("%s H264_ENCODE_STOP\n", __func__);
 
@@ -883,7 +885,7 @@ static void h264_encode_main(beken_thread_arg_t data)
 					h264_encode_config->h264_queue = NULL;
 					h264_encode_config->h264_thread = NULL;
 
-					rtos_set_semaphore(beken_semaphore);
+					rtos_set_semaphore(&beken_semaphore);
 				}
 				goto exit;
 
@@ -1089,7 +1091,11 @@ void h264_encode_task_stop(void)
 	}
 
 	msg.event = H264_ENCODE_STOP;
-	msg.param = (uint32_t)&sem;
+	/* Redmine #8131: pass the semaphore HANDLE by value, not &sem (on this
+	 * producer's cacheable PSRAM stack). The stop task may run on the other AP
+	 * core; the handle value travels coherently through non-cacheable queue
+	 * storage and points to a non-cacheable sem object. */
+	msg.param = (uint32_t)sem;
 
 	ret = rtos_push_to_queue(&h264_encode_config->h264_queue, &msg, BEKEN_NO_WAIT);
 

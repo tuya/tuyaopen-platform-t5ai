@@ -18,13 +18,13 @@ from tools.download_toolchain import get_toolchain_package_info
 
 def clean(build_root, toolchain_folder_path, bash_path):
     '''
-    make clean
-    make clean -C ./bk_idk/
+    make distclean
+    make distclean -C ./bk_idk/
     '''
     build_root = build_root.replace("\\", "/")
     toolchain_folder_path = toolchain_folder_path.replace("\\", "/")
     cmd = f"export TUYA_TOOLCHAIN_PATH={toolchain_folder_path}; "
-    cmd += f"cd {build_root}; make clean"
+    cmd += f"cd {build_root}; make distclean"
     if os.path.exists(bash_path):  # only for windows
         cmd = f"{bash_path} -c '{cmd}'"
     do_subprocess(cmd)

@@ -155,6 +155,9 @@
 
 #define BK_LWIP                     1
 
+/* Keep sequential API messages out of caller task stacks. */
+#define LWIP_MPU_COMPATIBLE         1
+
 /*
    ------------------------------------
    ---------- Memory options ----------
@@ -327,6 +330,16 @@ u32_t beken_random(void);
  */
 #define MEMP_NUM_NETCONN	(MAX_SOCKETS_TCP + \
 	MAX_LISTENING_SOCKETS_TCP + MAX_SOCKETS_UDP)
+
+/**
+ * MEMP_NUM_SELECT_CB (Redmine #8131 A): number of concurrent select()/poll()
+ * waiters. The #8131 fix relocates the select control block from the caller's
+ * cacheable PSRAM task stack into the coherent MEMP_SELECT_CB pool, so this now
+ * bounds how many threads may block in select/poll simultaneously. It MUST be
+ * >= the number of threads that can be inside select()/poll() at once, or those
+ * calls fail with ENOMEM/EAGAIN. Sized generously above the socket count.
+ */
+#define MEMP_NUM_SELECT_CB	(MEMP_NUM_NETCONN + 8)
 
 
 

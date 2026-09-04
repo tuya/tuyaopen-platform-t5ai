@@ -49,6 +49,8 @@ xSemaphoreHandle bk_modem_mf_test_sem = NULL;
 extern bk_err_t bk_modem_init(uint8_t comm_proto, uint8_t comm_if);
 #endif /* CONFIG_BK_MODEM */
 
+static TKL_CELLULAR_SLEEP_MODE_E s_cellular_sleep_mode = TKL_CELLULAR_NO_SLEEP;
+
 /**
  * @brief  init create cellular link
  *
@@ -70,6 +72,15 @@ OPERATE_RET tkl_cellular_init(TKL_CELLULAR_BASE_CFG_T *cfg)
     memset(&ctx, 0, sizeof(ctx));
     strncpy(ctx.apn, cfg->apn, TKL_CELLULAR_APN_LEN);
     bk_modem_dec_pdp_ctx_init(ctx.apn);
+
+    /* Must set before bk_modem_init(): dial thread may run LP AT soon after. */
+    if (cfg->sleep_mode > TKL_CELLULAR_HIBERNATE) {
+        s_cellular_sleep_mode = TKL_CELLULAR_NO_SLEEP;
+    } else {
+        s_cellular_sleep_mode = cfg->sleep_mode;
+    }
+    bk_printf("%s: sleep_mode %d\r\n", __func__, s_cellular_sleep_mode);
+
     if (cfg->iface == TUYA_CELLULAR_IF_UART) {
         bk_printf("%s: Start UART Cellular Network\r\n", __func__);
         ret = bk_modem_init(PPP_MODE, UART_IF);
@@ -87,6 +98,20 @@ OPERATE_RET tkl_cellular_init(TKL_CELLULAR_BASE_CFG_T *cfg)
 #else
     return OPRT_NOT_SUPPORTED;
 #endif
+}
+
+/**
+ * @brief Check whether Sleep1 AT (AT+ECPMUCFG=1,2) should be sent
+ * @return 0 for NO_SLEEP/IDLE (skip); non-zero for MODE1/MODE2/HIBERNATE (send)
+ */
+int tkl_cellular_get_sleep_mode(void)
+{
+    if ((s_cellular_sleep_mode == TKL_CELLULAR_MODE1) ||
+        (s_cellular_sleep_mode == TKL_CELLULAR_MODE2) ||
+        (s_cellular_sleep_mode == TKL_CELLULAR_HIBERNATE)) {
+        return 1;
+    }
+    return 0;
 }
 
 /**

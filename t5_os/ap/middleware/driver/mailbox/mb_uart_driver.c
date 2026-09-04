@@ -20,7 +20,7 @@
 #include <driver/mb_chnl_buff.h>
 #include <driver/mb_uart_driver.h>
 
-#if CONFIG_CACHE_ENABLE
+#if CONFIG_DCACHE
 #include "cache.h"
 #endif
 
@@ -209,8 +209,9 @@ static void rx_isr_data_handler(mb_uart_cb_t *chnl_cb, mb_uart_cmd_t * uart_cmd)
 		goto rx_isr_data_xit;
 	}
 
-	#if CONFIG_CACHE_ENABLE
-	flush_dcache(uart_cmd->cmd_buff, uart_cmd->cmd_data_len);
+	/* Redmine #8131: consumer of the peer's buffer - invalidate only. */
+	#if CONFIG_DCACHE
+	invalidate_dcache(uart_cmd->cmd_buff, uart_cmd->cmd_data_len);
 	#endif
 
 	u16    rem_len, cpy_len;

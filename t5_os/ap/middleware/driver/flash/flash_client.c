@@ -27,7 +27,7 @@
 #endif
 // Modified by TUYA End
 
-#if CONFIG_CACHE_ENABLE
+#if (CONFIG_CACHE_ENABLE || CONFIG_DCACHE)
 #include "cache.h"
 #endif
 
@@ -367,8 +367,13 @@ static bk_err_t flash_read_bytes(uint32_t address, uint8_t *user_buf, uint32_t s
 		goto read_exit;
 	}
 
-	#if CONFIG_CACHE_ENABLE
-	flush_dcache(cmd_buff.buff, size);
+	/* Redmine #8131: cmd_buff.buff is a bare pointer to the CP's flash-data
+	 * buffer (received via IPC); the AP is the consumer here. It must invalidate
+	 * (never clean/clean+invalidate) so the CPU re-fetches the CP's fresh bytes -
+	 * a clean would write the AP's stale cached copy back over the CP's data.
+	 * Gate on the real D-cache switch, not the stale CONFIG_CACHE_ENABLE. */
+	#if CONFIG_DCACHE
+	invalidate_dcache(cmd_buff.buff, size);
 	#endif
 	memcpy(user_buf, cmd_buff.buff, size);
 
@@ -488,6 +493,19 @@ static bk_err_t flash_write_bytes(uint32_t address, const uint8_t *user_buf, uin
 	cmd_buff.len  = size;
 	cmd_buff.buff = (u8 *)user_buf;
 	cmd_buff.crc  = calc_crc32(0, user_buf, size);
+
+	/* Redmine #8131: producer side - cmd_buff.buff points at the caller's
+	 * user_buf, which the CP will read (and CRC-check) across cores. If it lives
+	 * on a Cacheable PSRAM stack, write the AP's dirty lines back to physical
+	 * memory first so the CP sees the freshly written bytes. Clean is safe on a
+	 * partially-owned line. Non-cacheable buffers fall outside the range (no-op). */
+	#if CONFIG_DCACHE
+	if (((uint32_t)user_buf >= (uint32_t)CONFIG_AP_PSRAM_STACK_HEAP_ADDR) &&
+	    ((uint32_t)user_buf <  (uint32_t)(CONFIG_AP_PSRAM_STACK_HEAP_ADDR + CONFIG_AP_PSRAM_STACK_HEAP_SIZE)))
+	{
+		flush_dcache((void *)user_buf, size);
+	}
+	#endif
 
 	rtos_lock_mutex(&flash_mutex);
 
@@ -685,7 +703,7 @@ erase_fast_exit:
 #if CONFIG_FLASH_BYPASS_OTP_OPERATION && (CONFIG_CPU_CNT > 1)
 
 #ifndef FLASH_BYPASS_OTP_IPC_RETRY_MAX
-#define FLASH_BYPASS_OTP_IPC_RETRY_MAX 8
+#define FLASH_BYPASS_OTP_IPC_RETRY_MAX 3
 #endif
 
 bk_err_t flash_bypass_otp_operation(flash_bypass_otp_cmd_t cmd, flash_bypass_otp_ctrl_t *param)

@@ -6,7 +6,7 @@
 #include "shell_drv.h"
 #include <driver/mailbox_channel.h>
 
-#if CONFIG_CACHE_ENABLE
+#if CONFIG_DCACHE
 #include "cache.h"
 #endif
 
@@ -72,8 +72,9 @@ static void shell_ipc_rx_isr(shell_ipc_ext_t *ipc_ext, mb_chnl_cmd_t *cmd_buf)
 		{
 			log_cmd_t * log_cmd = (log_cmd_t *)cmd_buf;
 
-#if CONFIG_CACHE_ENABLE
-			flush_dcache((void *)log_cmd->buf, log_cmd->len);
+			/* Redmine #8131: consumer of the peer's buffer - invalidate only. */
+#if CONFIG_DCACHE
+			invalidate_dcache((void *)log_cmd->buf, log_cmd->len);
 #endif
 
 			result = ipc_ext->rx_callback(log_cmd->hdr.cmd, log_cmd, GET_DST_CPU_ID(ipc_ext->chnl_id));
@@ -85,8 +86,9 @@ static void shell_ipc_rx_isr(shell_ipc_ext_t *ipc_ext, mb_chnl_cmd_t *cmd_buf)
 		{
 			log_cmd_t * log_cmd = (log_cmd_t *)cmd_buf;
 
-#if CONFIG_CACHE_ENABLE
-			flush_dcache((void *)log_cmd->buf, log_cmd->len);
+			/* Redmine #8131: consumer of the peer's buffer - invalidate only. */
+#if CONFIG_DCACHE
+			invalidate_dcache((void *)log_cmd->buf, log_cmd->len);
 #endif
 			log_cmd_t    new_log_cmd_buf;
 

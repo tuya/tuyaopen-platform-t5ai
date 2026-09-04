@@ -63,6 +63,8 @@ OPERATE_RET tkl_jpeg_codec_img_info_get(uint8_t *jpeg_buf, uint32_t jpeg_size, T
 * @param[in out] out_frame: image dest
 *
 * @return OPRT_OK on success. Others on error, please refer to tkl_error_code.h
+*
+* @note As out_fmt is JPEG_DEC_OUT_YUV422 and out_width could be multiple of 32, codec will choose hw_dec to convert automatically.
 */
 OPERATE_RET tkl_jpeg_codec_convert(uint8_t *src_buf, uint8_t *dst_buf, TKL_JPEG_CODEC_INFO_T *jpeg_codec_info, JPEG_DEC_OUT_FMT out_fmt);
 

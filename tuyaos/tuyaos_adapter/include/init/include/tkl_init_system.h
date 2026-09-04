@@ -38,17 +38,18 @@ extern "C" {
 
 typedef struct {
     //! system (cpu)
-    void              (*reset)                    (void);
-    int32_t               (*get_free_heap_size)       (void);
+    void                (*reset)                    (void);
+    int32_t             (*get_free_heap_size)       (void);
     SYS_TICK_T          (*get_tick_count)           (void);
     SYS_TIME_T          (*get_millisecond)          (void);
-    int32_t               (*get_random)               (uint32_t range);
-    TUYA_RESET_REASON_E (*get_reset_reason)        (char** describe);
+    int32_t             (*get_random)               (uint32_t range);
+    TUYA_RESET_REASON_E (*get_reset_reason)         (char** describe);
     void                (*sleep)                    (const uint32_t num_ms);
     OPERATE_RET         (*cpu_sleep_mode_set)       (BOOL_T enable, TUYA_CPU_SLEEP_MODE_E mode);
+	OPERATE_RET         (*cpu_sleep_time_set)       (const uint32_t num_ms);
     OPERATE_RET         (*get_cpu_info)             (TUYA_CPU_INFO_T **cpu_ary, int32_t *cpu_cnt);
     //! output     
-    void              (*log_output)               (const char *log, ...);
+    void                (*log_output)               (const char *log, ...);
     OPERATE_RET         (*log_close)                (void);
     OPERATE_RET         (*log_open)                 (void);
     //! ota
@@ -66,7 +67,7 @@ typedef struct {
     void              (*psram_free)               (void* ptr);
     void*             (*psram_calloc)             (size_t nitems, size_t size);
     void*             (*psram_realloc)            (void* ptr, size_t size);
-    int32_t               (*psarm_get_free_heap_size) (void);
+    int32_t           (*psarm_get_free_heap_size) (void);
 #endif
 
     //! thread
@@ -82,7 +83,7 @@ typedef struct {
     OPERATE_RET         (*thread_get_id)            (TKL_THREAD_HANDLE* thread);
     OPERATE_RET         (*thread_is_self)           (TKL_THREAD_HANDLE thread, BOOL_T* is_self);
     OPERATE_RET         (*thread_diagnose)          (TKL_THREAD_HANDLE thread);
-    int32_t               (*getheapsize)              (void);
+    int32_t             (*getheapsize)              (void);
     //! mutex
     OPERATE_RET         (*mutex_init)               (TKL_MUTEX_HANDLE *handle);
     OPERATE_RET         (*mutex_lock)               (const TKL_MUTEX_HANDLE handle);
@@ -97,9 +98,10 @@ typedef struct {
     OPERATE_RET         (*sem_wait_timeout)         (const TKL_SEM_HANDLE handle, const uint32_t timeout);
     //! queue
     OPERATE_RET         (*queue_init)               (TKL_QUEUE_HANDLE *queue, const int32_t msgsize, const int32_t msgcount);
-    void              (*queue_free)               (const TKL_QUEUE_HANDLE queue);
+    void                (*queue_free)               (const TKL_QUEUE_HANDLE queue);
     OPERATE_RET         (*queue_post)               (const TKL_QUEUE_HANDLE queue, void *data, const uint32_t timeout);
     OPERATE_RET         (*queue_fetch)              (const TKL_QUEUE_HANDLE queue, void *msg, const uint32_t timeout);
+    OPERATE_RET         (*get_hw_unique_id)         (uint8_t *id, uint8_t *len);
 } TKL_OS_T;
 
 extern const TKL_OS_T TKL_OS;

@@ -202,7 +202,7 @@ OPERATE_RET tkl_vi_uninit(TKL_VI_CAMERA_TYPE_E device_type)
     OPERATE_RET ret;
     // TKL_DISP_BLEND_INFO_S cfg;
     camera_handle_t handle = NULL;
-    cfg.type = TKL_DISP_BLEND_ALL;
+    // cfg.type = TKL_DISP_BLEND_ALL;
     // tkl_disp_cancel_blend_info(NULL, &cfg);
 
     camera_type_t type;

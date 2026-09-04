@@ -153,7 +153,7 @@ typedef enum {
 typedef enum {
     WFI_BEACON_CMD,
     WFI_GET_LAST_DISCONN_REASON,                     ///< Get WiFi last disconnect reason
-    WFI_AP_GET_STALIST_CMD,                          ///< Get Sta List Cmd 
+    WFI_AP_GET_STALIST_CMD,                          ///< Get Sta List Cmd
     WFI_CONNECT_CMD,
 } WF_IOCTL_CMD_E;
 
@@ -238,6 +238,21 @@ OPERATE_RET tkl_wifi_init(WIFI_EVENT_CB cb);
  * @note if ssid == NULL means scan all ap, otherwise means scan the specific ssid
  */
 OPERATE_RET tkl_wifi_scan_ap(const int8_t *ssid, AP_IF_S **ap_ary, uint32_t *num);
+
+/**
+ * @brief Scan current environment and obtain the ap infos in specified channel
+ *
+ * @param[in]       ssid        the specific ssid, null means scan all ap
+ * @param[in]       channel     the specified channel, 0 means scan all channel
+ * @param[out]      ap_ary      current ap info array, adapter allocates, caller frees via tkl_wifi_release_ap
+ * @param[out]      num         the num of ar_ary
+ *
+ * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
+ *
+ * @note if ssid == NULL means scan all ap, otherwise means scan the specific ssid
+ * @note if channel == 0 means scan all channel, otherwise means scan the specified channel
+ */
+OPERATE_RET tkl_wifi_scan_ap_channel(const int8_t *ssid, const uint8_t channel, AP_IF_S **ap_ary, uint32_t *num);
 
 /**
  * @brief release the memory malloced in <tkl_wifi_ap_scan>

@@ -520,6 +520,17 @@ void* tkl_net_get_netif_by_index(const TUYA_NETIF_TYPE_E net_if_idx);
 */
 OPERATE_RET tkl_net_check_system_ipv4_ipv6(BOOL_T *has_ipv4, BOOL_T *has_ipv6);
 
+/**
+* @brief Set the default route by IP address
+*
+* @param[in] addr: IP address to set
+*
+* @note This API is used to set the default route by IP address.
+*
+* @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
+*/
+OPERATE_RET tkl_net_set_default_netif_by_ip(const TUYA_IP_ADDR_T addr);
+
 #ifdef __cplusplus
 }
 #endif

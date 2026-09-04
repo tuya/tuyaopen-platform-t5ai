@@ -9,6 +9,7 @@
  */
 
 #include "sdkconfig.h"
+#include <string.h>
 #include "tuya_cloud_types.h"
 #include "tkl_thread.h"
 #include "FreeRTOS.h"
@@ -45,6 +46,7 @@ OPERATE_RET tkl_thread_create(TKL_THREAD_HANDLE* thread,
     BaseType_t ret = 0;
 #if (CONFIG_FREERTOS_SMP)
     // ret = xTaskCreatePinnedToCore(func, name, stack_size / sizeof(portSTACK_TYPE), (void *const)arg, priority, (TaskHandle_t * const )thread, tskNO_AFFINITY);
+    // 线程创建走PSRAM, SRAM不够
     ret = xTaskCreateInPsram(func, name, stack_size / sizeof(portSTACK_TYPE), (void *const)arg, priority, (TaskHandle_t * const )thread, tskNO_AFFINITY);
 #else
     ret = xTaskCreate(func, name, stack_size / sizeof(portSTACK_TYPE), (void *const)arg, priority, (TaskHandle_t * const )thread);
@@ -198,8 +200,6 @@ OPERATE_RET tkl_thread_diagnose(TKL_THREAD_HANDLE thread)
     return OPRT_OK;
 }
 
-#if defined(ENABLE_EXT_RAM) && (ENABLE_EXT_RAM==1)
-#if  (CONFIG_CPU_INDEX != 0)
 /**
 * @brief Create thread in PSRAM
 *
@@ -221,25 +221,22 @@ OPERATE_RET tkl_thread_create_in_psram(TKL_THREAD_HANDLE* thread,
                            THREAD_FUNC_T func,
                            void* const arg)
 {
+#if defined(ENABLE_EXT_RAM) && (ENABLE_EXT_RAM==1) && defined(CONFIG_SOC_SMP) && (CONFIG_SOC_SMP==1)
     if (!thread) {
         return OPRT_INVALID_PARM;
     }
 
-#if (CONFIG_FREERTOS_SMP == 1)
     BaseType_t ret = 0;
-    // TODO Create thread in psram
+    // Create thread in psram
     ret = xTaskCreateInPsram(func, name, stack_size / sizeof(portSTACK_TYPE), (void *const)arg, priority, (TaskHandle_t * const )thread, tskNO_AFFINITY);
     if (ret != pdPASS) {
         return OPRT_OS_ADAPTER_THRD_CREAT_FAILED;
     }
-#else
-    #error tkl_thread_create_in_psram 111111111111111111111111111
-    return OPRT_NOT_SUPPORTED;
-#endif // CONFIG_FREERTOS_SMP
 
     return OPRT_OK;
-}
-#endif  // CONFIG_CPU_INDEX != 0
-
+#else
+    return OPRT_NOT_SUPPORTED;
 #endif // defined(ENABLE_EXT_RAM) && (ENABLE_EXT_RAM==1)
+}
+
 

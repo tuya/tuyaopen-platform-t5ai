@@ -19,8 +19,63 @@
 #include <driver/mailbox_channel.h>
 #include <driver/mb_ipc.h>
 
-#if CONFIG_CACHE_ENABLE
+#if CONFIG_DCACHE
 #include "cache.h"
+#define MB_IPC_DCACHE_LINE_SIZE 32U
+
+static int mb_ipc_is_cacheable_psram_address(const void *buffer)
+{
+	uint32_t start = (uint32_t)buffer;
+	uint32_t heap_start = (uint32_t)CONFIG_AP_PSRAM_STACK_HEAP_ADDR;
+	uint32_t heap_end = heap_start + (uint32_t)CONFIG_AP_PSRAM_STACK_HEAP_SIZE;
+
+	return (buffer != NULL) &&
+	       (start >= heap_start) &&
+	       (start < heap_end);
+}
+
+static int mb_ipc_cacheable_buffer_is_valid(const void *buffer, u32 length)
+{
+	uint32_t start = (uint32_t)buffer;
+	uint32_t end = start + length;
+	uint32_t heap_start = (uint32_t)CONFIG_AP_PSRAM_STACK_HEAP_ADDR;
+	uint32_t heap_end = heap_start + (uint32_t)CONFIG_AP_PSRAM_STACK_HEAP_SIZE;
+	uint32_t aligned_start = start & ~(MB_IPC_DCACHE_LINE_SIZE - 1U);
+	uint32_t aligned_end = (end + MB_IPC_DCACHE_LINE_SIZE - 1U) &
+	                       ~(MB_IPC_DCACHE_LINE_SIZE - 1U);
+
+	/* Stack locals live in cacheable PSRAM but are not 32-byte aligned.
+	 * Require the caller buffer and its covering cache lines to stay in
+	 * the stack heap so line-based maintenance is safe. */
+	return (length != 0U) &&
+	       (end >= start) &&
+	       (start >= heap_start) &&
+	       (end <= heap_end) &&
+	       (aligned_start >= heap_start) &&
+	       (aligned_end <= heap_end);
+}
+
+static void mb_ipc_flush_dcache(const void *buffer, u32 length)
+{
+	uint32_t start = (uint32_t)buffer;
+	uint32_t end = start + length;
+	uint32_t aligned_start = start & ~(MB_IPC_DCACHE_LINE_SIZE - 1U);
+	uint32_t aligned_end = (end + MB_IPC_DCACHE_LINE_SIZE - 1U) &
+	                       ~(MB_IPC_DCACHE_LINE_SIZE - 1U);
+
+	flush_dcache((void *)aligned_start, (long)(aligned_end - aligned_start));
+}
+
+static void mb_ipc_invalidate_dcache(const void *buffer, u32 length)
+{
+	uint32_t start = (uint32_t)buffer;
+	uint32_t end = start + length;
+	uint32_t aligned_start = start & ~(MB_IPC_DCACHE_LINE_SIZE - 1U);
+	uint32_t aligned_end = (end + MB_IPC_DCACHE_LINE_SIZE - 1U) &
+	                       ~(MB_IPC_DCACHE_LINE_SIZE - 1U);
+
+	invalidate_dcache((void *)aligned_start, (long)(aligned_end - aligned_start));
+}
 #endif
 
 #define MOD_TAG		"IPC"
@@ -1689,6 +1744,16 @@ int mb_ipc_send_async(u32 handle, u8 user_cmd, u8 * data_buff, u32 data_len)
 	ipc_socket->tx_cmd.cmd_data_buff = data_buff;
 	ipc_socket->tx_cmd.cmd_data_crc8 = cal_crc8_0x31(data_buff, data_len);
 
+	#if CONFIG_DCACHE
+	if(mb_ipc_is_cacheable_psram_address(data_buff))
+	{
+		if(!mb_ipc_cacheable_buffer_is_valid(data_buff, data_len))
+			return -MB_IPC_INVALID_PARAM;
+
+		mb_ipc_flush_dcache(data_buff, data_len);
+	}
+	#endif
+
 	int route_status = ipc_socket_tx_cmd(ipc_socket, &ipc_socket->tx_cmd, 0);
 	
 	if(route_status != IPC_ROUTE_STATUS_OK)
@@ -1732,6 +1797,16 @@ int mb_ipc_send(u32 handle, u8 user_cmd, u8 * data_buff, u32 data_len, u32 time_
 	ipc_socket->tx_cmd.cmd_data_len  = data_len;
 	ipc_socket->tx_cmd.cmd_data_buff = data_buff;
 	ipc_socket->tx_cmd.cmd_data_crc8 = cal_crc8_0x31(data_buff, data_len);
+
+	#if CONFIG_DCACHE
+	if(mb_ipc_is_cacheable_psram_address(data_buff))
+	{
+		if(!mb_ipc_cacheable_buffer_is_valid(data_buff, data_len))
+			return -MB_IPC_INVALID_PARAM;
+
+		mb_ipc_flush_dcache(data_buff, data_len);
+	}
+	#endif
 
 	u32   retry = 0;
 	int   ret_val = 0;
@@ -1874,12 +1949,6 @@ int mb_ipc_get_recv_event(u32 handle, u32 * event_flag)
 	return 0;
 }
 
-#if CONFIG_CACHE_ENABLE
-#ifndef CONFIG_DCACHE_SIZE
-#define CONFIG_DCACHE_SIZE      0x8000   /* DCACHE SIZE 32KB. */
-#endif
-#endif
-
 int mb_ipc_recv_async(u32 handle, u8 * user_cmd, u8 * data_buff, u32 buff_len)
 {
 	mb_ipc_socket_t * ipc_socket = get_socket_from_handle(handle);
@@ -1939,11 +2008,16 @@ int mb_ipc_recv_async(u32 handle, u8 * user_cmd, u8 * data_buff, u32 buff_len)
 		u8  * src_buf = (u8 *)(ipc_socket->rx_cmd.cmd_data_buff) + ipc_socket->rx_read_offset;
 		u32   read_len = MIN((ipc_socket->rx_cmd.cmd_data_len - ipc_socket->rx_read_offset), buff_len);
 
-		#if CONFIG_CACHE_ENABLE
-		if(ipc_socket->rx_cmd.cmd_data_len >= (CONFIG_DCACHE_SIZE / 2))
-			flush_all_dcache();
-		else
-			flush_dcache(ipc_socket->rx_cmd.cmd_data_buff, ipc_socket->rx_cmd.cmd_data_len);
+		#if CONFIG_DCACHE
+		if(mb_ipc_is_cacheable_psram_address(ipc_socket->rx_cmd.cmd_data_buff))
+		{
+			if(!mb_ipc_cacheable_buffer_is_valid(ipc_socket->rx_cmd.cmd_data_buff,
+			                                     ipc_socket->rx_cmd.cmd_data_len))
+				return -MB_IPC_INVALID_PARAM;
+
+			mb_ipc_invalidate_dcache(ipc_socket->rx_cmd.cmd_data_buff,
+			                         ipc_socket->rx_cmd.cmd_data_len);
+		}
 		#endif
 
 		memcpy(data_buff, src_buf, read_len);

@@ -19,8 +19,36 @@
 
 #include <driver/pwr_clk.h>
 
-#if (CONFIG_CACHE_ENABLE)
+#if (CONFIG_CACHE_ENABLE || CONFIG_DCACHE)
 #include "cache.h"
+#endif
+
+/* Redmine #8131 (item 3): the earlier attempt here did directed cache-line
+ * clean/invalidate on the caller's 'struct ipc_msg_s' when it lived on a
+ * Cacheable PSRAM task stack. That was unsafe (whole-line invalidate can drop
+ * neighbouring live stack data) and did not even cover the real Tuya sync path,
+ * which reaches bk_ipc_send() via tkl_ipc_send_no_sync() with flags=0 (async
+ * transport). The coherency for ipc_msg_s is now handled by a non-cacheable
+ * heap bounce inside tuya_ipc_send_sync() (tuya_tkl_ipc.c), so no cache
+ * maintenance is required in this transport layer. */
+
+#if (CONFIG_PSRAM_AS_SYS_MEMORY && CONFIG_FREERTOS_SMP && CONFIG_DCACHE)
+/* Redmine #8131: does 'p' point into the Cacheable PSRAM task-stack heap? Such a
+ * buffer is seen by the AP and CP through non-coherent private D-caches, so a
+ * cross-core IPC that shares the bare pointer would read stale data. Only the
+ * task-stack heap is cacheable; SRAM and the general PSRAM heap are already
+ * non-cacheable (coherent) and need no bounce. */
+static inline int bk_ipc_data_in_cacheable_stack(const void *p)
+{
+#ifdef CONFIG_AP_PSRAM_STACK_HEAP_ADDR
+	uint32_t a = (uint32_t)p;
+	return (a >= (uint32_t)CONFIG_AP_PSRAM_STACK_HEAP_ADDR) &&
+	       (a <  (uint32_t)(CONFIG_AP_PSRAM_STACK_HEAP_ADDR + CONFIG_AP_PSRAM_STACK_HEAP_SIZE));
+#else
+	(void)p;
+	return 0;
+#endif
+}
 #endif
 
 BK_SECTION_DEF(ipc_chan_reg, bk_ipc_chan_cfg_t);
@@ -449,6 +477,10 @@ int bk_ipc_send(bk_ipc_t *ipc, void *data, uint32_t size, uint32_t flags, uint32
     bk_ipc_data_t *ipc_data;
     bk_ipc_handle_t *bk_ipc_handle = (bk_ipc_handle_t *)(*ipc);
     bk_ipc_info_t *ipc_info = bk_ipc_handle->ipc;
+    void *xfer = data;
+#if (CONFIG_PSRAM_AS_SYS_MEMORY && CONFIG_FREERTOS_SMP && CONFIG_DCACHE)
+    void *bounce = NULL;
+#endif
 
     LOGV("%s %d ++\n", __func__, __LINE__);
 
@@ -468,11 +500,42 @@ int bk_ipc_send(bk_ipc_t *ipc, void *data, uint32_t size, uint32_t flags, uint32
 
     os_memset(ipc_data, 0, sizeof(bk_ipc_data_t));
 
-    ipc_data->data = data;
+#if (CONFIG_PSRAM_AS_SYS_MEMORY && CONFIG_FREERTOS_SMP && CONFIG_DCACHE)
+    /* Redmine #8131: the transport shares the caller's 'data' pointer with the CP
+     * (bare physical address). When the caller passes a buffer on its Cacheable
+     * PSRAM task stack, the CP reads a stale copy and, for a SYNC exchange where
+     * the CP writes the response in place, the caller reads a stale response.
+     * For the SYNC branch the caller blocks for the whole exchange, so it is safe
+     * to bounce through a non-cacheable (coherent) heap buffer and copy the
+     * response back afterwards. The earlier directed cache-line maintenance was
+     * removed because a whole-line invalidate could drop neighbouring live stack
+     * data; a copy bounce has no such hazard. */
+    if ((flags & MIPC_CHAN_SEND_FLAG_SYNC) && (data != NULL) && (size != 0) &&
+        bk_ipc_data_in_cacheable_stack(data))
+    {
+        bounce = os_malloc(size);
+        if (bounce != NULL)
+        {
+            os_memcpy(bounce, data, size);
+            xfer = bounce;
+        }
+        else
+        {
+            /* Redmine #8131: a Cacheable PSRAM stack buffer MUST NOT be shared with
+             * the CP without the coherent bounce. Degrading to the raw stack pointer
+             * would resurface the stale-request/stale-response coherency failure this
+             * bounce exists to prevent, so fail the call instead. */
+            LOGE("%s bounce malloc(%u) failed, aborting sync send\n", __func__, size);
+            ret = BK_ERR_NO_MEM;
+            goto out;
+        }
+    }
+#endif
+
+    ipc_data->data = xfer;
     ipc_data->size = size;
     ipc_data->handle = bk_ipc_handle;
     ipc_data->flags = flags;
-
 
     if (flags & MIPC_CHAN_SEND_FLAG_SYNC)
     {
@@ -485,6 +548,15 @@ int bk_ipc_send(bk_ipc_t *ipc, void *data, uint32_t size, uint32_t flags, uint32
             LOGE("%s ipc send sync failed 0x%x\n", __func__, ret);
             goto out;
         }
+
+#if (CONFIG_PSRAM_AS_SYS_MEMORY && CONFIG_FREERTOS_SMP && CONFIG_DCACHE)
+        /* Copy the CP's in-place response from the coherent bounce back to the
+         * caller's buffer before returning. */
+        if (bounce != NULL)
+        {
+            os_memcpy(data, bounce, size);
+        }
+#endif
     }
     else
     {
@@ -498,6 +570,14 @@ int bk_ipc_send(bk_ipc_t *ipc, void *data, uint32_t size, uint32_t flags, uint32
     }
 
 out:
+
+#if (CONFIG_PSRAM_AS_SYS_MEMORY && CONFIG_FREERTOS_SMP && CONFIG_DCACHE)
+    if (bounce != NULL)
+    {
+        os_free(bounce);
+        bounce = NULL;
+    }
+#endif
 
     if ((flags & MIPC_CHAN_SEND_FLAG_SYNC) && (ipc_data != NULL))
     {
@@ -591,8 +671,17 @@ static void bk_ipc_mailbox_rx_isr(void *param, mb_chnl_cmd_t *cmd_buf)
     ipc_header_t header;
     bk_ipc_info_t *ipc_info = (bk_ipc_info_t *)param;
 
-#if (CONFIG_CACHE_ENABLE)
-    flush_all_dcache();
+    /* Redmine #8131: this RX ISR consumes the peer's payload. A whole-cache
+     * flush_all_dcache() here was both wrong scope (unbounded ISR latency) and
+     * wrong direction (clean could evict this core's live data over the peer's).
+     * The bk_ipc_data_t header itself lives in non-cacheable heap, so only the
+     * referenced payload needs a targeted invalidate before the peer's bytes are
+     * read. Gate on the real D-cache switch, not the stale CONFIG_CACHE_ENABLE. */
+#if (CONFIG_PSRAM_AS_SYS_MEMORY && CONFIG_FREERTOS_SMP && CONFIG_DCACHE)
+    if ((data != NULL) && (data->data != NULL) && (data->size != 0))
+    {
+        invalidate_dcache(data->data, data->size);
+    }
 #endif
 
     LOGV("%s %d\n", __func__, __LINE__);

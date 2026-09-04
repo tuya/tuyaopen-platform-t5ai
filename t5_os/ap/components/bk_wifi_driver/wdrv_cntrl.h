@@ -64,6 +64,37 @@ typedef struct _wdrv_cmd_cfm
     beken_semaphore_t sema;
 }wdrv_cmd_cfm;
 
+/* Redmine #8131 (B) - coherent sync-cmd confirm descriptor.
+ *
+ * Root cause: the original confirm object (wdrv_cmd_cfm) and its result buffer
+ * are caller stack locals. Under AP SMP with cacheable PSRAM task stacks, the
+ * wdrv RX task publishes the confirm (list node / sema handle / result) on one
+ * core while the blocked caller reads it on another core. The two cores have
+ * private, non-coherent L1 D-caches, so the caller can pop a stale sema handle
+ * or stale result -> torn read / crash (seen during Wi-Fi provisioning, where
+ * many sync cmds are issued).
+ *
+ * Fix: keep the shared confirm state OUT of the caller's cacheable stack. This
+ * descriptor lives in a small static pool in the SAME plain-.bss coherency
+ * domain as wdrv_host_env.cfm_pending_list (already traversed cross-core today,
+ * so provably coherent), and the result is staged here so the producer copies
+ * it back to the caller buffer on its own core (a same-core, coherent copy).
+ * 'list' MUST stay first so a co_list node pointer casts straight to this type. */
+#define WDRV_CFM_DESC_NUM       6
+#define WDRV_CFM_STAGING_SIZE   32
+
+typedef struct _wdrv_cfm_desc
+{
+    struct co_list_hdr list;
+    uint16_t cfm_id;
+    uint16_t cfm_sn;
+    uint16_t cfm_len;
+    uint8_t  in_use;
+    uint8_t  has_buf;
+    beken_semaphore_t sema;
+    uint8_t  staging[WDRV_CFM_STAGING_SIZE];
+}wdrv_cfm_desc_t;
+
 /*CMD header from AP to CP */
 typedef struct _wdrv_cmd_hdr
 {

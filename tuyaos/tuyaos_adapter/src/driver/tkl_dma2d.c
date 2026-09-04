@@ -135,9 +135,8 @@ static OPERATE_RET __dma2d_cfg_init(TKL_DMA2D_FRAME_INFO_T *in_frame, TKL_DMA2D_
 
     if (in_frame->width_cp == 0 || in_frame->height_cp == 0)
     {
-        dma2d_cfg->dma2d_width = in_frame->width;
-        dma2d_cfg->dma2d_height = in_frame->height;
-        goto out;
+        in_frame->width_cp = in_frame->width;
+        in_frame->height_cp = in_frame->height;
     }
 
     uint16_t dst_frame_xpos_eof = dma2d_cfg->dst_frame_xpos + in_frame->width_cp;

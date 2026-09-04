@@ -100,9 +100,6 @@ enum {
     TKL_IPC_TYPE_SYS_REBOOT,
     TKL_IPC_TYPE_SYS_CPU_INFO,
     TKL_IPC_TYPE_SYS_CPU_INFO_RSP,
-
-    // otp/efuse cmd
-    TKL_IPC_TYPE_SYS_OTP_REG_GET,
 };
 
 enum {

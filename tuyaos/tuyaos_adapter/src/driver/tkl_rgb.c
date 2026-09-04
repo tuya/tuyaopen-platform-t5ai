@@ -258,6 +258,8 @@ OPERATE_RET tkl_rgb_pixel_mode_set(TUYA_DISPLAY_PIXEL_FMT_E mode)
     pixel_format_t bk_mode = 0;
     if(mode == TUYA_PIXEL_FMT_RGB565)
         bk_mode = PIXEL_FMT_RGB565;
+    else if(mode == TUYA_PIXEL_FMT_RGB565_LE)
+        bk_mode = PIXEL_FMT_RGB565_LE;
     else if(mode == TUYA_PIXEL_FMT_RGB666)
         bk_mode = PIXEL_FMT_RGB666;
     else if(mode == TUYA_PIXEL_FMT_RGB888)

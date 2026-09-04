@@ -4,6 +4,9 @@
 #include "tkl_semaphore.h"
 #include "tkl_queue.h"
 #include "tkl_thread.h"
+#include "tkl_system.h"
+#include "FreeRTOS.h"
+#include "task.h"
 #include <driver/int.h>
 #include <os/os.h>
 #include <os/mem.h>
@@ -27,6 +30,7 @@
 #define DVP_H264_SEI_SIZE       (96)
 #define DVP_DMA_CACHE           (1024 * 10)
 #define DVP_MSG_QUE_SIZE        (10)
+#define DVP_TASK_EXIT_POST_RETRY (5)
 
 typedef enum
 {
@@ -93,7 +97,7 @@ typedef struct
 
 DVP_MODULE_MANAGE_T g_dvp_module_manage =
 {
-    .encoder_manage = 
+    .encoder_manage =
     {
         .in_channel = DMA_ID_MAX,
         .out_channel = DMA_ID_MAX,
@@ -131,6 +135,8 @@ DVP_MODULE_MANAGE_T g_dvp_module_manage =
     .task_close_sem = NULL,
     .output_enable = false,
 };
+
+static OPERATE_RET __tkl_dvp_deinit(DVP_MODULE_MANAGE_T *dvp_mgmt, uint8_t skip_hw);
 
 static OPERATE_RET __ty_output_mode_to_bk_work_mode(TUYA_CAMERA_OUTPUT_MODE output_mode, yuv_mode_t *bk_work_mode)
 {
@@ -1112,8 +1118,8 @@ static void __dvp_frame_task(void *args)
 	if (dvp_mgmt->task_close_sem)
 		tkl_semaphore_post(dvp_mgmt->task_close_sem);
 
-	tkl_thread_release(dvp_mgmt->dvp_frame_task);
-	dvp_mgmt->dvp_frame_task = NULL;
+	/* 统一由 deinit 侧 tkl_thread_release；此处挂起，避免自删与外部删双删 */
+	vTaskSuspend(NULL);
 }
 
 static void __dvp_isr_register(DVP_MODULE_MANAGE_T *dvp_mgmt)
@@ -1180,13 +1186,16 @@ static OPERATE_RET __tkl_dvp_init(DVP_MODULE_MANAGE_T *dvp_mgmt)
         }
     }
 
-    ret = tkl_thread_create(&(dvp_mgmt->dvp_frame_task), "dvp_frame", 16384, 4, __dvp_frame_task, (void *)dvp_mgmt);
+    ret = tkl_thread_create_in_psram(&(dvp_mgmt->dvp_frame_task), "dvp_frame", 16384, 4, __dvp_frame_task, (void *)dvp_mgmt);
     if (ret)
+    {
+        dvp_mgmt->dvp_frame_task = NULL;
         return OPRT_NOT_SUPPORTED;
+    }
 
     ret = __dvp_hardware_init(dvp_mgmt);
     if (ret)
-        return OPRT_NOT_SUPPORTED;
+        goto failed;
 
     __dvp_isr_register(dvp_mgmt);
 
@@ -1208,6 +1217,12 @@ static OPERATE_RET __tkl_dvp_init(DVP_MODULE_MANAGE_T *dvp_mgmt)
         bk_h264_encode_enable();
 
     return OPRT_OK;
+
+failed:
+    __tkl_dvp_deinit(dvp_mgmt, true);
+    dvp_mgmt->output_enable = true;
+    dvp_mgmt->error_flag = false;
+    return OPRT_NOT_SUPPORTED;
 }
 
 OPERATE_RET tkl_dvp_init(TUYA_DVP_CFG_T *dvp_cfg)
@@ -1221,21 +1236,86 @@ OPERATE_RET tkl_dvp_init(TUYA_DVP_CFG_T *dvp_cfg)
 
     g_dvp_module_manage.drv_stat = DVP_DRV_TURNING_ON;
     ret = __tkl_dvp_init(&g_dvp_module_manage);
-    g_dvp_module_manage.drv_stat = DVP_DRV_TURN_ON;
+    /* 失败必须 TURN_OFF，否则上层仍会走 tkl_dvp_deinit（Not wait vsync / 再拆一次） */
+    g_dvp_module_manage.drv_stat = (ret == OPRT_OK) ? DVP_DRV_TURN_ON : DVP_DRV_TURN_OFF;
 
     return ret;
 }
 
-OPERATE_RET __tkl_dvp_deinit(DVP_MODULE_MANAGE_T *dvp_mgmt)
+static void __dvp_frame_task_release(DVP_MODULE_MANAGE_T *dvp_mgmt)
+{
+    if (dvp_mgmt->dvp_frame_task == NULL)
+        return;
+
+    TKL_THREAD_HANDLE frame_task = dvp_mgmt->dvp_frame_task;
+    uint8_t exit_ready = false;
+    uint8_t retry = 0;
+
+    tkl_semaphore_create_init(&dvp_mgmt->task_close_sem, 0, 1);
+    if (dvp_mgmt->msg_queue)
+    {
+        TKL_DVP_MSG_T msg = {DVP_TASK_EXIT, NULL};
+        for (retry = 0; retry < DVP_TASK_EXIT_POST_RETRY; retry++)
+        {
+            if (tkl_queue_post(dvp_mgmt->msg_queue, &msg, 0) == OPRT_OK)
+            {
+                exit_ready = true;
+                break;
+            }
+            bk_printf("[%s] post EXIT fail, retry %d/%d\r\n",
+                      __func__, retry + 1, DVP_TASK_EXIT_POST_RETRY);
+            tkl_system_sleep(1);
+        }
+    }
+    else
+    {
+        bk_printf("[%s] msg_queue NULL, force delete\r\n", __func__);
+    }
+
+    if (exit_ready && dvp_mgmt->task_close_sem)
+    {
+        if (tkl_semaphore_wait(dvp_mgmt->task_close_sem, 500))
+        {
+            bk_printf("[%s] wait EXIT timeout, force delete\r\n", __func__);
+        }
+    }
+    else if (!exit_ready)
+    {
+        bk_printf("[%s] EXIT not posted, force delete\r\n", __func__);
+    }
+
+    tkl_system_sleep(2);
+
+    tkl_thread_release(frame_task);
+    dvp_mgmt->dvp_frame_task = NULL;
+
+    if (dvp_mgmt->task_close_sem)
+    {
+        tkl_semaphore_release(dvp_mgmt->task_close_sem);
+        dvp_mgmt->task_close_sem = NULL;
+    }
+
+    if (dvp_mgmt->msg_queue)
+    {
+        tkl_queue_free(dvp_mgmt->msg_queue);
+        dvp_mgmt->msg_queue = NULL;
+    }
+}
+
+static OPERATE_RET __tkl_dvp_deinit(DVP_MODULE_MANAGE_T *dvp_mgmt, uint8_t skip_hw)
 {
 	// SMP版本gpio功能都在usr_gpio_cfg配好
 	// bk_video_gpio_deinit(DVP_GPIO_ALL);
 
-    // step 1: deinit hardware
-	bk_yuv_buf_deinit();
-	bk_h264_encode_disable();
-	bk_h264_deinit();
-	bk_jpeg_enc_deinit();
+    // step 1: deinit hardware (unconditional, same as first version;
+    if (!skip_hw)
+    {
+        bk_yuv_buf_deinit();
+        bk_h264_encode_disable();
+        bk_h264_deinit();
+        bk_jpeg_enc_deinit();
+    }
+
     if (dvp_mgmt->bk_clk)
     {
         bk_video_dvp_mclk_disable();
@@ -1260,28 +1340,17 @@ OPERATE_RET __tkl_dvp_deinit(DVP_MODULE_MANAGE_T *dvp_mgmt)
         coder_manage->out_channel = DMA_ID_MAX;
     }
 
-    if (dvp_mgmt->is_mix_mode)
+    if (dvp_mgmt->is_mix_mode && coder_manage->in_channel < DMA_ID_MAX)
     {
         bk_dma_stop(coder_manage->in_channel);
         bk_dma_deinit(coder_manage->in_channel);
         bk_dma_free(DMA_DEV_DTCM, coder_manage->in_channel);
-
-        dvp_mgmt->is_mix_mode = false;
+        coder_manage->in_channel = DMA_ID_MAX;
     }
+    dvp_mgmt->is_mix_mode = false;
 
     // step3: exit dvp_frame thread
-    if (dvp_mgmt->dvp_frame_task)
-    {
-        tkl_semaphore_create_init(&dvp_mgmt->task_close_sem, 0, 1);
-        TKL_DVP_MSG_T msg = {DVP_TASK_EXIT, NULL};
-        tkl_queue_post(dvp_mgmt->msg_queue, &msg, 0);
-        if (dvp_mgmt->task_close_sem)
-        {
-            tkl_semaphore_wait(dvp_mgmt->task_close_sem, 500);
-            tkl_semaphore_release(dvp_mgmt->task_close_sem);
-            dvp_mgmt->task_close_sem = NULL;
-        }
-    }
+    __dvp_frame_task_release(dvp_mgmt);
 
     dvp_mgmt->output_enable = false;
 
@@ -1323,12 +1392,13 @@ OPERATE_RET tkl_dvp_deinit()
     {
         if (tkl_semaphore_wait(g_dvp_module_manage.drv_close_sem, 500))
             bk_printf("[%s] Not wait yuv vsync negedge!\r\n", __func__);
+        tkl_system_sleep(2);
         tkl_semaphore_release(g_dvp_module_manage.drv_close_sem);
         g_dvp_module_manage.drv_close_sem = NULL;
     }
 
 deinit_hardware:
-    ret = __tkl_dvp_deinit(&g_dvp_module_manage);
+    ret = __tkl_dvp_deinit(&g_dvp_module_manage, false);
     g_dvp_module_manage.drv_stat = DVP_DRV_TURN_OFF;
     g_dvp_module_manage.output_enable = true;
     g_dvp_module_manage.error_flag = false;

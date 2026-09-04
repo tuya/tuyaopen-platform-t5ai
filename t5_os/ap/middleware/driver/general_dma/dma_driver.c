@@ -279,6 +279,8 @@ dma_id_t bk_dma_alloc(u16 user_id)
 
     dma_exit_critical(int_mask);
 
+    bk_printf("---- trace %s %d, user id: %d, chan id: %d\r\n", __func__, __LINE__, user_id, chnl_id);
+
     return chnl_id;
 }
 
@@ -341,7 +343,11 @@ bk_err_t bk_dma_init(dma_id_t id, const dma_config_t *config)
     DMA_RETURN_ON_INVALID_ADDR(config->dst.start_addr, config->dst.end_addr);
     DMA_LOG_ON_ID_IS_STARTED(dma_num,dma_channel);
 
-#if CONFIG_CACHE_ENABLE
+    /* Gate on the real D-cache switch (CONFIG_DCACHE) rather than the stale
+     * CONFIG_CACHE_ENABLE: cache.c and flush_dcache() are only built under
+     * CONFIG_DCACHE, so this keeps DMA cache maintenance consistent with the
+     * flash/IPC paths and avoids an undefined symbol when the two knobs differ. */
+#if CONFIG_DCACHE
     flush_dcache((void *)config->src.start_addr, config->src.end_addr - config->src.start_addr);
     flush_dcache((void *)config->dst.start_addr, config->dst.end_addr - config->dst.start_addr);
 #endif
@@ -1133,7 +1139,8 @@ bk_err_t bk_dma_stateless_judgment_configuration(void *out, const void *in, uint
 
     /* init */
     s_dma[dma_num].id_init_bits |= BIT(dma_channel);
-#if CONFIG_CACHE_ENABLE
+    /* Gate on CONFIG_DCACHE (see bk_dma_init): keep consistent with cache.c. */
+#if CONFIG_DCACHE
     flush_dcache((void *)dma_config.src.start_addr, dma_config.src.end_addr - dma_config.src.start_addr);
     flush_dcache((void *)dma_config.dst.start_addr, dma_config.dst.end_addr - dma_config.dst.start_addr);
 #endif
@@ -1254,10 +1261,10 @@ static void dma_isr_common(dma_unit_t dma_unit_id)
 //Modify by Tuya End
         half_finish_isr_arg = s_dma_arg_isr[dma_unit_id][id].half_finish_isr;
         half_finish_arg = s_dma_arg_isr[dma_unit_id][id].half_finish_arg;
-    
+
         finish_isr_arg = s_dma_arg_isr[dma_unit_id][id].finish_isr;
         finish_arg = s_dma_arg_isr[dma_unit_id][id].finish_arg;
-    
+
         error_isr_arg = s_dma_arg_isr[dma_unit_id][id].error_isr;
         error_arg = s_dma_arg_isr[dma_unit_id][id].error_arg;
 

@@ -82,7 +82,7 @@ jpeg_dec_handle_t jpeg_decode_handle;
 
 bk_err_t software_decode_task_send_msg(uint32_t type, uint32_t param)
 {
-	int ret = BK_OK;
+	int ret = BK_FAIL;
 	media_msg_t msg;
 
 	if (sw_dec_config && sw_dec_config->sw_dec_queue)

@@ -120,6 +120,11 @@ bk_err_t bk_mailbox_send(mailbox_data_t *data, mailbox_endpoint_t src, mailbox_e
 	message.data[1] = sizeof(mailbox_data_t);
 	message.dest_cpu = (uint8_t)dst;
 
+	/* mailbox_buff is Normal Non-cacheable memory; the FIFO trigger below is a
+	 * Device write. Ensure the payload store is globally visible before the peer
+	 * core is signalled and dereferences the shared pointer. */
+	__asm volatile("dsb 0xF" ::: "memory");
+
 	ret_code = mbox0_drv_send_message(&message);
 
 	if(ret_code != MBOX0_HAL_OK)

@@ -251,11 +251,13 @@ void rtos_dump_task_runtime_stats(void)
 	int num_of_tasks = 0;
 	int buf_len = 0;
 	char *buf = NULL;
-	uint32_t int_level = rtos_disable_int();
+	uint32_t int_level;
 
 	BK_DUMP_OUT(">>>>dump task runtime begin.\r\n");
 	//TODO optimize it
-	//malloc a big enough memory
+	//malloc a big enough memory, do it BEFORE disabling interrupts: a big
+	//allocation with IRQ off stalls WiFi/DMA ISRs, and on failure the old
+	//code returned without restoring the interrupt state.
 	num_of_tasks = uxTaskGetNumberOfTasks();
 	buf_len = (num_of_tasks + 5) * 100;
 	buf = (char*)os_malloc(buf_len);
@@ -264,12 +266,14 @@ void rtos_dump_task_runtime_stats(void)
 		return;
 	}
 
+	int_level = rtos_disable_int();
     rtos_dump_task_percentage(buf, buf_len);
+	rtos_enable_int(int_level);
+
 	os_free(buf);
 
 	BK_DUMP_OUT("<<<<dump task runtime end.\r\n");
 	BK_DUMP_OUT("\r\n");
-	rtos_enable_int(int_level);
 #else
 	BK_DUMP_OUT("dump runtime stats not supported!\r\n");
 #endif
@@ -304,11 +308,13 @@ void rtos_dump_task_history_runtime_stats(BK_CpuLoadTime eTime)
 	int num_of_tasks = 0;
 	int buf_len = 0;
 	char *buf = NULL;
-	uint32_t int_level = rtos_disable_int();
+	uint32_t int_level;
 
 	BK_DUMP_OUT(">>>>dump task runtime begin.\r\n");
 	//TODO optimize it
-	//malloc a big enough memory
+	//malloc a big enough memory, do it BEFORE disabling interrupts: a big
+	//allocation with IRQ off stalls WiFi/DMA ISRs, and on failure the old
+	//code returned without restoring the interrupt state.
 	num_of_tasks = uxTaskGetNumberOfTasks();
 	buf_len = (num_of_tasks + 5) * 100;
 	buf = (char*)os_malloc(buf_len);
@@ -317,13 +323,14 @@ void rtos_dump_task_history_runtime_stats(BK_CpuLoadTime eTime)
 		return;
 	}
 
+	int_level = rtos_disable_int();
 	rtos_dump_task_history_percentage(buf, buf_len, eTime);
+	rtos_enable_int(int_level);
 
 	os_free(buf);
 
 	BK_DUMP_OUT("<<<<dump task runtime end.\r\n");
 	BK_DUMP_OUT("\r\n");
-	rtos_enable_int(int_level);
 #else
 	BK_DUMP_OUT("dump runtime stats not supported!\r\n");
 #endif

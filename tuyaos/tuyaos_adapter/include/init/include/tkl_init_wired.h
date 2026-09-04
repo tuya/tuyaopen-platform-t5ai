@@ -31,6 +31,7 @@ typedef struct {
     OPERATE_RET (*get_mac)                  (NW_MAC_S *mac);
     OPERATE_RET (*set_mac)                  (const NW_MAC_S *mac);
     OPERATE_RET (*mf_ping_test)             (const char *ip, const uint32_t cnt, const uint32_t size);
+    OPERATE_RET (*get_rssi)                 (int8_t *rssi);
 } TKL_WIRED_DESC_T;
 
 /**

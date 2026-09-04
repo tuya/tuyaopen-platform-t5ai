@@ -30,7 +30,15 @@ typedef enum {
 
 #define TKL_CELLULAR_IMEI_LEN       15
 #define TKL_CELLULAR_SN_LEN         10
-#define TKL_CELLULAR_SW_VER_LEN     22
+#define TKL_CELLULAR_SW_VER_LEN     40
+
+typedef enum {
+    TKL_CELLULAR_NO_SLEEP = 0,
+    TKL_CELLULAR_IDLE,
+    TKL_CELLULAR_MODE1,
+    TKL_CELLULAR_MODE2,
+    TKL_CELLULAR_HIBERNATE,
+} TKL_CELLULAR_SLEEP_MODE_E;
 
 typedef struct
 {
@@ -40,6 +48,7 @@ typedef struct
 //  char dial_up_phone_num[TKL_CELLULAR_DIAL_UP_CMD_LEN+1];         ///< dial-up phone number
     TUYA_CELLULAR_IF_E iface;
     TUYA_CELLULAR_PROTOCOL_E protocol;
+    TKL_CELLULAR_SLEEP_MODE_E sleep_mode;
 }TKL_CELLULAR_BASE_CFG_T;
 
 /**
@@ -50,6 +59,12 @@ typedef struct
  * @return OPRT_OK on success. Others on error, please refer to tuya_error_code.h
  */
 OPERATE_RET tkl_cellular_init(TKL_CELLULAR_BASE_CFG_T *cfg);
+
+/**
+ * @brief Check whether Sleep1 AT (AT+ECPMUCFG=1,2) should be sent
+ * @return 0 for NO_SLEEP/IDLE (skip); non-zero for MODE1/MODE2/HIBERNATE (send)
+ */
+int tkl_cellular_get_sleep_mode(void);
 
 /**
  * @brief callback function: TKL_CELLULAR_STATUS_CHANGE_CB

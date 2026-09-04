@@ -853,10 +853,18 @@ __attribute__((section(".itcm_sec_code"))) void sys_hal_enter_low_voltage(void)
 	sys_ll_set_cpu0_int_0_31_en_value(0x0);
 	sys_ll_set_cpu0_int_32_63_en_value(0x0);
 
-	if(check_IRQ_pending()||(sys_ll_get_cpu0_int_0_31_status_value()||(sys_ll_get_cpu0_int_32_63_status_value()))||(portNVIC_INT_CTRL_REG&portNVIC_SYSTICKSET_BIT))
+	if(check_IRQ_pending()||\
+      (sys_ll_get_cpu0_int_0_31_status_value()||\
+      (sys_ll_get_cpu0_int_32_63_status_value()))||\
+      (portNVIC_INT_CTRL_REG&portNVIC_SYSTICKSET_BIT)||\
+      !aon_pmu_ll_get_r3_cp1_enter_wfi_state() ||\
+      !aon_pmu_ll_get_r3_cp2_enter_wfi_state())
 	{
 		sys_ll_set_cpu0_int_0_31_en_value(int_state1);
 		sys_ll_set_cpu0_int_32_63_en_value(int_state2);
+        #if CONFIG_PM_LV_SUBCORES_ON
+        aon_pmu_ll_set_r3_cp0_sleep_vote_state(0);
+        #endif
 		portNVIC_SYSTICK_CTRL_REG = systick_ctrl_value;
 		return;
 	}
@@ -1055,6 +1063,8 @@ __attribute__((section(".itcm_sec_code"))) void sys_hal_enter_low_voltage(void)
 #if CONFIG_PM_LV_SUBCORES_ON
 	/*Clear cpu0 sleep vote state*/
 	aon_pmu_ll_set_r3_cp0_sleep_vote_state(0);
+    aon_pmu_ll_set_r3_cp1_enter_wfi_state(0);
+    aon_pmu_ll_set_r3_cp2_enter_wfi_state(0);
 
 	/*AP CORE1 */
 	/*Clear cpu2 wfi state*/
@@ -1194,12 +1204,14 @@ bool sys_hal_set_cp_sleep_vote_and_check_subcores_enter_wfi()
 		}
 		else
 		{
-			if(check_IRQ_pending())
-			{
-				return false;
+			/* Wake AP only if it may be stuck in coordinated WFI, and no CP IRQ pending */
+			if ((aon_pmu_ll_get_r3_cp1_enter_wfi_state() ||
+				aon_pmu_ll_get_r3_cp2_enter_wfi_state()) &&
+				!check_IRQ_pending()) {
+				/*When the low-power condition is met, if CP2 fails to enter WFI within 3ms, it will resend a wake-up AP0 to re-enter WFI.*/
+				bk_pm_cp_wakeup_ap_from_wfi(0);
 			}
-			/*When the low-power condition is met, if CP2 fails to enter WFI within 3ms, it will resend a wake-up AP0 to re-enter WFI.*/
-			bk_pm_cp_wakeup_ap_from_wfi(0);
+			aon_pmu_ll_set_r3_cp0_sleep_vote_state(0);
 			ret = false;
 		}
 	}

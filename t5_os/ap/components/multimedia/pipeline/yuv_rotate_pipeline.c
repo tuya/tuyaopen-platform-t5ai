@@ -826,11 +826,12 @@ static void rotate_main(beken_thread_arg_t data)
 
 					rtos_deinit_oneshot_timer(&rotate_timer);
 
-					beken_semaphore_t *beken_semaphore = (beken_semaphore_t*)msg.param;
+					/* Redmine #8131: handle passed by value (see rotate_task_stop). */
+					beken_semaphore_t beken_semaphore = (beken_semaphore_t)msg.param;
 					rtos_deinit_queue(&rotate_config->rotate_queue);
 					rotate_config->rotate_queue = NULL;
 					rotate_config->rotate_thread = NULL;
-					rtos_set_semaphore(beken_semaphore);
+					rtos_set_semaphore(&beken_semaphore);
 					rtos_delete_thread(NULL);
 				}
 				break;
@@ -1069,8 +1070,6 @@ void rotate_task_stop(void)
 {
 	beken_semaphore_t sem;
 	media_msg_t msg;
-	msg.event = ROTATE_STOP;
-	msg.param = (uint32_t)&sem;
 
 	int ret = rtos_init_semaphore(&sem, 1);
 
@@ -1079,6 +1078,13 @@ void rotate_task_stop(void)
 		LOGE("%s, init sem faild, %d\n", __func__, ret);
 		return;
 	}
+
+	msg.event = ROTATE_STOP;
+	/* Redmine #8131: pass the semaphore HANDLE by value, not &sem (on this
+	 * producer's cacheable PSRAM stack). The stop task may run on the other AP
+	 * core; the handle value travels coherently through non-cacheable queue
+	 * storage and points to a non-cacheable sem object. */
+	msg.param = (uint32_t)sem;
 
 	ret = rtos_push_to_queue(&rotate_config->rotate_queue, &msg, BEKEN_WAIT_FOREVER);
 

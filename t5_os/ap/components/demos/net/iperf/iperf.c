@@ -316,7 +316,8 @@ static void iperf_report_task_handler(void *arg)
 
 			if (s_pkt_delta >= 0)
 			{
-				BK_LOGD(NULL, "[%d-%d] sec bandwidth: %d Kbits/sec.\r\n",
+				// BK_LOGD(NULL, "[%d-%d] sec bandwidth: %d Kbits/sec.\r\n",    // Modified by TUYA
+				bk_printf("[%d-%d] sec bandwidth: %d Kbits/sec.\r\n",
 						  s_tick_delta, s_tick_delta + IPERF_REPORT_INTERVAL, f);
 			}
 			s_tick_delta = s_tick_delta + IPERF_REPORT_INTERVAL;

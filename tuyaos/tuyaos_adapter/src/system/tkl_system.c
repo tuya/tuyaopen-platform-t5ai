@@ -39,27 +39,6 @@ static void __get_info_func(void *arg)
 }
 #endif
 
-#if CONFIG_CPU_INDEX == 0
-OPERATE_RET __tkl_otp_flash_is_locked(struct ipc_msg_s *msg) // cp get otp flash info
-{
-    if (NULL == msg) {
-        return OPRT_INVALID_PARM;
-    }
-
-    extern uint16_t bk_flash_read_status_reg(void);
-    uint16_t sts_val = bk_flash_read_status_reg();
-
-    bk_printf("bk_flash_read_status_reg: 0x%x\r\n", sts_val);
-
-    memcpy(msg->res_param, &sts_val, msg->res_len);
-
-    msg->ret_value = 0;
-    tuya_ipc_send_no_sync(msg);
-
-    return OPRT_OK;
-}
-#endif
-
 void tkl_sys_ipc_func(struct ipc_msg_s *msg)
 {
     switch(msg->subtype) {
@@ -76,13 +55,6 @@ void tkl_sys_ipc_func(struct ipc_msg_s *msg)
             xTaskCreate(__get_info_func, "get_info", 1024, msg, 6, (TaskHandle_t * const )&__gi_thread_handle);
             msg->ret_value = 0;
             tuya_ipc_send_no_sync(msg);
-        }
-            break;
-
-        case TKL_IPC_TYPE_SYS_OTP_REG_GET:
-        {
-            msg->ret_value = 0;
-            __tkl_otp_flash_is_locked(msg);
         }
             break;
 #endif
@@ -169,19 +141,7 @@ void tkl_system_sleep_us(uint32_t num_us)
 */
 void tkl_system_reset(void)
 {
-#if CONFIG_CPU_INDEX == 0
-    bk_reboot();
-#else
-    bk_printf("ap request reset\r\n");
-    struct ipc_msg_s msg = {0};
-    msg.type = TKL_IPC_TYPE_SYS;
-    msg.subtype = TKL_IPC_TYPE_SYS_REBOOT;
-
-    tuya_ipc_send_no_sync(&msg);
-    while(1) {
-        tkl_system_sleep(100);
-    }
-#endif
+	bk_reboot();
     return;
 }
 
@@ -315,72 +275,82 @@ int32_t tkl_system_get_random(const uint32_t range)
 
 OPERATE_RET tkl_system_get_cpu_info(TUYA_CPU_INFO_T **cpu_ary, int *cpu_cnt)
 {
-    // TODO
-    struct ipc_msg_s msg = {0};
+    if (cpu_ary == NULL) {
+        return OPRT_INVALID_PARM;
+    }
 
-    memset(&msg, 0, sizeof(struct ipc_msg_s));
+    *cpu_ary = NULL;
+    if (cpu_cnt) {
+        *cpu_cnt = 0;
+    }
 
-    msg.type = TKL_IPC_TYPE_SYS;
+    TUYA_CPU_INFO_T *cpu = (TUYA_CPU_INFO_T *)tkl_system_malloc(sizeof(TUYA_CPU_INFO_T));
+    if (cpu == NULL) {
+        return OPRT_MALLOC_FAILED;
+    }
 
-#if CONFIG_CPU_INDEX == 0
-    TUYA_CPU_INFO_T *cpu = *cpu_ary;
+    memset(cpu, 0, sizeof(TUYA_CPU_INFO_T));
 
     bk_otp_apb_read(OTP_DEVICE_ID, cpu->chipid, EFUSE_DEVICE_ID_BYTE_NUM);
     cpu->chipidlen = EFUSE_DEVICE_ID_BYTE_NUM;
+
     if (cpu_cnt) {
         *cpu_cnt = 1;
     }
 
-    bk_printf_raw(BK_LOG_INFO, NULL, "send cpu info rsp, %p, 0x%02x%02x%02x%02x%02x\r\n",
-            *cpu, cpu->chipid[0], cpu->chipid[1],
-            cpu->chipid[2], cpu->chipid[3], cpu->chipid[4]);
-
-    msg.subtype = TKL_IPC_TYPE_SYS_CPU_INFO_RSP;
-    tuya_ipc_send_sync(&msg);
-#else
-
-    struct ipc_msg_param_s param = {0};
-    msg.subtype = TKL_IPC_TYPE_SYS_CPU_INFO;
-
-    TUYA_CPU_INFO_T *cpu = tkl_system_malloc(sizeof(TUYA_CPU_INFO_T));
-    if (NULL == cpu) {
-        bk_printf("get info malloc failed\r\n");
-        return OPRT_MALLOC_FAILED;
-    }
-
-    // wait cp response
-    OPERATE_RET ret = tkl_semaphore_create_init(&get_cpu_info_sem, 0, 1);
-    if (ret !=  OPRT_OK) {
-        bk_printf("create semaphore failed\r\n");
-        tkl_system_free(cpu);
-        cpu = NULL;
-        return ret;
-    }
-
-    memset(cpu, 0, sizeof(TUYA_CPU_INFO_T));
     *cpu_ary = cpu;
 
-    param.p1 = (void *)((uint32_t)cpu_ary);
-    param.p2 = (void *)((uint32_t)cpu_cnt);
+    return OPRT_OK;
+}
 
-    msg.req_param = &param;
-    msg.req_len = sizeof(param);
-
-    bk_printf("send cpu info req\r\n");
-    tuya_ipc_send_sync(&msg);
-
-    bk_printf("wait cpu info\r\n");
-    ret = tkl_semaphore_wait(get_cpu_info_sem, 5000);
-    tkl_semaphore_release(get_cpu_info_sem);
-    get_cpu_info_sem = NULL;
-    if (ret !=  OPRT_OK) {
-        bk_printf("wait cpu timeout\r\n");
-        return ret;
+/**
+ * @brief get hardware unique id
+ *
+ * @param[in,out] id   buffer provided by caller; filled with the unique id on success
+ * @param[in,out] len  in: buffer capacity; out: actual unique id length
+ * @return OPRT_OK on success; OPRT_INVALID_PARM / OPRT_COM_ERROR / OPRT_NOT_SUPPORTED on error
+ *
+ * @note source: BK7258 OTP DEVICE_ID (factory-programmed, per-device unique). This core
+ *       (CPU1) cannot access OTP directly, so the chipid is obtained via
+ *       tkl_system_get_cpu_info(), which IPCs to the OTP-owning core (CPU0).
+ *       Satisfies the platform contract: per-device unique / immutable across reset,
+ *       power-off, OTA and factory-reset / read-only / not all-0x00 or all-0xFF.
+ */
+OPERATE_RET tkl_system_get_hw_unique_id(uint8_t *id, uint8_t *len)
+{
+    if ((id == NULL) || (len == NULL)) {
+        return OPRT_INVALID_PARM;
     }
 
+    /* Reuse the chipid getter: on CPU1 it IPCs to CPU0 to read OTP DEVICE_ID.
+     * Do not call bk_otp_apb_read() here -- that symbol is not linked on CPU1. */
+    TUYA_CPU_INFO_T *cpu = NULL;
+    int cnt = 0;
+    OPERATE_RET ret = tkl_system_get_cpu_info(&cpu, &cnt);
+    if ((ret != OPRT_OK) || (cpu == NULL)) {
+        return OPRT_COM_ERROR;
+    }
 
-#endif
+    uint8_t clen = cpu->chipidlen;
+    if ((clen < 1) || (clen > 32)) {
+        tkl_system_free(cpu);
+        return OPRT_COM_ERROR;
+    }
+    os_memcpy(id, cpu->chipid, clen);
+    tkl_system_free(cpu);
 
+    /* Contract forbids all-0x00 / all-0xFF; blank/unprogrammed OTP defaults to 0x00 */
+    BOOL_T all_zero = TRUE, all_ff = TRUE;
+    for (uint8_t i = 0; i < clen; i++) {
+        if (id[i] != 0x00) { all_zero = FALSE; }
+        if (id[i] != 0xFF) { all_ff  = FALSE; }
+    }
+    if (all_zero || all_ff) {
+        *len = 0;
+        return OPRT_NOT_SUPPORTED;
+    }
+
+    *len = clen;
     return OPRT_OK;
 }
 

@@ -32,6 +32,8 @@ void enable_dcache(int enable);
 
 void flush_dcache(void *va, long size);
 
+void invalidate_dcache(void *va, long size);
+
 void flush_all_dcache(void);
 
 void invalidate_icache(void);

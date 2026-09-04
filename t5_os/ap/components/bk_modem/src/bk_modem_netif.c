@@ -21,8 +21,12 @@
 #include "common/bk_err.h"
 #include "bk_modem_dte.h"
 #include "bk_modem_netif.h"
+#include "os/os.h"
 
 #if CONFIG_LWIP_PPP_SUPPORT
+#define PPP_TX_WAIT_TIMEOUT_MS          1000
+#define PPP_TX_RETRY_DELAY_MS           5
+
 BK_MODEM_NETIF_STATE_NOTIFY bk_modem_ppp_netif_link_chg_cb = NULL;
 
 #if PPP_SUPPORT && PPP_AUTH_SUPPORT
@@ -101,8 +105,10 @@ extern const ip_addr_t *sta_dns;
             bk_modem_send_msg(MSG_PPP_STOP, ABNORMAL_STOP,0,0);
             if (bk_modem_ppp_netif_link_chg_cb) {
                 bk_modem_ppp_netif_link_chg_cb(BK_MODEM_NETIF_LINK_DOWN);
-                ppp_ip_down();
-                dns_clear_all_cache();
+                // 回调跑在 tcpip_thread（已持 lock_tcpip_core），这里再走 netifapi 会自重入非递归 mutex → 死锁。
+                // default 切回 wifi 由 stop_ppp（modem task，不持锁）接管，功能不丢。
+                // ppp_ip_down();
+                // dns_clear_all_cache();
             }
             return;
 
@@ -186,9 +192,19 @@ static void on_ppp_notify_phase(ppp_pcb *pcb, u8_t phase, void *ctx)
  */
 static uint32_t pppos_low_level_output(ppp_pcb *pcb, uint8_t *data, uint32_t len, void *netif)
 {
-    bk_modem_dte_send_data(len, data, PPP_DATA_MODE);
-    //TODO need to return bk_modem_dte_send_data 
-    return len;
+    uint32_t ret;
+    uint32_t start_ms = rtos_get_time();
+
+    do {
+        ret = bk_modem_dte_send_data(len, data, PPP_DATA_MODE);
+        if (ret == len) {
+            return ret;
+        }
+
+        rtos_delay_milliseconds(PPP_TX_RETRY_DELAY_MS);
+    } while ((rtos_get_time() - start_ms) < PPP_TX_WAIT_TIMEOUT_MS);
+
+    return 0;
 }
 
 bk_err_t bk_modem_netif_ppp_set_auth(uint8_t authtype, const char *user, const char *passwd)

@@ -27,10 +27,10 @@ typedef struct {
     OPERATE_RET           (*tkl_fd_clear)           (const int32_t fd, TUYA_FD_SET_T* fds);
     OPERATE_RET           (*tkl_fd_isset)           (const int32_t fd, TUYA_FD_SET_T* fds);
     OPERATE_RET           (*tkl_fd_zero)            (TUYA_FD_SET_T* fds);
-    int32_t                 (*tkl_select)             (const int32_t maxfd, TUYA_FD_SET_T *readfds, TUYA_FD_SET_T *writefds, TUYA_FD_SET_T *errorfds, const uint32_t ms_timeout);
+    int32_t               (*tkl_select)             (const int32_t maxfd, TUYA_FD_SET_T *readfds, TUYA_FD_SET_T *writefds, TUYA_FD_SET_T *errorfds, const uint32_t ms_timeout);
     TUYA_ERRNO            (*tkl_close)              (const int32_t fd);
-    int32_t                 (*tkl_socket_create)      (const TUYA_PROTOCOL_TYPE_E type);
-    int32_t                 (*tkl_socket_create_v6)   (const TUYA_PROTOCOL_TYPE_E type);
+    int32_t               (*tkl_socket_create)      (const TUYA_PROTOCOL_TYPE_E type);
+    int32_t               (*tkl_socket_create_v6)   (const TUYA_PROTOCOL_TYPE_E type);
     TUYA_ERRNO            (*tkl_connect)            (const int32_t fd, const TUYA_IP_ADDR_T addr, const uint16_t port);
     TUYA_ERRNO            (*tkl_connect_raw)        (const int32_t fd, void *p_socket, const int32_t len);
     TUYA_ERRNO            (*tkl_bind)               (const int32_t fd, const TUYA_IP_ADDR_T addr, const uint16_t port);
@@ -40,15 +40,15 @@ typedef struct {
     TUYA_ERRNO            (*tkl_recv)               (const int32_t fd, void *buf, const uint32_t nbytes);
     TUYA_ERRNO            (*tkl_recvfrom)           (const int32_t fd, void *buf, const uint32_t nbytes, TUYA_IP_ADDR_T *addr, uint16_t *port);
     TUYA_ERRNO            (*tkl_accept)             (const int32_t fd, TUYA_IP_ADDR_T *addr, uint16_t *port);
-    int32_t                 (*tkl_recv_nd_size)       (const int32_t fd, void *buf, const uint32_t buf_size, const uint32_t nd_size);
+    int32_t               (*tkl_recv_nd_size)       (const int32_t fd, void *buf, const uint32_t buf_size, const uint32_t nd_size);
     OPERATE_RET           (*tkl_socket_bind)        (const int32_t fd, const char *ip);
     OPERATE_RET           (*tkl_set_block)          (const int32_t fd, const BOOL_T block);
     OPERATE_RET           (*tkl_set_cloexec)        (const int32_t fd);
     OPERATE_RET           (*tkl_get_socket_ip)      (const int32_t fd, TUYA_IP_ADDR_T *addr);
-    int32_t                 (*tkl_get_nonblock)       (const int32_t fd);
+    int32_t               (*tkl_get_nonblock)       (const int32_t fd);
     OPERATE_RET           (*tkl_gethostbyname)      (const char *domain, TUYA_IP_ADDR_T *addr);
     TUYA_IP_ADDR_T        (*tkl_str2addr)           (const char *ip_str);
-    char*               (*tkl_addr2str)           (const TUYA_IP_ADDR_T ipaddr);
+    char*                 (*tkl_addr2str)           (const TUYA_IP_ADDR_T ipaddr);
     OPERATE_RET           (*tkl_setsockopt)         (const int32_t fd, const TUYA_OPT_LEVEL level, const TUYA_OPT_NAME optname, const void *optval, const int32_t optlen);
     OPERATE_RET           (*tkl_getsockopt)         (const int32_t fd, const TUYA_OPT_LEVEL level, const TUYA_OPT_NAME optname, void *optval, int32_t *optlen);
     OPERATE_RET           (*tkl_set_timeout)        (const int32_t fd, const int32_t ms_timeout, const TUYA_TRANS_TYPE_E type);
@@ -61,6 +61,7 @@ typedef struct {
     OPERATE_RET           (*tkl_getpeername)        (int32_t fd, TUYA_IP_ADDR_T *addr, uint16_t *port);
     OPERATE_RET           (*tkl_sethostname)        (const char *hostname);
     OPERATE_RET           (*tkl_check_ipv4_ipv6)    (BOOL_T *has_ipv4, BOOL_T *has_ipv6);
+    OPERATE_RET           (*tkl_set_default_netif_by_ip)  (const TUYA_IP_ADDR_T addr);
 } TKL_NETWORK_DESC_T;
 
 /**

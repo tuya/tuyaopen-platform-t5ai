@@ -1094,7 +1094,8 @@ audio_element_handle_t aec_v3_algorithm_init(aec_v3_algorithm_cfg_t *config)
     cfg.read = NULL;
     cfg.out_type = PORT_TYPE_RB;
     cfg.write = NULL;
-    cfg.task_stack = config->task_stack;
+    // cfg.task_stack = config->task_stack;
+    cfg.task_stack = 8192;  // Modified by TUYA
     cfg.task_prio = config->task_prio;
     cfg.task_core = config->task_core;
     /* 20ms, 16bit */

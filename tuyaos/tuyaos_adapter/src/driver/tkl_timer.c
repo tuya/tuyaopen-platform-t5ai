@@ -76,6 +76,7 @@ OPERATE_RET tkl_timer_init(TUYA_TIMER_NUM_E timer_id, TUYA_TIMER_BASE_CFG_T *cfg
 OPERATE_RET tkl_timer_start(TUYA_TIMER_NUM_E timer_id, uint32_t us)
 {
     if (timer_id >= TIMER_DEV_NUM || us == 0) {
+        bk_printf("start failed, invalid parameter, %d %d\r\n", timer_id, us);
         return OPRT_NOT_SUPPORTED;
     }
 
@@ -100,6 +101,7 @@ OPERATE_RET tkl_timer_start(TUYA_TIMER_NUM_E timer_id, uint32_t us)
 OPERATE_RET tkl_timer_stop(TUYA_TIMER_NUM_E timer_id)
 {
     if (timer_id >= TIMER_DEV_NUM) {
+        bk_printf("stop failed, invalid parameter, %d\r\n", timer_id);
         return OPRT_NOT_SUPPORTED;
     }
 
@@ -120,6 +122,7 @@ OPERATE_RET tkl_timer_stop(TUYA_TIMER_NUM_E timer_id)
 OPERATE_RET tkl_timer_deinit(TUYA_TIMER_NUM_E timer_id)
 {
     if (timer_id >= TIMER_DEV_NUM) {
+        bk_printf("deinit failed, invalid parameter, %d\r\n", timer_id);
         return OPRT_NOT_SUPPORTED;
     }
 

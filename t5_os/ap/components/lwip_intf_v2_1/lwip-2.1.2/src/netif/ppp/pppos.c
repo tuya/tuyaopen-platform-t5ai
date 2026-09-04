@@ -54,6 +54,12 @@
 /* Memory pool */
 LWIP_MEMPOOL_DECLARE(PPPOS_PCB, MEMP_NUM_PPPOS_INTERFACES, sizeof(pppos_pcb), "PPPOS_PCB")
 
+#if MEM_TRX_DYNAMIC_EN
+#define PPPOS_INPUT_PBUF_TYPE PBUF_RAM_RX
+#else
+#define PPPOS_INPUT_PBUF_TYPE PBUF_RAM
+#endif
+
 /* callbacks called from PPP core */
 static err_t pppos_write(ppp_pcb *ppp, void *ctx, struct pbuf *p);
 static err_t pppos_netif_output(ppp_pcb *ppp, void *ctx, struct pbuf *pb, u16_t protocol);
@@ -425,13 +431,7 @@ pppos_input_tcpip(ppp_pcb *ppp, u8_t *s, int l)
   struct pbuf *p;
   err_t err;
 
-// Modified by TUYA Start
-#if MEM_TRX_DYNAMIC_EN
-  p = pbuf_alloc(PBUF_RAW, l, PBUF_RAM_RX);
-#else
-  p = pbuf_alloc(PBUF_RAW, l, PBUF_POOL);
-#endif
-// Modified by TUYA End
+  p = pbuf_alloc(PBUF_RAW, l, PPPOS_INPUT_PBUF_TYPE);
   if (!p) {
     return ERR_MEM;
   }
@@ -439,7 +439,7 @@ pppos_input_tcpip(ppp_pcb *ppp, u8_t *s, int l)
 
   err = tcpip_inpkt(p, ppp_netif(ppp), pppos_input_sys);
   if (err != ERR_OK) {
-     pbuf_free(p);
+    pbuf_free(p);
   }
   return err;
 }

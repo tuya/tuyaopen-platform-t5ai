@@ -43,19 +43,19 @@ typedef struct i2s_cb_config {
 /***********************************************************
 ********************function declaration********************
 ***********************************************************/
-static int ch0_tx_data_handle_cb(uint32_t size);
-static int ch0_rx_data_handle_cb(uint32_t size);
-static int ch1_tx_data_handle_cb(uint32_t size);
-static int ch1_rx_data_handle_cb(uint32_t size);
-static int ch2_tx_data_handle_cb(uint32_t size);
-static int ch2_rx_data_handle_cb(uint32_t size);
+static int ch0_tx_data_handle_cb(i2s_gpio_group_id_t id, uint32_t size, i2s_txrx_type_t type);
+static int ch0_rx_data_handle_cb(i2s_gpio_group_id_t id, uint32_t size, i2s_txrx_type_t type);
+static int ch1_tx_data_handle_cb(i2s_gpio_group_id_t id, uint32_t size, i2s_txrx_type_t type);
+static int ch1_rx_data_handle_cb(i2s_gpio_group_id_t id, uint32_t size, i2s_txrx_type_t type);
+static int ch2_tx_data_handle_cb(i2s_gpio_group_id_t id, uint32_t size, i2s_txrx_type_t type);
+static int ch2_rx_data_handle_cb(i2s_gpio_group_id_t id, uint32_t size, i2s_txrx_type_t type);
 /***********************************************************
 ***********************variable define**********************
 ***********************************************************/
 i2s_cb_config_t m_i2s_cfg[TUYA_I2S_NUM_MAX] = {
     {ch0_tx_data_handle_cb,ch0_rx_data_handle_cb},
     {ch1_tx_data_handle_cb,ch1_rx_data_handle_cb},
-    {ch2_tx_data_handle_cb,ch2_rx_data_handle_cb}
+    {ch2_tx_data_handle_cb,ch2_rx_data_handle_cb},
 };
 static TUYA_I2S_BASE_CFG_T m_i2s_config[TUYA_I2S_NUM_MAX] = {0};
 static RingBufferContext *m_ringbuffer[TUYA_I2S_NUM_MAX] = {NULL};
@@ -119,7 +119,7 @@ static inline uint32_t i2s_calc_frame_size(TUYA_I2S_NUM_E num) {
     return (real_sample * slots_per_sample * bytes_per_slot) / MS_20_DIV;
 }
 
-static int ch0_tx_data_handle_cb(uint32_t size)
+static int ch0_tx_data_handle_cb(i2s_gpio_group_id_t id, uint32_t size, i2s_txrx_type_t type)
 {
     int ret = 0;
     ret = tkl_semaphore_post(m_semaphore[TUYA_I2S_NUM_0]);
@@ -130,7 +130,7 @@ static int ch0_tx_data_handle_cb(uint32_t size)
 	return size;
 }
 
-static int ch0_rx_data_handle_cb(uint32_t size)
+static int32_t ch0_rx_data_handle_cb(i2s_gpio_group_id_t id, uint32_t size, i2s_txrx_type_t type)
 {
     int ret = 0;
     ret = tkl_semaphore_post(m_semaphore[TUYA_I2S_NUM_0]);
@@ -139,7 +139,7 @@ static int ch0_rx_data_handle_cb(uint32_t size)
     }
 	return size;
 }
-static int ch1_tx_data_handle_cb(uint32_t size)
+static int ch1_tx_data_handle_cb(i2s_gpio_group_id_t id, uint32_t size, i2s_txrx_type_t type)
 {
     int ret = 0;
     ret = tkl_semaphore_post(m_semaphore[TUYA_I2S_NUM_1]);
@@ -150,7 +150,7 @@ static int ch1_tx_data_handle_cb(uint32_t size)
 	return size;
 }
 
-static int ch1_rx_data_handle_cb(uint32_t size)
+static int32_t ch1_rx_data_handle_cb(i2s_gpio_group_id_t id, uint32_t size, i2s_txrx_type_t type)
 {
     int ret = 0;
     ret = tkl_semaphore_post(m_semaphore[TUYA_I2S_NUM_1]);
@@ -159,7 +159,7 @@ static int ch1_rx_data_handle_cb(uint32_t size)
     }
 	return size;
 }
-static int ch2_tx_data_handle_cb(uint32_t size)
+static int ch2_tx_data_handle_cb(i2s_gpio_group_id_t id, uint32_t size, i2s_txrx_type_t type)
 {
     int ret = 0;
     ret = tkl_semaphore_post(m_semaphore[TUYA_I2S_NUM_2]);
@@ -170,7 +170,7 @@ static int ch2_tx_data_handle_cb(uint32_t size)
 	return size;
 }
 
-static int ch2_rx_data_handle_cb(uint32_t size)
+static int32_t ch2_rx_data_handle_cb(i2s_gpio_group_id_t id, uint32_t size, i2s_txrx_type_t type)
 {
     int ret = 0;
     ret = tkl_semaphore_post(m_semaphore[TUYA_I2S_NUM_2]);
@@ -611,3 +611,9 @@ OPERATE_RET tkl_i2s_recv_stop(TUYA_I2S_NUM_E i2s_num)
     return OPRT_OK;
     // --- END: user implements ---
 }
+
+OPERATE_RET tkl_i2s_set_vol(TUYA_I2S_NUM_E i2s_num, UINT32_T gain)
+{
+    return OPRT_NOT_SUPPORTED;
+}
+

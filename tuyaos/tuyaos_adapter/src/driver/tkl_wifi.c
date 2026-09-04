@@ -24,6 +24,7 @@
 #include <driver/aon_rtc.h>
 // #include "event.h"
 #include <components/bluetooth/bk_dm_bluetooth.h>
+#include <stdint.h>
 
 
 #if CONFIG_SAVE_BOOT_TIME_POINT
@@ -173,10 +174,8 @@ OPERATE_RET tkl_wifi_init(WIFI_EVENT_CB cb)
 static int scan_cb(void *arg, event_module_t event_module,
                     int event_id, void *_event_data)
 {
-    (void)arg;
-    (void)event_id;
-    (void)_event_data;
-    (void)event_module;
+    uint32_t thread_id = (uint32_t)arg;
+    wifi_event_scan_done_t *event_data = _event_data;
 
     // bk_printf("%s\r\n", __func__);
     if(scanHandle) {
@@ -469,6 +468,20 @@ OPERATE_RET tkl_wifi_release_ap(AP_IF_S *ap)
     ap = NULL;
 
     return OPRT_OK;
+}
+
+/**
+ * @brief Scan APs on a specified channel.
+ *
+ * @param[in]       ssid        the specific ssid, NULL means scan all ap
+ * @param[in]       channel     the specified channel, 0 means scan all channel
+ * @param[out]      ap_ary      ap info array
+ * @param[out]      num         the num of ap_ary
+ * @return OPRT_NOT_SUPPORTED until a per-channel scan is wired to the chip SDK.
+ */
+OPERATE_RET tkl_wifi_scan_ap_channel(const int8_t *ssid, const uint8_t channel, AP_IF_S **ap_ary, uint32_t *num)
+{
+    return OPRT_NOT_SUPPORTED;
 }
 
 /**

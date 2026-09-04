@@ -3045,7 +3045,7 @@ static void __test_media_i2s_play(void *arg)
     i2s_cfg.channel_format = TUYA_I2S_CHANNEL_FMT_RIGHT_LEFT;
     i2s_cfg.bits_per_sample = TUYA_I2S_BITS_PER_SAMPLE_16BIT;
     i2s_cfg.mclk = 0;
-    i2s_cfg.sample_rate = 9;
+    i2s_cfg.sample_rate = 48000;
     i2s_cfg.i2s_dma_flags = 1;
 
     uint8_t *buffer = tkl_system_psram_malloc(TEST_AUDIO_DATA_LEN_PER_SECOND * 2);

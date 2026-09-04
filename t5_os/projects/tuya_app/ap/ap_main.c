@@ -175,7 +175,7 @@ static void entry_app_main(void)
 
     bk_pm_module_vote_cpu_freq(PM_DEV_ID_CPU1, PM_CPU_FRQ_480M);
 
-    tuya_ipc_init();
+    // tuya_ipc_init();
     
         extern int tkl_sleep_param_check_and_set(void);
         tkl_sleep_param_check_and_set();

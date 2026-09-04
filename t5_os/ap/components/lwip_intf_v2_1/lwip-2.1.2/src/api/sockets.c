@@ -87,10 +87,23 @@ int errno=0;
 #define LWIP_NETCONN 0
 #endif
 
-#define API_SELECT_CB_VAR_REF(name)               API_VAR_REF(name)
-#define API_SELECT_CB_VAR_DECLARE(name)           API_VAR_DECLARE(struct lwip_select_cb, name)
-#define API_SELECT_CB_VAR_ALLOC(name, retblock)   API_VAR_ALLOC_EXT(struct lwip_select_cb, MEMP_SELECT_CB, name, retblock)
-#define API_SELECT_CB_VAR_FREE(name)              API_VAR_FREE(MEMP_SELECT_CB, name)
+/* Redmine #8131 (A): always allocate the select control block from the coherent
+ * MEMP_SELECT_CB pool instead of a caller stack local. Under AP SMP with
+ * cacheable PSRAM task stacks, a stack-resident select_cb is linked into the
+ * global select_cb_list and traversed by the tcpip thread on the other core,
+ * whose private D-cache may hold stale next/sem/sem_signalled -> wrong wakeup
+ * or a crash on a garbage list pointer. The MEMP_SELECT_CB pool lives in
+ * non-cacheable memory (coherent). This intentionally does NOT enable the global
+ * LWIP_MPU_COMPATIBLE mode (which would reroute the whole netconn path); it only
+ * relocates select_cb, so the blast radius stays inside select()/poll(). */
+#undef  API_SELECT_CB_VAR_REF
+#undef  API_SELECT_CB_VAR_DECLARE
+#undef  API_SELECT_CB_VAR_ALLOC
+#undef  API_SELECT_CB_VAR_FREE
+#define API_SELECT_CB_VAR_REF(name)               (*(name))
+#define API_SELECT_CB_VAR_DECLARE(name)           struct lwip_select_cb *name = NULL
+#define API_SELECT_CB_VAR_ALLOC(name, retblock)   do { name = (struct lwip_select_cb *)memp_malloc(MEMP_SELECT_CB); if (name == NULL) { retblock; } } while(0)
+#define API_SELECT_CB_VAR_FREE(name)              memp_free(MEMP_SELECT_CB, name)
 
 #if LWIP_IPV4
 #define IP4ADDR_PORT_TO_SOCKADDR(sin, ipaddr, port) do { \
@@ -2046,9 +2059,23 @@ lwip_select(int maxfdp1, fd_set *readset, fd_set *writeset, fd_set *exceptset,
       API_SELECT_CB_VAR_ALLOC(select_cb, set_errno(ENOMEM); lwip_select_dec_sockets_used(maxfdp1, &used_sockets); return -1);
       memset(&API_SELECT_CB_VAR_REF(select_cb), 0, sizeof(struct lwip_select_cb));
 
-      API_SELECT_CB_VAR_REF(select_cb).readset = readset;
-      API_SELECT_CB_VAR_REF(select_cb).writeset = writeset;
-      API_SELECT_CB_VAR_REF(select_cb).exceptset = exceptset;
+      /* Redmine #8131 (A): copy the caller's fd_sets into the coherent
+       * select_cb. lwip_selscan() below keeps using the caller's originals
+       * (same thread/core -> coherent); only the cross-core tcpip-thread read
+       * in select_check_waiters() must go through these copies. memset above
+       * already cleared the block, so a NULL caller set stays NULL. */
+      if (readset) {
+        API_SELECT_CB_VAR_REF(select_cb).sel_readset = *readset;
+        API_SELECT_CB_VAR_REF(select_cb).readset = &API_SELECT_CB_VAR_REF(select_cb).sel_readset;
+      }
+      if (writeset) {
+        API_SELECT_CB_VAR_REF(select_cb).sel_writeset = *writeset;
+        API_SELECT_CB_VAR_REF(select_cb).writeset = &API_SELECT_CB_VAR_REF(select_cb).sel_writeset;
+      }
+      if (exceptset) {
+        API_SELECT_CB_VAR_REF(select_cb).sel_exceptset = *exceptset;
+        API_SELECT_CB_VAR_REF(select_cb).exceptset = &API_SELECT_CB_VAR_REF(select_cb).sel_exceptset;
+      }
 #if LWIP_NETCONN_SEM_PER_THREAD
       API_SELECT_CB_VAR_REF(select_cb).sem = LWIP_NETCONN_THREAD_SEM_GET();
 #else /* LWIP_NETCONN_SEM_PER_THREAD */
@@ -2376,6 +2403,7 @@ lwip_poll(struct pollfd *fds, nfds_t nfds, int timeout)
   /* If we don't have any current events, then suspend if we are supposed to */
   if (!nready) {
     API_SELECT_CB_VAR_DECLARE(select_cb);
+    struct pollfd *poll_fds_copy = NULL;   /* Redmine #8131 (A) coherent copy */
 
     if (timeout == 0) {
       LWIP_DEBUGF(SOCKETS_DEBUG, ("lwip_poll: no timeout, returning 0\n"));
@@ -2389,7 +2417,21 @@ lwip_poll(struct pollfd *fds, nfds_t nfds, int timeout)
        list is only valid while we are in this function, so it's ok
        to use local variables. */
 
-    API_SELECT_CB_VAR_REF(select_cb).poll_fds = fds;
+    /* Redmine #8131 (A): copy the caller's pollfd array into a coherent buffer
+     * so the cross-core tcpip thread (lwip_poll_should_wake) never reads the
+     * caller's cacheable PSRAM stack. lwip_pollscan() keeps using the caller's
+     * original 'fds' (same thread/core) to read and write revents. */
+    if (fds && nfds) {
+      poll_fds_copy = (struct pollfd *)mem_malloc((mem_size_t)((size_t)nfds * sizeof(struct pollfd)));
+      if (poll_fds_copy == NULL) {
+        set_errno(EAGAIN);
+        lwip_poll_dec_sockets_used(fds, nfds);
+        API_SELECT_CB_VAR_FREE(select_cb);
+        return -1;
+      }
+      MEMCPY(poll_fds_copy, fds, (size_t)nfds * sizeof(struct pollfd));
+    }
+    API_SELECT_CB_VAR_REF(select_cb).poll_fds = poll_fds_copy;
     API_SELECT_CB_VAR_REF(select_cb).poll_nfds = nfds;
 #if LWIP_NETCONN_SEM_PER_THREAD
     API_SELECT_CB_VAR_REF(select_cb).sem = LWIP_NETCONN_THREAD_SEM_GET();
@@ -2433,7 +2475,7 @@ lwip_poll(struct pollfd *fds, nfds_t nfds, int timeout)
     lwip_unlink_select_cb(&API_SELECT_CB_VAR_REF(select_cb));
 
 #if LWIP_NETCONN_SEM_PER_THREAD
-    if (select_cb.sem_signalled && (!waited || (waitres == SYS_ARCH_TIMEOUT))) {
+    if (API_SELECT_CB_VAR_REF(select_cb).sem_signalled && (!waited || (waitres == SYS_ARCH_TIMEOUT))) {
       /* don't leave the thread-local semaphore signalled */
       sys_arch_sem_wait(API_SELECT_CB_VAR_REF(select_cb).sem, 1);
     }
@@ -2441,6 +2483,12 @@ lwip_poll(struct pollfd *fds, nfds_t nfds, int timeout)
     sys_sem_free(&API_SELECT_CB_VAR_REF(select_cb).sem);
 #endif /* LWIP_NETCONN_SEM_PER_THREAD */
     API_SELECT_CB_VAR_FREE(select_cb);
+    /* Redmine #8131 (A): release the coherent pollfd copy after the select_cb is
+     * unlinked (tcpip thread can no longer reach it). */
+    if (poll_fds_copy != NULL) {
+      mem_free(poll_fds_copy);
+      poll_fds_copy = NULL;
+    }
 
     if (nready < 0) {
       /* This happens when a socket got closed while waiting */

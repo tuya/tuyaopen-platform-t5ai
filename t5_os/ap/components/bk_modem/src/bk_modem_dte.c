@@ -109,30 +109,35 @@ static void bk_modem_dte_ec_check_hs_data(uint32_t data_length, uint8_t *data)
  *        This function sends data through the configured interface (USB) based on the
  *        current PPP mode setting. It performs input validation and logs errors for invalid parameters.
  */
-void bk_modem_dte_send_data(uint32_t data_length, uint8_t *data, enum bk_modem_ppp_mode_e ppp_mode)
+uint32_t bk_modem_dte_send_data(uint32_t data_length, uint8_t *data, enum bk_modem_ppp_mode_e ppp_mode)
 {
     if ((data_length == 0) || (data == NULL))
     {
         BK_MODEM_LOGE("%s:invalid data length\r\n",__func__);
-        return;
+        return 0;
     }
 
     if (bk_modem_env.bk_modem_ppp_mode == ppp_mode)
     {
         if (bk_modem_env.comm_if == USB_IF)
         {
-            bk_modem_usbh_bulkout_ind((char *)data, data_length);
+            int32_t ret = bk_modem_usbh_bulkout_ind((char *)data, data_length);
+            return (ret == (int32_t)data_length) ? data_length : 0;
         }
         else if (bk_modem_env.comm_if == UART_IF)
         {
             enum bk_modem_uart_trx_mode_e trx_mode =
                 (ppp_mode == PPP_DATA_MODE) ? DATA_MODE : AT_CMD_MODE;
             bk_modem_uart_data_send(data_length, data, trx_mode);
+            return data_length;
         }
     }
     else
+    {
         BK_MODEM_LOGE("%s: different ppp mode. %d %d\r\n",__func__, bk_modem_env.bk_modem_ppp_mode, ppp_mode);
+    }
 
+    return 0;
 }
 
 /**
@@ -161,26 +166,29 @@ void bk_modem_dte_send_data_uart(uint32_t data_length, uint8_t *data, enum bk_mo
  *        This function handles data received from the modem and routes it to the appropriate
  *        handler based on the current PPP mode (AT command processing or PPP network stack).
  */
-void bk_modem_dte_recv_data(uint32_t data_length, uint8_t *data)
+bk_err_t bk_modem_dte_recv_data(uint32_t data_length, uint8_t *data)
 {
     if ((data_length == 0) || (data == NULL))
     {
         BK_MODEM_LOGE("%s:invalid data input %d\r\n",__func__, data_length);
-        return;
+        return BK_FAIL;
     }
     
     if (bk_modem_env.bk_modem_ppp_mode == PPP_CMD_MODE)
     {
         bk_modem_at_rcv_resp((char *)data, data_length);
+        return BK_OK;
     }
     else if (bk_modem_env.bk_modem_ppp_mode == PPP_DATA_MODE)
     {
-        bk_modem_netif_lwip_ppp_input(data, data_length);
+        return bk_modem_netif_lwip_ppp_input(data, data_length);
     }
     else
     {
         BK_MODEM_LOGE("%s:invalid ppp mode %d\r\n",__func__, bk_modem_env.bk_modem_ppp_mode);
     }
+
+    return BK_FAIL;
 }
 
 /**
@@ -294,11 +302,24 @@ void bk_modem_dte_handle_modem_check(void)
             break;
         }
 
+#if BK_MODEM_CAT1_LP_DTR_SLEEP
+        if (bk_modem_env.comm_proto == PPP_MODE) {
+            if (!bk_modem_dce_lp_config()) {
+                BK_MODEM_LOGI("%s: CAT1 LP AT config incomplete (non-fatal)\r\n", __func__);
+            }
+        }
+#endif
+
 		if (!bk_modem_mf_test) {
             if (!bk_modem_dce_get_ati()) {
                 //break;
             }
-#if 0            
+
+            if (!bk_mode_dce_get_cgmr()) {
+                temp_flag = 12;
+                //break;
+            }
+#if 0
             if (!bk_modem_dce_get_cgsn()) {
                 temp_flag = 9;
                 //break;
@@ -313,11 +334,6 @@ void bk_modem_dte_handle_modem_check(void)
             //    temp_flag = 11;
             //    break;
             //}
-
-            if (!bk_mode_dce_get_cgmr()) {
-                temp_flag = 12;
-                //break;
-            }
 #endif
             if (!bk_modem_dce_check_sim())
             {

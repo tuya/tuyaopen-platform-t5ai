@@ -558,9 +558,10 @@ int usbh_enumerate(struct usbh_hubport *hport)
                  ((struct usb_device_descriptor *)ep0_request_buffer)->idProduct,
                  ((struct usb_device_descriptor *)ep0_request_buffer)->bcdDevice);
     // Modified by TUYA Start
-    extern void tkl_mftest_usb_info(uint32_t vid, uint32_t pid);
-    tkl_mftest_usb_info(((struct usb_device_descriptor *)ep0_request_buffer)->idVendor,
-            ((struct usb_device_descriptor *)ep0_request_buffer)->idProduct);
+    // TuyaOpen don't need to get the usb info, so comment it out
+    // extern void tkl_mftest_usb_info(uint32_t vid, uint32_t pid);
+    // tkl_mftest_usb_info(((struct usb_device_descriptor *)ep0_request_buffer)->idVendor,
+    //         ((struct usb_device_descriptor *)ep0_request_buffer)->idProduct);
     // Modified by TUYA End
 
     /* Read the first 9 bytes of the config descriptor */

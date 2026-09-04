@@ -10,7 +10,7 @@
 #define BK_MODEM_DCE_CID_LEN 20
 #define BK_MODEM_DCE_IMEI_LEN 15
 #define BK_MODEM_DCE_SN_LEN   10
-#define BK_MODEM_DCE_SVER_LEN 22
+#define BK_MODEM_DCE_SVER_LEN 40
 
 struct bk_modem_dce_pdp_ctx_s
 {
@@ -42,6 +42,10 @@ extern bool bk_modem_dce_get_cfun(void);
 extern bool bk_mode_dce_get_cgmr(void);
 extern bool bk_modem_dce_get_cbc(void);
 extern bool bk_modem_dce_get_ati(void);
+
+#if BK_MODEM_CAT1_LP_DTR_SLEEP
+extern bool bk_modem_dce_lp_config(void);
+#endif
 
 extern void bk_modem_dec_pdp_ctx_init(char *apn);
 extern void bk_modem_dec_pdp_ctx_deinit(void);

@@ -22,9 +22,11 @@ static void mbox0_rx_isr(mbox0_message_t *msg)
 
 	if(msg->data[1] == sizeof(data))
 	{
-#if CONFIG_CACHE_ENABLE
-	  	extern void flush_dcache(void *va, long size);
-		flush_dcache((void *)msg->data[0], sizeof(data));
+		/* Redmine #8131: consumer of the peer's buffer - invalidate (not
+		 * clean+invalidate) and gate on the real D-cache switch. */
+#if CONFIG_DCACHE
+	  	extern void invalidate_dcache(void *va, long size);
+		invalidate_dcache((void *)msg->data[0], sizeof(data));
 #endif
 		memcpy(&data, (u8 *)msg->data[0], sizeof(data));
 	}
@@ -119,6 +121,11 @@ bk_err_t bk_mailbox_send(mailbox_data_t *data, mailbox_endpoint_t src, mailbox_e
 	message.data[0] = (u32)(&mailbox_buff[dst][box]);
 	message.data[1] = sizeof(mailbox_data_t);
 	message.dest_cpu = (uint8_t)dst;
+
+	/* mailbox_buff is Normal Non-cacheable memory; the FIFO trigger below is a
+	 * Device write. Ensure the payload store is globally visible before the peer
+	 * core is signalled and dereferences the shared pointer. */
+	__asm volatile("dsb 0xF" ::: "memory");
 
 	ret_code = mbox0_drv_send_message(&message);
 

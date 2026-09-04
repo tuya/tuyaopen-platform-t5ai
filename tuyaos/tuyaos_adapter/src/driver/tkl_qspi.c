@@ -33,6 +33,30 @@ extern void bk_delay_us(UINT32 us);
 #include "spinlock.h"
 static SPINLOCK_SECTION volatile spinlock_t tkl_qspi_spin_lock = SPIN_LOCK_INIT;
 #endif // CONFIG_FREERTOS_SMP
+
+#if (CONFIG_PSRAM_AS_SYS_MEMORY && CONFIG_FREERTOS_SMP && CONFIG_DCACHE)
+/* Redmine #8131: QSPI send is a fire-and-forget DMA-from-memory transfer. A
+ * Cacheable PSRAM stack source only needs a write-back before the engine reads
+ * it (no post-completion step, so this is safe without a completion hook).
+ * Buffers outside the stack heap (frame buffers) are untouched (no-op). */
+extern void flush_dcache(void *va, long size);
+#define QSPI_DCACHE_LINE_SIZE 32U
+
+static inline void qspi_cacheable_stack_clean(const void *p, uint32_t len)
+{
+    uint32_t a = (uint32_t)p;
+    if ((p != NULL) && (len != 0U) &&
+        (a >= (uint32_t)CONFIG_AP_PSRAM_STACK_HEAP_ADDR) &&
+        (a <  (uint32_t)(CONFIG_AP_PSRAM_STACK_HEAP_ADDR + CONFIG_AP_PSRAM_STACK_HEAP_SIZE))) {
+        uint32_t s = a & ~(QSPI_DCACHE_LINE_SIZE - 1U);
+        uint32_t e = (a + len + QSPI_DCACHE_LINE_SIZE - 1U) & ~(QSPI_DCACHE_LINE_SIZE - 1U);
+        flush_dcache((void *)s, (long)(e - s));
+    }
+}
+#else
+#define qspi_cacheable_stack_clean(p, l)  ((void)0)
+#endif
+
 #define TUYA_QSPI_CLK_DIV   (0x2)
 #define QSPI_INIT_CLK_480M (480000000)
 struct qspi_init_config {
@@ -136,16 +160,18 @@ static uint8_t dma_id_to_port(dma_id_t dma_id)
 static void lcd_qspi_dma_finish_isr(dma_id_t dma_id)
 {
     uint8_t port = dma_id_to_port(dma_id);
+    uint32_t level;
+
     if(port == 0xFF) {
         bk_printf("qspi irq port not right\r\n");
         return;
     }
-    // up report
-    uint32_t level = qspi_enter_critical();
+    /* DMA done != TX done: drain FIFO and stop SCK before notifying upper layer */
+    bk_lcd_qspi_quad_write_stops(port);
+    level = qspi_enter_critical();
     if (qspi_infos[port].cb) {
         qspi_infos[port].cb(port, TUYA_QSPI_EVENT_TX);
     }
-    bk_lcd_qspi_quad_write_stops(port);
     qspi_exit_critical(level);
 }
 
@@ -382,7 +408,6 @@ static void qspi_clock_enable(qspi_id_t id)
     }
     // if(bk_qspi_driver_init() != BK_OK)
     //     return OPRT_COM_ERROR;
- 
     os_memset(&config, 0, sizeof(config));
     os_memset(&s_tkl_qspi[port], 0, sizeof(qspi_driver_t));
     s_tkl_qspi[port].hal.id = port;
@@ -585,6 +610,21 @@ static bk_err_t bk_lcd_qspi_quad_write_starts(qspi_id_t qspi_id)
 
 bk_err_t bk_lcd_qspi_quad_write_stops(qspi_id_t qspi_id)
 {
+    /* DMA completion only means data reached QSPI FIFO; disable SCK only after
+     * FIFO is empty, otherwise the tail bytes are truncated (~51us @40MHz worst,
+     * 200us bounded fallback if status bits stay unset in mem-select mode). */
+    {
+        qspi_hw_t *hw = (qspi_hw_t *)s_tkl_qspi[qspi_id].hal.hw;
+        int i;
+
+        for (i = 0; i < 200; i++) {
+            if (hw->status.fifo_empty && !hw->status.tx_busy) {
+                break;
+            }
+            bk_delay_us(1);
+        }
+    }
+
     qspi_hal_disable_cmd_sck_disable(&s_tkl_qspi[qspi_id].hal);
     // qspi_hal_force_spi_cs_low_disable(&s_tkl_qspi[qspi_id].hal);
 
@@ -601,7 +641,7 @@ bk_err_t bk_lcd_qspi_quad_write_stops(qspi_id_t qspi_id)
     TUYA_QSPI_CMD_T sd_command;
     uint32_t level = 0U;
 
-    if ((data == NULL) || (port >= TUYA_QSPI_NUM_MAX)) {
+    if ((data == NULL) || (port >= TUYA_QSPI_NUM_MAX) || (size == 0)) {
         return OPRT_INVALID_PARM;
     }
     if (qspi_infos[port].qspi_enable != 1) {
@@ -630,12 +670,19 @@ bk_err_t bk_lcd_qspi_quad_write_stops(qspi_id_t qspi_id)
         if ((qspi_infos[port].is_send_use_dma == TRUE)) {
             if (size % 4 != 0) {
                 bk_printf("qspi dma send size not 4 byte align\r\n");
+                return OPRT_INVALID_PARM;
             }
-            
+
             level = qspi_enter_critical();
             bk_lcd_qspi_quad_write_starts(port);
+            /* Redmine #8131: clean a Cacheable PSRAM stack source before DMA reads it. */
+            qspi_cacheable_stack_clean((void *)data, size);
             tkl_dma_write(qspi_infos[port].lcd_qspi_dma_id, (void *)data, size);
             qspi_exit_critical(level);
+        } else {
+            /* size > 256 without DMA: no TX path, must not pretend success */
+            bk_printf("qspi%d send size=%u but DMA disabled\r\n", port, (unsigned)size);
+            return OPRT_NOT_SUPPORTED;
         }
     }
     return OPRT_OK;

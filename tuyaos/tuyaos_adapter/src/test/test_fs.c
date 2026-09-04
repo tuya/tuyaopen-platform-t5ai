@@ -440,7 +440,7 @@ static void __fs_cmd_mkdir(int argc, char **argv)
         return;
     }
 
-    int ret = tkl_fs_mkdir(fp);
+    int ret = tkl_fs_mkdir_r(fp);
     if (ret != 0) {
         bk_printf("tkl_fs_mkdir %s fail: %d\r\n", fp, ret);
         return;
@@ -470,7 +470,7 @@ static void __fs_cmd_unlink(int argc, char **argv)
         return;
     }
 
-    int ret = tkl_fs_remove(fp);
+    int ret = tkl_fs_remove_r(fp);
     bk_printf("tkl_fs_remove %s ret: %d\r\n", fp, ret);
 }
 

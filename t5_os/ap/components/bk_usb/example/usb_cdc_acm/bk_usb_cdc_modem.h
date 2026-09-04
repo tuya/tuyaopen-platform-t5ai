@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <common/bk_err.h>
 #include <components/log.h>
 #include <components/usb.h>
 #include <components/usb_types.h>
@@ -71,13 +72,13 @@ typedef struct
 typedef struct{
   void (*bk_modem_usbh_conn_ind)(uint32_t cnt);
   void (*bk_modem_usbh_disconn_ind)(void);
-  void (*bk_modem_usbh_bulkin_ind)(uint8_t *p_rx, uint32_t l_rx);
+  bk_err_t (*bk_modem_usbh_bulkin_ind)(uint8_t *p_rx, uint32_t l_rx);
 }bk_modem_usbh_if_t;
 
 extern const bk_modem_usbh_if_t bk_modem_usbh_if;
 void bk_cdc_acm_state_notify(CDC_STATUS_t * dev_state);
 uint8_t *bk_usb_cdc_modem_get_rxpuf(void);
-void bk_cdc_acm_bulkin_data(uint8_t *pbuf, uint16_t len);
+bk_err_t bk_cdc_acm_bulkin_data(uint8_t *pbuf, uint16_t len);
 void bk_usb_cdc_open(void);
 void bk_usb_cdc_close(void);
 void bk_usb_cdc_modem(void);

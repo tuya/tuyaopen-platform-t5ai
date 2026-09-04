@@ -132,6 +132,21 @@
 #define configUSE_TASK_PREEMPTION_DISABLE          1
 #endif // CONFIG_FREERTOS_SMP
 
+/* SMP D-cache coherency for cacheable PSRAM task stacks.
+ * The AP cores each have a private, non-coherent L1 D-cache and tasks are
+ * created with tskNO_AFFINITY, so a task whose stack lives in the cacheable
+ * PSRAM stack heap can be resumed on the other core. Its saved context must
+ * therefore be written back (clean + invalidate) on switch-out; otherwise the
+ * resuming core reads stale physical PSRAM and restores a corrupted exception
+ * frame (xPSR T-bit loss / bad PC -> IACCVIOL). See Redmine #8131. */
+#ifndef configFLUSH_DCACHE_ON_TASK_SWITCH_OUT
+#if ( CONFIG_FREERTOS_SMP && CONFIG_DCACHE )
+#define configFLUSH_DCACHE_ON_TASK_SWITCH_OUT      1
+#else
+#define configFLUSH_DCACHE_ON_TASK_SWITCH_OUT      0
+#endif
+#endif
+
 #if CONFIG_FREERTOS_POSIX
 #define configUSE_APPLICATION_TASK_TAG             1
 #define configSUPPORT_STATIC_ALLOCATION            1

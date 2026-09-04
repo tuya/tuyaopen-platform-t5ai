@@ -63,7 +63,7 @@ static rot_buf_t *s_rot_buf = NULL;
 
 bk_err_t software_rotate_task_send_msg(uint32_t type, uint32_t param)
 {
-	int ret = BK_OK;
+	int ret = BK_FAIL;
 	media_msg_t msg;
 
 	if (sw_rotate_config && sw_rotate_config->sw_rotate_queue)
