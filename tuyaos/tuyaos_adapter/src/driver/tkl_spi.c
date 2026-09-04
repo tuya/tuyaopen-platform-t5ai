@@ -201,6 +201,37 @@ static struct tkl_spi_pin_s spi_pin_config[SOC_SPI_MAX_NUM] = {
 	},
 };
 
+/**
+ * @brief which SPI port/role a pin can serve, for tkl_io_pin_to_func()
+ *
+ * @param[in] pin: gpio number
+ * @return (port << 8) | role   with role 0 = MISO, 1 = MOSI, 2 = CLK, 3 = CS
+ *         OPRT_NOT_SUPPORTED if the pin has no SPI function
+ *
+ * Only SPI0 has selectable pins on this chip (its three groups are the
+ * TKL_SPI0_G* defines above); SPI1..3 are fixed and not reported here.
+ */
+int32_t __tkl_spi_pin_to_func(TUYA_PIN_NAME_E pin)
+{
+    if ((pin == TKL_SPI0_G0_MISO_PIN) || (pin == TKL_SPI0_G1_MISO_PIN) ||
+        (pin == TKL_SPI0_G2_MISO_PIN)) {
+        return (0 << 8) | 0;
+    }
+    if ((pin == TKL_SPI0_G0_MOSI_PIN) || (pin == TKL_SPI0_G1_MOSI_PIN) ||
+        (pin == TKL_SPI0_G2_MOSI_PIN)) {
+        return (0 << 8) | 1;
+    }
+    if ((pin == TKL_SPI0_G0_SCK_PIN) || (pin == TKL_SPI0_G1_SCK_PIN) ||
+        (pin == TKL_SPI0_G2_SCK_PIN)) {
+        return (0 << 8) | 2;
+    }
+    if ((pin == TKL_SPI0_G0_CSN_PIN) || (pin == TKL_SPI0_G1_CSN_PIN) ||
+        (pin == TKL_SPI0_G2_CSN_PIN)) {
+        return (0 << 8) | 3;
+    }
+    return OPRT_NOT_SUPPORTED;
+}
+
 void __tkl_spi_set_clk_pin(TUYA_SPI_NUM_E port, TUYA_PIN_NAME_E pin)
 {
 	// only support set spi0

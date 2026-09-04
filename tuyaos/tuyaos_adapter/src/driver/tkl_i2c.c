@@ -504,6 +504,33 @@ void __tkl_i2c_set_sda_pin(TUYA_I2C_NUM_E port, const TUYA_PIN_NAME_E sda_pin)
     sg_i2c_pin[port].sda = sda_pin;
 }
 
+/**
+ * @brief which I2C port/role a pin can serve, for tkl_io_pin_to_func()
+ * NOTE: reports what the HARDWARE can do, not what is currently configured.
+ *
+ * @param[in] pin: gpio number
+ * @return (port << 8) | role   with role 0 = SCL, 1 = SDA
+ *         OPRT_NOT_SUPPORTED if the pin has no I2C function
+ */
+int32_t __tkl_i2c_pin_to_func(TUYA_PIN_NAME_E pin)
+{
+    if (pin == I2C0_LL_SCL_PIN) {
+        return (0 << 8) | 0;
+    }
+    if (pin == I2C0_LL_SDA_PIN) {
+        return (0 << 8) | 1;
+    }
+    if ((pin == I2C1_GROUP0_SCL_PIN) || (pin == I2C1_GROUP1_SCL_PIN) ||
+        (pin == I2C1_GROUP2_SCL_PIN) || (pin == I2C1_GROUP3_SCL_PIN)) {
+        return (1 << 8) | 0;
+    }
+    if ((pin == I2C1_GROUP0_SDA_PIN) || (pin == I2C1_GROUP1_SDA_PIN) ||
+        (pin == I2C1_GROUP2_SDA_PIN) || (pin == I2C1_GROUP3_SDA_PIN)) {
+        return (1 << 8) | 1;
+    }
+    return OPRT_NOT_SUPPORTED;
+}
+
 int32 __check_i2c_pin_isvalid(uint8_t port)
 {
     int32 isvalid = 0;
@@ -559,6 +586,11 @@ OPERATE_RET tkl_i2c_init(uint8_t port, const TUYA_IIC_BASE_CFG_T *cfg)
     }
 
     if ((sg_i2c_pin[port].scl == TUYA_GPIO_NUM_MAX) || (sg_i2c_pin[port].sda == TUYA_GPIO_NUM_MAX) || (__check_i2c_pin_isvalid(port))) {
+        if (port >= I2C_ID_MAX) {
+            bk_printf("over hardware i2c port :%d\n", port);
+            return OPRT_INVALID_PARM;
+        }
+
         bk_printf("i2c pin not set, use hardware i2c port %d!\n", port);
 	    i2c_config_t i2c_cfg = {0};
         bk_i2c_driver_init();
@@ -587,8 +619,11 @@ OPERATE_RET tkl_i2c_init(uint8_t port, const TUYA_IIC_BASE_CFG_T *cfg)
     	tkl_mutex_lock(sg_i2c_cfg[port].mutex);
         extern void user_i2c_init_gpio(i2c_id_t id, gpio_id_t scl, gpio_id_t sda);
         user_i2c_init_gpio(port, sg_i2c_pin[port].scl, sg_i2c_pin[port].sda);
-        bk_i2c_init(port, &i2c_cfg);
+        bk_err_t bkret = bk_i2c_init(port, &i2c_cfg);
 		tkl_mutex_unlock(sg_i2c_cfg[port].mutex);
+        if (bkret != BK_OK) {
+            return OPRT_COM_ERROR;
+        }
     } else {
         if (cfg->role == TUYA_IIC_MODE_SLAVE) {
             bk_printf("i2c slave mode not supported!\n");
@@ -630,6 +665,11 @@ OPERATE_RET tkl_i2c_deinit(uint8_t port)
     }
 
     if ((sg_i2c_pin[port].scl == TUYA_GPIO_NUM_MAX) || (sg_i2c_pin[port].sda == TUYA_GPIO_NUM_MAX) || (__check_i2c_pin_isvalid(port))) {
+        if (port >= I2C_ID_MAX) {
+            bk_printf("over hardware i2c port :%d\n", port);
+            return OPRT_INVALID_PARM;
+        }
+
         bk_i2c_deinit(port);
     } else {
         tkl_gpio_deinit(sg_i2c_pin[port].scl);
@@ -704,6 +744,11 @@ OPERATE_RET tkl_i2c_master_send(TUYA_I2C_NUM_E port, uint16_t dev_addr, const vo
     // bk_printf("iic write %02x %02x %d\n", dev_addr, *(uint8_t *)data, size);
     tkl_mutex_lock(sg_i2c_cfg[port].mutex);
     if ((sg_i2c_pin[port].scl == TUYA_GPIO_NUM_MAX) || (sg_i2c_pin[port].sda == TUYA_GPIO_NUM_MAX) || (__check_i2c_pin_isvalid(port))) {
+        if (port >= I2C_ID_MAX) {
+            bk_printf("over hardware i2c port :%d\n", port);
+            return OPRT_INVALID_PARM;
+        }
+        
         ret = bk_i2c_master_write(port, dev_addr, data, size, I2C_WRITE_WAIT_MAX_MS);
         if(ret < 0)
             return OPRT_COM_ERROR;
@@ -741,6 +786,11 @@ OPERATE_RET tkl_i2c_master_receive(TUYA_I2C_NUM_E port, uint16_t dev_addr, void 
 
     tkl_mutex_lock(sg_i2c_cfg[port].mutex);
     if ((sg_i2c_pin[port].scl == TUYA_GPIO_NUM_MAX) || (sg_i2c_pin[port].sda == TUYA_GPIO_NUM_MAX) || (__check_i2c_pin_isvalid(port))) {
+        if (port >= I2C_ID_MAX) {
+            bk_printf("over hardware i2c port :%d\n", port);
+            return OPRT_INVALID_PARM;
+        }
+
         ret = bk_i2c_master_read(port, dev_addr, data, size, I2C_READ_WAIT_MAX_MS);
         if(ret < 0)
             return OPRT_COM_ERROR;

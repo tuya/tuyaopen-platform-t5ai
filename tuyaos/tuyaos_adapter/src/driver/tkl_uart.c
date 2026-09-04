@@ -39,24 +39,51 @@ gpio_id_t __tkl_uart2_get_tx_pin(void)
     return __tkl_uart2_tx_pin;
 }
 
-void __tkl_uart2_set_rx_pin(TUYA_I2C_NUM_E port, const TUYA_PIN_NAME_E pin)
+/**
+ * @brief which UART port/role a pin can serve, for tkl_io_pin_to_func()
+ *
+ * @param[in] pin: gpio number
+ * @return (port << 8) | role   with role 0 = TX, 1 = RX, 2 = RTS, 3 = CTS
+ *         OPRT_NOT_SUPPORTED if the pin has no UART function
+ *
+ * Only UART2 has selectable pins on this chip; UART0/1 are fixed (and one of
+ * them is the log port) so they are not reported here.
+ */
+int32_t __tkl_uart_pin_to_func(TUYA_PIN_NAME_E pin)
+{
+    if ((pin == GPIO_31) || (pin == GPIO_41)) {
+        return (2 << 8) | 0;
+    }
+    if ((pin == GPIO_30) || (pin == GPIO_40)) {
+        return (2 << 8) | 1;
+    }
+    return OPRT_NOT_SUPPORTED;
+}
+
+// These used to be void: they validated the pin and then could only print, so a
+// rejected pin left the old one in place with the caller told nothing. The
+// port parameter was also typed TUYA_I2C_NUM_E, copy-pasted from the I2C
+// setters.
+OPERATE_RET __tkl_uart2_set_rx_pin(TUYA_UART_NUM_E port, const TUYA_PIN_NAME_E pin)
 {
     // only support UART2
     if (pin != GPIO_30 && pin != GPIO_40) {
         bk_printf("tkl_uart2_set_rx_pin unsupport pin: %d\r\n", pin);
-        return;
+        return OPRT_NOT_SUPPORTED;
     }
     __tkl_uart2_rx_pin = (gpio_id_t)pin;
+    return OPRT_OK;
 }
 
-void __tkl_uart2_set_tx_pin(TUYA_I2C_NUM_E port, const TUYA_PIN_NAME_E pin)
+OPERATE_RET __tkl_uart2_set_tx_pin(TUYA_UART_NUM_E port, const TUYA_PIN_NAME_E pin)
 {
     // only support UART2
     if (pin != GPIO_31 && pin != GPIO_41) {
         bk_printf("tkl_uart2_set_tx_pin unsupport pin: %d\r\n", pin);
-        return;
+        return OPRT_NOT_SUPPORTED;
     }
     __tkl_uart2_tx_pin = (gpio_id_t)pin;
+    return OPRT_OK;
 }
 
 /**

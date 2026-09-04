@@ -37,8 +37,14 @@
 extern void __tkl_i2c_set_scl_pin(TUYA_I2C_NUM_E port, const TUYA_PIN_NAME_E scl_pin);
 extern void __tkl_i2c_set_sda_pin(TUYA_I2C_NUM_E port, const TUYA_PIN_NAME_E sda_pin);
 
-extern void __tkl_uart2_set_rx_pin(TUYA_I2C_NUM_E port, const TUYA_PIN_NAME_E pin);
-extern void __tkl_uart2_set_tx_pin(TUYA_I2C_NUM_E port, const TUYA_PIN_NAME_E pin);
+extern OPERATE_RET __tkl_uart2_set_rx_pin(TUYA_UART_NUM_E port, const TUYA_PIN_NAME_E pin);
+extern OPERATE_RET __tkl_uart2_set_tx_pin(TUYA_UART_NUM_E port, const TUYA_PIN_NAME_E pin);
+
+// Per-driver pin queries, for tkl_io_pin_to_func(). Each table stays with the
+// driver that owns it; see those functions for the return encoding.
+extern int32_t __tkl_i2c_pin_to_func(TUYA_PIN_NAME_E pin);
+extern int32_t __tkl_spi_pin_to_func(TUYA_PIN_NAME_E pin);
+extern int32_t __tkl_uart_pin_to_func(TUYA_PIN_NAME_E pin);
 
 extern void __tkl_spi_set_cs_pin(TUYA_SPI_NUM_E port, TUYA_PIN_NAME_E pin);
 extern void __tkl_spi_set_clk_pin(TUYA_SPI_NUM_E port, TUYA_PIN_NAME_E pin);
@@ -82,11 +88,9 @@ OPERATE_RET tkl_io_pinmux_config(TUYA_PIN_NAME_E pin, TUYA_PIN_FUNC_E pin_func)
             __tkl_i2c_set_sda_pin(TUYA_I2C_NUM_2, pin);
             break;
         case TUYA_UART2_RX:
-            __tkl_uart2_set_rx_pin(TUYA_UART_NUM_2, pin);
-            break;
+            return __tkl_uart2_set_rx_pin(TUYA_UART_NUM_2, pin);
         case TUYA_UART2_TX:
-            __tkl_uart2_set_tx_pin(TUYA_UART_NUM_2, pin);
-            break;
+            return __tkl_uart2_set_tx_pin(TUYA_UART_NUM_2, pin);
         case TUYA_SPI0_CLK:
             __tkl_spi_set_clk_pin(TUYA_SPI_NUM_0, pin);
             break;
@@ -138,7 +142,11 @@ OPERATE_RET tkl_io_pinmux_config(TUYA_PIN_NAME_E pin, TUYA_PIN_FUNC_E pin_func)
             break;
 #endif
         default:
-            break;
+            // Anything not handled above is NOT configured. Reporting OPRT_OK
+            // here made every unsupported combination look like it had been
+            // applied -- callers that hand user-named pins straight to this
+            // function had no way to tell.
+            return OPRT_NOT_SUPPORTED;
 
     }
     return OPRT_OK;
@@ -200,17 +208,20 @@ int32_t tkl_io_pin_to_func(uint32_t pin, TUYA_PIN_TYPE_E pin_type)
                 port_channel = ADC_12;
             }
             break;
-        case TUYA_IO_TYPE_DAC:
-            break;
         case TUYA_IO_TYPE_UART:
+            port_channel = __tkl_uart_pin_to_func(pin);
             break;
         case TUYA_IO_TYPE_SPI:
+            port_channel = __tkl_spi_pin_to_func(pin);
             break;
         case TUYA_IO_TYPE_I2C:
+            port_channel = __tkl_i2c_pin_to_func(pin);
             break;
+        case TUYA_IO_TYPE_DAC:
         case TUYA_IO_TYPE_I2S:
-            break;
         case TUYA_IO_TYPE_GPIO:
+            // Not implemented on this platform. port_channel keeps its initial
+            // OPRT_NOT_SUPPORTED, which is the honest answer.
             break;
         default:
             break;
