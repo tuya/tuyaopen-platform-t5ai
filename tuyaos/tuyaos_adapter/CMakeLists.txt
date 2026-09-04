@@ -152,7 +152,7 @@ else()
         include/init/src/tkl_init_network.c
         include/init/src/tkl_init_wifi.c
         include/init/src/tkl_init_wired.c
-	include/init/src/tkl_init_cellular.c
+        include/init/src/tkl_init_cellular.c
         include/utilities/src/tuya_hashmap.c
         include/utilities/src/tuya_ringbuf.c
         include/utilities/src/tuya_smartpointer.c

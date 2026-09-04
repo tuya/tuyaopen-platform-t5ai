@@ -29,10 +29,10 @@ int fatfs_mount(const char *mount_path, int type)
 
     if (type == DEV_USB_DISK) {
         bk_usb_open(0);
-        if (tkl_mftest_is_usb_ready() != true) {
-            bk_printf("usb disk is not ready\r\n");
-            return -1;
-        }
+        // if (tkl_mftest_is_usb_ready() != true) {
+        //     bk_printf("usb disk is not ready\r\n");
+        //     return -1;
+        // }
         // 等待最多2s,使驱动注册完成
         int retry = 0;
         do {
@@ -40,7 +40,7 @@ int fatfs_mount(const char *mount_path, int type)
                 break;
             }
             tkl_system_sleep(50);
-        } while (retry++ < 40);
+        } while (retry++ < 100);
 
         partition.part_dev.device_name = FATFS_DEV_UDISK;  // f_mount需求该参数，绑定底层硬件接口 partition.mount_path = mount_path;
         ret = mount("SOURCE_NONE", partition.mount_path, fs_type, 0, &partition);
